@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pet_creation_title">Создай питомца</string>
+    <string name="pet_creation_subtitle">Выбери друга, который будет жить с тобой</string>
+    <string name="pet_species_title">Кто это будет?</string>
+    <string name="pet_color_title">Выбери цвет</string>
+    <string name="pet_name_title">Как его зовут?</string>
+    <string name="pet_name_label">Имя</string>
+    <string name="pet_name_hint">До 10 символов</string>
+    <string name="pet_name_counter">%1$d/10</string>
+    <string name="pet_name_error_empty">Введи имя</string>
+    <string name="pet_name_error_too_long">Не больше 10 символов</string>
+    <string name="pet_name_error_characters">Только буквы, цифры, пробел и дефис</string>
+    <string name="pet_create_button">Готово</string>
+    <string name="pet_preview_name">Питомец</string>
+    <string name="pet_species_cat">Кошка</string>
+    <string name="pet_species_dog">Собака</string>
+    <string name="pet_species_rat">Крыса</string>
+    <string name="pet_species_rooster">Петух</string>
+    <string name="pet_color_sunny">Солнечный</string>
+    <string name="pet_color_mint">Мятный</string>
+    <string name="pet_color_coral">Коралловый</string>
+    <string name="pet_color_sky">Небесный</string>
+    <string name="pet_content_description">%1$s, %2$s</string>
+</resources>

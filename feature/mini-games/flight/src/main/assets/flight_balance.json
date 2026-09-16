@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "rulesVersion": 2,
+  "gameId": "flight",
+  "world": {
+    "width": 360,
+    "height": 560,
+    "petX": 90,
+    "startY": 280,
+    "radius": 14,
+    "top": 0,
+    "bottom": 560
+  },
+  "physics": {
+    "tickRate": 120,
+    "gravity": 1100,
+    "flapVelocity": -320,
+    "maxFallVelocity": 460,
+    "minFlapTicks": 12,
+    "maxFrameMillis": 100
+  },
+  "round": {
+    "durationTicks": 7200,
+    "countdownSeconds": 3,
+    "resumeCountdownSeconds": 3
+  },
+  "gates": {
+    "firstX": 420,
+    "width": 58,
+    "spacing": 205,
+    "firstEasyCount": 1,
+    "firstGap": 160,
+    "maxCenterShift": 92,
+    "edgeMargin": 55
+  },
+  "stages": [
+    {
+      "fromTick": 0,
+      "speed": 145,
+      "gap": 146
+    },
+    {
+      "fromTick": 2400,
+      "speed": 168,
+      "gap": 134
+    },
+    {
+      "fromTick": 4800,
+      "speed": 192,
+      "gap": 122
+    }
+  ],
+  "tutorial": {
+    "targetGates": 3
+  },
+  "persistence": {
+    "checkpointTicks": 120
+  },
+  "badges": {
+    "firstFlightScore": 1,
+    "skilledPilotScore": 10
+  }
+}

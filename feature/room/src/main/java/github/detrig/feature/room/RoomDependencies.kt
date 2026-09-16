@@ -1,0 +1,19 @@
+package github.detrig.feature.room
+
+import android.content.SharedPreferences
+import android.content.res.Resources
+
+import github.detrig.core.presentation.message.GlobalMessageController
+import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.economy.api.EconomyApi
+import github.detrig.feature.room.api.RoomGameLauncher
+
+interface RoomDependencies {
+    fun housePreferences(): SharedPreferences
+    fun gameStateApi(): GameStateApi
+    fun economyApi(): EconomyApi
+    fun gameLauncher(): RoomGameLauncher
+    fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher
+    fun globalMessageController(): GlobalMessageController
+    fun resources(): Resources
+}

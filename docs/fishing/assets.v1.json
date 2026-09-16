@@ -1,0 +1,484 @@
+{
+  "schemaVersion": 1,
+  "status": "generated_integrated",
+  "style": "warm_pixel_illustration_matching_current_room",
+  "runtimeRasterCount": 14,
+  "productionMasterCount": 14,
+  "exploratoryConceptCount": 0,
+  "plannedAndroidModule": "feature/mini-games/fishing",
+  "sizingNote": "Export fields retain original targets. actualPixels and runtimeFile describe shipped sources, decoded with sampling on Android. Boat layers share one bitmap.",
+  "masterIds": [
+    "background",
+    "flora_left",
+    "flora_right",
+    "boat",
+    "pet_calm",
+    "pet_focus",
+    "pet_effort",
+    "pet_joy",
+    "fish_crucian",
+    "fish_roach",
+    "fish_perch",
+    "fish_trout",
+    "fish_catfish",
+    "fish_carp"
+  ],
+  "scene": {
+    "coordinateSystem": "normalized_inside_scene_between_hud_and_controls",
+    "waterlineY": 0.25,
+    "boatAnchor": [
+      0.22,
+      0.25
+    ],
+    "boatWidthFraction": 0.4,
+    "waterDepthToSceneY": "0.25 + 0.75 * waterDepth",
+    "foregroundClearance": {
+      "leftMaxX": 0.12,
+      "rightMinX": 0.92,
+      "bottomMinY": 0.87
+    },
+    "backgroundScaling": "fit_center_with_matched_color_gutters",
+    "pixelSampling": "nearest_when_scaling_pixel_sprites",
+    "viewportWidthToHeight": 0.72,
+    "boatWidthHeightCap": 0.36
+  },
+  "assets": [
+    {
+      "id": "bg_sunny_cove",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "background",
+      "export": {
+        "width": 1080,
+        "height": 1920,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_bg_sunny_cove",
+      "anchor": [
+        0,
+        0
+      ],
+      "alpha": false,
+      "waterlineY": 0.25,
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/background.png",
+      "actualPixels": {
+        "width": 941,
+        "height": 1672,
+        "alpha": false
+      }
+    },
+    {
+      "id": "flora_left",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "flora_left",
+      "export": {
+        "width": 384,
+        "height": 768,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_flora_left",
+      "anchor": [
+        0,
+        1
+      ],
+      "alpha": true,
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/flora_left.png",
+      "actualPixels": {
+        "width": 887,
+        "height": 1774,
+        "alpha": true
+      }
+    },
+    {
+      "id": "flora_right",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "flora_right",
+      "export": {
+        "width": 384,
+        "height": 768,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_flora_right",
+      "anchor": [
+        1,
+        1
+      ],
+      "alpha": true,
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/flora_right.png",
+      "actualPixels": {
+        "width": 887,
+        "height": 1774,
+        "alpha": true
+      }
+    },
+    {
+      "id": "boat_back",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "boat",
+      "export": {
+        "width": 1024,
+        "height": 512,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_boat_back",
+      "anchor": [
+        0.5,
+        0.65
+      ],
+      "alpha": true,
+      "sharedCanvasWith": "boat_front",
+      "petSeat": [
+        0.42,
+        0.38
+      ],
+      "rodPivot": [
+        0.72,
+        0.3
+      ],
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/boat.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      },
+      "layerImplementation": "One boat.png; foreground hull is clipped in Canvas."
+    },
+    {
+      "id": "boat_front",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "boat",
+      "export": {
+        "width": 1024,
+        "height": 512,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_boat_front",
+      "anchor": [
+        0.5,
+        0.65
+      ],
+      "alpha": true,
+      "sharedCanvasWith": "boat_back",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/boat.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      },
+      "layerImplementation": "One boat.png; foreground hull is clipped in Canvas."
+    },
+    {
+      "id": "pet_calm",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "pet_calm",
+      "export": {
+        "width": 512,
+        "height": 512,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_pet_calm",
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "alpha": true,
+      "identitySource": "authoritative_pet_appearance_or_current_room_placeholder",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_calm.png",
+      "actualPixels": {
+        "width": 1312,
+        "height": 1199,
+        "alpha": true
+      }
+    },
+    {
+      "id": "pet_focus",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "pet_focus",
+      "export": {
+        "width": 512,
+        "height": 512,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_pet_focus",
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "alpha": true,
+      "identitySource": "authoritative_pet_appearance_or_current_room_placeholder",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_focus.png",
+      "actualPixels": {
+        "width": 1254,
+        "height": 1254,
+        "alpha": true
+      }
+    },
+    {
+      "id": "pet_effort",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "pet_effort",
+      "export": {
+        "width": 512,
+        "height": 512,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_pet_effort",
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "alpha": true,
+      "identitySource": "authoritative_pet_appearance_or_current_room_placeholder",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_effort.png",
+      "actualPixels": {
+        "width": 1402,
+        "height": 1122,
+        "alpha": true
+      }
+    },
+    {
+      "id": "pet_joy",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "pet_joy",
+      "export": {
+        "width": 512,
+        "height": 512,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_pet_joy",
+      "anchor": [
+        0.5,
+        0.9
+      ],
+      "alpha": true,
+      "identitySource": "authoritative_pet_appearance_or_current_room_placeholder",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_joy.png",
+      "actualPixels": {
+        "width": 1254,
+        "height": 1254,
+        "alpha": true
+      }
+    },
+    {
+      "id": "fish_crucian",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "fish_crucian",
+      "export": {
+        "width": 512,
+        "height": 256,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_fish_crucian",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alpha": true,
+      "headDirection": "right",
+      "speciesId": "crucian",
+      "bodyAnchor": [
+        0.5,
+        0.5
+      ],
+      "mouthAttachment": "derive_and_verify_per_asset_after_generation",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_crucian.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      }
+    },
+    {
+      "id": "fish_roach",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "fish_roach",
+      "export": {
+        "width": 512,
+        "height": 256,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_fish_roach",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alpha": true,
+      "headDirection": "right",
+      "speciesId": "roach",
+      "bodyAnchor": [
+        0.5,
+        0.5
+      ],
+      "mouthAttachment": "derive_and_verify_per_asset_after_generation",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_roach.png",
+      "actualPixels": {
+        "width": 1983,
+        "height": 793,
+        "alpha": true
+      }
+    },
+    {
+      "id": "fish_perch",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "fish_perch",
+      "export": {
+        "width": 512,
+        "height": 256,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_fish_perch",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alpha": true,
+      "headDirection": "right",
+      "speciesId": "perch",
+      "bodyAnchor": [
+        0.5,
+        0.5
+      ],
+      "mouthAttachment": "derive_and_verify_per_asset_after_generation",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_perch.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      }
+    },
+    {
+      "id": "fish_trout",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "fish_trout",
+      "export": {
+        "width": 512,
+        "height": 256,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_fish_trout",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alpha": true,
+      "headDirection": "right",
+      "speciesId": "trout",
+      "bodyAnchor": [
+        0.5,
+        0.5
+      ],
+      "mouthAttachment": "derive_and_verify_per_asset_after_generation",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_trout.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      }
+    },
+    {
+      "id": "fish_catfish",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "fish_catfish",
+      "export": {
+        "width": 512,
+        "height": 256,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_fish_catfish",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alpha": true,
+      "headDirection": "right",
+      "speciesId": "catfish",
+      "bodyAnchor": [
+        0.5,
+        0.5
+      ],
+      "mouthAttachment": "derive_and_verify_per_asset_after_generation",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_catfish.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      }
+    },
+    {
+      "id": "fish_carp",
+      "kind": "raster",
+      "status": "generated_integrated",
+      "masterId": "fish_carp",
+      "export": {
+        "width": 512,
+        "height": 256,
+        "format": "png_rgba",
+        "directory": "drawable-nodpi"
+      },
+      "plannedResourceName": "img_fishing_fish_carp",
+      "anchor": [
+        0.5,
+        0.5
+      ],
+      "alpha": true,
+      "headDirection": "right",
+      "speciesId": "carp",
+      "bodyAnchor": [
+        0.5,
+        0.5
+      ],
+      "mouthAttachment": "derive_and_verify_per_asset_after_generation",
+      "runtimeFile": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_carp.png",
+      "actualPixels": {
+        "width": 1774,
+        "height": 887,
+        "alpha": true
+      }
+    }
+  ],
+  "nonRasterAssets": [
+    "rod_and_line",
+    "bait_and_hook_marker",
+    "water_surface_shimmer",
+    "bubbles_and_splashes",
+    "target_marker",
+    "tension_and_progress",
+    "album_cards",
+    "album_silhouettes",
+    "badges",
+    "all_text",
+    "existing_room_entry_icon"
+  ],
+  "budget": {
+    "estimatedRgbaBytes": 22188032,
+    "targetSessionTextureMiB": 40,
+    "requiresDeviceMeasurement": true
+  }
+}

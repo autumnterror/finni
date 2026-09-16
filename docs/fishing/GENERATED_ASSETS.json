@@ -1,0 +1,166 @@
+{
+  "generator": "Built-in ImageGen",
+  "manifestPurpose": "Generation history; retired source paths are intentionally preserved.",
+  "runtimePetSource": "PetApi.rememberCurrentAppearanceBitmap; generated pet poses were removed from the APK.",
+  "artDirection": "Warm pixel art aligned to the FinPet room. Original generated assets; no assets from reference games.",
+  "assets": [
+    {
+      "id": "background",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/background.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-fd4f9d06-9034-4c87-a470-10399152314e.png",
+      "initialPrompt": {
+        "prompt": "Use case: stylized-concept. Create a production 2D pixel-art background for FinPet children's fishing game, matching the warm detailed pixel illustration style of the reference room. PORTRAIT 9:16. A sunny freshwater cove shown in clear SIDE VIEW underwater cutaway. Water surface is a straight horizontal line exactly 25% down the image. Top quarter: lovely sunlit distant shore, small reeds, pale sky, open space on left for a boat that will be added later. Lower 75%: expansive clear turquoise water gradually deeper blue, a few muted distant underwater plants and rounded pebbles at the very bottom. Keep x20%-88% uncluttered and low-contrast for fish sprites. Subtle sunbeams, warm upper-left lighting, inviting and beautiful. Opaque background. ABSOLUTELY NO FISH, no boat, no character, no rod, no line, no UI, no words, no numbers, no frame. Entire image is scenery only.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/room/src/main/res/drawable-nodpi/bg_room_section_02.png"
+        ]
+      }
+    },
+    {
+      "id": "boat",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/boat.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-1f83c196-8473-4ade-af11-593536e35b55.png",
+      "initialPrompt": {
+        "prompt": "Use case: stylized-concept. ONE isolated empty wooden rowboat sprite for a warm pixel-art children's fishing game, style matches reference room. SIDE VIEW with slightly visible interior, bow pointing right. Wide 2:1 composition. Warm honey-brown wooden planks, friendly rounded silhouette, readable dark rear gunwale and bright front hull. An empty seat just left of center, small rod holder near 72% of width. Clear separation between upper rear interior and lower front hull so they can later be layered around the seated pet. Boat occupies center 80% width. True TRANSPARENT background, no checkerboard baked in, no water, no wake, no rod, no oars, no pet, no shadow, no writing or UI. One complete boat only, not exploded diagram. Crisp coherent pixel clusters and warm upper-left lighting.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/room/src/main/res/drawable-nodpi/bg_room_section_02.png"
+        ]
+      }
+    },
+    {
+      "id": "fish_crucian",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_crucian.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-7106bff3-a339-4446-8215-9a8e7a58cc39.png",
+      "initialPrompt": {
+        "prompt": "Use case: stylized-concept. Production 2D game sprite for FinPet in warm detailed PIXEL ART matching reference illustration. ONE fish only, strict side view, head RIGHT, complete body centered with 12% empty margin. Wide 2:1 composition. Actual transparent background, no checkerboard, no water, no bubbles, no ground shadow, no hook, no UI, no text. Large readable pixel clusters, friendly small eye and closed mouth, soft upper-left lighting. Small crucian carp: short rounded honey-yellow body with light belly, little head, small simple tail, compact relaxed silhouette, no whiskers, no stripes, no tall spiny dorsal fin.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/room/src/main/res/drawable-nodpi/bg_room_section_02.png"
+        ]
+      },
+      "editPrompt": {
+        "prompt": "Use case: background-extraction. EDIT THE PROVIDED IMAGE. Remove the entire white / pale checkerboard background completely and output the SAME subject as a true transparent PNG with an alpha channel. All pixels outside the subject must have alpha=0. A drawn checkerboard is NOT transparency. Preserve exactly the subject, colors, silhouette and pixel-art details. Do not redraw the animal, do not add anything, do not include any solid backdrop. Deliver a cutout sprite with genuine transparency, not a preview of transparency.",
+        "referenced_image_paths": [
+          "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-e839a0f3-a80e-477f-80e2-637075015b00.png"
+        ]
+      }
+    },
+    {
+      "id": "fish_roach",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_roach.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-9efd4c96-fcad-4d6e-8764-4090fe16b1dd.png",
+      "initialPrompt": {
+        "prompt": "Use case: stylized-concept. Production 2D game sprite for FinPet in warm detailed PIXEL ART matching reference illustration. ONE fish only, strict side view, head RIGHT, complete body centered with 12% empty margin. Wide 2:1 composition. Actual transparent background, no checkerboard, no water, no bubbles, no ground shadow, no hook, no UI, no text. Large readable pixel clusters, friendly small eye and closed mouth, soft upper-left lighting. A slender roach fish: slim spindle-shaped silver-blue body, clearly forked tail, small coral-red fins, streamlined distinct silhouette. No whiskers, no vertical stripes.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/room/src/main/res/drawable-nodpi/bg_room_section_02.png"
+        ]
+      },
+      "editPrompt": {
+        "prompt": "Use case: background-extraction. EDIT THE PROVIDED IMAGE. Remove the entire white / pale checkerboard background completely and output the SAME subject as a true transparent PNG with an alpha channel. All pixels outside the subject must have alpha=0. A drawn checkerboard is NOT transparency. Preserve exactly the subject, colors, silhouette and pixel-art details. Do not redraw the animal, do not add anything, do not include any solid backdrop. Deliver a cutout sprite with genuine transparency, not a preview of transparency.",
+        "referenced_image_paths": [
+          "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-1cd1a3f1-51d6-457e-92c7-d231d980f1dc.png"
+        ]
+      }
+    },
+    {
+      "id": "fish_perch",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_perch.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-c11740f2-2074-4871-9f8b-c6024a81fffd.png",
+      "initialPrompt": {
+        "prompt": "Use case: stylized-concept. Production 2D game sprite for FinPet in warm detailed PIXEL ART matching reference illustration. ONE fish only, strict side view, head RIGHT, complete body centered with 12% empty margin. Wide 2:1 composition. Actual transparent background, no checkerboard, no water, no bubbles, no ground shadow, no hook, no UI, no text. Large readable pixel clusters, friendly small eye and closed mouth, soft upper-left lighting. A perch: moderately tall olive-green body with five broad dark vertical stripes, clear tall dorsal fin with gently stylized spines, light belly and warm amber lower fins. Readable strong silhouette, no aggressive teeth.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/room/src/main/res/drawable-nodpi/bg_room_section_02.png"
+        ]
+      },
+      "editPrompt": "Extract only the orange-finned striped perch fish from this reference. Remove EVERY grey and white checkerboard cell completely. Output actual RGBA PNG with alpha=0 outside the fish, a transparent cutout sprite. Keep fish facing right. No backdrop, no shadow, no checkerboard drawn into pixels."
+    },
+    {
+      "id": "fish_trout",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_trout.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-842d20e0-2be6-4617-93cc-8d1e8556a986.png",
+      "initialPrompt": {
+        "prompt": "Create one 2D pixel-art game fish sprite as a PNG with GENUINE TRANSPARENT ALPHA BACKGROUND. Isolated cutout, no solid white, no checkerboard, no water, no scene, no shadow, no text. Detailed warm pixel clusters, soft upper-left light, cute but natural proportions, side view HEAD RIGHT. Whole fish centered in a wide 2:1 canvas with transparent padding. A streamlined powerful turquoise trout with a large tail, a pale pink horizontal stripe and a few widely spaced dark spots. Clearly longer than a round carp, no vertical stripes, friendly small eye, mouth closed."
+      }
+    },
+    {
+      "id": "fish_catfish",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_catfish.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-211647b5-47d3-4d43-a474-c6ca1fe60332.png",
+      "initialPrompt": {
+        "prompt": "Create one 2D pixel-art game fish sprite as a PNG with GENUINE TRANSPARENT ALPHA BACKGROUND. Isolated cutout, no solid white, no checkerboard, no water, no scene, no shadow, no text. Detailed warm pixel clusters, soft upper-left light, cute but natural proportions, side view HEAD RIGHT. Whole fish centered in a wide 2:1 canvas with transparent padding. A blue-violet catfish with broad rounded head, two clearly visible substantial whiskers, pale belly, long body tapering towards the tail. Friendly small eye and closed mouth, no teeth, no human expression. Whiskers must remain readable at small size."
+      }
+    },
+    {
+      "id": "fish_carp",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/fish_carp.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-719418cb-dbdf-440a-9441-ebdd46620007.png",
+      "initialPrompt": {
+        "prompt": "Create one 2D pixel-art game fish sprite as a PNG with GENUINE TRANSPARENT ALPHA BACKGROUND. Isolated cutout, no solid white, no checkerboard, no water, no scene, no shadow, no text. Detailed warm pixel clusters, soft upper-left light, cute but natural proportions, side view HEAD RIGHT. Whole fish centered in a wide 2:1 canvas with transparent padding. A large golden carp with a high heavy oval body, broad tail, warm amber-bronze scales in large readable groups, pale belly. Clearly more massive and taller-backed than a little crucian carp. No crown, no money symbols, no props."
+      }
+    },
+    {
+      "id": "pet_calm",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_calm.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-694db56b-8604-4248-a8fa-6b30efe25b0c.png",
+      "initialPrompt": {
+        "prompt": "Use case: identity-preserve. Produce ONE seated calm pose of EXACTLY the rooster character in the reference, in the SAME detailed warm pixel-art style. Preserve red comb/wattle, cream neck, orange-brown feathers, dark tail, yellow beak and friendly eye, body proportions and species. The rooster sits relaxed in an INVISIBLE boat looking right. Legs tucked, lower body compact. No human hands, no extra limbs or accessories. Whole character alone on true transparent background, no boat, water, rod, text, UI, shadow or checkerboard. Square canvas, centered, 12% transparent margin, baseline near 85% height. It will later be layered into a boat.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/game-session/src/main/res/drawable-nodpi/img_room_pet_placeholder.png"
+        ]
+      },
+      "editPrompt": "Extract this seated rooster alone as a TRANSPARENT CUTOUT PNG sprite with real alpha channel. Remove the ENTIRE checkerboard grey backdrop; transparent means zero alpha, not a drawn checkerboard. Keep the same cream neck, red comb, brown orange body, dark tail, seated calm pose looking right. No fishing rod or accessories.",
+      "finalPrompt": "A single 2D game sprite isolated on transparent alpha background, full body seated calm pet rooster looking right. Warm pixel-art style, cream-white thick neck feathers, orange-brown round body, bright red comb and wattles, friendly round amber eye, yellow beak, curled large dark charcoal tail behind to the left. Seated resting wings. No objects, no fishing rod. PNG cutout transparent alpha channel, no backdrop, no ground, no shadow or glow. Wide square composition, entire rooster fits with margin. Match cozy warm detailed pixel-art virtual pet game."
+    },
+    {
+      "id": "pet_focus",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_focus.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-6f94f0fc-b54f-41b7-84ef-4de2df32fd26.png",
+      "initialPrompt": {
+        "prompt": "Use case: identity-preserve. Make ONE new pose of the SAME pixel-art rooster from the reference: seated in an invisible boat, looking attentively down and to the RIGHT, body leaning slightly forward. Preserve red comb/wattle, cream neck, brown-orange feathers, dark tail, same face and proportions. Friendly curious expression. No boat, no water, no fishing rod, no human hands or extra limbs. True transparent PNG with alpha=0 outside the bird, NO CHECKERBOARD or white background. Square canvas, same scale and bottom seated-body anchor at 85% height, comfortable transparent margin.",
+        "referenced_image_paths": [
+          "C:/Users/alexz/.codex/generated_images/01a07348-2ea3-7200-a64d-60fdae03a11a/exec-646473c9-6e1c-4f55-93c5-fdcd6a44d6d0.png"
+        ]
+      },
+      "editPrompt": "Make an isolated transparent PNG cutout of this exact seated rooster, focused expression looking right. Remove all checkerboard backdrop. Actual transparent alpha channel outside the rooster. No rod or accessories, preserve pixel-art style and character proportions.",
+      "finalPrompt": "A single 2D game sprite isolated on actual transparent PNG alpha background, full body cute seated rooster looking down and right with focused expression, neck forward, wings lightly raised in front, attentive watching fishing line but WITHOUT any line or equipment in image. Warm pixel-art style, cream-white neck, orange-brown round body, bright red comb and wattles, amber eye, yellow beak, curled large dark charcoal tail behind to the left. PNG cutout no backdrop, no ground, no shadow or glow. Entire rooster fits with margin, square composition."
+    },
+    {
+      "id": "pet_effort",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_effort.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-9c0331ae-5a49-435d-9574-e550266abe8d.png",
+      "initialPrompt": {
+        "prompt": "A genuine transparent PNG cutout sprite, alpha channel transparent outside the object. Detailed warm 2D pixel art, side view facing right, square canvas. The SAME rooster as the supplied reference, seated with legs tucked in, leaning back slightly with a determined friendly expression while helping reel a fish. Preserve identity, head, colors, comb, cream neck, brown body, dark tail and bird anatomy. No hands. Only the seated bird, no boat or props, centered with ample transparent margin. Baseline at 85% height.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/game-session/src/main/res/drawable-nodpi/img_room_pet_placeholder.png"
+        ]
+      },
+      "editPrompt": "Edit this cutout rooster: remove the entire fishing rod, fishing reel, fishing line and any equipment. Keep ONLY the seated rooster leaning back, wings held forward as if pulling. This is layered behind a separately drawn rod in a game. Actual transparent PNG alpha background. Keep all remaining rooster features exactly."
+    },
+    {
+      "id": "pet_joy",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/pet_joy.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-c3d8f20e-1bb2-4c39-a74c-af0042101907.png",
+      "initialPrompt": {
+        "prompt": "A genuine transparent PNG cutout sprite, alpha channel transparent outside the object. Detailed warm 2D pixel art, side view facing right, square canvas. The SAME rooster as the supplied reference, seated with legs tucked in, looking pleased and joyful, wings lifted just a little. Preserve identity, head, colors, comb, cream neck, brown body, dark tail and bird anatomy. No hands. Only the seated bird, no boat or props, centered with ample transparent margin. Baseline at 85% height.",
+        "referenced_image_paths": [
+          "F:/Android_Projects_NEW_STAGE_OF_DEV/InternetBooster/feature/game-session/src/main/res/drawable-nodpi/img_room_pet_placeholder.png"
+        ]
+      }
+    },
+    {
+      "id": "flora_left",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/flora_left.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-98ca59bb-c7ca-4d51-83e3-7681cc3ffb93.png",
+      "initialPrompt": {
+        "prompt": "One isolated cluster of aquatic plants as a TRUE TRANSPARENT PNG with alpha channel. Vertical 1:2 canvas, warm detailed pixel art for a sunny freshwater cove. A few muted green-blue broad leaves rooted at bottom LEFT, rising along the left edge, the entire RIGHT half is transparent empty space. Low contrast, small sparse cluster, no fish, no bubbles, no background, no checkerboard, no writing. Plants and small roots only, soft light from upper left."
+      }
+    },
+    {
+      "id": "flora_right",
+      "file": "feature/mini-games/fishing/src/main/assets/fishing/art/flora_right.png",
+      "sourceFile": "C:\\Users\\alexz\\.codex\\generated_images\\01a07348-2ea3-7200-a64d-60fdae03a11a\\exec-cbde221b-fce9-4000-968d-9e80c7220f02.png",
+      "initialPrompt": {
+        "prompt": "One isolated cluster of aquatic plants as a TRUE TRANSPARENT PNG with alpha channel. Vertical 1:2 canvas, warm detailed pixel art for a sunny freshwater cove. A few muted green-blue reed-like leaves rooted at bottom RIGHT, rising along the right edge, the entire LEFT half is transparent empty space. Low contrast, small sparse cluster, no fish, no bubbles, no background, no checkerboard, no writing. Plants and small roots only, soft light from upper left."
+      }
+    }
+  ],
+  "audio": "Five original synthesized mono PCM WAV effects, 22050 Hz; no third-party audio."
+}

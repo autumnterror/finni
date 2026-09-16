@@ -1,0 +1,6 @@
+# Module-level generated files
+/build/
+/.gradle/
+/.idea/
+*.iml
+local.properties

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "gameId": "flight",
+  "runtimeRasterCount": 4,
+  "newRasterCount": 3,
+  "scene": {
+    "width": 360,
+    "height": 560,
+    "petAnchor": "center",
+    "petVisualSize": 52,
+    "petCollisionRadius": 14,
+    "scaling": "full_viewport_xy_with_uniform_pet; background_center_crop"
+  },
+  "assets": [
+    {
+      "id": "room_zone_flight",
+      "status": "generated_runtime",
+      "source": "feature/room/src/main/res/drawable-nodpi/img_room_zone_flight_v1.png",
+      "alpha": true,
+      "sampling": "nearest",
+      "prompt": "feature/mini-games/flight/ART_GENERATION.md"
+    },
+    {
+      "id": "pet_current",
+      "status": "reused_runtime",
+      "source": "PetApi.rememberCurrentAppearanceBitmap",
+      "sampling": "linear",
+      "maxDecodedSide": 256,
+      "identity": "current profile species and color",
+      "runtimePreparation": "base and color mask composed off main"
+    },
+    {
+      "id": "sky",
+      "status": "generated_runtime",
+      "source": "feature/mini-games/flight/src/main/res/drawable-nodpi/img_flight_sky_v2.png",
+      "sampling": "linear",
+      "scaling": "center_crop",
+      "prompt": "feature/mini-games/flight/ART_REFRESH.md"
+    },
+    {
+      "id": "gate_column",
+      "status": "generated_runtime",
+      "source": "feature/mini-games/flight/src/main/res/drawable-nodpi/img_flight_pillar_v2.png",
+      "alpha": true,
+      "sampling": "linear",
+      "runtimePreparation": "trim transparent bounds off main; mirror upper; clip/repeat stone vertically",
+      "prompt": "feature/mini-games/flight/ART_REFRESH.md"
+    },
+    {
+      "id": "hud_countdown_trail",
+      "status": "code_runtime",
+      "renderer": "Compose / Canvas",
+      "palette": "AppTheme"
+    }
+  ]
+}

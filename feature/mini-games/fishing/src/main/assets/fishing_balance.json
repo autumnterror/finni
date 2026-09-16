@@ -1,0 +1,211 @@
+{
+  "rulesVersion": 5,
+  "round": {
+    "durationSeconds": 75,
+    "countdownSeconds": 3,
+    "catchReleaseSeconds": 0.65,
+    "resumeCountdownSeconds": 2,
+    "catchSummaryVisibleSeconds": 2.4
+  },
+  "input": {
+    "chargeSeconds": 1.6
+  },
+  "casting": {
+    "minWorldX": 0.4,
+    "maxWorldX": 0.91
+  },
+  "fight": {
+    "initialTension": 20,
+    "maxTension": 100,
+    "warningOn": 75,
+    "warningOff": 60,
+    "releaseCoolingPerSecond": 40,
+    "burstReelMultiplier": 0.45,
+    "burstWarningSeconds": 0.4,
+    "escapeAfterContinuousReleaseSeconds": 3.5,
+    "slackHintAfterSeconds": 2,
+    "criticalOn": 90
+  },
+  "population": {
+    "respawnDelaySeconds": 3,
+    "massStepGrams": 10
+  },
+  "tutorial": {
+    "forcedSpeciesId": "crucian",
+    "forcedMassGrams": 250,
+    "maxTension": 95,
+    "minimumReleaseSeconds": 0.4
+  },
+  "species": [
+    {
+      "id": "crucian",
+      "nameRu": "Карасик",
+      "massGrams": {
+        "min": 150,
+        "max": 300
+      },
+      "burst": null,
+      "worldXPatrol": [
+        0.24,
+        0.6
+      ],
+      "waterDepth": [
+        0.18,
+        0.38
+      ],
+      "tensionPerSecond": 16
+    },
+    {
+      "id": "roach",
+      "nameRu": "Плотвичка",
+      "massGrams": {
+        "min": 120,
+        "max": 250
+      },
+      "burst": {
+        "firstAtSeconds": 2.4,
+        "periodSeconds": 4.5,
+        "durationSeconds": 0.65,
+        "tensionPerSecond": 36
+      },
+      "worldXPatrol": [
+        0.3,
+        0.75
+      ],
+      "waterDepth": [
+        0.4,
+        0.66
+      ],
+      "tensionPerSecond": 18
+    },
+    {
+      "id": "perch",
+      "nameRu": "Окунёк",
+      "massGrams": {
+        "min": 250,
+        "max": 500
+      },
+      "burst": {
+        "firstAtSeconds": 1.8,
+        "periodSeconds": 4,
+        "durationSeconds": 0.65,
+        "tensionPerSecond": 40
+      },
+      "worldXPatrol": [
+        0.38,
+        0.8
+      ],
+      "waterDepth": [
+        0.72,
+        1.04
+      ],
+      "tensionPerSecond": 21
+    },
+    {
+      "id": "trout",
+      "nameRu": "Форель",
+      "massGrams": {
+        "min": 500,
+        "max": 900
+      },
+      "burst": {
+        "firstAtSeconds": 1.8,
+        "periodSeconds": 3.8,
+        "durationSeconds": 0.9,
+        "tensionPerSecond": 44
+      },
+      "worldXPatrol": [
+        0.43,
+        0.88
+      ],
+      "waterDepth": [
+        1.16,
+        1.5
+      ],
+      "tensionPerSecond": 24
+    },
+    {
+      "id": "catfish",
+      "nameRu": "Сомик",
+      "massGrams": {
+        "min": 1400,
+        "max": 2200
+      },
+      "burst": {
+        "firstAtSeconds": 2.2,
+        "periodSeconds": 4.5,
+        "durationSeconds": 0.9,
+        "tensionPerSecond": 42
+      },
+      "worldXPatrol": [
+        0.49,
+        0.87
+      ],
+      "waterDepth": [
+        1.96,
+        2.28
+      ],
+      "tensionPerSecond": 30
+    },
+    {
+      "id": "carp",
+      "nameRu": "Золотистый карп",
+      "massGrams": {
+        "min": 800,
+        "max": 1400
+      },
+      "burst": {
+        "firstAtSeconds": 1.7,
+        "periodSeconds": 4,
+        "durationSeconds": 0.9,
+        "tensionPerSecond": 46
+      },
+      "worldXPatrol": [
+        0.56,
+        0.87
+      ],
+      "waterDepth": [
+        1.57,
+        1.88
+      ],
+      "tensionPerSecond": 27
+    }
+  ],
+  "world": {
+    "populationSize": 10,
+    "fixedStep": 0.01,
+    "rodX": 0.34,
+    "landingDepth": 0.035,
+    "landingRadius": 0.045,
+    "maxDepth": 2.35,
+    "maxLineLength": 2.7,
+    "sinkSpeed": 0.11,
+    "currentSpeed": 0.002,
+    "flightMin": 0.35,
+    "flightMax": 0.85,
+    "reelInterval": 0.12,
+    "impulseSpeed": 0.85,
+    "mouthOffset": 0.043,
+    "objectRadius": 0.032,
+    "bombAfterSeconds": 15.0,
+    "bombVisibleSeconds": 1.5,
+    "bombPopSeconds": 0.7,
+    "fastReturnSeconds": 1.2,
+    "lostReturnSeconds": 0.75,
+    "junkReleaseSeconds": 0.55,
+    "turnMinSeconds": 3.0,
+    "turnMaxSeconds": 7.0,
+    "swimSpeed": 0.045,
+    "verticalSwimSpeed": 0.018,
+    "cameraFollowDepth": 0.58,
+    "cameraSpeed": 1.4,
+    "catchBodyOffset": 0.018,
+    "catchRadiusX": 0.036,
+    "catchRadiusY": 0.025,
+    "emptyLiftImpulse": 0.085,
+    "postReelSinkMultiplier": 0.7,
+    "smallFishHoldSeconds": 3.0,
+    "largeFishHoldSeconds": 8.0,
+    "objectReelSpeed": 0.32
+  }
+}

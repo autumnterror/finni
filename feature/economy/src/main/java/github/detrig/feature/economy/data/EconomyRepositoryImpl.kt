@@ -1,0 +1,298 @@
+package github.detrig.feature.economy.data
+
+import github.detrig.core.database.RoomTransactionRunner
+import github.detrig.feature.economy.data.local.EconomyDao
+import github.detrig.feature.economy.data.local.toDomain
+import github.detrig.feature.economy.data.local.toEntity
+import github.detrig.feature.economy.domain.EconomyConfig
+import github.detrig.feature.economy.domain.EconomyRepository
+import github.detrig.feature.economy.domain.EconomyState
+import github.detrig.feature.economy.domain.FinancialChange
+import github.detrig.feature.economy.domain.FinancialOperation
+import github.detrig.feature.economy.domain.FinancialOperationResult
+import github.detrig.feature.economy.domain.FinancialOperationType
+import github.detrig.feature.economy.domain.FinancialSnapshot
+import github.detrig.feature.economy.domain.FinancialSummary
+import github.detrig.feature.economy.domain.HistoryFilter
+import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.economy.domain.PeriodicIncome
+import github.detrig.feature.economy.domain.PeriodicIncomeResult
+import github.detrig.feature.economy.domain.RejectionReason
+import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.economy.domain.SavingsGoalProgress
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+internal class EconomyRepositoryImpl(
+    private val dao: EconomyDao,
+    private val transactionRunner: RoomTransactionRunner,
+    private val config: EconomyConfig,
+    private val currentTimeMillis: () -> Long,
+) : EconomyRepository {
+
+    private val mutex = Mutex()
+
+    override suspend fun initialize(): EconomyState = atomic { ensureState() }
+
+    override suspend fun state(): EconomyState = atomic { ensureState() }
+
+    override fun observeState(): Flow<EconomyState> = dao.observeState().filterNotNull().map { it.toDomain() }
+
+    override suspend fun canDebit(amountRub: Long): Boolean = amountRub > 0 && state().availableRub >= amountRub
+
+    override suspend fun credit(id: String, amountRub: Long, context: OperationContext) = mutate(
+        id, amountRub, FinancialOperationType.CREDIT, context,
+        reject = { null },
+        transform = { it.copy(availableRub = Math.addExact(it.availableRub, amountRub)) },
+    )
+
+    override suspend fun debit(id: String, amountRub: Long, context: OperationContext) = mutate(
+        id, amountRub, FinancialOperationType.DEBIT, context,
+        reject = { if (it.availableRub < amountRub) RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS else null },
+        transform = { it.copy(availableRub = it.availableRub - amountRub) },
+    )
+
+    override suspend fun createDebt(id: String, amountRub: Long, context: OperationContext) = mutate(
+        id, amountRub, FinancialOperationType.DEBT_CREATED, context,
+        reject = {
+            when {
+                it.hasActiveDebt -> RejectionReason.ACTIVE_DEBT_EXISTS
+                amountRub > config.maximumDebtRub -> RejectionReason.DEBT_LIMIT_EXCEEDED
+                else -> null
+            }
+        },
+        transform = {
+            it.copy(
+                availableRub = Math.addExact(it.availableRub, amountRub),
+                debtRub = amountRub,
+            )
+        },
+    )
+
+    override suspend fun repayDebt(id: String, amountRub: Long, context: OperationContext) = atomic {
+        val state = ensureState()
+        replayOrReject(id, amountRub, FinancialOperationType.DEBT_REPAYMENT, state)?.let { return@atomic it }
+        val reason = when {
+            state.debtRub == 0L -> RejectionReason.NO_ACTIVE_DEBT
+            state.availableRub < minOf(amountRub, state.debtRub) -> RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS
+            else -> null
+        }
+        if (reason != null) return@atomic FinancialOperationResult.Rejected(reason, state)
+        val actual = minOf(amountRub, state.debtRub)
+        persistOperation(
+            id, actual, FinancialOperationType.DEBT_REPAYMENT, context, state,
+            state.copy(availableRub = state.availableRub - actual, debtRub = state.debtRub - actual),
+        )
+    }
+
+    override suspend fun transferToSavings(id: String, amountRub: Long, context: OperationContext) = mutate(
+        id, amountRub, FinancialOperationType.TRANSFER_TO_SAVINGS, context,
+        reject = { if (it.availableRub < amountRub) RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS else null },
+        transform = {
+            it.copy(
+                availableRub = it.availableRub - amountRub,
+                savingsRub = Math.addExact(it.savingsRub, amountRub),
+            )
+        },
+    )
+
+    override suspend fun transferFromSavings(id: String, amountRub: Long, context: OperationContext) = mutate(
+        id, amountRub, FinancialOperationType.TRANSFER_FROM_SAVINGS, context,
+        reject = { if (it.savingsRub < amountRub) RejectionReason.INSUFFICIENT_SAVINGS else null },
+        transform = {
+            it.copy(
+                availableRub = Math.addExact(it.availableRub, amountRub),
+                savingsRub = it.savingsRub - amountRub,
+            )
+        },
+    )
+
+    override suspend fun configurePeriodicIncome(periodicIncome: PeriodicIncome): EconomyState {
+        require(periodicIncome.amountRub > 0)
+        require(periodicIncome.periodMillis > 0)
+        return atomic {
+            val updated = ensureState().copy(periodicIncome = periodicIncome)
+            dao.updateState(updated.toEntity())
+            updated
+        }
+    }
+
+    override suspend fun isPeriodicIncomeDue(atMillis: Long): Boolean = state().periodicIncome.nextAtMillis <= atMillis
+
+    override suspend fun processPeriodicIncome(atMillis: Long): PeriodicIncomeResult = atomic {
+        var state = ensureState()
+        val operations = mutableListOf<FinancialOperation>()
+        var cycles = 0
+        var gross = 0L
+        var repaid = 0L
+        while (state.periodicIncome.nextAtMillis <= atMillis) {
+            val scheduledAt = state.periodicIncome.nextAtMillis
+            val amount = state.periodicIncome.amountRub
+            val incomeId = "periodic:$scheduledAt:income"
+            val beforeIncome = state
+            state = state.copy(availableRub = Math.addExact(state.availableRub, amount))
+            val income = operation(
+                incomeId, amount, FinancialOperationType.PERIODIC_INCOME,
+                OperationContext(reasonId = "periodic:$scheduledAt"), beforeIncome, state, scheduledAt,
+            )
+            dao.insertOperation(income.toEntity())
+            operations += income
+            gross = Math.addExact(gross, amount)
+
+            val payment = minOf(state.debtRub, amount)
+            if (payment > 0) {
+                val beforePayment = state
+                state = state.copy(availableRub = state.availableRub - payment, debtRub = state.debtRub - payment)
+                val debtOperation = operation(
+                    "periodic:$scheduledAt:debt", payment, FinancialOperationType.DEBT_AUTO_REPAYMENT,
+                    OperationContext(reasonId = incomeId), beforePayment, state, scheduledAt,
+                )
+                dao.insertOperation(debtOperation.toEntity())
+                operations += debtOperation
+                repaid = Math.addExact(repaid, payment)
+            }
+            state = state.copy(
+                periodicIncome = state.periodicIncome.copy(
+                    nextAtMillis = Math.addExact(scheduledAt, state.periodicIncome.periodMillis),
+                ),
+            )
+            cycles = Math.incrementExact(cycles)
+        }
+        if (cycles > 0) dao.updateState(state.toEntity())
+        PeriodicIncomeResult(cycles, gross, repaid, gross - repaid, operations, state)
+    }
+
+    override suspend fun history(filter: HistoryFilter): List<FinancialOperation> = atomic {
+        require(filter.fromInclusiveMillis == null || filter.toExclusiveMillis == null || filter.fromInclusiveMillis <= filter.toExclusiveMillis)
+        dao.getOperations().asSequence().map { it.toDomain() }.filter { operation ->
+            (filter.fromInclusiveMillis == null || operation.timestampMillis >= filter.fromInclusiveMillis) &&
+                (filter.toExclusiveMillis == null || operation.timestampMillis < filter.toExclusiveMillis) &&
+                (filter.types.isEmpty() || operation.type in filter.types)
+        }.toList()
+    }
+
+    override suspend fun summary(filter: HistoryFilter): FinancialSummary {
+        val operations = history(filter)
+        val incomeTypes = setOf(FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME)
+        val income = operations.filter { it.type in incomeTypes }.sumExact { it.amountRub }
+        val expenses = operations.filter { it.type == FinancialOperationType.DEBIT }.sumExact { it.amountRub }
+        return FinancialSummary(
+            state = state(),
+            operations = operations,
+            totalIncomeRub = income,
+            totalExpensesRub = expenses,
+            change = FinancialChange(
+                operations.sumExact { it.availableDeltaRub },
+                operations.sumExact { it.savingsDeltaRub },
+                operations.sumExact { it.debtDeltaRub },
+            ),
+        )
+    }
+
+    override suspend fun upsertGoal(goal: SavingsGoal): SavingsGoal {
+        require(goal.id.isNotBlank())
+        require(goal.title.isNotBlank())
+        require(goal.targetRub > 0)
+        return atomic { dao.upsertGoal(goal.toEntity()); goal }
+    }
+
+    override suspend fun deleteGoal(id: String): Boolean = atomic { id.isNotBlank() && dao.deleteGoal(id) > 0 }
+    override suspend fun goals(): List<SavingsGoal> = atomic { dao.getGoals().map { it.toDomain() } }
+    override suspend fun activeGoal(): SavingsGoal? = goals().firstOrNull { it.isActive }
+
+    override suspend fun goalProgress(id: String): SavingsGoalProgress? = atomic {
+        val goal = dao.getGoal(id)?.toDomain() ?: return@atomic null
+        val state = ensureState()
+        SavingsGoalProgress(
+            goal = goal,
+            savedRub = state.savingsRub,
+            remainingRub = maxOf(0, goal.targetRub - state.savingsRub),
+            isReached = state.savingsRub >= goal.targetRub,
+            nextPeriodicIncome = state.periodicIncome,
+        )
+    }
+
+    private suspend fun mutate(
+        id: String,
+        amountRub: Long,
+        type: FinancialOperationType,
+        context: OperationContext,
+        reject: (EconomyState) -> RejectionReason?,
+        transform: (EconomyState) -> EconomyState,
+    ): FinancialOperationResult = atomic {
+        val state = ensureState()
+        replayOrReject(id, amountRub, type, state)?.let { return@atomic it }
+        reject(state)?.let { return@atomic FinancialOperationResult.Rejected(it, state) }
+        persistOperation(id, amountRub, type, context, state, transform(state))
+    }
+
+    private suspend fun replayOrReject(
+        id: String,
+        amountRub: Long,
+        type: FinancialOperationType,
+        state: EconomyState,
+    ): FinancialOperationResult? {
+        if (id.isBlank()) return FinancialOperationResult.Rejected(RejectionReason.INVALID_OPERATION_ID, state)
+        dao.getOperation(id)?.toDomain()?.let { existing ->
+            return if (existing.amountRub == amountRub && existing.type == type) {
+                FinancialOperationResult.AlreadyApplied(existing, state)
+            } else {
+                FinancialOperationResult.Rejected(RejectionReason.OPERATION_ID_CONFLICT, state)
+            }
+        }
+        if (amountRub <= 0) return FinancialOperationResult.Rejected(RejectionReason.INVALID_AMOUNT, state)
+        return null
+    }
+
+    private suspend fun persistOperation(
+        id: String,
+        amountRub: Long,
+        type: FinancialOperationType,
+        context: OperationContext,
+        before: EconomyState,
+        after: EconomyState,
+    ): FinancialOperationResult.Applied {
+        validate(after)
+        val operation = operation(id, amountRub, type, context, before, after, currentTimeMillis())
+        dao.updateState(after.toEntity())
+        dao.insertOperation(operation.toEntity())
+        return FinancialOperationResult.Applied(operation, after)
+    }
+
+    private fun operation(
+        id: String,
+        amountRub: Long,
+        type: FinancialOperationType,
+        context: OperationContext,
+        before: EconomyState,
+        after: EconomyState,
+        timestamp: Long,
+    ) = FinancialOperation(
+        id, type, amountRub, timestamp,
+        after.availableRub - before.availableRub,
+        after.savingsRub - before.savingsRub,
+        after.debtRub - before.debtRub,
+        before.snapshot(), after.snapshot(), context,
+    )
+
+    private suspend fun ensureState(): EconomyState {
+        dao.getState()?.let { return it.toDomain() }
+        dao.insertInitialState(config.initialState(currentTimeMillis()).toEntity())
+        return checkNotNull(dao.getState()).toDomain()
+    }
+
+    private suspend fun <T> atomic(block: suspend () -> T): T = mutex.withLock {
+        transactionRunner.runInTransaction { block() }
+    }
+
+    private fun validate(state: EconomyState) {
+        require(state.availableRub >= 0 && state.savingsRub >= 0 && state.debtRub >= 0)
+        require(state.debtRub <= config.maximumDebtRub)
+    }
+
+    private fun EconomyState.snapshot() = FinancialSnapshot(availableRub, savingsRub, debtRub)
+    private inline fun <T> Iterable<T>.sumExact(selector: (T) -> Long): Long = fold(0L) { total, item -> Math.addExact(total, selector(item)) }
+}
