@@ -33,6 +33,7 @@ data class FinPetSizes(
     val iconSmall: Dp,
     val iconMedium: Dp,
     val iconLarge: Dp,
+    val dialoguePortrait: Dp,
     val progressIndicator: Dp,
     val borderThin: Dp,
     val borderStrong: Dp,

@@ -13,7 +13,7 @@ interface PetApi {
     @Composable
     fun RequirePet(
         modifier: Modifier = Modifier,
-        content: @Composable (PetProfile) -> Unit,
+        content: @Composable (PetProfile, onPetClick: () -> Unit) -> Unit,
     )
 
     /** Рисует актуальную внешность питомца в переданном игровой сценой месте. */
@@ -21,7 +21,12 @@ interface PetApi {
     fun Content(
         profile: PetProfile,
         modifier: Modifier = Modifier,
+        onClick: (() -> Unit)? = null,
     )
+
+    /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */
+    @Composable
+    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier)
 
     /** Собирает актуальную внешность питомца для Canvas-сцен мини-игр. */
     @Composable
