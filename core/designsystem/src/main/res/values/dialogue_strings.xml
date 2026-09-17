@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dialogue_tap_next">Коснись экрана, чтобы продолжить</string>
+    <string name="dialogue_tap_finish">Коснись экрана, чтобы закрыть</string>
+    <string name="dialogue_progress">%1$d/%2$d</string>
+</resources>

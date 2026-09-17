@@ -7,7 +7,6 @@ import android.graphics.ColorMatrix as AndroidColorMatrix
 import android.graphics.ColorMatrixColorFilter as AndroidColorMatrixColorFilter
 import android.graphics.Paint as AndroidPaint
 import android.graphics.Rect
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -67,14 +66,14 @@ fun PetScene(
         }
         Box(Modifier.fillMaxSize().petCalmIdleAnimation(animateIdle)) {
             Image(
-                bitmap = ImageBitmap.imageResource(profile.species.drawableRes()),
+                bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
                 contentDescription = description,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit,
                 filterQuality = FilterQuality.None,
             )
             Image(
-                bitmap = ImageBitmap.imageResource(profile.species.colorMaskRes()),
+                bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit,
@@ -102,8 +101,9 @@ internal fun rememberPetAppearanceBitmap(
         maxSidePx,
     ) {
         value = withContext(Dispatchers.Default) {
-            val base = decodeSampledBitmap(resources, profile.species.drawableRes(), maxSidePx)
-            val mask = decodeSampledBitmap(resources, profile.species.colorMaskRes(), maxSidePx)
+            val artwork = profile.species.artwork()
+            val base = decodeSampledBitmap(resources, artwork.baseRes, maxSidePx)
+            val mask = decodeSampledBitmap(resources, artwork.colorMaskRes, maxSidePx)
             try {
                 createBitmap(maxSidePx, maxSidePx).also { output ->
                     val target = Rect(0, 0, maxSidePx, maxSidePx)
@@ -124,7 +124,7 @@ internal fun rememberPetAppearanceBitmap(
 
 private fun decodeSampledBitmap(
     resources: android.content.res.Resources,
-    @DrawableRes drawableRes: Int,
+    drawableRes: Int,
     targetSidePx: Int,
 ): Bitmap {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -143,22 +143,6 @@ private fun decodeSampledBitmap(
             },
         ),
     )
-}
-
-@DrawableRes
-private fun PetSpecies.drawableRes(): Int = when (this) {
-    PetSpecies.Cat -> R.drawable.pet_cat_base
-    PetSpecies.Dog -> R.drawable.pet_dog_base
-    PetSpecies.Rat -> R.drawable.pet_rat_base
-    PetSpecies.Rooster -> R.drawable.pet_rooster_base
-}
-
-@DrawableRes
-private fun PetSpecies.colorMaskRes(): Int = when (this) {
-    PetSpecies.Cat -> R.drawable.pet_cat_color_mask
-    PetSpecies.Dog -> R.drawable.pet_dog_color_mask
-    PetSpecies.Rat -> R.drawable.pet_rat_color_mask
-    PetSpecies.Rooster -> R.drawable.pet_rooster_color_mask
 }
 
 @Composable
@@ -190,7 +174,7 @@ internal fun PetColor.tint(): Color = when (this) {
 }
 
 @Composable
-private fun PetColor.colorFilter(): ColorFilter {
+internal fun PetColor.colorFilter(): ColorFilter {
     val color = tint()
     return ColorFilter.colorMatrix(
         ColorMatrix(tintMatrix(color)),

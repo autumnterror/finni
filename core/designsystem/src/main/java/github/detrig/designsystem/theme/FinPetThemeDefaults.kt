@@ -143,6 +143,7 @@ private val prototypeSizes = FinPetSizes(
     iconSmall = 24.dp,
     iconMedium = 30.dp,
     iconLarge = 34.dp,
+    dialoguePortrait = 88.dp,
     progressIndicator = 8.dp,
     borderThin = 1.dp,
     borderStrong = 2.dp,

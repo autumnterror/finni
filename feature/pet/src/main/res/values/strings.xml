@@ -22,4 +22,7 @@
     <string name="pet_color_coral">Коралловый</string>
     <string name="pet_color_sky">Небесный</string>
     <string name="pet_content_description">%1$s, %2$s</string>
+    <string name="pet_talk_to">Поговорить с %1$s</string>
+    <string name="pet_welcome_first">Привет! Я %1$s. Как здорово, что мы теперь вместе!</string>
+    <string name="pet_welcome_second">Теперь это наш дом. Давай осмотримся!</string>
 </resources>

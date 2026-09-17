@@ -10,4 +10,5 @@ internal sealed interface PetViewEvent : CoreViewEvent {
     data class SpeciesSelected(val value: PetSpecies) : PetViewEvent
     data class ColorSelected(val value: PetColor) : PetViewEvent
     data object CreateClicked : PetViewEvent
+    data object PetClicked : PetViewEvent
 }

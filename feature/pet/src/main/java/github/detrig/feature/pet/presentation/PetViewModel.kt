@@ -22,6 +22,9 @@ internal class PetViewModel(
             is PetViewEvent.SpeciesSelected -> updateCreating { copy(species = viewEvent.value) }
             is PetViewEvent.ColorSelected -> updateCreating { copy(color = viewEvent.value) }
             PetViewEvent.CreateClicked -> create()
+            PetViewEvent.PetClicked -> if (stateData is PetViewState.Ready) {
+                commands.onNext(PetCommand.ShowGreeting)
+            }
         }
     }
 
@@ -46,6 +49,7 @@ internal class PetViewModel(
             return
         }
         createPet(current.name, current.species, current.color)
+        commands.onNext(PetCommand.ShowGreeting)
     }
 
     private fun updateCreating(block: PetViewState.Creating.() -> PetViewState.Creating) {
