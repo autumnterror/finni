@@ -41,6 +41,7 @@ value class FinancialOperationType(val code: String) {
         val DEBIT = FinancialOperationType("debit")
         val PERIODIC_INCOME = FinancialOperationType("periodic_income")
         val WEEKLY_ALLOWANCE = FinancialOperationType("weekly_allowance")
+        val ZERO_BALANCE_HELP = FinancialOperationType("zero_balance_help")
         val DEBT_CREATED = FinancialOperationType("debt_created")
         val DEBT_REPAYMENT = FinancialOperationType("debt_repayment")
         val DEBT_AUTO_REPAYMENT = FinancialOperationType("debt_auto_repayment")
@@ -92,6 +93,18 @@ sealed interface FinancialOperationResult {
         val reason: RejectionReason,
         override val state: EconomyState,
     ) : FinancialOperationResult
+}
+
+/** Временная безопасная поддержка, пока последствия пустого кошелька не определены. */
+sealed interface ZeroBalanceHelpResult {
+    val state: EconomyState
+
+    data class Granted(
+        val amountRub: Long,
+        override val state: EconomyState,
+    ) : ZeroBalanceHelpResult
+
+    data class NotNeeded(override val state: EconomyState) : ZeroBalanceHelpResult
 }
 
 data class PeriodicIncomeResult(

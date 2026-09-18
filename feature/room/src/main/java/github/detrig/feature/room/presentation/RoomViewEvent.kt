@@ -15,6 +15,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data class ParentHelpOfferClicked(val offerId: String) : RoomViewEvent
     data object CloseParentHelpDialog : RoomViewEvent
     data object CloseAllowanceNotice : RoomViewEvent
+    data object CloseZeroBalanceHelpNotice : RoomViewEvent
     data object SavePlanClicked : RoomViewEvent
     data object ClosePlanSummary : RoomViewEvent
     data class PlanPercentChanged(val category: PlanCategory, val percent: Int) : RoomViewEvent

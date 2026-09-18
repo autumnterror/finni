@@ -144,6 +144,24 @@ class EconomyApiTest {
         assertEquals(2, api.getHistory().size)
     }
 
+    @Test fun zeroBalanceHelpIsAtomicRecordedAndCanBeUsedAgainAfterAnotherEmptyWallet() = runBlocking {
+        val api = api(EconomyConfig(initialAvailableRub = 500))
+        assertTrue(api.debit("purchase:one", 500) is FinancialOperationResult.Applied)
+
+        val firstResults = coroutineScope {
+            listOf(1, 2).map { async { api.provideZeroBalanceHelp() } }.awaitAll()
+        }
+        assertEquals(1, firstResults.count { it is github.detrig.feature.economy.domain.ZeroBalanceHelpResult.Granted })
+        assertEquals(500L, api.getState().availableRub)
+        assertEquals(1, api.getHistory().count { it.type == FinancialOperationType.ZERO_BALANCE_HELP })
+        assertEquals(500L, api.getIncomeHistory().single { it.type == FinancialOperationType.ZERO_BALANCE_HELP }.amountRub)
+
+        assertTrue(api.debit("purchase:two", 500) is FinancialOperationResult.Applied)
+        assertTrue(api.provideZeroBalanceHelp() is github.detrig.feature.economy.domain.ZeroBalanceHelpResult.Granted)
+        assertEquals(500L, api.getState().availableRub)
+        assertEquals(2, api.getHistory().count { it.type == FinancialOperationType.ZERO_BALANCE_HELP })
+    }
+
     @Test fun missedPeriodicIncomeIsCaughtUpOnce() = runBlocking {
         val api = api(EconomyConfig(
             initialAvailableRub = 0,

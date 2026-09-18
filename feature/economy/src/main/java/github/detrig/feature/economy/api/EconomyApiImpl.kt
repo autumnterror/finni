@@ -12,6 +12,7 @@ internal class EconomyApiImpl(private val repository: EconomyRepository) : Econo
     override suspend fun getState() = repository.state()
     override fun observeState() = repository.observeState()
     override suspend fun canDebit(amountRub: Long) = repository.canDebit(amountRub)
+    override suspend fun provideZeroBalanceHelp() = repository.provideZeroBalanceHelp()
     override suspend fun credit(operationId: String, amountRub: Long, context: OperationContext) = repository.credit(operationId, amountRub, context)
     override suspend fun debit(operationId: String, amountRub: Long, context: OperationContext) = repository.debit(operationId, amountRub, context)
     override suspend fun createDebt(operationId: String, amountRub: Long, context: OperationContext) = repository.createDebt(operationId, amountRub, context)
@@ -29,6 +30,7 @@ internal class EconomyApiImpl(private val repository: EconomyRepository) : Econo
     override suspend fun getHistory(filter: HistoryFilter) = repository.history(filter)
     override suspend fun getIncomeHistory(filter: HistoryFilter) = repository.history(filter.withTypes(setOf(
         FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME, FinancialOperationType.WEEKLY_ALLOWANCE,
+        FinancialOperationType.ZERO_BALANCE_HELP,
     )))
     override suspend fun getExpenseHistory(filter: HistoryFilter) = repository.history(filter.withTypes(setOf(FinancialOperationType.DEBIT)))
     override suspend fun getDebtHistory(filter: HistoryFilter) = repository.history(filter.withTypes(setOf(

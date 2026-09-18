@@ -10,6 +10,7 @@ import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.ProvideZeroBalanceHelpInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
@@ -23,6 +24,7 @@ import kotlinx.coroutines.delay
 import github.detrig.feature.planning.domain.SavePlanResult
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.week.domain.EndDayResult
+import github.detrig.feature.economy.domain.ZeroBalanceHelpResult
 
 internal class RoomViewModel(
     private val observeZones: ObserveRoomZonesInteractor,
@@ -33,6 +35,7 @@ internal class RoomViewModel(
     private val saveZoneGoal: SaveZoneAsSavingsGoalInteractor,
     private val loadParentHelpInteractor: LoadParentHelpInteractor,
     private val requestParentHelpInteractor: RequestParentHelpInteractor,
+    private val provideZeroBalanceHelpInteractor: ProvideZeroBalanceHelpInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
@@ -41,6 +44,7 @@ internal class RoomViewModel(
     private var sleepJob: Job? = null
     private var savePlanJob: Job? = null
     private var parentHelpJob: Job? = null
+    private var zeroBalanceHelpJob: Job? = null
     private var savedPosition = HouseLayout.initialPosition()
     private var lastLaunchNanos = 0L
 
@@ -57,6 +61,9 @@ internal class RoomViewModel(
             }
             RoomViewEvent.CloseAllowanceNotice -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(allowanceNotice = null))
+            }
+            RoomViewEvent.CloseZeroBalanceHelpNotice -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(zeroBalanceHelpNotice = null))
             }
             RoomViewEvent.SavePlanClicked -> savePlan()
             RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
@@ -113,8 +120,10 @@ internal class RoomViewModel(
                         parentHelpDialog = current?.parentHelpDialog,
                         isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
                         allowanceNotice = current?.allowanceNotice,
+                        zeroBalanceHelpNotice = current?.zeroBalanceHelpNotice,
                     ),
                 )
+                if (roomData.progress.balanceRub == 0) provideZeroBalanceHelp()
             }
         }
     }
@@ -307,6 +316,20 @@ internal class RoomViewModel(
                     parentHelpDialog = latest.parentHelpDialog?.copy(activeHelp = activeHelp),
                     isRequestingParentHelp = false,
                 ))
+            }
+        }
+    }
+
+    private fun provideZeroBalanceHelp() {
+        if (zeroBalanceHelpJob?.isActive == true) return
+        zeroBalanceHelpJob = launchCoroutine(
+            handleAction = ExceptionConsumer { true },
+        ) {
+            when (val result = provideZeroBalanceHelpInteractor()) {
+                is ZeroBalanceHelpResult.Granted -> nullableState<RoomViewState.Content>()?.let { latest ->
+                    updateState(latest.copy(zeroBalanceHelpNotice = ZeroBalanceHelpNoticeState(result.amountRub)))
+                }
+                is ZeroBalanceHelpResult.NotNeeded -> Unit
             }
         }
     }

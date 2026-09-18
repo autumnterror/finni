@@ -25,6 +25,7 @@ import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.AllowanceNoticeState
 import github.detrig.feature.room.presentation.ParentHelpDialogState
+import github.detrig.feature.room.presentation.ZeroBalanceHelpNoticeState
 
 @Composable
 internal fun ParentHelpDialog(
@@ -129,6 +130,21 @@ internal fun AllowanceReceiptDialog(notice: AllowanceNoticeState, onDismiss: () 
         confirmButton = {
             Button(onClick = onDismiss, modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget)) {
                 Text(stringResource(R.string.allowance_notice_continue))
+            }
+        },
+    )
+}
+
+@Composable
+internal fun ZeroBalanceHelpDialog(notice: ZeroBalanceHelpNoticeState, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("zero_balance_help_notice"),
+        title = { Text(stringResource(R.string.zero_balance_help_title)) },
+        text = { Text(stringResource(R.string.zero_balance_help_description, notice.amountRub)) },
+        confirmButton = {
+            Button(onClick = onDismiss, modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget)) {
+                Text(stringResource(R.string.zero_balance_help_continue))
             }
         },
     )

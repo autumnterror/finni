@@ -21,6 +21,7 @@ import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.economy.domain.WeeklyAllowanceResult
+import github.detrig.feature.economy.domain.ZeroBalanceHelpResult
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.ParentHelpState
@@ -46,6 +47,29 @@ internal class EconomyRepositoryImpl(
     override fun observeState(): Flow<EconomyState> = dao.observeState().filterNotNull().map { it.toDomain() }
 
     override suspend fun canDebit(amountRub: Long): Boolean = amountRub > 0 && state().availableRub >= amountRub
+
+    override suspend fun provideZeroBalanceHelp(): ZeroBalanceHelpResult = atomic {
+        val state = ensureState()
+        if (state.availableRub != 0L) return@atomic ZeroBalanceHelpResult.NotNeeded(state)
+
+        val number = Math.incrementExact(
+            dao.getOperations().count { it.typeCode == FinancialOperationType.ZERO_BALANCE_HELP.code },
+        )
+        val updated = state.copy(availableRub = Math.addExact(state.availableRub, config.zeroBalanceHelpRub))
+        validate(updated)
+        val operation = operation(
+            id = "zero-balance-help:$number",
+            amountRub = config.zeroBalanceHelpRub,
+            type = FinancialOperationType.ZERO_BALANCE_HELP,
+            context = OperationContext(reasonId = "zero-balance", metadata = "source=parents"),
+            before = state,
+            after = updated,
+            timestamp = currentTimeMillis(),
+        )
+        dao.updateState(updated.toEntity())
+        dao.insertOperation(operation.toEntity())
+        ZeroBalanceHelpResult.Granted(config.zeroBalanceHelpRub, updated)
+    }
 
     override suspend fun credit(id: String, amountRub: Long, context: OperationContext) = mutate(
         id, amountRub, FinancialOperationType.CREDIT, context,
@@ -290,7 +314,7 @@ internal class EconomyRepositoryImpl(
                 (filter.types.isEmpty() || operation.type in filter.types)
         }.toList()
         val incomeTypes = setOf(FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME,
-            FinancialOperationType.WEEKLY_ALLOWANCE)
+            FinancialOperationType.WEEKLY_ALLOWANCE, FinancialOperationType.ZERO_BALANCE_HELP)
         val income = operations.filter { it.type in incomeTypes }.sumExact { it.amountRub }
         val expenses = operations.filter { it.type == FinancialOperationType.DEBIT }.sumExact { it.amountRub }
         FinancialSummary(

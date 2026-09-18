@@ -11,6 +11,7 @@ import github.detrig.feature.economy.domain.PeriodicIncomeResult
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.economy.domain.WeeklyAllowanceResult
+import github.detrig.feature.economy.domain.ZeroBalanceHelpResult
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
@@ -21,6 +22,7 @@ interface EconomyApi {
     suspend fun getState(): EconomyState
     fun observeState(): Flow<EconomyState>
     suspend fun canDebit(amountRub: Long): Boolean
+    suspend fun provideZeroBalanceHelp(): ZeroBalanceHelpResult = ZeroBalanceHelpResult.NotNeeded(getState())
     suspend fun credit(operationId: String, amountRub: Long, context: OperationContext = OperationContext()): FinancialOperationResult
     suspend fun debit(operationId: String, amountRub: Long, context: OperationContext = OperationContext()): FinancialOperationResult
     suspend fun createDebt(operationId: String, amountRub: Long, context: OperationContext = OperationContext()): FinancialOperationResult

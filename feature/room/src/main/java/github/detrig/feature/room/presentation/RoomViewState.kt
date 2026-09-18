@@ -19,6 +19,8 @@ internal data class AllowanceNoticeState(
     val receivedRub: Long,
 )
 
+internal data class ZeroBalanceHelpNoticeState(val amountRub: Long)
+
 internal sealed interface RoomViewState : CoreViewState {
     data object Loading : RoomViewState
     data object Error : RoomViewState
@@ -34,6 +36,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val parentHelpDialog: ParentHelpDialogState? = null,
         val isRequestingParentHelp: Boolean = false,
         val allowanceNotice: AllowanceNoticeState? = null,
+        val zeroBalanceHelpNotice: ZeroBalanceHelpNoticeState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
     ) : RoomViewState
 }

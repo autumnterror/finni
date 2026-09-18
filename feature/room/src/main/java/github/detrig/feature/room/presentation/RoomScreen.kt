@@ -19,6 +19,7 @@ import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
 import github.detrig.feature.room.presentation.component.ParentHelpDialog
 import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
+import github.detrig.feature.room.presentation.component.ZeroBalanceHelpDialog
 
 @Composable
 internal fun RoomScreen(
@@ -52,7 +53,8 @@ internal fun RoomScreen(
     RoomContent(
         state, viewModel::perform, modifier, petContent,
         active = resumed && focused && dialogZoneId == null && content?.planEditor == null &&
-            content?.isPlanSummaryVisible != true && content?.parentHelpDialog == null && content?.allowanceNotice == null,
+            content?.isPlanSummaryVisible != true && content?.parentHelpDialog == null && content?.allowanceNotice == null &&
+            content?.zeroBalanceHelpNotice == null,
         previewZoneId = requestedZoneId,
         onPreviewReady = { id ->
             previewRequests.consume(id)
@@ -70,7 +72,10 @@ internal fun RoomScreen(
     content?.allowanceNotice?.let { notice ->
         AllowanceReceiptDialog(notice) { viewModel.perform(RoomViewEvent.CloseAllowanceNotice) }
     }
-    content?.parentHelpDialog?.let { dialog ->
+    content?.zeroBalanceHelpNotice?.let { notice ->
+        ZeroBalanceHelpDialog(notice) { viewModel.perform(RoomViewEvent.CloseZeroBalanceHelpNotice) }
+    }
+    content?.parentHelpDialog?.takeIf { content.zeroBalanceHelpNotice == null }?.let { dialog ->
         ParentHelpDialog(
             state = dialog,
             isRequesting = content.isRequestingParentHelp,
@@ -78,7 +83,9 @@ internal fun RoomScreen(
             onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
         )
     }
-    content?.planEditor?.takeIf { content.allowanceNotice == null }?.let { editor ->
+    content?.planEditor?.takeIf {
+        content.allowanceNotice == null && content.zeroBalanceHelpNotice == null
+    }?.let { editor ->
         WeeklyPlanEditorDialog(
             editor = editor,
             isSaving = content.isSavingPlan,

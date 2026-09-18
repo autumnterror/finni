@@ -86,4 +86,6 @@ internal class RoomRepositoryImpl(
             offerId = offerId,
         )
     }
+
+    override suspend fun provideZeroBalanceHelp() = economyApi.provideZeroBalanceHelp()
 }

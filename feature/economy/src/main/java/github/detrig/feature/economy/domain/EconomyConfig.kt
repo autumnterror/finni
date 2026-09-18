@@ -8,6 +8,7 @@ data class EconomyConfig(
     val firstPeriodicIncomeDelayMillis: Long = 2L * 24 * 60 * 60 * 1_000,
     val periodicIncomePeriodMillis: Long = 7L * 24 * 60 * 60 * 1_000,
     val maximumDebtRub: Long = 1_000,
+    val zeroBalanceHelpRub: Long = 500,
     val parentHelpOffers: List<ParentHelpOffer> = listOf(
         ParentHelpOffer("quick", receivedRub = 600, repaymentWeeks = 2, totalRepaymentRub = 720),
         ParentHelpOffer("steady", receivedRub = 600, repaymentWeeks = 3, totalRepaymentRub = 690),
@@ -22,6 +23,7 @@ data class EconomyConfig(
         require(firstPeriodicIncomeDelayMillis > 0)
         require(periodicIncomePeriodMillis > 0)
         require(maximumDebtRub > 0)
+        require(zeroBalanceHelpRub > 0)
         require(parentHelpOffers.map { it.id }.distinct().size == parentHelpOffers.size)
         require(parentHelpOffers.all { it.totalRepaymentRub <= maximumDebtRub })
         require(parentHelpOffers.all {
