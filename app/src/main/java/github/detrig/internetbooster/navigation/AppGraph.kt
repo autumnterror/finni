@@ -7,6 +7,7 @@ fun appGraph(): Nav3HostGraphSpec {
     val home = gameSessionGraph()
     return home.copy(builder = {
         home.builder(this)
+        github.detrig.feature.savings.SavingsFeature.getApi().entries()(this)
         github.detrig.feature.productmarket.ProductMarketFeature.getApi().entries()(this)
         github.detrig.minigames.fishing.FishingFeature.getApi().entries()(this)
         github.detrig.minigames.flight.FlightFeature.getApi().installEntries(this)

@@ -13,6 +13,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val zones: List<RoomZoneUiModel>,
         val progress: RoomProgress,
         val buyingZoneId: String? = null,
+        val savingGoalZoneId: String? = null,
         val sleeping: Boolean = false,
         val planEditor: PlanEditorState? = null,
         val isSavingPlan: Boolean = false,

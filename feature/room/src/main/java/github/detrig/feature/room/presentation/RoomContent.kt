@@ -42,6 +42,7 @@ internal fun RoomContent(
                     onMarketClick = { onEvent(RoomViewEvent.MarketClicked) },
                     onBedClick = { onEvent(RoomViewEvent.BedClicked) },
                     onCalendarClick = { onEvent(RoomViewEvent.CalendarClicked) },
+                    onPiggyBankClick = { onEvent(RoomViewEvent.PiggyBankClicked) },
                     onSavePosition = { onEvent(RoomViewEvent.SavePosition(it)) },
                     previewZoneId = previewZoneId,
                     onPreviewReady = onPreviewReady,

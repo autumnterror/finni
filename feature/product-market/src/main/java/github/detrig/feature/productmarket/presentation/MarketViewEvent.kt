@@ -15,6 +15,7 @@ internal sealed interface MarketViewEvent : CoreViewEvent {
     data object CloseCart : MarketViewEvent
     data object AnotherPass : MarketViewEvent
     data object Finish : MarketViewEvent
+    data object SaveCartAsGoal : MarketViewEvent
     data object NewTrip : MarketViewEvent
     data object Back : MarketViewEvent
     data object CancelExit : MarketViewEvent

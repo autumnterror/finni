@@ -21,6 +21,6 @@ internal class ProductMarketModule(private val dependencies: ProductMarketDepend
         rules, catalog, repository,
         RestoreMarketTripInteractor(repository, rules),
         ObserveMarketBalanceInteractor(dependencies.host()),
-        FinishMarketTripInteractor(repository, rules), router,
+        CheckoutMarketTripInteractor(repository, rules, catalog, dependencies.host()), dependencies.host(), router,
     )
 }

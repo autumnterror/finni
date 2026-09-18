@@ -60,6 +60,8 @@ internal fun RoomScreen(
     if (zone?.access is RoomZoneAccess.Buyable) {
         RoomBuyDialog(zone, content.progress, content.buyingZoneId != null,
             onConfirm = { viewModel.perform(RoomViewEvent.BuyConfirmed(zone.id)) },
+            isSavingGoal = content.savingGoalZoneId == zone.id,
+            onSaveAsGoal = { title -> viewModel.perform(RoomViewEvent.SaveZoneAsGoal(zone.id, title)) },
             onDismiss = { dialogZoneId = null })
     }
     content?.planEditor?.let { editor ->

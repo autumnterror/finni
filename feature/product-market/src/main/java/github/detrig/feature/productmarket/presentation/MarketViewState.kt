@@ -13,6 +13,8 @@ internal data class MarketViewState(
     val cartOpen: Boolean = false,
     val exitConfirmationOpen: Boolean = false,
     val foreground: Boolean = false,
+    val paymentMissingRub: Long? = null,
+    val goalSaved: Boolean = false,
     val error: MarketError? = null,
 ) : CoreViewState {
     val canAdvance: Boolean get() = foreground && !loading && !busy && !cartOpen && !exitConfirmationOpen &&

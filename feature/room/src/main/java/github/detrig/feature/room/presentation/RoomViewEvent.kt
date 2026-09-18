@@ -10,6 +10,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object MarketClicked : RoomViewEvent
     data object BedClicked : RoomViewEvent
     data object CalendarClicked : RoomViewEvent
+    data object PiggyBankClicked : RoomViewEvent
     data object SavePlanClicked : RoomViewEvent
     data object ClosePlanSummary : RoomViewEvent
     data class PlanPercentChanged(val category: PlanCategory, val percent: Int) : RoomViewEvent
@@ -17,4 +18,5 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object RetryClicked : RoomViewEvent
     data class ZoneClicked(val zoneId: String) : RoomViewEvent
     data class BuyConfirmed(val zoneId: String) : RoomViewEvent
+    data class SaveZoneAsGoal(val zoneId: String, val title: String) : RoomViewEvent
 }

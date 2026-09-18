@@ -6,4 +6,6 @@ import kotlinx.coroutines.flow.Flow
 interface ProductMarketHost {
     suspend fun preparePlayer()
     fun observeBalanceRub(): Flow<Int>
+    suspend fun payForCart(tripId: String, totalRub: Long): MarketPaymentResult
+    suspend fun saveCartAsGoal(tripId: String, totalRub: Long): MarketSavingsGoalResult
 }

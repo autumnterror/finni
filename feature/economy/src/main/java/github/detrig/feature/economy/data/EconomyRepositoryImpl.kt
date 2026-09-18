@@ -240,7 +240,11 @@ internal class EconomyRepositoryImpl(
         require(goal.id.isNotBlank())
         require(goal.title.isNotBlank())
         require(goal.targetRub > 0)
-        return atomic { dao.upsertGoal(goal.toEntity()); goal }
+        return atomic {
+            if (goal.isActive) dao.deactivateOtherGoals(goal.id)
+            dao.upsertGoal(goal.toEntity())
+            goal
+        }
     }
 
     override suspend fun deleteGoal(id: String): Boolean = atomic { id.isNotBlank() && dao.deleteGoal(id) > 0 }

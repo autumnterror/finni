@@ -20,6 +20,8 @@ import github.detrig.feature.week.domain.EndDayResult
 import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.SavePlanResult
+import github.detrig.feature.planning.domain.PlanCategory
+import kotlinx.coroutines.flow.first
 
 internal class RoomRepositoryImpl(
     private val catalog: RoomZoneCatalog,
@@ -46,9 +48,21 @@ internal class RoomRepositoryImpl(
         }
     }.distinctUntilChanged()
 
-    override suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult = gameStateApi.buyZone(
-        ZoneOffer(zone.id, zone.priceRub, zone.requiredLevel),
-    )
+    override suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult {
+        val result = gameStateApi.buyZone(ZoneOffer(zone.id, zone.priceRub, zone.requiredLevel))
+        if (result == ZoneBuyResult.Bought) {
+            val week = weekApi.observeState().first()
+            if (planningApi.getPlanProgress(week.weekNumber) != null) {
+                planningApi.recordActual(
+                    operationId = "room-zone:${zone.id}",
+                    weekNumber = week.weekNumber,
+                    category = PlanCategory.WANTS,
+                    amountRub = zone.priceRub.toLong(),
+                )
+            }
+        }
+        return result
+    }
 
     override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = weekApi.endDay(expectedAbsoluteDay)
 

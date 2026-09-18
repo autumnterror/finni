@@ -11,6 +11,7 @@ import github.detrig.internetbooster.mediators.PetMediator
 import github.detrig.internetbooster.mediators.RoomMediator
 import github.detrig.internetbooster.mediators.PlanningMediator
 import github.detrig.internetbooster.mediators.WeekMediator
+import github.detrig.internetbooster.mediators.SavingsMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 
 internal interface AppModule {
@@ -37,6 +38,9 @@ internal class AppModuleImpl(
     private val economyMediator: EconomyMediator by lazy { EconomyMediator(databaseModule) }
     private val weekMediator: WeekMediator by lazy { WeekMediator(databaseModule, economyMediator) }
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
+    private val savingsMediator: SavingsMediator by lazy {
+        SavingsMediator(coreComponent, economyMediator, planningMediator, weekMediator)
+    }
 
     private val gameStateMediator: GameStateMediator by lazy {
         GameStateMediator(databaseModule, economyMediator)
@@ -57,7 +61,7 @@ internal class AppModuleImpl(
     }
 
     private val roomMediator: RoomMediator by lazy {
-        RoomMediator(coreComponent, gameStateMediator, economyMediator, weekMediator, planningMediator)
+        RoomMediator(coreComponent, gameStateMediator, economyMediator, weekMediator, planningMediator, savingsMediator)
     }
 
     private val miniGamesCommonMediator: MiniGamesCommonMediator by lazy {
@@ -72,6 +76,7 @@ internal class AppModuleImpl(
         economyMediator.init()
         weekMediator.init()
         planningMediator.init()
+        savingsMediator.init()
         gameStateMediator.init()
         petMediator.init()
         github.detrig.internetbooster.mediators.FlightMediator(
@@ -83,6 +88,9 @@ internal class AppModuleImpl(
             coreComponent,
             github.detrig.internetbooster.database.ProductMarketDatabaseModule(coreComponent.context),
             economyMediator,
+            weekMediator,
+            planningMediator,
+            savingsMediator,
         ).init()
         github.detrig.internetbooster.mediators.FishingMediator(
             coreComponent,

@@ -1,4 +1,4 @@
 package github.detrig.feature.planning.domain
 
-/** Временный визуальный сценарий, пока магазин и копилка не передают реальные операции. */
-data class PlanningConfig(val seedDemoProgress: Boolean = true)
+/** Разрешено только для отдельного demo-профиля; реальная игра получает факты от фич. */
+data class PlanningConfig(val seedDemoProgress: Boolean = false)

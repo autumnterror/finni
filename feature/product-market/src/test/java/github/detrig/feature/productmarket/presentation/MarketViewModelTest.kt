@@ -30,7 +30,7 @@ class MarketViewModelTest {
             object : NetworkManager { override fun isNetworkAvailable() = true }))
         vm = MarketViewModel(rules, DefaultProductCatalog(), repository,
             RestoreMarketTripInteractor(repository, rules), ObserveMarketBalanceInteractor(host),
-            FinishMarketTripInteractor(repository, rules), object : MarketRouter {
+            CheckoutMarketTripInteractor(repository, rules, DefaultProductCatalog(), host), host, object : MarketRouter {
                 override fun open() = Unit
                 override fun back() { backCount++ }
             })
@@ -65,8 +65,12 @@ class MarketViewModelTest {
         assertEquals(500, state().balanceRub)
     }
 
-    @Test fun finishTapIsSerializedAndDoesNotChangeWallet() {
-        repository.stored = rules.newTrip().copy(phase = MarketPhase.CHECKOUT, distance = rules.config.endDistance)
+    @Test fun finishTapIsSerializedAndChargesCartOnce() {
+        repository.stored = rules.newTrip().copy(
+            phase = MarketPhase.CHECKOUT,
+            distance = rules.config.endDistance,
+            cart = mapOf(ProductIds.Carrot to 1),
+        )
         start()
         repository.saves = 0
         vm.perform(MarketViewEvent.Finish)
@@ -74,6 +78,36 @@ class MarketViewModelTest {
         dispatcher.scheduler.runCurrent()
         assertEquals(1, repository.saves)
         assertEquals(MarketPhase.FINISHED, state().trip?.phase)
+        assertEquals(410, host.balance.value)
+        assertEquals(1, host.paymentCalls)
+    }
+
+    @Test fun insufficientFundsKeepCartAtCheckoutAndShowShortfall() {
+        host.balance.value = 5
+        repository.stored = rules.newTrip().copy(
+            phase = MarketPhase.CHECKOUT,
+            distance = rules.config.endDistance,
+            cart = mapOf(ProductIds.Carrot to 1),
+        )
+        start()
+        vm.perform(MarketViewEvent.Finish)
+        dispatcher.scheduler.runCurrent()
+        assertEquals(MarketPhase.CHECKOUT, state().trip?.phase)
+        assertEquals(5L, state().paymentMissingRub)
+        assertEquals(5, host.balance.value)
+    }
+
+    @Test fun cartCanBecomeSavingsGoalWithoutChargingIt() {
+        repository.stored = rules.newTrip().copy(
+            phase = MarketPhase.CHECKOUT,
+            distance = rules.config.endDistance,
+            cart = mapOf(ProductIds.Carrot to 1),
+        )
+        start()
+        vm.perform(MarketViewEvent.SaveCartAsGoal)
+        dispatcher.scheduler.runCurrent()
+        assertTrue(state().goalSaved)
+        assertEquals(1, host.goalCalls)
         assertEquals(420, host.balance.value)
     }
 
@@ -169,8 +203,22 @@ class MarketViewModelTest {
 
     private class FakeHost : ProductMarketHost {
         val balance = MutableStateFlow(420)
+        var paymentCalls = 0
+        var goalCalls = 0
         override suspend fun preparePlayer() = Unit
         override fun observeBalanceRub(): Flow<Int> = balance
+        override suspend fun payForCart(tripId: String, totalRub: Long): MarketPaymentResult {
+            paymentCalls++
+            return if (balance.value < totalRub) MarketPaymentResult.InsufficientFunds(totalRub - balance.value)
+            else {
+                balance.value = (balance.value - totalRub).toInt()
+                MarketPaymentResult.Paid
+            }
+        }
+        override suspend fun saveCartAsGoal(tripId: String, totalRub: Long): MarketSavingsGoalResult {
+            goalCalls++
+            return MarketSavingsGoalResult.GoalSaved
+        }
     }
     private class FakeRepository : MarketTripRepository {
         var stored: MarketTrip? = null

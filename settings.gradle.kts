@@ -33,6 +33,7 @@ include(":feature:game-state")
 include(":feature:economy")
 include(":feature:week")
 include(":feature:planning")
+include(":feature:savings")
 include(":feature:room")
 include(":feature:pet")
 

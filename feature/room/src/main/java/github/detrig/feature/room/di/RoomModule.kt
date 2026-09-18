@@ -10,6 +10,8 @@ import github.detrig.feature.room.domain.interactor.EndDayInteractor
 import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.interactor.ResolveRoomZoneAccessInteractor
+import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
+import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
 
@@ -33,6 +35,10 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     private val buyZone by lazy { BuyRoomZoneInteractor(repository) }
     private val endDay by lazy { EndDayInteractor(repository) }
     private val saveWeeklyPlan by lazy { SaveWeeklyPlanInteractor(repository) }
+    private val openSavings by lazy { OpenSavingsInteractor(dependencies.savingsApi()) }
+    private val saveZoneAsGoal by lazy { SaveZoneAsSavingsGoalInteractor(repository, dependencies.savingsApi()) }
 
-    override fun getRoomViewModel() = RoomViewModel(observeZones, buyZone, endDay, saveWeeklyPlan, router, positions)
+    override fun getRoomViewModel() = RoomViewModel(
+        observeZones, buyZone, endDay, saveWeeklyPlan, openSavings, saveZoneAsGoal, router, positions,
+    )
 }

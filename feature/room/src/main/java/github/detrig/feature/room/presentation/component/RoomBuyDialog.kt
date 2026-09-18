@@ -19,12 +19,15 @@ internal fun RoomBuyDialog(
     progress: RoomProgress,
     isBuying: Boolean,
     onConfirm: () -> Unit,
+    isSavingGoal: Boolean,
+    onSaveAsGoal: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val access = zone.access as? RoomZoneAccess.Buyable ?: return
+    val title = stringResource(zone.appearance.titleRes)
     AlertDialog(
         onDismissRequest = { if (!isBuying) onDismiss() },
-        title = { Text(stringResource(R.string.room_buy_title, stringResource(zone.appearance.titleRes))) },
+        title = { Text(stringResource(R.string.room_buy_title, title)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -59,11 +62,21 @@ internal fun RoomBuyDialog(
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isBuying,
-                modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget),
-            ) { Text(stringResource(R.string.room_cancel)) }
+            Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
+                TextButton(
+                    onClick = { onSaveAsGoal(title) },
+                    enabled = !isBuying && !isSavingGoal,
+                    modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget),
+                ) {
+                    Text(if (isSavingGoal) stringResource(R.string.room_goal_saving)
+                        else stringResource(R.string.room_save_as_goal, access.priceRub))
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isBuying && !isSavingGoal,
+                    modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget),
+                ) { Text(stringResource(R.string.room_cancel)) }
+            }
         },
     )
 }

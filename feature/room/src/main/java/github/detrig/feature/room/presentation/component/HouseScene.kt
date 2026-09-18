@@ -47,6 +47,7 @@ internal fun HouseScene(
     onMarketClick: () -> Unit,
     onBedClick: () -> Unit,
     onCalendarClick: () -> Unit,
+    onPiggyBankClick: () -> Unit,
     onSavePosition: (HousePosition) -> Unit,
     previewZoneId: String?,
     onPreviewReady: (String) -> Unit,
@@ -60,6 +61,7 @@ internal fun HouseScene(
     val marketDescription = stringResource(R.string.house_market)
     val bedDescription = stringResource(R.string.house_bed)
     val calendarDescription = stringResource(R.string.house_calendar)
+    val piggyBankDescription = stringResource(R.string.house_piggy_bank)
     val touchTarget = AppTheme.sizes.preferredTouchTarget
 
     BoxWithConstraints(modifier.clipToBounds().testTag("house_scene")) {
@@ -137,7 +139,8 @@ internal fun HouseScene(
                 HouseLayout.objects.forEach { placement ->
                     val width = unitDp * placement.width
                     val height = unitDp * placement.height
-                    val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed" || placement.id == "calendar"
+                    val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed" ||
+                        placement.id == "calendar" || placement.id == "piggy_bank"
                     val hitWidth = if (interactive) maxOf(width, touchTarget) else width
                     val hitHeight = if (interactive) maxOf(height, touchTarget) else height
                     val hitWidthPx = with(LocalDensity.current) { hitWidth.toPx() }
@@ -176,6 +179,13 @@ internal fun HouseScene(
                                 .clickable(enabled = active && ready, role = Role.Button) {
                                     motion.pause(); save(); onCalendarClick()
                                 }.semantics { contentDescription = calendarDescription },
+                            contentAlignment = Alignment.Center,
+                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
+                        placement.id == "piggy_bank" -> Box(
+                            bounds.testTag("room_piggy_bank")
+                                .clickable(enabled = active && ready, role = Role.Button) {
+                                    motion.pause(); save(); onPiggyBankClick()
+                                }.semantics { contentDescription = piggyBankDescription },
                             contentAlignment = Alignment.Center,
                         ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
                         else -> HouseObjectArtwork(placement.art, bounds)

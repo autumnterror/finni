@@ -33,6 +33,9 @@ interface EconomyDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertGoal(goal: SavingsGoalEntity)
 
+    @Query("UPDATE savings_goals SET isActive = 0 WHERE id != :activeGoalId AND isActive = 1")
+    suspend fun deactivateOtherGoals(activeGoalId: String): Int
+
     @Query("SELECT * FROM savings_goals WHERE id = :id")
     suspend fun getGoal(id: String): SavingsGoalEntity?
 

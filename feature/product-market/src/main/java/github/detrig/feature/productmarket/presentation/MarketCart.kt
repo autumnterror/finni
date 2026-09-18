@@ -70,7 +70,7 @@ internal fun MarketCheckout(
                         else -> R.string.market_learning_complete
                     }
                     Text(stringResource(lesson), style = AppTheme.typography.body)
-                    Text(stringResource(R.string.market_no_charge), style = AppTheme.typography.caption)
+                    Text(stringResource(R.string.market_paid), style = AppTheme.typography.caption)
                 }
                 CartTotal(quote)
                 FinPetOutlinedButton(stringResource(R.string.market_new_trip), { onEvent(MarketViewEvent.NewTrip) },
@@ -80,9 +80,21 @@ internal fun MarketCheckout(
                 CartItems(trip, quote, { onEvent(MarketViewEvent.Remove(it)) },
                     Modifier.weight(1f, fill = false), enabled = !state.busy)
                 CartTotal(quote)
+                state.paymentMissingRub?.let { missing ->
+                    Text(if (missing > 0) stringResource(R.string.market_payment_missing, missing)
+                        else stringResource(R.string.market_payment_error),
+                        style = AppTheme.typography.caption, color = AppTheme.colors.statusCritical.accent)
+                }
+                if (state.goalSaved) {
+                    Text(stringResource(R.string.market_goal_saved), style = AppTheme.typography.caption,
+                        color = AppTheme.colors.statusPositive.accent)
+                }
+                FinPetOutlinedButton(stringResource(R.string.market_save_cart_goal),
+                    { onEvent(MarketViewEvent.SaveCartAsGoal) }, Modifier.fillMaxWidth(),
+                    enabled = !state.busy && trip.cart.isNotEmpty())
                 FinPetOutlinedButton(stringResource(R.string.market_another_pass), { onEvent(MarketViewEvent.AnotherPass) },
                     Modifier.fillMaxWidth(), enabled = !state.busy)
-                FinPetOutlinedButton(stringResource(R.string.market_finish), { onEvent(MarketViewEvent.Finish) },
+                FinPetOutlinedButton(stringResource(R.string.market_pay, quote.totalRub), { onEvent(MarketViewEvent.Finish) },
                     Modifier.fillMaxWidth().testTag("market_finish"), enabled = !state.busy)
             }
         }

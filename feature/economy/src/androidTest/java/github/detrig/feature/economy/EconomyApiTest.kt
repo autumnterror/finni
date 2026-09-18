@@ -216,6 +216,10 @@ class EconomyApiTest {
         assertEquals(total, api.getState().totalMoneyRub)
 
         api.saveGoal(SavingsGoal("bike", "Велосипед", 300, "roomItem=bike"))
+        api.saveGoal(SavingsGoal("skates", "Коньки", 500, "roomItem=skates"))
+        assertEquals("skates", api.getActiveGoal()?.id)
+        assertEquals(1, api.getGoals().count { it.isActive })
+        api.saveGoal(SavingsGoal("bike", "Велосипед", 300, "roomItem=bike"))
         var progress = api.getGoalProgress("bike")!!
         assertEquals(50L, progress.remainingRub)
         assertFalse(progress.isReached)

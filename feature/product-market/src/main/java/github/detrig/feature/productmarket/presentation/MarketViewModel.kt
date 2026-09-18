@@ -3,6 +3,8 @@ package github.detrig.feature.productmarket.presentation
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.productmarket.domain.*
+import github.detrig.feature.productmarket.api.MarketSavingsGoalResult
+import github.detrig.feature.productmarket.api.ProductMarketHost
 import github.detrig.feature.productmarket.navigation.MarketRouter
 import github.detrig.products.ProductCatalog
 import kotlinx.coroutines.Job
@@ -13,7 +15,8 @@ internal class MarketViewModel(
     private val repository: MarketTripRepository,
     private val restoreTrip: RestoreMarketTripInteractor,
     private val observeBalance: ObserveMarketBalanceInteractor,
-    private val finishTrip: FinishMarketTripInteractor,
+    private val checkoutTrip: CheckoutMarketTripInteractor,
+    private val host: ProductMarketHost,
     private val router: MarketRouter,
 ) : CoreViewModel<MarketViewState, MarketViewEvent>(MarketViewState()) {
     private var balanceJob: Job? = null
@@ -52,6 +55,7 @@ internal class MarketViewModel(
             MarketViewEvent.CloseCart -> updateState { copy(cartOpen = false) }
             MarketViewEvent.AnotherPass -> if (!stateData.busy && stateData.error == null) changeTrip(rules::anotherPass)
             MarketViewEvent.Finish -> finish()
+            MarketViewEvent.SaveCartAsGoal -> saveCartAsGoal()
             MarketViewEvent.NewTrip -> if (stateData.trip?.phase == MarketPhase.FINISHED &&
                 !stateData.busy && stateData.error == null) changeTrip { rules.newTrip(it.lastResult) }
             MarketViewEvent.Back -> back()
@@ -105,7 +109,7 @@ internal class MarketViewModel(
         val before = stateData.trip ?: return
         val after = rules.advance(before, seconds)
         if (before == after) return
-        updateState { copy(trip = after) }
+        updateState { copy(trip = after, paymentMissingRub = null, goalSaved = false) }
         checkpointSeconds += seconds.coerceIn(0.0, .1)
         if (checkpointSeconds >= 1.0 || before.phase != after.phase) {
             checkpointSeconds = 0.0
@@ -118,7 +122,7 @@ internal class MarketViewModel(
         val before = stateData.trip ?: return
         val after = rules.pick(before, instanceId, viewportWidth)
         if (after == before) return
-        updateState { copy(trip = after) }
+        updateState { copy(trip = after, paymentMissingRub = null, goalSaved = false) }
         repository.checkpoint(after)
         val slot = rules.config.slots.first { it.instanceId(before.lap) == instanceId }
         commands.onNext(MarketViewCommand.Pickup(++pickupSequence, slot, before.distance))
@@ -128,17 +132,33 @@ internal class MarketViewModel(
         val before = stateData.trip ?: return
         val after = change(before)
         if (before == after) return
-        updateState { copy(trip = after) }
+        updateState { copy(trip = after, paymentMissingRub = null, goalSaved = false) }
         repository.checkpoint(after)
     }
 
     private fun finish() {
         val trip = stateData.trip ?: return
         if (trip.phase != MarketPhase.CHECKOUT || stateData.busy || stateData.error != null) return
-        updateState { copy(busy = true) }
+        updateState { copy(busy = true, paymentMissingRub = null) }
         launchCoroutine(failure(MarketError.SAVE)) {
-            val finished = finishTrip(trip)
-            updateState { copy(trip = finished, busy = false) }
+            when (val result = checkoutTrip(trip)) {
+                is CheckoutResult.Finished -> updateState { copy(trip = result.trip, busy = false) }
+                is CheckoutResult.InsufficientFunds -> updateState { copy(busy = false, paymentMissingRub = result.missingRub) }
+                CheckoutResult.Rejected -> updateState { copy(busy = false, paymentMissingRub = 0) }
+            }
+        }
+    }
+
+    private fun saveCartAsGoal() {
+        val trip = stateData.trip ?: return
+        if (trip.phase != MarketPhase.CHECKOUT || stateData.busy || trip.cart.isEmpty()) return
+        val totalRub = catalog.quote(trip.cart.map { (id, quantity) -> github.detrig.products.ProductQuantity(id, quantity) }).totalRub
+        updateState { copy(busy = true, goalSaved = false) }
+        launchCoroutine(failure(MarketError.SAVE)) {
+            when (host.saveCartAsGoal(trip.id, totalRub)) {
+                MarketSavingsGoalResult.GoalSaved -> updateState { copy(busy = false, goalSaved = true) }
+                MarketSavingsGoalResult.Rejected -> updateState { copy(busy = false, goalSaved = false) }
+            }
         }
     }
 

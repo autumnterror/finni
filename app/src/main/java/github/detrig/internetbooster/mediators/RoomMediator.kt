@@ -19,6 +19,7 @@ internal class RoomMediator(
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
     private val planningMediator: PlanningMediator,
+    private val savingsMediator: SavingsMediator,
 ) : Mediator<RoomApi> {
     fun init() {
         RoomFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -28,6 +29,7 @@ internal class RoomMediator(
                 override fun economyApi(): EconomyApi = economyMediator.getApi()
                 override fun weekApi(): github.detrig.feature.week.api.WeekApi = weekMediator.getApi()
                 override fun planningApi(): github.detrig.feature.planning.api.PlanningApi = planningMediator.getApi()
+                override fun savingsApi(): github.detrig.feature.savings.api.SavingsApi = savingsMediator.getApi()
                 override fun marketLauncher() = github.detrig.feature.room.api.RoomMarketLauncher {
                     github.detrig.feature.productmarket.ProductMarketFeature.getApi().open()
                 }

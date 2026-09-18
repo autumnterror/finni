@@ -6,6 +6,8 @@ import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
 import github.detrig.feature.room.domain.interactor.EndDayInteractor
 import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
+import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
+import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
@@ -23,6 +25,8 @@ internal class RoomViewModel(
     private val buyZone: BuyRoomZoneInteractor,
     private val endDay: EndDayInteractor,
     private val saveWeeklyPlan: SaveWeeklyPlanInteractor,
+    private val openSavings: OpenSavingsInteractor,
+    private val saveZoneGoal: SaveZoneAsSavingsGoalInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
@@ -38,6 +42,7 @@ internal class RoomViewModel(
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
             RoomViewEvent.BedClicked -> sleep()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
+            RoomViewEvent.PiggyBankClicked -> openSavings()
             RoomViewEvent.SavePlanClicked -> savePlan()
             RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(isPlanSummaryVisible = false))
@@ -57,6 +62,7 @@ internal class RoomViewModel(
             RoomViewEvent.Load, RoomViewEvent.RetryClicked -> load()
             is RoomViewEvent.ZoneClicked -> onZoneClicked(viewEvent.zoneId)
             is RoomViewEvent.BuyConfirmed -> buy(viewEvent.zoneId)
+            is RoomViewEvent.SaveZoneAsGoal -> saveZoneAsGoal(viewEvent.zoneId, viewEvent.title)
         }
     }
 
@@ -84,6 +90,7 @@ internal class RoomViewModel(
                         initialPosition = savedPosition,
                         progress = roomData.progress,
                         buyingZoneId = current?.buyingZoneId,
+                        savingGoalZoneId = current?.savingGoalZoneId,
                         sleeping = current?.sleeping ?: false,
                         planEditor = editor,
                         isSavingPlan = current?.isSavingPlan ?: false,
@@ -139,6 +146,25 @@ internal class RoomViewModel(
                 }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(buyingZoneId = null)) }
+            }
+        }
+    }
+
+    private fun saveZoneAsGoal(zoneId: String, title: String) {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.savingGoalZoneId != null || content.buyingZoneId != null) return
+        updateState(content.copy(savingGoalZoneId = zoneId))
+        launchCoroutine(
+            handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let { updateState(it.copy(savingGoalZoneId = null)) }
+                router.showBuyError()
+                true
+            },
+        ) {
+            try {
+                saveZoneGoal(zoneId, title)
+            } finally {
+                nullableState<RoomViewState.Content>()?.let { updateState(it.copy(savingGoalZoneId = null)) }
             }
         }
     }
