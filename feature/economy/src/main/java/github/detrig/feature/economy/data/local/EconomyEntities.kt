@@ -43,3 +43,15 @@ data class SavingsGoalEntity(
     val metadata: String?,
     val isActive: Boolean,
 )
+
+@Entity(tableName = "parent_help_state")
+data class ParentHelpStateEntity(
+    @PrimaryKey val id: String = CURRENT_ID,
+    val offerId: String,
+    val receivedRub: Long,
+    val totalRepaymentRub: Long,
+    val remainingRub: Long,
+    val paymentsRemaining: Int,
+) {
+    companion object { const val CURRENT_ID = "current" }
+}

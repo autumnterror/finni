@@ -19,7 +19,7 @@ class AppDatabaseModule(
             context = context,
             databaseName = DATABASE_NAME,
             migrations = arrayOf(FinPetMigrations.FROM_6_TO_7, FinPetMigrations.FROM_7_TO_8,
-                FinPetMigrations.FROM_8_TO_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12),
+                FinPetMigrations.FROM_8_TO_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13),
         )
     }
 

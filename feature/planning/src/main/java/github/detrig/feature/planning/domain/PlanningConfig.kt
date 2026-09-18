@@ -1,4 +1,4 @@
 package github.detrig.feature.planning.domain
 
-/** Разрешено только для отдельного demo-профиля; реальная игра получает факты от фич. */
-data class PlanningConfig(val seedDemoProgress: Boolean = false)
+/** Временный сценарий для демонстрации: каждый новый сохранённый план получает все три статуса. */
+data class PlanningConfig(val seedDemoProgress: Boolean = true)

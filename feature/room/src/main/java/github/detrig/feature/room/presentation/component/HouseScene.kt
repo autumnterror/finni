@@ -48,6 +48,7 @@ internal fun HouseScene(
     onBedClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
+    onParentHelpBoardClick: () -> Unit,
     onSavePosition: (HousePosition) -> Unit,
     previewZoneId: String?,
     onPreviewReady: (String) -> Unit,
@@ -62,6 +63,7 @@ internal fun HouseScene(
     val bedDescription = stringResource(R.string.house_bed)
     val calendarDescription = stringResource(R.string.house_calendar)
     val piggyBankDescription = stringResource(R.string.house_piggy_bank)
+    val parentHelpBoardDescription = stringResource(R.string.house_parent_help_board)
     val touchTarget = AppTheme.sizes.preferredTouchTarget
 
     BoxWithConstraints(modifier.clipToBounds().testTag("house_scene")) {
@@ -141,6 +143,7 @@ internal fun HouseScene(
                     val height = unitDp * placement.height
                     val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed" ||
                         placement.id == "calendar" || placement.id == "piggy_bank"
+                        || placement.id == "task_board"
                     val hitWidth = if (interactive) maxOf(width, touchTarget) else width
                     val hitHeight = if (interactive) maxOf(height, touchTarget) else height
                     val hitWidthPx = with(LocalDensity.current) { hitWidth.toPx() }
@@ -186,6 +189,13 @@ internal fun HouseScene(
                                 .clickable(enabled = active && ready, role = Role.Button) {
                                     motion.pause(); save(); onPiggyBankClick()
                                 }.semantics { contentDescription = piggyBankDescription },
+                            contentAlignment = Alignment.Center,
+                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
+                        placement.id == "task_board" -> Box(
+                            bounds.testTag("room_parent_help_board")
+                                .clickable(enabled = active && ready, role = Role.Button) {
+                                    motion.pause(); save(); onParentHelpBoardClick()
+                                }.semantics { contentDescription = parentHelpBoardDescription },
                             contentAlignment = Alignment.Center,
                         ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
                         else -> HouseObjectArtwork(placement.art, bounds)

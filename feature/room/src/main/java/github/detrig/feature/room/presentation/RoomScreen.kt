@@ -17,6 +17,8 @@ import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
+import github.detrig.feature.room.presentation.component.ParentHelpDialog
+import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
 
 @Composable
 internal fun RoomScreen(
@@ -49,7 +51,8 @@ internal fun RoomScreen(
     val content = state as? RoomViewState.Content
     RoomContent(
         state, viewModel::perform, modifier, petContent,
-        active = resumed && focused && dialogZoneId == null && content?.planEditor == null && content?.isPlanSummaryVisible != true,
+        active = resumed && focused && dialogZoneId == null && content?.planEditor == null &&
+            content?.isPlanSummaryVisible != true && content?.parentHelpDialog == null && content?.allowanceNotice == null,
         previewZoneId = requestedZoneId,
         onPreviewReady = { id ->
             previewRequests.consume(id)
@@ -64,7 +67,18 @@ internal fun RoomScreen(
             onSaveAsGoal = { title -> viewModel.perform(RoomViewEvent.SaveZoneAsGoal(zone.id, title)) },
             onDismiss = { dialogZoneId = null })
     }
-    content?.planEditor?.let { editor ->
+    content?.allowanceNotice?.let { notice ->
+        AllowanceReceiptDialog(notice) { viewModel.perform(RoomViewEvent.CloseAllowanceNotice) }
+    }
+    content?.parentHelpDialog?.let { dialog ->
+        ParentHelpDialog(
+            state = dialog,
+            isRequesting = content.isRequestingParentHelp,
+            onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
+            onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
+        )
+    }
+    content?.planEditor?.takeIf { content.allowanceNotice == null }?.let { editor ->
         WeeklyPlanEditorDialog(
             editor = editor,
             isSaving = content.isSavingPlan,

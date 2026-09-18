@@ -21,6 +21,9 @@ import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.economy.domain.WeeklyAllowanceResult
+import github.detrig.feature.economy.domain.ParentHelpOffer
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
+import github.detrig.feature.economy.domain.ParentHelpState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -77,6 +80,7 @@ internal class EconomyRepositoryImpl(
         val state = ensureState()
         replayOrReject(id, amountRub, FinancialOperationType.DEBT_REPAYMENT, context, state)?.let { return@atomic it }
         val reason = when {
+            dao.getParentHelp() != null -> RejectionReason.SCHEDULED_REPAYMENT_ONLY
             state.debtRub == 0L -> RejectionReason.NO_ACTIVE_DEBT
             amountRub > state.debtRub -> RejectionReason.AMOUNT_EXCEEDS_DEBT
             state.availableRub < amountRub -> RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS
@@ -125,6 +129,7 @@ internal class EconomyRepositoryImpl(
 
     override suspend fun processPeriodicIncome(atMillis: Long): PeriodicIncomeResult = atomic {
         var state = ensureState()
+        val hasScheduledParentHelp = dao.getParentHelp() != null
         val operations = mutableListOf<FinancialOperation>()
         var cycles = 0
         var gross = 0L
@@ -143,7 +148,7 @@ internal class EconomyRepositoryImpl(
             operations += income
             gross = Math.addExact(gross, amount)
 
-            val payment = minOf(state.debtRub, amount)
+            val payment = if (hasScheduledParentHelp) 0 else minOf(state.debtRub, amount)
             if (payment > 0) {
                 val beforePayment = state
                 state = state.copy(availableRub = state.availableRub - payment, debtRub = state.debtRub - payment)
@@ -170,12 +175,16 @@ internal class EconomyRepositoryImpl(
         require(weekNumber >= 2) { "The first week uses the opening balance" }
         var state = ensureState()
         val incomeId = "week:$weekNumber:allowance"
-        val debtId = "week:$weekNumber:debt-repayment"
+        val parentHelpDebtId = "week:$weekNumber:parent-help-repayment"
+        val legacyDebtId = "week:$weekNumber:debt-repayment"
         dao.getOperation(incomeId)?.toDomain()?.let { existing ->
             check(existing.type == FinancialOperationType.WEEKLY_ALLOWANCE)
+            val parentHelpRepayment = dao.getOperation(parentHelpDebtId)?.amountRub ?: 0
+            val legacyRepayment = dao.getOperation(legacyDebtId)?.amountRub ?: 0
             return@atomic WeeklyAllowanceResult(
-                weekNumber, existing.amountRub, dao.getOperation(debtId)?.amountRub ?: 0,
+                weekNumber, existing.amountRub, parentHelpRepayment + legacyRepayment,
                 state, alreadyApplied = true,
+                parentHelpRepaidRub = parentHelpRepayment,
             )
         }
         val amount = config.weeklyAllowanceRub
@@ -185,7 +194,12 @@ internal class EconomyRepositoryImpl(
             incomeId, amount, FinancialOperationType.WEEKLY_ALLOWANCE,
             OperationContext(reasonId = "week:$weekNumber"), beforeIncome, state, currentTimeMillis(),
         ).toEntity())
-        val repayment = minOf(state.debtRub, amount)
+        val parentHelp = dao.getParentHelp()?.toDomain()
+        val debtId = if (parentHelp != null) parentHelpDebtId else legacyDebtId
+        val repayment = when {
+            parentHelp != null -> minOf(parentHelp.nextPaymentRub, state.debtRub, amount)
+            else -> minOf(state.debtRub, amount)
+        }
         if (repayment > 0) {
             val beforeRepayment = state
             state = state.copy(
@@ -196,10 +210,66 @@ internal class EconomyRepositoryImpl(
                 debtId, repayment, FinancialOperationType.DEBT_AUTO_REPAYMENT,
                 OperationContext(reasonId = incomeId), beforeRepayment, state, currentTimeMillis(),
             ).toEntity())
+            if (parentHelp != null) {
+                val remaining = parentHelp.remainingRub - repayment
+                val paymentsRemaining = parentHelp.paymentsRemaining - 1
+                if (remaining == 0L) {
+                    dao.clearParentHelp()
+                } else {
+                    check(paymentsRemaining > 0)
+                    dao.upsertParentHelp(parentHelp.copy(
+                        remainingRub = remaining,
+                        paymentsRemaining = paymentsRemaining,
+                    ).toEntity())
+                }
+            }
         }
         validate(state)
         dao.updateState(state.toEntity())
-        WeeklyAllowanceResult(weekNumber, amount, repayment, state, alreadyApplied = false)
+        WeeklyAllowanceResult(
+            weekNumber, amount, repayment, state, alreadyApplied = false,
+            parentHelpRepaidRub = if (parentHelp != null) repayment else 0,
+        )
+    }
+
+    override fun parentHelpOffers(): List<ParentHelpOffer> = config.parentHelpOffers
+
+    override suspend fun parentHelp(): ParentHelpState? = atomic { dao.getParentHelp()?.toDomain() }
+
+    override suspend fun requestParentHelp(
+        operationId: String,
+        offerId: String,
+    ): ParentHelpRequestResult = atomic {
+        val state = ensureState()
+        dao.getParentHelp()?.toDomain()?.let { return@atomic ParentHelpRequestResult.AlreadyActive(it) }
+        val offer = config.parentHelpOffers.firstOrNull { it.id == offerId }
+            ?: return@atomic ParentHelpRequestResult.Rejected(RejectionReason.INVALID_AMOUNT, state)
+        if (state.hasActiveDebt) return@atomic ParentHelpRequestResult.Rejected(RejectionReason.ACTIVE_DEBT_EXISTS, state)
+        if (operationId.isBlank()) return@atomic ParentHelpRequestResult.Rejected(RejectionReason.INVALID_OPERATION_ID, state)
+        dao.getOperation(operationId)?.let {
+            return@atomic ParentHelpRequestResult.Rejected(RejectionReason.OPERATION_ID_CONFLICT, state)
+        }
+        val updated = state.copy(
+            availableRub = Math.addExact(state.availableRub, offer.receivedRub),
+            debtRub = Math.addExact(state.debtRub, offer.totalRepaymentRub),
+        )
+        validate(updated)
+        val operation = operation(
+            operationId, offer.receivedRub, FinancialOperationType.DEBT_CREATED,
+            OperationContext(reasonId = offer.id, metadata = "source=parent-help;totalRepaymentRub=${offer.totalRepaymentRub}"),
+            state, updated, currentTimeMillis(),
+        )
+        dao.updateState(updated.toEntity())
+        dao.insertOperation(operation.toEntity())
+        val help = ParentHelpState(
+            offerId = offer.id,
+            receivedRub = offer.receivedRub,
+            totalRepaymentRub = offer.totalRepaymentRub,
+            remainingRub = offer.totalRepaymentRub,
+            paymentsRemaining = offer.repaymentWeeks,
+        )
+        dao.upsertParentHelp(help.toEntity())
+        ParentHelpRequestResult.Accepted(help, updated)
     }
 
     override suspend fun history(filter: HistoryFilter): List<FinancialOperation> = atomic {

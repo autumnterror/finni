@@ -8,6 +8,8 @@ import github.detrig.feature.room.domain.interactor.EndDayInteractor
 import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
 import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
+import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
@@ -19,6 +21,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import github.detrig.feature.planning.domain.SavePlanResult
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
+import github.detrig.feature.week.domain.EndDayResult
 
 internal class RoomViewModel(
     private val observeZones: ObserveRoomZonesInteractor,
@@ -27,6 +31,8 @@ internal class RoomViewModel(
     private val saveWeeklyPlan: SaveWeeklyPlanInteractor,
     private val openSavings: OpenSavingsInteractor,
     private val saveZoneGoal: SaveZoneAsSavingsGoalInteractor,
+    private val loadParentHelpInteractor: LoadParentHelpInteractor,
+    private val requestParentHelpInteractor: RequestParentHelpInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
@@ -34,6 +40,7 @@ internal class RoomViewModel(
     private var buyJob: Job? = null
     private var sleepJob: Job? = null
     private var savePlanJob: Job? = null
+    private var parentHelpJob: Job? = null
     private var savedPosition = HouseLayout.initialPosition()
     private var lastLaunchNanos = 0L
 
@@ -43,6 +50,14 @@ internal class RoomViewModel(
             RoomViewEvent.BedClicked -> sleep()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openSavings()
+            RoomViewEvent.ParentHelpBoardClicked -> showParentHelp()
+            is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
+            RoomViewEvent.CloseParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(parentHelpDialog = null))
+            }
+            RoomViewEvent.CloseAllowanceNotice -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(allowanceNotice = null))
+            }
             RoomViewEvent.SavePlanClicked -> savePlan()
             RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(isPlanSummaryVisible = false))
@@ -95,6 +110,9 @@ internal class RoomViewModel(
                         planEditor = editor,
                         isSavingPlan = current?.isSavingPlan ?: false,
                         isPlanSummaryVisible = current?.isPlanSummaryVisible ?: false,
+                        parentHelpDialog = current?.parentHelpDialog,
+                        isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
+                        allowanceNotice = current?.allowanceNotice,
                     ),
                 )
             }
@@ -183,7 +201,16 @@ internal class RoomViewModel(
         ) {
             try {
                 delay(800)
-                endDay(expectedDay)
+                val result = endDay(expectedDay)
+                if (result is EndDayResult.Advanced && result.allowanceGrossRub > 0) {
+                    nullableState<RoomViewState.Content>()?.let { latest ->
+                        updateState(latest.copy(allowanceNotice = AllowanceNoticeState(
+                            grossRub = result.allowanceGrossRub,
+                            parentHelpRepaidRub = result.parentHelpRepaidRub,
+                            receivedRub = result.allowanceReceivedRub,
+                        )))
+                    }
+                }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
@@ -238,5 +265,49 @@ internal class RoomViewModel(
             return
         }
         updateState(content.copy(isPlanSummaryVisible = true))
+    }
+
+    private fun showParentHelp() {
+        if (parentHelpJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        parentHelpJob = launchCoroutine(
+            handleAction = ExceptionConsumer { true },
+        ) {
+            val dialog = ParentHelpDialogState(
+                offers = loadParentHelpInteractor.offers(),
+                activeHelp = loadParentHelpInteractor(),
+            )
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(parentHelpDialog = dialog))
+            }
+        }
+    }
+
+    private fun requestParentHelp(offerId: String) {
+        if (parentHelpJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.parentHelpDialog == null || content.isRequestingParentHelp) return
+        updateState(content.copy(isRequestingParentHelp = true))
+        parentHelpJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let { latest ->
+                    updateState(latest.copy(isRequestingParentHelp = false))
+                }
+                true
+            },
+        ) {
+            val result = requestParentHelpInteractor(offerId)
+            val activeHelp = when (result) {
+                is ParentHelpRequestResult.Accepted -> result.help
+                is ParentHelpRequestResult.AlreadyActive -> result.help
+                is ParentHelpRequestResult.Rejected -> loadParentHelpInteractor()
+            }
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    parentHelpDialog = latest.parentHelpDialog?.copy(activeHelp = activeHelp),
+                    isRequestingParentHelp = false,
+                ))
+            }
+        }
     }
 }

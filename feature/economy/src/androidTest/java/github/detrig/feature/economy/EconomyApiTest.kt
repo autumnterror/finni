@@ -11,6 +11,7 @@ import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.data.local.EconomyDao
 import github.detrig.feature.economy.data.local.EconomyStateEntity
 import github.detrig.feature.economy.data.local.FinancialOperationEntity
+import github.detrig.feature.economy.data.local.ParentHelpStateEntity
 import github.detrig.feature.economy.data.local.SavingsGoalEntity
 import github.detrig.feature.economy.di.EconomyModule
 import github.detrig.feature.economy.domain.EconomyConfig
@@ -19,6 +20,7 @@ import github.detrig.feature.economy.domain.FinancialOperationType
 import github.detrig.feature.economy.domain.HistoryFilter
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.PeriodicIncome
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.economy.domain.SavingsGoal
 import java.util.UUID
@@ -38,7 +40,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @Database(
-    entities = [EconomyStateEntity::class, FinancialOperationEntity::class, SavingsGoalEntity::class],
+    entities = [EconomyStateEntity::class, FinancialOperationEntity::class, SavingsGoalEntity::class, ParentHelpStateEntity::class],
     version = 1,
     exportSchema = false,
 )
@@ -114,16 +116,18 @@ class EconomyApiTest {
         assertEquals(3, api.getHistory().size)
     }
 
-    @Test fun invalidAmountsAndIdsNeverChangeState() = runBlocking {
-        val api = api()
-        val initial = api.initialize()
-        listOf(
-            api.credit("zero", 0), api.credit("negative", -1), api.debit("", 1),
-            api.createDebt("debt-zero", 0), api.transferToSavings("save-zero", 0),
-        ).forEach { assertTrue(it is FinancialOperationResult.Rejected) }
-        assertEquals(initial, api.getState())
-        assertEquals(listOf(FinancialOperationType.OPENING_BALANCE), api.getHistory().map { it.type })
-        assertThrows(IllegalArgumentException::class.java) { EconomyConfig(periodicIncomeAmountRub = 0) }
+    @Test fun invalidAmountsAndIdsNeverChangeState() {
+        runBlocking {
+            val api = api()
+            val initial = api.initialize()
+            listOf(
+                api.credit("zero", 0), api.credit("negative", -1), api.debit("", 1),
+                api.createDebt("debt-zero", 0), api.transferToSavings("save-zero", 0),
+            ).forEach { assertTrue(it is FinancialOperationResult.Rejected) }
+            assertEquals(initial, api.getState())
+            assertEquals(listOf(FinancialOperationType.OPENING_BALANCE), api.getHistory().map { it.type })
+            assertThrows(IllegalArgumentException::class.java) { EconomyConfig(periodicIncomeAmountRub = 0) }
+        }
     }
 
     @Test fun concurrentDebitsCannotOverdrawWallet() = runBlocking {
@@ -160,7 +164,11 @@ class EconomyApiTest {
     }
 
     @Test fun weeklyAllowanceIsGrantedOnceAndRepaysDebt() = runBlocking {
-        val api = api(EconomyConfig(initialAvailableRub = 0, weeklyAllowanceRub = 100))
+        val api = api(EconomyConfig(
+            initialAvailableRub = 0,
+            weeklyAllowanceRub = 100,
+            parentHelpOffers = emptyList(),
+        ))
         assertTrue(api.createDebt("important-food", 40) is FinancialOperationResult.Applied)
         val first = api.grantWeeklyAllowance(2)
         assertFalse(first.alreadyApplied)
@@ -174,6 +182,32 @@ class EconomyApiTest {
         assertEquals(100L, api.getSummary().totalIncomeRub)
     }
 
+    @Test fun parentHelpUsesOneScheduledWeeklyRepaymentAndCannotBeTakenTwice() = runBlocking {
+        val api = api(EconomyConfig(initialAvailableRub = 0, weeklyAllowanceRub = 1_000))
+        val accepted = api.requestParentHelp("help:quick", "quick") as ParentHelpRequestResult.Accepted
+        assertEquals(600L, accepted.state.availableRub)
+        assertEquals(720L, accepted.state.debtRub)
+        assertTrue(api.requestParentHelp("help:steady", "steady") is ParentHelpRequestResult.AlreadyActive)
+        assertEquals(
+            RejectionReason.SCHEDULED_REPAYMENT_ONLY,
+            (api.repayDebt("help:manual", 1) as FinancialOperationResult.Rejected).reason,
+        )
+
+        val secondWeek = api.grantWeeklyAllowance(2)
+        assertEquals(1_000L, secondWeek.grossRub)
+        assertEquals(360L, secondWeek.parentHelpRepaidRub)
+        assertEquals(640L, secondWeek.receivedRub)
+        assertEquals(360L, secondWeek.state.debtRub)
+        assertEquals(1, api.getParentHelp()!!.paymentsRemaining)
+
+        val thirdWeek = api.grantWeeklyAllowance(3)
+        assertEquals(360L, thirdWeek.parentHelpRepaidRub)
+        assertEquals(0L, thirdWeek.state.debtRub)
+        assertNull(api.getParentHelp())
+        assertTrue(api.grantWeeklyAllowance(3).alreadyApplied)
+        assertEquals(360L, api.grantWeeklyAllowance(3).parentHelpRepaidRub)
+    }
+
     @Test fun debtRulesAutoRepaymentAndEarlyRepaymentAreExplicit() = runBlocking {
         val api = api(EconomyConfig(
             initialAvailableRub = 0,
@@ -181,6 +215,7 @@ class EconomyApiTest {
             firstPeriodicIncomeDelayMillis = 100,
             periodicIncomePeriodMillis = 100,
             maximumDebtRub = 250,
+            parentHelpOffers = emptyList(),
         ))
         assertTrue(api.createDebt("too-big", 251) is FinancialOperationResult.Rejected)
         assertTrue(api.createDebt("loan", 220) is FinancialOperationResult.Applied)
@@ -258,14 +293,16 @@ class EconomyApiTest {
         assertEquals(560L, summary.change.netWorthDeltaRub)
     }
 
-    @Test fun periodicConfigurationCanBeChanged() = runBlocking {
-        val api = api()
-        val updated = api.configurePeriodicIncome(PeriodicIncome(75, 1_000, 5_000))
-        assertEquals(PeriodicIncome(75, 1_000, 5_000), updated.periodicIncome)
-        assertFalse(api.isPeriodicIncomeDue(4_999))
-        assertTrue(api.isPeriodicIncomeDue(5_000))
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { api.configurePeriodicIncome(PeriodicIncome(0, 1, 1)) }
+    @Test fun periodicConfigurationCanBeChanged() {
+        runBlocking {
+            val api = api()
+            val updated = api.configurePeriodicIncome(PeriodicIncome(75, 1_000, 5_000))
+            assertEquals(PeriodicIncome(75, 1_000, 5_000), updated.periodicIncome)
+            assertFalse(api.isPeriodicIncomeDue(4_999))
+            assertTrue(api.isPeriodicIncomeDue(5_000))
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { api.configurePeriodicIncome(PeriodicIncome(0, 1, 1)) }
+            }
         }
     }
 

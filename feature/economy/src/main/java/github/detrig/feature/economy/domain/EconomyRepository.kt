@@ -17,6 +17,9 @@ internal interface EconomyRepository {
     suspend fun isPeriodicIncomeDue(atMillis: Long): Boolean
     suspend fun processPeriodicIncome(atMillis: Long): PeriodicIncomeResult
     suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult
+    fun parentHelpOffers(): List<ParentHelpOffer>
+    suspend fun parentHelp(): ParentHelpState?
+    suspend fun requestParentHelp(operationId: String, offerId: String): ParentHelpRequestResult
     suspend fun history(filter: HistoryFilter): List<FinancialOperation>
     suspend fun summary(filter: HistoryFilter): FinancialSummary
     suspend fun upsertGoal(goal: SavingsGoal): SavingsGoal

@@ -21,6 +21,9 @@ import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.SavePlanResult
 import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.economy.domain.ParentHelpOffer
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
+import github.detrig.feature.economy.domain.ParentHelpState
 import kotlinx.coroutines.flow.first
 
 internal class RoomRepositoryImpl(
@@ -71,4 +74,16 @@ internal class RoomRepositoryImpl(
         availableRub: Long,
         percentages: PlanPercentages,
     ): SavePlanResult = planningApi.savePlan(weekNumber, availableRub, percentages)
+
+    override fun parentHelpOffers(): List<ParentHelpOffer> = economyApi.parentHelpOffers()
+
+    override suspend fun parentHelp(): ParentHelpState? = economyApi.getParentHelp()
+
+    override suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult {
+        val week = weekApi.observeState().first()
+        return economyApi.requestParentHelp(
+            operationId = "parent-help:${week.weekNumber}:$offerId",
+            offerId = offerId,
+        )
+    }
 }

@@ -14,6 +14,11 @@ data class WeekState(val absoluteDay: Long) {
 sealed interface EndDayResult {
     val state: WeekState
 
-    data class Advanced(override val state: WeekState, val allowanceReceivedRub: Long) : EndDayResult
+    data class Advanced(
+        override val state: WeekState,
+        val allowanceReceivedRub: Long,
+        val allowanceGrossRub: Long = 0,
+        val parentHelpRepaidRub: Long = 0,
+    ) : EndDayResult
     data class AlreadyAdvanced(override val state: WeekState) : EndDayResult
 }

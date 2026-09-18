@@ -24,11 +24,16 @@ internal class WeekRepository(
         val current = ensureState()
         if (current.absoluteDay != expectedAbsoluteDay) return@runInTransaction EndDayResult.AlreadyAdvanced(current)
         val next = WeekState(Math.addExact(current.absoluteDay, 1))
-        val received = if (next.dayOfWeek == 1) {
-            economyApi.grantWeeklyAllowance(next.weekNumber).receivedRub
-        } else 0L
+        val allowance = if (next.dayOfWeek == 1) {
+            economyApi.grantWeeklyAllowance(next.weekNumber)
+        } else null
         check(dao.advance(expectedAbsoluteDay, next.absoluteDay) == 1)
-        EndDayResult.Advanced(next, received)
+        EndDayResult.Advanced(
+            state = next,
+            allowanceReceivedRub = allowance?.receivedRub ?: 0,
+            allowanceGrossRub = allowance?.grossRub ?: 0,
+            parentHelpRepaidRub = allowance?.parentHelpRepaidRub ?: 0,
+        )
     }
 
     private suspend fun ensureState(): WeekState {

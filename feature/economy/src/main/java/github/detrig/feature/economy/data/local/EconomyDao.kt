@@ -44,4 +44,13 @@ interface EconomyDao {
 
     @Query("DELETE FROM savings_goals WHERE id = :id")
     suspend fun deleteGoal(id: String): Int
+
+    @Query("SELECT * FROM parent_help_state WHERE id = 'current'")
+    suspend fun getParentHelp(): ParentHelpStateEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertParentHelp(help: ParentHelpStateEntity)
+
+    @Query("DELETE FROM parent_help_state WHERE id = 'current'")
+    suspend fun clearParentHelp(): Int
 }

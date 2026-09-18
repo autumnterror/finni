@@ -22,6 +22,10 @@ internal class EconomyApiImpl(private val repository: EconomyRepository) : Econo
     override suspend fun isPeriodicIncomeDue(atMillis: Long) = repository.isPeriodicIncomeDue(atMillis)
     override suspend fun processPeriodicIncome(atMillis: Long) = repository.processPeriodicIncome(atMillis)
     override suspend fun grantWeeklyAllowance(weekNumber: Long) = repository.grantWeeklyAllowance(weekNumber)
+    override fun parentHelpOffers() = repository.parentHelpOffers()
+    override suspend fun getParentHelp() = repository.parentHelp()
+    override suspend fun requestParentHelp(operationId: String, offerId: String) =
+        repository.requestParentHelp(operationId, offerId)
     override suspend fun getHistory(filter: HistoryFilter) = repository.history(filter)
     override suspend fun getIncomeHistory(filter: HistoryFilter) = repository.history(filter.withTypes(setOf(
         FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME, FinancialOperationType.WEEKLY_ALLOWANCE,

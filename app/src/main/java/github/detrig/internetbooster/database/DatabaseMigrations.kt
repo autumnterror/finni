@@ -117,3 +117,19 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `plan_actual_operations` (`operationId` TEXT NOT NULL, `weekNumber` INTEGER NOT NULL, `categoryCode` TEXT NOT NULL, `amountRub` INTEGER NOT NULL, PRIMARY KEY(`operationId`))")
     }
 }
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `parent_help_state` (
+                `id` TEXT NOT NULL,
+                `offerId` TEXT NOT NULL,
+                `receivedRub` INTEGER NOT NULL,
+                `totalRepaymentRub` INTEGER NOT NULL,
+                `remainingRub` INTEGER NOT NULL,
+                `paymentsRemaining` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent())
+    }
+}

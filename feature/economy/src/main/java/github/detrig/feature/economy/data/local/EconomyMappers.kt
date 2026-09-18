@@ -7,6 +7,7 @@ import github.detrig.feature.economy.domain.FinancialSnapshot
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.PeriodicIncome
 import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.economy.domain.ParentHelpState
 
 internal fun EconomyStateEntity.toDomain() = EconomyState(
     availableRub = availableRub,
@@ -47,3 +48,13 @@ internal fun FinancialOperation.toEntity() = FinancialOperationEntity(
 
 internal fun SavingsGoalEntity.toDomain() = SavingsGoal(id, title, targetRub, metadata, isActive)
 internal fun SavingsGoal.toEntity() = SavingsGoalEntity(id, title, targetRub, metadata, isActive)
+internal fun ParentHelpStateEntity.toDomain() = ParentHelpState(
+    offerId, receivedRub, totalRepaymentRub, remainingRub, paymentsRemaining,
+)
+internal fun ParentHelpState.toEntity() = ParentHelpStateEntity(
+    offerId = offerId,
+    receivedRub = receivedRub,
+    totalRepaymentRub = totalRepaymentRub,
+    remainingRub = remainingRub,
+    paymentsRemaining = paymentsRemaining,
+)

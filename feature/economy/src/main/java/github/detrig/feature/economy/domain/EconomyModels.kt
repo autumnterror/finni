@@ -69,6 +69,7 @@ enum class RejectionReason {
     INSUFFICIENT_AVAILABLE_FUNDS,
     INSUFFICIENT_SAVINGS,
     ACTIVE_DEBT_EXISTS,
+    SCHEDULED_REPAYMENT_ONLY,
     DEBT_LIMIT_EXCEEDED,
     NO_ACTIVE_DEBT,
     AMOUNT_EXCEEDS_DEBT,
@@ -108,8 +109,51 @@ data class WeeklyAllowanceResult(
     val debtRepaidRub: Long,
     val state: EconomyState,
     val alreadyApplied: Boolean,
+    val parentHelpRepaidRub: Long = 0,
 ) {
     val receivedRub: Long get() = grossRub - debtRepaidRub
+}
+
+/** Внутри экономики это обязательство; в детском UI оно называется «Помощь от родителей». */
+data class ParentHelpOffer(
+    val id: String,
+    val receivedRub: Long,
+    val repaymentWeeks: Int,
+    val totalRepaymentRub: Long,
+) {
+    init {
+        require(id.isNotBlank())
+        require(receivedRub > 0)
+        require(repaymentWeeks in 2..4)
+        require(totalRepaymentRub >= receivedRub)
+    }
+
+    val extraRub: Long get() = totalRepaymentRub - receivedRub
+    val weeklyRepaymentRub: Long get() = totalRepaymentRub / repaymentWeeks
+}
+
+data class ParentHelpState(
+    val offerId: String,
+    val receivedRub: Long,
+    val totalRepaymentRub: Long,
+    val remainingRub: Long,
+    val paymentsRemaining: Int,
+) {
+    init {
+        require(offerId.isNotBlank())
+        require(receivedRub > 0 && totalRepaymentRub >= receivedRub)
+        require(remainingRub in 1..totalRepaymentRub)
+        require(paymentsRemaining > 0)
+    }
+
+    val nextPaymentRub: Long get() = (remainingRub + paymentsRemaining - 1) / paymentsRemaining
+    val isCompleted: Boolean get() = remainingRub == 0L
+}
+
+sealed interface ParentHelpRequestResult {
+    data class Accepted(val help: ParentHelpState, val state: EconomyState) : ParentHelpRequestResult
+    data class AlreadyActive(val help: ParentHelpState) : ParentHelpRequestResult
+    data class Rejected(val reason: RejectionReason, val state: EconomyState) : ParentHelpRequestResult
 }
 
 data class SavingsGoal(
