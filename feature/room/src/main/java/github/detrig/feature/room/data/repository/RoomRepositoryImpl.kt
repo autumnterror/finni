@@ -14,25 +14,32 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
 import github.detrig.feature.economy.api.EconomyApi
+import github.detrig.feature.week.api.WeekApi
+import github.detrig.feature.week.domain.EndDayResult
 
 internal class RoomRepositoryImpl(
     private val catalog: RoomZoneCatalog,
     private val gameStateApi: GameStateApi,
     private val economyApi: EconomyApi,
+    private val weekApi: WeekApi,
 ) : RoomRepository {
     override fun zones(): List<RoomZoneDefinition> = catalog.zones
 
     override suspend fun initialize() {
         gameStateApi.initialize()
         economyApi.initialize()
+        weekApi.initialize()
     }
 
     override fun observeProgress(): Flow<RoomProgress> = combine(
         gameStateApi.observeState().filterNotNull(),
         economyApi.observeState(),
-    ) { game, economy -> game.toRoomProgress(economy) }.distinctUntilChanged()
+        weekApi.observeState(),
+    ) { game, economy, week -> game.toRoomProgress(economy, week) }.distinctUntilChanged()
 
     override suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult = gameStateApi.buyZone(
         ZoneOffer(zone.id, zone.priceRub, zone.requiredLevel),
     )
+
+    override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = weekApi.endDay(expectedAbsoluteDay)
 }

@@ -7,6 +7,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data class SavePosition(val position: HousePosition) : RoomViewEvent
     data class ZonePreviewed(val zoneId: String) : RoomViewEvent
     data object MarketClicked : RoomViewEvent
+    data object BedClicked : RoomViewEvent
     data object Load : RoomViewEvent
     data object RetryClicked : RoomViewEvent
     data class ZoneClicked(val zoneId: String) : RoomViewEvent

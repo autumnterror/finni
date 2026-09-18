@@ -74,7 +74,8 @@ class ObserveGameStateInteractorTest {
         override suspend fun transferFromSavings(operationId: String, amountRub: Long, context: OperationContext): FinancialOperationResult = error("unused")
         override suspend fun configurePeriodicIncome(periodicIncome: PeriodicIncome) = economy
         override suspend fun isPeriodicIncomeDue(atMillis: Long) = false
-        override suspend fun processPeriodicIncome(atMillis: Long) = PeriodicIncomeResult(0, 0, 0, 0, emptyList(), economy)
+        override suspend fun processPeriodicIncome(atMillis: Long): PeriodicIncomeResult = error("Real-time income must not run")
+        override suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult = error("unused")
         override suspend fun getHistory(filter: HistoryFilter) = emptyList<FinancialOperation>()
         override suspend fun getIncomeHistory(filter: HistoryFilter) = emptyList<FinancialOperation>()
         override suspend fun getExpenseHistory(filter: HistoryFilter) = emptyList<FinancialOperation>()

@@ -22,6 +22,9 @@ import github.detrig.feature.economy.domain.PeriodicIncome
 import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.economy.domain.SavingsGoal
 import java.util.UUID
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -67,6 +70,9 @@ class EconomyApiTest {
         assertEquals(0L, initial.debtRub)
         assertEquals(500L, initial.periodicIncome.amountRub)
         assertEquals(initial, api.observeState().first())
+        val opening = api.getHistory().single()
+        assertEquals(FinancialOperationType.OPENING_BALANCE, opening.type)
+        assertEquals(500L, opening.availableDeltaRub)
 
         database.close()
         database = openDatabase()
@@ -74,13 +80,26 @@ class EconomyApiTest {
         assertEquals(initial, api(EconomyConfig(initialAvailableRub = 1)).initialize())
     }
 
+    @Test fun summaryInitializesStateAndIncludesOpeningBalance() = runBlocking {
+        val summary = api(EconomyConfig(initialAvailableRub = 300, initialSavingsRub = 20)).getSummary()
+        assertEquals(300L, summary.state.availableRub)
+        assertEquals(20L, summary.state.savingsRub)
+        assertEquals(320L, summary.operations.single().amountRub)
+        assertEquals(0L, summary.totalIncomeRub)
+        assertEquals(320L, summary.change.totalMoneyDeltaRub)
+    }
+
     @Test fun creditsDebitsFailuresAndIdempotencyAreAtomic() = runBlocking {
         val api = api()
         val credit = api.credit("gift-1", 200, OperationContext("gift", "source=family"))
         assertTrue(credit is FinancialOperationResult.Applied)
         assertEquals(700L, api.getState().availableRub)
-        assertTrue(api.credit("gift-1", 200) is FinancialOperationResult.AlreadyApplied)
+        assertTrue(api.credit("gift-1", 200, OperationContext("gift", "source=family")) is FinancialOperationResult.AlreadyApplied)
         assertEquals(700L, api.getState().availableRub)
+        assertEquals(
+            RejectionReason.OPERATION_ID_CONFLICT,
+            (api.credit("gift-1", 200, OperationContext("other-gift")) as FinancialOperationResult.Rejected).reason,
+        )
         assertEquals(
             RejectionReason.OPERATION_ID_CONFLICT,
             (api.credit("gift-1", 201) as FinancialOperationResult.Rejected).reason,
@@ -92,7 +111,7 @@ class EconomyApiTest {
         assertEquals(RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS, rejected.reason)
         assertEquals(50L, api.getState().availableRub)
         assertTrue(api.debit("purchase-1", 650) is FinancialOperationResult.AlreadyApplied)
-        assertEquals(2, api.getHistory().size)
+        assertEquals(3, api.getHistory().size)
     }
 
     @Test fun invalidAmountsAndIdsNeverChangeState() = runBlocking {
@@ -103,8 +122,22 @@ class EconomyApiTest {
             api.createDebt("debt-zero", 0), api.transferToSavings("save-zero", 0),
         ).forEach { assertTrue(it is FinancialOperationResult.Rejected) }
         assertEquals(initial, api.getState())
-        assertTrue(api.getHistory().isEmpty())
+        assertEquals(listOf(FinancialOperationType.OPENING_BALANCE), api.getHistory().map { it.type })
         assertThrows(IllegalArgumentException::class.java) { EconomyConfig(periodicIncomeAmountRub = 0) }
+    }
+
+    @Test fun concurrentDebitsCannotOverdrawWallet() = runBlocking {
+        val api = api()
+        val results = coroutineScope {
+            listOf("purchase-a", "purchase-b").map { id ->
+                async { api.debit(id, 400) }
+            }.awaitAll()
+        }
+        assertEquals(1, results.count { it is FinancialOperationResult.Applied })
+        assertEquals(1, results.count { it is FinancialOperationResult.Rejected &&
+            it.reason == RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS })
+        assertEquals(100L, api.getState().availableRub)
+        assertEquals(2, api.getHistory().size)
     }
 
     @Test fun missedPeriodicIncomeIsCaughtUpOnce() = runBlocking {
@@ -124,6 +157,21 @@ class EconomyApiTest {
         assertFalse(api.isPeriodicIncomeDue(1_350))
         assertEquals(0, api.processPeriodicIncome(1_350).processedCycles)
         assertEquals(3, api.getHistory().size)
+    }
+
+    @Test fun weeklyAllowanceIsGrantedOnceAndRepaysDebt() = runBlocking {
+        val api = api(EconomyConfig(initialAvailableRub = 0, weeklyAllowanceRub = 100))
+        assertTrue(api.createDebt("important-food", 40) is FinancialOperationResult.Applied)
+        val first = api.grantWeeklyAllowance(2)
+        assertFalse(first.alreadyApplied)
+        assertEquals(100L, first.grossRub)
+        assertEquals(40L, first.debtRepaidRub)
+        assertEquals(60L, first.receivedRub)
+        assertEquals(100L, first.state.availableRub)
+        assertEquals(0L, first.state.debtRub)
+        assertTrue(api.grantWeeklyAllowance(2).alreadyApplied)
+        assertEquals(3, api.getHistory().size)
+        assertEquals(100L, api.getSummary().totalIncomeRub)
     }
 
     @Test fun debtRulesAutoRepaymentAndEarlyRepaymentAreExplicit() = runBlocking {
@@ -146,8 +194,11 @@ class EconomyApiTest {
         assertEquals(120L, periodic.state.debtRub)
         assertTrue(periodic.operations.any { it.type == FinancialOperationType.DEBT_AUTO_REPAYMENT })
 
-        val early = api.repayDebt("early", 500)
+        assertEquals(RejectionReason.AMOUNT_EXCEEDS_DEBT,
+            (api.repayDebt("too-much", 500) as FinancialOperationResult.Rejected).reason)
+        val early = api.repayDebt("early", 120)
         assertTrue(early is FinancialOperationResult.Applied)
+        assertTrue(api.repayDebt("early", 120) is FinancialOperationResult.AlreadyApplied)
         assertEquals(0L, api.getState().debtRub)
         assertEquals(100L, api.getState().availableRub)
         assertEquals(RejectionReason.NO_ACTIVE_DEBT, (api.repayDebt("again", 1) as FinancialOperationResult.Rejected).reason)
@@ -197,10 +248,10 @@ class EconomyApiTest {
         val summary = api.getSummary()
         assertEquals(100L, summary.totalIncomeRub)
         assertEquals(40L, summary.totalExpensesRub)
-        assertEquals(90L, summary.change.availableDeltaRub)
+        assertEquals(590L, summary.change.availableDeltaRub)
         assertEquals(20L, summary.change.savingsDeltaRub)
         assertEquals(50L, summary.change.debtDeltaRub)
-        assertEquals(60L, summary.change.netWorthDeltaRub)
+        assertEquals(560L, summary.change.netWorthDeltaRub)
     }
 
     @Test fun periodicConfigurationCanBeChanged() = runBlocking {

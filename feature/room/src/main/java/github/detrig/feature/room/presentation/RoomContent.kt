@@ -12,6 +12,8 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.component.HouseHud
 import github.detrig.feature.room.presentation.component.HouseScene
+import github.detrig.designsystem.component.FinPetCard
+import androidx.compose.ui.platform.testTag
 import github.detrig.feature.room.presentation.component.RoomErrorState
 
 @Composable
@@ -35,9 +37,10 @@ internal fun RoomContent(
                 onRetry = { onEvent(RoomViewEvent.RetryClicked) }, modifier = Modifier.fillMaxSize())
             is RoomViewState.Content -> {
                 HouseScene(
-                    state.zones, state.initialPosition, active, state.buyingZoneId,
+                    state.zones, state.initialPosition, active && !state.sleeping, state.buyingZoneId,
                     onZoneClick = { onEvent(RoomViewEvent.ZoneClicked(it)) },
                     onMarketClick = { onEvent(RoomViewEvent.MarketClicked) },
+                    onBedClick = { onEvent(RoomViewEvent.BedClicked) },
                     onSavePosition = { onEvent(RoomViewEvent.SavePosition(it)) },
                     previewZoneId = previewZoneId,
                     onPreviewReady = onPreviewReady,
@@ -45,6 +48,13 @@ internal fun RoomContent(
                     petContent = petContent,
                 )
                 HouseHud(state.progress, active, Modifier.align(Alignment.TopCenter))
+                if (state.sleeping) {
+                    FinPetCard(Modifier.align(Alignment.Center).testTag("room_sleeping")) {
+                        Text(stringResource(R.string.room_sleeping),
+                            modifier = Modifier.padding(AppTheme.spacing.lg),
+                            style = AppTheme.typography.bodyStrong)
+                    }
+                }
             }
         }
     }

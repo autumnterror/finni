@@ -36,9 +36,11 @@ value class FinancialOperationType(val code: String) {
     init { require(code.isNotBlank()) }
 
     companion object {
+        val OPENING_BALANCE = FinancialOperationType("opening_balance")
         val CREDIT = FinancialOperationType("credit")
         val DEBIT = FinancialOperationType("debit")
         val PERIODIC_INCOME = FinancialOperationType("periodic_income")
+        val WEEKLY_ALLOWANCE = FinancialOperationType("weekly_allowance")
         val DEBT_CREATED = FinancialOperationType("debt_created")
         val DEBT_REPAYMENT = FinancialOperationType("debt_repayment")
         val DEBT_AUTO_REPAYMENT = FinancialOperationType("debt_auto_repayment")
@@ -69,6 +71,7 @@ enum class RejectionReason {
     ACTIVE_DEBT_EXISTS,
     DEBT_LIMIT_EXCEEDED,
     NO_ACTIVE_DEBT,
+    AMOUNT_EXCEEDS_DEBT,
 }
 
 sealed interface FinancialOperationResult {
@@ -98,6 +101,16 @@ data class PeriodicIncomeResult(
     val operations: List<FinancialOperation>,
     val state: EconomyState,
 )
+
+data class WeeklyAllowanceResult(
+    val weekNumber: Long,
+    val grossRub: Long,
+    val debtRepaidRub: Long,
+    val state: EconomyState,
+    val alreadyApplied: Boolean,
+) {
+    val receivedRub: Long get() = grossRub - debtRepaidRub
+}
 
 data class SavingsGoal(
     val id: String,

@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:game-state"))
     implementation(project(":feature:economy"))
+    implementation(project(":feature:week"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.ui)

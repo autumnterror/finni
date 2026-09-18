@@ -103,3 +103,10 @@ private fun SupportSQLiteDatabase.hasColumn(table: String, column: String): Bool
         generateSequence { if (cursor.moveToNext()) cursor else null }
             .any { it.getString(nameIndex) == column }
     }
+
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `week_state` (`id` TEXT NOT NULL, `absoluteDay` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+        db.execSQL("INSERT OR IGNORE INTO week_state (id, absoluteDay) VALUES ('current', 1)")
+    }
+}

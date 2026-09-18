@@ -13,13 +13,11 @@ import kotlinx.coroutines.flow.map
 internal class ObserveGameStateInteractor(
     private val gameStateApi: GameStateApi,
     private val economyApi: EconomyApi,
-    private val currentTimeMillis: () -> Long = System::currentTimeMillis,
 ) {
 
     operator fun invoke(): Flow<GameSessionState> = flow {
         gameStateApi.initialize()
         economyApi.initialize()
-        economyApi.processPeriodicIncome(currentTimeMillis())
         emitAll(
             combine(gameStateApi.observeState(), economyApi.observeState()) { game, economy ->
                 GameSessionState(checkNotNull(game), economy)

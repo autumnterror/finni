@@ -45,6 +45,7 @@ internal fun HouseScene(
     buyingZoneId: String?,
     onZoneClick: (String) -> Unit,
     onMarketClick: () -> Unit,
+    onBedClick: () -> Unit,
     onSavePosition: (HousePosition) -> Unit,
     previewZoneId: String?,
     onPreviewReady: (String) -> Unit,
@@ -56,6 +57,7 @@ internal fun HouseScene(
     val previewReady by rememberUpdatedState(onPreviewReady)
     val zonesById = remember(zones) { zones.associateBy { it.id } }
     val marketDescription = stringResource(R.string.house_market)
+    val bedDescription = stringResource(R.string.house_bed)
     val touchTarget = AppTheme.sizes.preferredTouchTarget
 
     BoxWithConstraints(modifier.clipToBounds().testTag("house_scene")) {
@@ -133,7 +135,7 @@ internal fun HouseScene(
                 HouseLayout.objects.forEach { placement ->
                     val width = unitDp * placement.width
                     val height = unitDp * placement.height
-                    val interactive = placement.zoneId != null || placement.opensMarket
+                    val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed"
                     val hitWidth = if (interactive) maxOf(width, touchTarget) else width
                     val hitHeight = if (interactive) maxOf(height, touchTarget) else height
                     val hitWidthPx = with(LocalDensity.current) { hitWidth.toPx() }
@@ -158,6 +160,13 @@ internal fun HouseScene(
                                 .clickable(enabled = active && ready, role = Role.Button) {
                                     motion.pause(); save(); onMarketClick()
                                 }.semantics { contentDescription = marketDescription },
+                            contentAlignment = Alignment.Center,
+                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
+                        placement.id == "bed" -> Box(
+                            bounds.testTag("room_bed")
+                                .clickable(enabled = active && ready, role = Role.Button) {
+                                    motion.pause(); save(); onBedClick()
+                                }.semantics { contentDescription = bedDescription },
                             contentAlignment = Alignment.Center,
                         ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
                         else -> HouseObjectArtwork(placement.art, bounds)

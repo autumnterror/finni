@@ -4,6 +4,7 @@ import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
+import github.detrig.feature.room.domain.interactor.EndDayInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
@@ -13,21 +14,25 @@ import github.detrig.feature.room.presentation.model.HouseLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 internal class RoomViewModel(
     private val observeZones: ObserveRoomZonesInteractor,
     private val buyZone: BuyRoomZoneInteractor,
+    private val endDay: EndDayInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
     private var buyJob: Job? = null
+    private var sleepJob: Job? = null
     private var savedPosition = HouseLayout.initialPosition()
     private var lastLaunchNanos = 0L
 
     override fun perform(viewEvent: RoomViewEvent) {
         when (viewEvent) {
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
+            RoomViewEvent.BedClicked -> sleep()
             is RoomViewEvent.SavePosition -> {
                 savedPosition = viewEvent.position
                 positions.save(savedPosition)
@@ -62,6 +67,7 @@ internal class RoomViewModel(
                         initialPosition = savedPosition,
                         progress = roomData.progress,
                         buyingZoneId = nullableState<RoomViewState.Content>()?.buyingZoneId,
+                        sleeping = nullableState<RoomViewState.Content>()?.sleeping ?: false,
                     ),
                 )
             }
@@ -113,6 +119,27 @@ internal class RoomViewModel(
                 }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(buyingZoneId = null)) }
+            }
+        }
+    }
+
+    private fun sleep() {
+        if (sleepJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.sleeping || content.buyingZoneId != null) return
+        val expectedDay = content.progress.absoluteDay
+        updateState(content.copy(sleeping = true))
+        sleepJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                router.showSleepError()
+                true
+            },
+        ) {
+            try {
+                delay(800)
+                endDay(expectedDay)
+            } finally {
+                nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
         }
     }

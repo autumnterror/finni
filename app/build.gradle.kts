@@ -63,6 +63,7 @@ dependencies {
     implementation(project(":feature:game-session"))
     implementation(project(":feature:game-state"))
     implementation(project(":feature:economy"))
+    implementation(project(":feature:week"))
     implementation(project(":feature:room"))
     implementation(project(":feature:product-market"))
     implementation(project(":feature:pet"))

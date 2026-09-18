@@ -279,6 +279,7 @@ class GameStateStorageTest {
         override suspend fun configurePeriodicIncome(periodicIncome: PeriodicIncome) = economyState
         override suspend fun isPeriodicIncomeDue(atMillis: Long) = false
         override suspend fun processPeriodicIncome(atMillis: Long) = PeriodicIncomeResult(0, 0, 0, 0, emptyList(), economyState)
+        override suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult = error("unused")
         override suspend fun getHistory(filter: HistoryFilter) = emptyList<FinancialOperation>()
         override suspend fun getIncomeHistory(filter: HistoryFilter) = emptyList<FinancialOperation>()
         override suspend fun getExpenseHistory(filter: HistoryFilter) = emptyList<FinancialOperation>()

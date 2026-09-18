@@ -9,6 +9,7 @@ import github.detrig.internetbooster.mediators.GameStateMediator
 import github.detrig.internetbooster.mediators.MiniGamesCommonMediator
 import github.detrig.internetbooster.mediators.PetMediator
 import github.detrig.internetbooster.mediators.RoomMediator
+import github.detrig.internetbooster.mediators.WeekMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 
 internal interface AppModule {
@@ -33,6 +34,7 @@ internal class AppModuleImpl(
     }
 
     private val economyMediator: EconomyMediator by lazy { EconomyMediator(databaseModule) }
+    private val weekMediator: WeekMediator by lazy { WeekMediator(databaseModule, economyMediator) }
 
     private val gameStateMediator: GameStateMediator by lazy {
         GameStateMediator(databaseModule, economyMediator)
@@ -53,7 +55,7 @@ internal class AppModuleImpl(
     }
 
     private val roomMediator: RoomMediator by lazy {
-        RoomMediator(coreComponent, gameStateMediator, economyMediator)
+        RoomMediator(coreComponent, gameStateMediator, economyMediator, weekMediator)
     }
 
     private val miniGamesCommonMediator: MiniGamesCommonMediator by lazy {
@@ -66,6 +68,7 @@ internal class AppModuleImpl(
     override fun initFeatures() {
         miniGamesCommonMediator.init()
         economyMediator.init()
+        weekMediator.init()
         gameStateMediator.init()
         petMediator.init()
         github.detrig.internetbooster.mediators.FlightMediator(

@@ -7,4 +7,5 @@ internal interface RoomRouter {
     fun showNotEnoughMoney(missingRub: Int)
     fun showBought()
     fun showBuyError()
+    fun showSleepError()
 }

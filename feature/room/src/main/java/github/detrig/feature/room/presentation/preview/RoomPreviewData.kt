@@ -19,7 +19,7 @@ import github.detrig.feature.room.presentation.mapper.toRoomZones
 internal object RoomPreviewData {
     val state: RoomViewState.Content
         get() {
-            val progress = RoomProgress(500, 1, emptySet(), 500, 0, 75, 80)
+            val progress = RoomProgress(500, 1, emptySet(), 1, 1, 1, 7, 75, 80)
             val resolveAccess = ResolveRoomZoneAccessInteractor()
             val roomData = RoomData(
                 RoomZoneCatalog().zones.map { RoomZone(it, resolveAccess(it, progress)) },

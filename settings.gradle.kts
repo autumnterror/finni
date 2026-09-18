@@ -31,6 +31,7 @@ include(":feature:product-market")
 include(":feature:game-session")
 include(":feature:game-state")
 include(":feature:economy")
+include(":feature:week")
 include(":feature:room")
 include(":feature:pet")
 

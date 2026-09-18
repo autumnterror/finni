@@ -20,6 +20,7 @@ import github.detrig.feature.economy.domain.PeriodicIncomeResult
 import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
+import github.detrig.feature.economy.domain.WeeklyAllowanceResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -74,17 +75,17 @@ internal class EconomyRepositoryImpl(
 
     override suspend fun repayDebt(id: String, amountRub: Long, context: OperationContext) = atomic {
         val state = ensureState()
-        replayOrReject(id, amountRub, FinancialOperationType.DEBT_REPAYMENT, state)?.let { return@atomic it }
+        replayOrReject(id, amountRub, FinancialOperationType.DEBT_REPAYMENT, context, state)?.let { return@atomic it }
         val reason = when {
             state.debtRub == 0L -> RejectionReason.NO_ACTIVE_DEBT
-            state.availableRub < minOf(amountRub, state.debtRub) -> RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS
+            amountRub > state.debtRub -> RejectionReason.AMOUNT_EXCEEDS_DEBT
+            state.availableRub < amountRub -> RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS
             else -> null
         }
         if (reason != null) return@atomic FinancialOperationResult.Rejected(reason, state)
-        val actual = minOf(amountRub, state.debtRub)
         persistOperation(
-            id, actual, FinancialOperationType.DEBT_REPAYMENT, context, state,
-            state.copy(availableRub = state.availableRub - actual, debtRub = state.debtRub - actual),
+            id, amountRub, FinancialOperationType.DEBT_REPAYMENT, context, state,
+            state.copy(availableRub = state.availableRub - amountRub, debtRub = state.debtRub - amountRub),
         )
     }
 
@@ -165,6 +166,42 @@ internal class EconomyRepositoryImpl(
         PeriodicIncomeResult(cycles, gross, repaid, gross - repaid, operations, state)
     }
 
+    override suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult = atomic {
+        require(weekNumber >= 2) { "The first week uses the opening balance" }
+        var state = ensureState()
+        val incomeId = "week:$weekNumber:allowance"
+        val debtId = "week:$weekNumber:debt-repayment"
+        dao.getOperation(incomeId)?.toDomain()?.let { existing ->
+            check(existing.type == FinancialOperationType.WEEKLY_ALLOWANCE)
+            return@atomic WeeklyAllowanceResult(
+                weekNumber, existing.amountRub, dao.getOperation(debtId)?.amountRub ?: 0,
+                state, alreadyApplied = true,
+            )
+        }
+        val amount = config.weeklyAllowanceRub
+        val beforeIncome = state
+        state = state.copy(availableRub = Math.addExact(state.availableRub, amount))
+        dao.insertOperation(operation(
+            incomeId, amount, FinancialOperationType.WEEKLY_ALLOWANCE,
+            OperationContext(reasonId = "week:$weekNumber"), beforeIncome, state, currentTimeMillis(),
+        ).toEntity())
+        val repayment = minOf(state.debtRub, amount)
+        if (repayment > 0) {
+            val beforeRepayment = state
+            state = state.copy(
+                availableRub = state.availableRub - repayment,
+                debtRub = state.debtRub - repayment,
+            )
+            dao.insertOperation(operation(
+                debtId, repayment, FinancialOperationType.DEBT_AUTO_REPAYMENT,
+                OperationContext(reasonId = incomeId), beforeRepayment, state, currentTimeMillis(),
+            ).toEntity())
+        }
+        validate(state)
+        dao.updateState(state.toEntity())
+        WeeklyAllowanceResult(weekNumber, amount, repayment, state, alreadyApplied = false)
+    }
+
     override suspend fun history(filter: HistoryFilter): List<FinancialOperation> = atomic {
         require(filter.fromInclusiveMillis == null || filter.toExclusiveMillis == null || filter.fromInclusiveMillis <= filter.toExclusiveMillis)
         dao.getOperations().asSequence().map { it.toDomain() }.filter { operation ->
@@ -174,13 +211,20 @@ internal class EconomyRepositoryImpl(
         }.toList()
     }
 
-    override suspend fun summary(filter: HistoryFilter): FinancialSummary {
-        val operations = history(filter)
-        val incomeTypes = setOf(FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME)
+    override suspend fun summary(filter: HistoryFilter): FinancialSummary = atomic {
+        require(filter.fromInclusiveMillis == null || filter.toExclusiveMillis == null || filter.fromInclusiveMillis <= filter.toExclusiveMillis)
+        val currentState = ensureState()
+        val operations = dao.getOperations().asSequence().map { it.toDomain() }.filter { operation ->
+            (filter.fromInclusiveMillis == null || operation.timestampMillis >= filter.fromInclusiveMillis) &&
+                (filter.toExclusiveMillis == null || operation.timestampMillis < filter.toExclusiveMillis) &&
+                (filter.types.isEmpty() || operation.type in filter.types)
+        }.toList()
+        val incomeTypes = setOf(FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME,
+            FinancialOperationType.WEEKLY_ALLOWANCE)
         val income = operations.filter { it.type in incomeTypes }.sumExact { it.amountRub }
         val expenses = operations.filter { it.type == FinancialOperationType.DEBIT }.sumExact { it.amountRub }
-        return FinancialSummary(
-            state = state(),
+        FinancialSummary(
+            state = currentState,
             operations = operations,
             totalIncomeRub = income,
             totalExpensesRub = expenses,
@@ -224,7 +268,7 @@ internal class EconomyRepositoryImpl(
         transform: (EconomyState) -> EconomyState,
     ): FinancialOperationResult = atomic {
         val state = ensureState()
-        replayOrReject(id, amountRub, type, state)?.let { return@atomic it }
+        replayOrReject(id, amountRub, type, context, state)?.let { return@atomic it }
         reject(state)?.let { return@atomic FinancialOperationResult.Rejected(it, state) }
         persistOperation(id, amountRub, type, context, state, transform(state))
     }
@@ -233,11 +277,12 @@ internal class EconomyRepositoryImpl(
         id: String,
         amountRub: Long,
         type: FinancialOperationType,
+        context: OperationContext,
         state: EconomyState,
     ): FinancialOperationResult? {
         if (id.isBlank()) return FinancialOperationResult.Rejected(RejectionReason.INVALID_OPERATION_ID, state)
         dao.getOperation(id)?.toDomain()?.let { existing ->
-            return if (existing.amountRub == amountRub && existing.type == type) {
+            return if (existing.amountRub == amountRub && existing.type == type && existing.context == context) {
                 FinancialOperationResult.AlreadyApplied(existing, state)
             } else {
                 FinancialOperationResult.Rejected(RejectionReason.OPERATION_ID_CONFLICT, state)
@@ -280,7 +325,16 @@ internal class EconomyRepositoryImpl(
 
     private suspend fun ensureState(): EconomyState {
         dao.getState()?.let { return it.toDomain() }
-        dao.insertInitialState(config.initialState(currentTimeMillis()).toEntity())
+        val now = currentTimeMillis()
+        val initial = config.initialState(now)
+        val openingAmount = Math.addExact(initial.availableRub, initial.savingsRub)
+        if (dao.insertInitialState(initial.toEntity()) != -1L && openingAmount > 0) {
+            dao.insertOperation(operation(
+                "economy:opening-balance", openingAmount, FinancialOperationType.OPENING_BALANCE,
+                OperationContext(reasonId = "initial-state"),
+                initial.copy(availableRub = 0, savingsRub = 0), initial, now,
+            ).toEntity())
+        }
         return checkNotNull(dao.getState()).toDomain()
     }
 

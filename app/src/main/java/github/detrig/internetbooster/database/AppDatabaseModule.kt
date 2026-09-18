@@ -6,6 +6,7 @@ import github.detrig.core.database.RoomTransactionRunner
 import github.detrig.core.database.create
 import github.detrig.feature.gamestate.data.local.GameStateDao
 import github.detrig.feature.economy.data.local.EconomyDao
+import github.detrig.feature.week.data.local.WeekDao
 import github.detrig.feature.gamestate.data.local.RoomZoneDao
 
 class AppDatabaseModule(
@@ -17,7 +18,7 @@ class AppDatabaseModule(
             context = context,
             databaseName = DATABASE_NAME,
             migrations = arrayOf(FinPetMigrations.FROM_6_TO_7, FinPetMigrations.FROM_7_TO_8,
-                FinPetMigrations.FROM_8_TO_9, MIGRATION_9_10),
+                FinPetMigrations.FROM_8_TO_9, MIGRATION_9_10, MIGRATION_10_11),
         )
     }
 
@@ -26,6 +27,7 @@ class AppDatabaseModule(
     }
 
     val economyDao: EconomyDao by lazy { database.economyDao() }
+    val weekDao: WeekDao by lazy { database.weekDao() }
 
     val transactionRunner: RoomTransactionRunner by lazy {
         RoomTransactionRunner(database)

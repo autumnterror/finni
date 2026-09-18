@@ -10,6 +10,7 @@ import github.detrig.feature.economy.domain.PeriodicIncome
 import github.detrig.feature.economy.domain.PeriodicIncomeResult
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
+import github.detrig.feature.economy.domain.WeeklyAllowanceResult
 import kotlinx.coroutines.flow.Flow
 
 interface EconomyApi {
@@ -26,6 +27,7 @@ interface EconomyApi {
     suspend fun configurePeriodicIncome(periodicIncome: PeriodicIncome): EconomyState
     suspend fun isPeriodicIncomeDue(atMillis: Long): Boolean
     suspend fun processPeriodicIncome(atMillis: Long): PeriodicIncomeResult
+    suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult
     suspend fun getHistory(filter: HistoryFilter = HistoryFilter()): List<FinancialOperation>
     suspend fun getIncomeHistory(filter: HistoryFilter = HistoryFilter()): List<FinancialOperation>
     suspend fun getExpenseHistory(filter: HistoryFilter = HistoryFilter()): List<FinancialOperation>
