@@ -13,15 +13,20 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.week.api.WeekApi
 import github.detrig.feature.week.domain.EndDayResult
+import github.detrig.feature.planning.api.PlanningApi
+import github.detrig.feature.planning.domain.PlanPercentages
+import github.detrig.feature.planning.domain.SavePlanResult
 
 internal class RoomRepositoryImpl(
     private val catalog: RoomZoneCatalog,
     private val gameStateApi: GameStateApi,
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
+    private val planningApi: PlanningApi,
 ) : RoomRepository {
     override fun zones(): List<RoomZoneDefinition> = catalog.zones
 
@@ -35,11 +40,21 @@ internal class RoomRepositoryImpl(
         gameStateApi.observeState().filterNotNull(),
         economyApi.observeState(),
         weekApi.observeState(),
-    ) { game, economy, week -> game.toRoomProgress(economy, week) }.distinctUntilChanged()
+    ) { game, economy, week -> Triple(game, economy, week) }.flatMapLatest { (game, economy, week) ->
+        planningApi.observePlanProgress(week.weekNumber).map { plan ->
+            game.toRoomProgress(economy, week, plan)
+        }
+    }.distinctUntilChanged()
 
     override suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult = gameStateApi.buyZone(
         ZoneOffer(zone.id, zone.priceRub, zone.requiredLevel),
     )
 
     override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = weekApi.endDay(expectedAbsoluteDay)
+
+    override suspend fun savePlan(
+        weekNumber: Long,
+        availableRub: Long,
+        percentages: PlanPercentages,
+    ): SavePlanResult = planningApi.savePlan(weekNumber, availableRub, percentages)
 }

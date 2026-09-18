@@ -7,6 +7,7 @@ import github.detrig.core.presentation.message.GlobalMessageController
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.week.api.WeekApi
+import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.room.api.RoomGameLauncher
 
 interface RoomDependencies {
@@ -14,6 +15,7 @@ interface RoomDependencies {
     fun gameStateApi(): GameStateApi
     fun economyApi(): EconomyApi
     fun weekApi(): WeekApi
+    fun planningApi(): PlanningApi
     fun gameLauncher(): RoomGameLauncher
     fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher
     fun globalMessageController(): GlobalMessageController

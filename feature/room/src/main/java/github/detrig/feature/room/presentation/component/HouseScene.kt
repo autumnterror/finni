@@ -46,6 +46,7 @@ internal fun HouseScene(
     onZoneClick: (String) -> Unit,
     onMarketClick: () -> Unit,
     onBedClick: () -> Unit,
+    onCalendarClick: () -> Unit,
     onSavePosition: (HousePosition) -> Unit,
     previewZoneId: String?,
     onPreviewReady: (String) -> Unit,
@@ -58,6 +59,7 @@ internal fun HouseScene(
     val zonesById = remember(zones) { zones.associateBy { it.id } }
     val marketDescription = stringResource(R.string.house_market)
     val bedDescription = stringResource(R.string.house_bed)
+    val calendarDescription = stringResource(R.string.house_calendar)
     val touchTarget = AppTheme.sizes.preferredTouchTarget
 
     BoxWithConstraints(modifier.clipToBounds().testTag("house_scene")) {
@@ -135,7 +137,7 @@ internal fun HouseScene(
                 HouseLayout.objects.forEach { placement ->
                     val width = unitDp * placement.width
                     val height = unitDp * placement.height
-                    val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed"
+                    val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed" || placement.id == "calendar"
                     val hitWidth = if (interactive) maxOf(width, touchTarget) else width
                     val hitHeight = if (interactive) maxOf(height, touchTarget) else height
                     val hitWidthPx = with(LocalDensity.current) { hitWidth.toPx() }
@@ -167,6 +169,13 @@ internal fun HouseScene(
                                 .clickable(enabled = active && ready, role = Role.Button) {
                                     motion.pause(); save(); onBedClick()
                                 }.semantics { contentDescription = bedDescription },
+                            contentAlignment = Alignment.Center,
+                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
+                        placement.id == "calendar" -> Box(
+                            bounds.testTag("room_calendar")
+                                .clickable(enabled = active && ready, role = Role.Button) {
+                                    motion.pause(); save(); onCalendarClick()
+                                }.semantics { contentDescription = calendarDescription },
                             contentAlignment = Alignment.Center,
                         ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
                         else -> HouseObjectArtwork(placement.art, bounds)

@@ -8,4 +8,6 @@ internal interface RoomRouter {
     fun showBought()
     fun showBuyError()
     fun showSleepError()
+    fun showPlanNotReady()
+    fun showPlanSaveError()
 }

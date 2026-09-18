@@ -12,14 +12,17 @@ import github.detrig.feature.gamestate.data.local.RoomZoneDao
 import github.detrig.feature.gamestate.data.local.RoomZoneEntity
 import github.detrig.feature.week.data.local.WeekDao
 import github.detrig.feature.week.data.local.WeekStateEntity
+import github.detrig.feature.planning.data.local.PlanActualOperationEntity
+import github.detrig.feature.planning.data.local.PlanningDao
+import github.detrig.feature.planning.data.local.WeeklyPlanEntity
 
 @Database(
     entities = [GameStateEntity::class, RoomZoneEntity::class,
         github.detrig.feature.gamestate.data.local.PetPlayEffectEntity::class,
         github.detrig.minigames.fishing.data.FishingProgressEntity::class,
         EconomyStateEntity::class, FinancialOperationEntity::class, SavingsGoalEntity::class,
-        WeekStateEntity::class],
-    version = 11,
+        WeekStateEntity::class, WeeklyPlanEntity::class, PlanActualOperationEntity::class],
+    version = 12,
     exportSchema = false,
 )
 abstract class FinPetDatabase : RoomDatabase() {
@@ -27,6 +30,7 @@ abstract class FinPetDatabase : RoomDatabase() {
     abstract fun gameStateDao(): GameStateDao
     abstract fun economyDao(): EconomyDao
     abstract fun weekDao(): WeekDao
+    abstract fun planningDao(): PlanningDao
 
     abstract fun roomZoneDao(): RoomZoneDao
 

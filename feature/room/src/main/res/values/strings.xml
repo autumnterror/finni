@@ -34,6 +34,7 @@
     <string name="zone_science">Опыты</string>
     <string name="house_market">Дверь в магазин</string>
     <string name="house_bed">Кровать · завершить день</string>
+    <string name="house_calendar">Календарь · посмотреть план</string>
     <string name="room_sleeping">Спим…</string>
     <string name="room_sleep_error">Не получилось завершить день. Попробуй ещё раз.</string>
     <string name="house_swipe_hint">Проведи в сторону</string>
@@ -43,4 +44,22 @@
     <string name="house_day_counter">Неделя %1$d · день %2$d/7</string>
     <string name="house_money_in_days">Деньги через %1$d игровых дн.</string>
     <string name="house_balance_accessibility">Баланс: %1$d рублей</string>
+    <string name="plan_not_ready">Сначала сохрани план на эту неделю.</string>
+    <string name="plan_save_error">Не получилось сохранить план. Попробуй ещё раз.</string>
+    <string name="plan_title">План на неделю</string>
+    <string name="plan_description">Распредели все деньги. Ползунки всегда дают ровно 100%%.</string>
+    <string name="plan_total">Всего: %1$d%%</string>
+    <string name="plan_percent">%1$d%%</string>
+    <string name="plan_mandatory">Обязательное</string>
+    <string name="plan_wants">Желания</string>
+    <string name="plan_savings">Накопления</string>
+    <string name="plan_save">Сохранить план</string>
+    <string name="plan_saving">Сохраняем…</string>
+    <string name="plan_progress_title">План · неделя %1$d</string>
+    <string name="plan_progress_description">Серый фон — запланированная сумма. Цветная часть — уже потрачено или отложено.</string>
+    <string name="plan_actual_of_planned">%1$d ₽ из %2$d ₽</string>
+    <string name="plan_progress_on_track">Идём по плану</string>
+    <string name="plan_progress_warning">Чуть больше плана</string>
+    <string name="plan_progress_over_limit">Сильно больше плана</string>
+    <string name="plan_close">Готово</string>
 </resources>

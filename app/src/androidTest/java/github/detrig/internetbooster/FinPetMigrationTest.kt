@@ -32,7 +32,13 @@ class FinPetMigrationTest {
         old.close()
 
         val db = Room.databaseBuilder(context, FinPetDatabase::class.java, name)
-            .addMigrations(FinPetMigrations.FROM_7_TO_8, FinPetMigrations.FROM_8_TO_9, MIGRATION_9_10)
+            .addMigrations(
+                FinPetMigrations.FROM_7_TO_8,
+                FinPetMigrations.FROM_8_TO_9,
+                MIGRATION_9_10,
+                MIGRATION_10_11,
+                MIGRATION_11_12,
+            )
             .build()
         try {
             assertEquals(83, db.gameStateDao().getCurrentState()!!.happiness)
@@ -41,7 +47,9 @@ class FinPetMigrationTest {
             assertEquals(45L, economy.savingsRub)
             assertEquals(20L, economy.debtRub)
             assertFalse(db.roomZoneDao().isOwned("current", "flight"))
-            assertEquals(10, db.openHelper.readableDatabase.version)
+            assertEquals(12, db.openHelper.readableDatabase.version)
+            assertNotNull(db.weekDao().getState())
+            db.planningDao().getPlan(2)
         } finally {
             db.close()
             context.deleteDatabase(name)
@@ -72,8 +80,15 @@ class FinPetMigrationTest {
         old.version = from
         old.close()
         val db = Room.databaseBuilder(context, FinPetDatabase::class.java, name)
-            .addMigrations(FinPetMigrations.FROM_6_TO_7, FinPetMigrations.FROM_7_TO_8,
-                FinPetMigrations.FROM_8_TO_9, MIGRATION_9_10).build()
+            .addMigrations(
+                FinPetMigrations.FROM_6_TO_7,
+                FinPetMigrations.FROM_7_TO_8,
+                FinPetMigrations.FROM_8_TO_9,
+                MIGRATION_9_10,
+                MIGRATION_10_11,
+                MIGRATION_11_12,
+            )
+            .build()
         try {
             val state = db.gameStateDao().getCurrentState()!!
             assertEquals(83, state.happiness)
@@ -85,7 +100,9 @@ class FinPetMigrationTest {
             assertEquals(if (hasFishingSave) fishingPayload else null, db.fishingDao().read("current")?.payload)
             if (from == 8) assertEquals(3, db.petPlayEffectDao().find("current:round")?.happinessDelta)
             else assertNull(db.petPlayEffectDao().find("current:round"))
-            assertEquals(10, db.openHelper.readableDatabase.version)
+            assertEquals(12, db.openHelper.readableDatabase.version)
+            assertNotNull(db.weekDao().getState())
+            db.planningDao().getPlan(2)
             db.openHelper.readableDatabase.query("SELECT count(*) FROM financial_operations").use {
                 it.moveToFirst(); assertEquals(if (from >= 7) 1 else 0, it.getInt(0))
             }

@@ -5,6 +5,8 @@ import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.room.domain.model.RoomZoneDefinition
 import kotlinx.coroutines.flow.Flow
 import github.detrig.feature.week.domain.EndDayResult
+import github.detrig.feature.planning.domain.PlanPercentages
+import github.detrig.feature.planning.domain.SavePlanResult
 
 internal interface RoomRepository {
     fun zones(): List<RoomZoneDefinition>
@@ -12,4 +14,5 @@ internal interface RoomRepository {
     fun observeProgress(): Flow<RoomProgress>
     suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult
     suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult
+    suspend fun savePlan(weekNumber: Long, availableRub: Long, percentages: PlanPercentages): SavePlanResult
 }

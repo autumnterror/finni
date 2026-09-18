@@ -15,6 +15,8 @@ import github.detrig.feature.room.RoomFeature
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
+import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
+import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
 
 @Composable
 internal fun RoomScreen(
@@ -44,21 +46,34 @@ internal fun RoomScreen(
     }
     LaunchedEffect(viewModel) { viewModel.perform(RoomViewEvent.Load) }
     val requestedZoneId by previewRequests.zoneId.collectAsState()
+    val content = state as? RoomViewState.Content
     RoomContent(
         state, viewModel::perform, modifier, petContent,
-        active = resumed && focused && dialogZoneId == null,
+        active = resumed && focused && dialogZoneId == null && content?.planEditor == null && content?.isPlanSummaryVisible != true,
         previewZoneId = requestedZoneId,
         onPreviewReady = { id ->
             previewRequests.consume(id)
             viewModel.perform(RoomViewEvent.ZonePreviewed(id))
         },
     )
-    val content = state as? RoomViewState.Content
     val zone = content?.zones?.find { it.id == dialogZoneId }
     if (zone?.access is RoomZoneAccess.Buyable) {
         RoomBuyDialog(zone, content.progress, content.buyingZoneId != null,
             onConfirm = { viewModel.perform(RoomViewEvent.BuyConfirmed(zone.id)) },
             onDismiss = { dialogZoneId = null })
+    }
+    content?.planEditor?.let { editor ->
+        WeeklyPlanEditorDialog(
+            editor = editor,
+            isSaving = content.isSavingPlan,
+            onPercentChanged = { category, percent ->
+                viewModel.perform(RoomViewEvent.PlanPercentChanged(category, percent))
+            },
+            onSave = { viewModel.perform(RoomViewEvent.SavePlanClicked) },
+        )
+    }
+    content?.progress?.planProgress?.takeIf { content.isPlanSummaryVisible }?.let { plan ->
+        WeeklyPlanProgressDialog(plan) { viewModel.perform(RoomViewEvent.ClosePlanSummary) }
     }
     LaunchedEffect(zone?.access, content != null) {
         if (content != null && zone?.access !is RoomZoneAccess.Buyable) dialogZoneId = null

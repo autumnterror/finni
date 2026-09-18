@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":feature:game-state"))
     implementation(project(":feature:economy"))
     implementation(project(":feature:week"))
+    implementation(project(":feature:planning"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.ui)
@@ -36,4 +37,5 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
+    testImplementation(libs.junit)
 }

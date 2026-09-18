@@ -7,6 +7,7 @@ import github.detrig.feature.room.data.catalog.RoomZoneCatalog
 import github.detrig.feature.room.data.repository.RoomRepositoryImpl
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
 import github.detrig.feature.room.domain.interactor.EndDayInteractor
+import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.interactor.ResolveRoomZoneAccessInteractor
 import github.detrig.feature.room.navigation.RoomRouterImpl
@@ -17,7 +18,10 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     private val previewRequests = github.detrig.feature.room.navigation.RoomPreviewRequests()
     override val api: RoomApi by lazy { RoomApiImpl(previewRequests) }
     private val repository by lazy {
-        RoomRepositoryImpl(RoomZoneCatalog(), dependencies.gameStateApi(), dependencies.economyApi(), dependencies.weekApi())
+        RoomRepositoryImpl(
+            RoomZoneCatalog(), dependencies.gameStateApi(), dependencies.economyApi(), dependencies.weekApi(),
+            dependencies.planningApi(),
+        )
     }
     private val router by lazy {
         RoomRouterImpl(dependencies.gameLauncher(), dependencies.globalMessageController(), dependencies.resources(),
@@ -28,6 +32,7 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     }
     private val buyZone by lazy { BuyRoomZoneInteractor(repository) }
     private val endDay by lazy { EndDayInteractor(repository) }
+    private val saveWeeklyPlan by lazy { SaveWeeklyPlanInteractor(repository) }
 
-    override fun getRoomViewModel() = RoomViewModel(observeZones, buyZone, endDay, router, positions)
+    override fun getRoomViewModel() = RoomViewModel(observeZones, buyZone, endDay, saveWeeklyPlan, router, positions)
 }

@@ -5,6 +5,7 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
 import github.detrig.feature.room.domain.interactor.EndDayInteractor
+import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
@@ -15,17 +16,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import github.detrig.feature.planning.domain.SavePlanResult
 
 internal class RoomViewModel(
     private val observeZones: ObserveRoomZonesInteractor,
     private val buyZone: BuyRoomZoneInteractor,
     private val endDay: EndDayInteractor,
+    private val saveWeeklyPlan: SaveWeeklyPlanInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
     private var buyJob: Job? = null
     private var sleepJob: Job? = null
+    private var savePlanJob: Job? = null
     private var savedPosition = HouseLayout.initialPosition()
     private var lastLaunchNanos = 0L
 
@@ -33,6 +37,12 @@ internal class RoomViewModel(
         when (viewEvent) {
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
             RoomViewEvent.BedClicked -> sleep()
+            RoomViewEvent.CalendarClicked -> showPlanSummary()
+            RoomViewEvent.SavePlanClicked -> savePlan()
+            RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(isPlanSummaryVisible = false))
+            }
+            is RoomViewEvent.PlanPercentChanged -> updatePlanPercent(viewEvent.category, viewEvent.percent)
             is RoomViewEvent.SavePosition -> {
                 savedPosition = viewEvent.position
                 positions.save(savedPosition)
@@ -61,13 +71,23 @@ internal class RoomViewModel(
         ) {
             savedPosition = HouseLayout.restored(withContext(Dispatchers.IO) { positions.load() })
             observeZones().collect { roomData ->
+                val current = nullableState<RoomViewState.Content>()
+                val editor = when {
+                    roomData.progress.planProgress != null -> null
+                    current?.planEditor != null -> current.planEditor
+                    roomData.progress.requiresPlan -> PlanEditorState()
+                    else -> null
+                }
                 updateState(
                     RoomViewState.Content(
                         zones = roomData.toRoomZones(),
                         initialPosition = savedPosition,
                         progress = roomData.progress,
-                        buyingZoneId = nullableState<RoomViewState.Content>()?.buyingZoneId,
-                        sleeping = nullableState<RoomViewState.Content>()?.sleeping ?: false,
+                        buyingZoneId = current?.buyingZoneId,
+                        sleeping = current?.sleeping ?: false,
+                        planEditor = editor,
+                        isSavingPlan = current?.isSavingPlan ?: false,
+                        isPlanSummaryVisible = current?.isPlanSummaryVisible ?: false,
                     ),
                 )
             }
@@ -142,5 +162,55 @@ internal class RoomViewModel(
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
         }
+    }
+
+    private fun updatePlanPercent(category: github.detrig.feature.planning.domain.PlanCategory, percent: Int) {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val editor = content.planEditor ?: return
+        if (content.isSavingPlan) return
+        updateState(content.copy(planEditor = editor.update(category, percent)))
+    }
+
+    private fun savePlan() {
+        if (savePlanJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val editor = content.planEditor ?: return
+        if (editor.total != 100) return
+        updateState(content.copy(isSavingPlan = true))
+        savePlanJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let { latest ->
+                    updateState(latest.copy(isSavingPlan = false))
+                }
+                router.showPlanSaveError()
+                true
+            },
+        ) {
+            val result = saveWeeklyPlan(
+                weekNumber = content.progress.weekNumber,
+                availableRub = content.progress.balanceRub.toLong(),
+                percentages = editor.toPercentages(),
+            )
+            val plan = when (result) {
+                is SavePlanResult.Saved -> result.progress
+                is SavePlanResult.AlreadySaved -> result.progress
+            }
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    progress = latest.progress.copy(planProgress = plan, requiresPlan = false),
+                    planEditor = null,
+                    isSavingPlan = false,
+                ))
+            }
+        }
+    }
+
+    private fun showPlanSummary() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.progress.planProgress == null) {
+            router.showPlanNotReady()
+            return
+        }
+        updateState(content.copy(isPlanSummaryVisible = true))
     }
 }

@@ -24,4 +24,8 @@ internal class RoomRouterImpl(
         messageController.showErrorMessage(resources.getString(R.string.room_buy_error))
     override fun showSleepError() =
         messageController.showErrorMessage(resources.getString(R.string.room_sleep_error))
+    override fun showPlanNotReady() =
+        messageController.showMessage(resources.getString(R.string.plan_not_ready))
+    override fun showPlanSaveError() =
+        messageController.showErrorMessage(resources.getString(R.string.plan_save_error))
 }

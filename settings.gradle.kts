@@ -32,6 +32,7 @@ include(":feature:game-session")
 include(":feature:game-state")
 include(":feature:economy")
 include(":feature:week")
+include(":feature:planning")
 include(":feature:room")
 include(":feature:pet")
 

@@ -4,8 +4,13 @@ import github.detrig.feature.gamestate.domain.GameState
 import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.economy.domain.EconomyState
 import github.detrig.feature.week.domain.WeekState
+import github.detrig.feature.planning.domain.WeeklyPlanProgress
 
-internal fun GameState.toRoomProgress(economy: EconomyState, week: WeekState) = RoomProgress(
+internal fun GameState.toRoomProgress(
+    economy: EconomyState,
+    week: WeekState,
+    planProgress: WeeklyPlanProgress?,
+) = RoomProgress(
     balanceRub = Math.toIntExact(economy.availableRub),
     playerLevel = playerLevel,
     ownedZoneIds = ownedZoneIds,
@@ -13,6 +18,8 @@ internal fun GameState.toRoomProgress(economy: EconomyState, week: WeekState) = 
     weekNumber = week.weekNumber,
     dayOfWeek = week.dayOfWeek,
     daysUntilAllowance = week.daysUntilAllowance,
+    planProgress = planProgress,
+    requiresPlan = week.weekNumber >= 2 && planProgress == null,
     petHunger = pet.hunger,
     petHappiness = pet.happiness,
 )

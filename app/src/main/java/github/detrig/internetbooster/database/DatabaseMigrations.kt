@@ -110,3 +110,10 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         db.execSQL("INSERT OR IGNORE INTO week_state (id, absoluteDay) VALUES ('current', 1)")
     }
 }
+
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `weekly_plans` (`weekNumber` INTEGER NOT NULL, `availableRub` INTEGER NOT NULL, `mandatoryPercent` INTEGER NOT NULL, `wantsPercent` INTEGER NOT NULL, `savingsPercent` INTEGER NOT NULL, PRIMARY KEY(`weekNumber`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `plan_actual_operations` (`operationId` TEXT NOT NULL, `weekNumber` INTEGER NOT NULL, `categoryCode` TEXT NOT NULL, `amountRub` INTEGER NOT NULL, PRIMARY KEY(`operationId`))")
+    }
+}
