@@ -1,7 +1,13 @@
 package github.detrig.feature.pet.presentation
 
 import android.content.res.AssetManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas as AndroidCanvas
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.Rect
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
@@ -17,7 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -42,6 +50,7 @@ internal data class HamsterLayerRule(
 internal data class HamsterDrawLayer(
     val sprite: HamsterSprite,
     val colorFilter: ColorFilter?,
+    val tint: Color?,
 )
 
 internal class HamsterAssets(
@@ -72,11 +81,38 @@ internal class HamsterAssets(
                 val id = PLACEHOLDER.replace(rule.id) { properties.getValue(it.groupValues[1]) }
                 HamsterDrawLayer(
                     sprite = layers.getValue(id),
-                    colorFilter = rule.tint?.let { tint ->
-                        ColorFilter.tint(palette.getValue(tint), BlendMode.SrcIn)
+                    colorFilter = rule.tint?.let { tintId ->
+                        ColorFilter.tint(palette.getValue(tintId), BlendMode.SrcIn)
                     },
+                    tint = rule.tint?.let(palette::getValue),
                 )
             }
+    }
+
+    fun renderBitmap(
+        appearance: HamsterAppearance,
+        targetSidePx: Int,
+        blink: Boolean,
+    ): Bitmap {
+        val output = Bitmap.createBitmap(targetSidePx, targetSidePx, Bitmap.Config.ARGB_8888)
+        val canvas = AndroidCanvas(output)
+        val scale = targetSidePx.toFloat() / canvasSize
+        resolve(appearance, blink).forEach { layer ->
+            val bitmap = layer.sprite.image.asAndroidBitmap()
+            val destination = Rect(
+                (layer.sprite.x * scale).toInt(),
+                (layer.sprite.y * scale).toInt(),
+                ((layer.sprite.x + bitmap.width) * scale).toInt(),
+                ((layer.sprite.y + bitmap.height) * scale).toInt(),
+            )
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = layer.tint?.let { color ->
+                    PorterDuffColorFilter(color.toArgb(), PorterDuff.Mode.SRC_IN)
+                }
+            }
+            canvas.drawBitmap(bitmap, null, destination, paint)
+        }
+        return output
     }
 
     private companion object {

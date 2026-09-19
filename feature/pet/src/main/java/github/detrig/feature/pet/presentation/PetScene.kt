@@ -57,7 +57,7 @@ fun PetScene(
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
     val hamsterAssets = rememberHamsterAssets()
-    val hamsterBlink = rememberHamsterBlink()
+    val hamsterBlink = if (profile.species == PetSpecies.Hamster) rememberHamsterBlink() else false
     Box(modifier) {
         Canvas(Modifier.fillMaxSize()) {
             drawOval(
@@ -101,7 +101,24 @@ internal fun rememberPetAppearanceBitmap(
     maxSidePx: Int,
 ): ImageBitmap? {
     require(maxSidePx > 0)
-    if (profile.species == PetSpecies.Hamster) return null
+    if (profile.species == PetSpecies.Hamster) {
+        val assets = rememberHamsterAssets()
+        val blink = rememberHamsterBlink()
+        val bitmap by produceState<ImageBitmap?>(
+            initialValue = null,
+            assets,
+            profile.hamsterAppearance,
+            blink,
+            maxSidePx,
+        ) {
+            value = assets?.let {
+                withContext(Dispatchers.Default) {
+                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink).asImageBitmap()
+                }
+            }
+        }
+        return bitmap
+    }
     val resources = LocalResources.current
     val tint = profile.color.tint()
     val tintArgb = tint.toArgb()
