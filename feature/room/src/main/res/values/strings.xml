@@ -32,10 +32,15 @@
     <string name="zone_racing">Гонки</string>
     <string name="zone_theater">Театр</string>
     <string name="zone_science">Опыты</string>
-    <string name="house_market">Дверь в магазин</string>
+    <string name="house_market">Телефон · магазины</string>
     <string name="house_bed">Кровать · завершить день</string>
     <string name="house_calendar">Календарь · посмотреть план</string>
-    <string name="house_parent_help_board">Доска · помощь от родителей</string>
+    <string name="house_parent_help_board">Тесты</string>
+    <string name="house_wardrobe">Гардероб</string>
+    <string name="house_food">Еда</string>
+    <string name="house_dishes">Посуда · подработка</string>
+    <string name="house_feeding">Кормление</string>
+    <string name="room_entry_coming_soon">Этот раздел появится здесь позже.</string>
     <string name="parent_help_title">Помощь от родителей</string>
     <string name="parent_help_description">Родители могут помочь сейчас. Часть карманных денег в следующие недели пойдёт на возвращение помощи.</string>
     <string name="parent_help_offer_weeks">Вернуть за %1$d нед.</string>

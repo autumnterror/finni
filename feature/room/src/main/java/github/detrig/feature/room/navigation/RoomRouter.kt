@@ -10,4 +10,5 @@ internal interface RoomRouter {
     fun showSleepError()
     fun showPlanNotReady()
     fun showPlanSaveError()
+    fun showEntryComingSoon()
 }

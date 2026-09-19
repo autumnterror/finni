@@ -28,4 +28,6 @@ internal class RoomRouterImpl(
         messageController.showMessage(resources.getString(R.string.plan_not_ready))
     override fun showPlanSaveError() =
         messageController.showErrorMessage(resources.getString(R.string.plan_save_error))
+    override fun showEntryComingSoon() =
+        messageController.showMessage(resources.getString(R.string.room_entry_coming_soon))
 }
