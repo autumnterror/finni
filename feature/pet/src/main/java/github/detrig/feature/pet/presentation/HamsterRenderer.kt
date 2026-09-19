@@ -116,7 +116,7 @@ internal class HamsterAssets(
     }
 
     private companion object {
-        val PLACEHOLDER = Regex("\\{(\\w+)}")
+        val PLACEHOLDER = Regex("\\{(\\w+)\\}")
     }
 }
 
