@@ -8,6 +8,8 @@ internal sealed interface ShopViewEvent : CoreViewEvent {
     data object Load : ShopViewEvent
     data object Retry : ShopViewEvent
     data object Back : ShopViewEvent
+    data object OpenCart : ShopViewEvent
+    data object ReceiptDismissed : ShopViewEvent
     data class CategorySelected(val categoryId: StoreCategoryId?) : ShopViewEvent
     data class ProductClicked(val productId: ProductId) : ShopViewEvent
 }

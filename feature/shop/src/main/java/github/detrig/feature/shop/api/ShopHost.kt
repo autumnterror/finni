@@ -23,6 +23,8 @@ sealed interface ShopCheckoutResult {
     data class Completed(
         override val balanceRub: Long,
         val alreadyApplied: Boolean,
+        /** Six-digit number persisted with the corresponding economy transaction. */
+        val receiptNumber: String,
     ) : ShopCheckoutResult
 
     data class Rejected(

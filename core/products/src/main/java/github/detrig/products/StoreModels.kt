@@ -59,6 +59,32 @@ data class StoreGridLayout(val columns: Int = 3) {
 }
 
 /**
+ * First two digits of a six-digit shop receipt. The next four digits are the
+ * global order of successful shop purchases, from `0001` through `9999`.
+ */
+@JvmInline
+value class StoreReceiptTypeCode(val value: Int) {
+    init {
+        require(value in 1..99) { "Receipt type code must fit into two digits" }
+    }
+}
+
+/**
+ * Stable receipt prefixes for storefront families. New catalogues configure one
+ * of these values in [StorefrontDefinition] instead of encoding store knowledge
+ * in the generic shop feature.
+ */
+object StoreReceiptTypeCodes {
+    val Grocery = StoreReceiptTypeCode(1)
+    val Clothing = StoreReceiptTypeCode(2)
+    val Furniture = StoreReceiptTypeCode(3)
+    val Interior = StoreReceiptTypeCode(4)
+    val PetCare = StoreReceiptTypeCode(5)
+    val Toys = StoreReceiptTypeCode(6)
+    val Other = StoreReceiptTypeCode(99)
+}
+
+/**
  * Complete, data-driven definition of one storefront.
  *
  * [allItemsLabel] configures the synthetic "all" filter. A `null` category passed to [itemsIn]
@@ -71,6 +97,7 @@ data class StorefrontDefinition<out T : SellableItem>(
     val categories: List<StoreCategory>,
     val items: List<T>,
     val gridLayout: StoreGridLayout = StoreGridLayout(),
+    val receiptTypeCode: StoreReceiptTypeCode = StoreReceiptTypeCodes.Other,
 ) {
     init {
         require(title.isNotBlank()) { "Storefront title must not be blank" }

@@ -41,10 +41,16 @@ data class StoreCart(
     }
 
     fun removeOne(itemId: ProductId): StoreCart {
+        return remove(itemId)
+    }
+
+    /** Removes at most [quantity] units, deleting the line when it reaches zero. */
+    fun remove(itemId: ProductId, quantity: Int = 1): StoreCart {
+        require(quantity > 0) { "Removed quantity must be positive" }
         val current = quantityOf(itemId)
         if (current == 0) return this
         val updated = LinkedHashMap(quantities)
-        if (current == 1) updated.remove(itemId) else updated[itemId] = current - 1
+        if (current <= quantity) updated.remove(itemId) else updated[itemId] = current - quantity
         return StoreCart(updated)
     }
 

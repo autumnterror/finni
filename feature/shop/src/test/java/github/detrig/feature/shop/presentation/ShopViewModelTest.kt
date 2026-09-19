@@ -8,6 +8,7 @@ import github.detrig.feature.shop.api.ShopHost
 import github.detrig.feature.shop.api.ShopCheckoutRequest
 import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
+import github.detrig.feature.shop.domain.ShopCartStore
 import github.detrig.feature.shop.navigation.ShopRouter
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryCategoryIds
@@ -38,6 +39,8 @@ class ShopViewModelTest {
     private val catalog = GroceryCatalog()
     private lateinit var host: FakeHost
     private lateinit var router: FakeRouter
+    private lateinit var cartStore: ShopCartStore
+    private lateinit var receiptStore: ShopReceiptStore
     private lateinit var viewModel: ShopViewModel
 
     @Before
@@ -53,6 +56,8 @@ class ShopViewModelTest {
         )
         host = FakeHost()
         router = FakeRouter()
+        cartStore = ShopCartStore()
+        receiptStore = ShopReceiptStore()
         viewModel = createViewModel(GroceryStoreIds.Store)
     }
 
@@ -95,11 +100,13 @@ class ShopViewModelTest {
         val appleId = catalog.storefront.items.first().id
 
         viewModel.perform(ShopViewEvent.ProductClicked(appleId))
+        dispatcher.scheduler.runCurrent()
         assertEquals(1, state().quantityInCart(appleId))
         assertEquals(15L, state().cartTotalRub)
         assertTrue(state().canAffordCart)
 
         viewModel.perform(ShopViewEvent.ProductClicked(appleId))
+        dispatcher.scheduler.runCurrent()
         assertEquals(2, state().quantityInCart(appleId))
         assertEquals(30L, state().cartTotalRub)
 
@@ -119,6 +126,15 @@ class ShopViewModelTest {
     }
 
     @Test
+    fun openCartDelegatesToFeatureRouter() {
+        start()
+
+        viewModel.perform(ShopViewEvent.OpenCart)
+
+        assertEquals(GroceryStoreIds.Store, router.openedCartStoreId)
+    }
+
+    @Test
     fun unknownStoreShowsLoadError() {
         viewModel = createViewModel(StoreId("store.unknown"))
 
@@ -134,6 +150,8 @@ class ShopViewModelTest {
             catalog.takeIf { it.storefront.storeId == requestedId }
         },
         host = host,
+        cartStore = cartStore,
+        receiptStore = receiptStore,
         router = router,
     )
 
@@ -157,11 +175,18 @@ class ShopViewModelTest {
 
     private class FakeRouter : ShopRouter {
         var backCount = 0
+        var openedCartStoreId: StoreId? = null
 
         override fun open(storeId: StoreId) = Unit
+
+        override fun openCart(storeId: StoreId) {
+            openedCartStoreId = storeId
+        }
 
         override fun back() {
             backCount++
         }
+
+        override fun closeToRoom() = Unit
     }
 }

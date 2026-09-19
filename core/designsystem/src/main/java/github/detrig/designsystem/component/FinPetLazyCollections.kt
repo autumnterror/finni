@@ -3,6 +3,7 @@ package github.detrig.designsystem.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -86,6 +87,36 @@ fun <T> FinPetLazyRow(
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(itemSpacing),
         verticalAlignment = verticalAlignment,
+        userScrollEnabled = userScrollEnabled,
+    ) {
+        items(
+            items = items,
+            key = key,
+            contentType = contentType ?: { null },
+        ) { item ->
+            itemContent(item)
+        }
+    }
+}
+
+/** Универсальный ленивый вертикальный список для карточек и других элементов витрин. */
+@Composable
+fun <T> FinPetLazyColumn(
+    items: List<T>,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    itemSpacing: Dp = AppTheme.spacing.md,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    userScrollEnabled: Boolean = true,
+    key: ((item: T) -> Any)? = null,
+    contentType: ((item: T) -> Any?)? = null,
+    itemContent: @Composable (item: T) -> Unit,
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(itemSpacing),
+        horizontalAlignment = horizontalAlignment,
         userScrollEnabled = userScrollEnabled,
     ) {
         items(

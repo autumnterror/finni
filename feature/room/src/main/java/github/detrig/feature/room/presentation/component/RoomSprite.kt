@@ -107,29 +107,41 @@ private fun IntArray.crop(content: IntRect, sourceWidth: Int): IntArray {
 
 @DrawableRes
 internal fun roomObjectAsset(id: String): Int = when (id) {
-    "decor_window" -> R.drawable.room_decor_window
-    "decor_nightstand" -> R.drawable.room_decor_nightstand
-    "decor_mirror" -> R.drawable.room_decor_mirror
-    "decor_sofa" -> R.drawable.room_decor_sofa
-    "decor_coffee_table" -> R.drawable.room_decor_coffee_table
-    "decor_cabinet" -> R.drawable.room_decor_cabinet
-    "decor_shelf" -> R.drawable.room_decor_shelf
-    "decor_notice_board" -> R.drawable.room_decor_notice_board
-    "decor_stove" -> R.drawable.room_decor_stove
-    "flight" -> R.drawable.room_object_flight
-    "music" -> R.drawable.room_object_music
-    "fishing" -> R.drawable.room_object_fishing
-    "drawing" -> R.drawable.room_object_drawing
-    "ball" -> R.drawable.room_object_ball
-    "bed" -> R.drawable.room_object_bed
-    "wardrobe" -> R.drawable.room_object_wardrobe
-    "phone" -> R.drawable.room_object_phone
-    "calendar" -> R.drawable.room_object_calendar
-    "task_board" -> R.drawable.room_object_task_board
-    "piggy_bank" -> R.drawable.room_object_piggy_bank
-    "fridge" -> R.drawable.room_object_fridge
-    "sink" -> R.drawable.room_object_sink
-    "dining_table" -> R.drawable.room_object_dining_table
-    "bowls" -> R.drawable.room_object_bowls
+    "decor_rug_bedroom" -> R.drawable.room_rug_bedroom
+    "decor_rug_living" -> R.drawable.room_rug_living
+    "decor_rug_kitchen" -> R.drawable.room_rug_kitchen
+    "decor_window" -> R.drawable.room_window
+    "decor_bedside_table" -> R.drawable.room_bedside_table
+    "decor_lamp" -> R.drawable.room_lamp
+    "decor_mirror" -> R.drawable.room_standing_mirror
+    "decor_sofa" -> R.drawable.room_sofa
+    "decor_coffee_table" -> R.drawable.room_coffee_table
+    "decor_cabinet" -> R.drawable.room_green_cabinet
+    "decor_shelf_phone" -> R.drawable.room_shelf_phone
+    "decor_plant" -> R.drawable.room_plant
+    "decor_notice_board" -> R.drawable.room_notice_board
+    "decor_range_hood" -> R.drawable.room_range_hood
+    "decor_stove" -> R.drawable.room_stove
+    "decor_shelf_airplane" -> R.drawable.room_shelf_airplane
+    "decor_shelf_keyboard" -> R.drawable.room_shelf_keyboard
+    "decor_shelf_fishing" -> R.drawable.room_shelf_fishing
+    "flight" -> R.drawable.room_toy_airplane
+    "music" -> R.drawable.room_toy_keyboard
+    "fishing" -> R.drawable.room_toy_fishing
+    "drawing" -> R.drawable.room_easel
+    "ball" -> R.drawable.room_toy_bin
+    "bed" -> R.drawable.room_bed
+    "wardrobe" -> R.drawable.room_wardrobe
+    "piggy_bank" -> R.drawable.room_piggy_bank
+    "phone" -> R.drawable.room_phone_charging_cluster
+    "calendar" -> R.drawable.room_calendar
+    "task_board" -> R.drawable.room_open_book
+    "decor_pencil" -> R.drawable.room_pencil
+    "fridge" -> R.drawable.room_fridge_foreground
+    "sink" -> R.drawable.room_kitchen_cabinet
+    "decor_cutting_board" -> R.drawable.room_cutting_board_carrot
+    "decor_chair" -> R.drawable.room_chair
+    "dining_table" -> R.drawable.room_dining_table
+    "bowls" -> R.drawable.room_food_bowl
     else -> error("Unknown room object: $id")
 }

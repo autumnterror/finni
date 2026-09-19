@@ -16,6 +16,7 @@ internal data class ShopViewState(
     val balanceRub: Long? = null,
     val loading: Boolean = true,
     val error: ShopError? = null,
+    val receipt: ShopReceipt? = null,
 ) : CoreViewState {
     val visibleItems: List<SellableItem>
         get() = storefront?.itemsIn(selectedCategoryId).orEmpty()

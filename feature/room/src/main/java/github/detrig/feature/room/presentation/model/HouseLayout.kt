@@ -48,6 +48,8 @@ internal data class HouseObjectPlacement(
 /** Reference composition, rendered as resolution-independent surfaces and individual sprites. */
 internal object HouseLayout {
     const val VERSION = 3
+    private const val SCENE_WIDTH = 2048f
+    private const val SCENE_HEIGHT = 685f
     const val WORLD_WIDTH = 6.65f
     const val VIEWPORT_WIDTH = 1f
     const val INITIAL_CAMERA_X = 3.05f
@@ -89,47 +91,83 @@ internal object HouseLayout {
         )
     }
 
-    private fun game(id: String, art: HouseObjectArt, bounds: HouseObjectBounds) =
-        referenceObject(
+    /** Fits the supplied transparent sprite into its former scene area without distorting it. */
+    private fun asset(
+        id: String,
+        art: HouseObjectArt,
+        sourceWidth: Float,
+        sourceHeight: Float,
+        frameLeft: Float,
+        frameTop: Float,
+        frameRight: Float,
+        frameBottom: Float,
+        zoneId: String? = null,
+        opensMarket: Boolean = false,
+        layer: Float = 1f,
+        interactive: Boolean = false,
+    ): HouseObjectPlacement {
+        val scale = minOf(
+            (frameRight - frameLeft) / sourceWidth,
+            (frameBottom - frameTop) / sourceHeight,
+        )
+        val width = sourceWidth * scale
+        val height = sourceHeight * scale
+        val left = frameLeft + (frameRight - frameLeft - width) / 2f
+        return referenceObject(
             id = id,
             art = art,
-            left = bounds.left,
-            top = bounds.top,
-            right = bounds.right,
-            bottom = bounds.bottom,
-            zoneId = id,
+            left = left / SCENE_WIDTH,
+            top = (frameBottom - height) / SCENE_HEIGHT,
+            right = (left + width) / SCENE_WIDTH,
+            bottom = frameBottom / SCENE_HEIGHT,
+            zoneId = zoneId,
+            opensMarket = opensMarket,
+            layer = layer,
+            interactive = interactive,
         )
+    }
 
-    private fun decoration(id: String, art: HouseObjectArt, left: Float, top: Float, right: Float, bottom: Float) =
-        referenceObject(id, art, left / 2048f, top / 685f, right / 2048f, bottom / 685f,
-            layer = 0f, interactive = false)
-
-    /** Every piece of furniture uses the same asset quality and renderer. */
+    /** Every room sprite is placed separately; only gameplay objects are interactive. */
     val objects = listOf(
-        decoration("decor_window", HouseObjectArt.WINDOW, 379f, 117f, 605f, 304f),
-        decoration("decor_nightstand", HouseObjectArt.NIGHTSTAND, 332f, 351f, 406f, 504f),
-        decoration("decor_mirror", HouseObjectArt.MIRROR, 760f, 285f, 841f, 502f),
-        decoration("decor_sofa", HouseObjectArt.SOFA, 884f, 333f, 1229f, 507f),
-        decoration("decor_coffee_table", HouseObjectArt.DINING_TABLE, 944f, 479f, 1168f, 550f),
-        decoration("decor_cabinet", HouseObjectArt.CABINET, 1235f, 403f, 1385f, 507f),
-        decoration("decor_shelf", HouseObjectArt.CABINET, 1157f, 199f, 1331f, 303f),
-        decoration("decor_notice_board", HouseObjectArt.TASK_BOARD, 1425f, 202f, 1530f, 324f),
-        decoration("decor_stove", HouseObjectArt.STOVE, 1840f, 147f, 1985f, 505f),
-        game("flight", HouseObjectArt.FLIGHT, HouseObjectBounds(0.011230f, 0.195620f, 0.076660f, 0.299270f)),
-        game("music", HouseObjectArt.MUSIC, HouseObjectBounds(0.079590f, 0.281752f, 0.146484f, 0.382482f)),
-        game("fishing", HouseObjectArt.FISHING, HouseObjectBounds(0.071289f, 0.407299f, 0.137695f, 0.548905f)),
-        game("drawing", HouseObjectArt.DRAWING, HouseObjectBounds(0.008789f, 0.503650f, 0.077637f, 0.800000f)),
-        game("ball", HouseObjectArt.BALL, HouseObjectBounds(0.083496f, 0.626277f, 0.142090f, 0.781022f)),
-        referenceObject("bed", HouseObjectArt.BED, 0.190430f, 0.499270f, 0.300293f, 0.792701f),
-        referenceObject("wardrobe", HouseObjectArt.WARDROBE, 0.298828f, 0.315328f, 0.373047f, 0.737226f),
-        referenceObject("piggy_bank", HouseObjectArt.PIGGY_BANK, 0.623535f, 0.508029f, 0.659180f, 0.604380f),
-        referenceObject("phone", HouseObjectArt.PHONE, 0.592773f, 0.272993f, 0.623047f, 0.398540f, opensMarket = true),
-        referenceObject("calendar", HouseObjectArt.CALENDAR, 0.656738f, 0.275912f, 0.692383f, 0.423358f),
-        referenceObject("task_board", HouseObjectArt.TASK_BOARD, 0.484863f, 0.686131f, 0.553223f, 0.750365f),
-        referenceObject("fridge", HouseObjectArt.FRIDGE, 0.766602f, 0.332847f, 0.828613f, 0.738686f),
-        referenceObject("sink", HouseObjectArt.SINK, 0.823242f, 0.487591f, 0.900879f, 0.732847f),
-        referenceObject("dining_table", HouseObjectArt.DINING_TABLE, 0.854492f, 0.598540f, 0.979004f, 0.804380f, layer = 2f, interactive = false),
-        referenceObject("bowls", HouseObjectArt.BOWLS, 0.917969f, 0.601460f, 0.948730f, 0.665693f, layer = 3f),
+        asset("decor_rug_bedroom", HouseObjectArt.DOOR, 741f, 227f, 341f, 465f, 660f, 563f, layer = -1f),
+        asset("decor_rug_living", HouseObjectArt.DOOR, 1245f, 212f, 871f, 499f, 1245f, 563f, layer = -1f),
+        asset("decor_rug_kitchen", HouseObjectArt.DOOR, 523f, 200f, 1719f, 444f, 2030f, 563f, layer = -1f),
+
+        asset("decor_window", HouseObjectArt.WINDOW, 499f, 340f, 379f, 117f, 605f, 304f, layer = 0f),
+        asset("decor_bedside_table", HouseObjectArt.NIGHTSTAND, 171f, 186f, 332f, 424f, 406f, 504f, layer = 0f),
+        asset("decor_lamp", HouseObjectArt.NIGHTSTAND, 118f, 166f, 345f, 355f, 395f, 435f, layer = 1f),
+        asset("decor_mirror", HouseObjectArt.MIRROR, 203f, 439f, 760f, 285f, 841f, 502f, layer = 0f),
+        asset("decor_sofa", HouseObjectArt.SOFA, 907f, 451f, 884f, 333f, 1229f, 507f, layer = 0f),
+        asset("decor_coffee_table", HouseObjectArt.DINING_TABLE, 482f, 197f, 968f, 474f, 1144f, 550f, layer = 2f),
+        asset("decor_cabinet", HouseObjectArt.CABINET, 421f, 273f, 1235f, 403f, 1385f, 507f, layer = 0f),
+        asset("decor_shelf_phone", HouseObjectArt.PHONE, 459f, 124f, 1153f, 259f, 1337f, 308f, layer = 0f),
+        asset("decor_plant", HouseObjectArt.PHONE, 244f, 320f, 1281f, 200f, 1325f, 266f, layer = 2f),
+        asset("decor_notice_board", HouseObjectArt.TASK_BOARD, 365f, 332f, 1425f, 202f, 1530f, 324f, layer = 0f),
+        asset("decor_range_hood", HouseObjectArt.STOVE, 268f, 291f, 1890f, 100f, 2035f, 278f, layer = 0f),
+        asset("decor_stove", HouseObjectArt.STOVE, 280f, 393f, 1890f, 301f, 2035f, 505f, layer = 0f),
+
+        asset("decor_shelf_airplane", HouseObjectArt.FLIGHT, 406f, 124f, 22f, 176f, 158f, 217f, layer = 0f),
+        asset("decor_shelf_keyboard", HouseObjectArt.MUSIC, 394f, 122f, 160f, 226f, 300f, 269f, layer = 0f),
+        asset("decor_shelf_fishing", HouseObjectArt.FISHING, 404f, 124f, 145f, 342f, 283f, 385f, layer = 0f),
+        asset("flight", HouseObjectArt.FLIGHT, 351f, 192f, 42f, 131f, 142f, 187f, zoneId = "flight", interactive = true),
+        asset("music", HouseObjectArt.MUSIC, 405f, 187f, 173f, 193f, 288f, 247f, zoneId = "music", interactive = true),
+        asset("fishing", HouseObjectArt.FISHING, 377f, 281f, 157f, 278f, 269f, 361f, zoneId = "fishing", interactive = true),
+        asset("drawing", HouseObjectArt.DRAWING, 415f, 550f, 18f, 345f, 159f, 548f, zoneId = "drawing", interactive = true),
+        asset("ball", HouseObjectArt.BALL, 424f, 317f, 171f, 429f, 291f, 535f, zoneId = "ball", interactive = true),
+
+        asset("bed", HouseObjectArt.BED, 509f, 433f, 390f, 342f, 615f, 543f, interactive = true),
+        asset("wardrobe", HouseObjectArt.WARDROBE, 348f, 561f, 612f, 216f, 764f, 505f, interactive = true),
+        asset("piggy_bank", HouseObjectArt.PIGGY_BANK, 292f, 220f, 1277f, 356f, 1350f, 422f, interactive = true),
+        asset("phone", HouseObjectArt.PHONE, 412f, 369f, 1151f, 177f, 1273f, 290f, opensMarket = true, interactive = true, layer = 2f),
+        asset("calendar", HouseObjectArt.CALENDAR, 236f, 304f, 1345f, 189f, 1418f, 290f, interactive = true),
+        asset("task_board", HouseObjectArt.TASK_BOARD, 408f, 172f, 1021f, 476f, 1091f, 505f, interactive = true, layer = 3f),
+        asset("decor_pencil", HouseObjectArt.TASK_BOARD, 197f, 129f, 1095f, 482f, 1128f, 504f, layer = 4f),
+        asset("fridge", HouseObjectArt.FRIDGE, 631f, 1214f, 1568f, 196f, 1695f, 502f, interactive = true, layer = 2f),
+        asset("sink", HouseObjectArt.SINK, 326f, 291f, 1700f, 334f, 1888f, 502f, interactive = true),
+        asset("decor_cutting_board", HouseObjectArt.SINK, 1477f, 364f, 1720f, 331f, 1830f, 361f, layer = 2f),
+        asset("decor_chair", HouseObjectArt.DINING_TABLE, 266f, 361f, 1708f, 438f, 1789f, 547f, layer = 1f),
+        asset("dining_table", HouseObjectArt.DINING_TABLE, 523f, 304f, 1785f, 430f, 1970f, 551f, layer = 2f),
+        asset("bowls", HouseObjectArt.BOWLS, 224f, 136f, 1846f, 421f, 1909f, 465f, interactive = true, layer = 3f),
     )
 
     fun initialPosition() = HousePosition(VERSION, INITIAL_CAMERA_X, INITIAL_CAMERA_X + 0.5f)

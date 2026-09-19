@@ -1,6 +1,7 @@
 package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -13,8 +14,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetHouseColors
+import github.detrig.designsystem.theme.FinPetTheme
 
 /** Resolution-independent surfaces; furniture shares the interactive sprite renderer. */
 @Composable
@@ -56,10 +60,6 @@ internal fun HouseBackground(modifier: Modifier = Modifier) {
             )
             drawLine(colors.skirting, Offset(0f, 474f), Offset(2048f, 474f), 2f)
 
-            rug(341f, 660f, 503f, 563f, colors)
-            rug(871f, 1245f, 503f, 563f, colors)
-            rug(1719f, 2030f, 503f, 563f, colors)
-
             listOf(308f, 844f, 1539f).forEach { x ->
                 drawRect(
                     Brush.horizontalGradient(
@@ -100,16 +100,10 @@ private fun DrawScope.fish(center: Offset, color: Color) {
     drawPath(path, color, style = Stroke(2f))
 }
 
-private fun DrawScope.rug(left: Float, right: Float, top: Float, bottom: Float, colors: FinPetHouseColors) {
-    fun contour(inset: Float) = Path().apply {
-        moveTo(left + 22f + inset, top + inset)
-        lineTo(right - 23f - inset, top + inset)
-        lineTo(right - inset, bottom - inset)
-        lineTo(left + inset, bottom - inset)
-        close()
+@Preview(name = "Фон комнаты", widthDp = 360, heightDp = 240)
+@Composable
+private fun HouseBackgroundPreview() {
+    FinPetTheme {
+        HouseBackground(Modifier.size(360.dp, 240.dp))
     }
-    val outline = contour(0f)
-    drawPath(outline, Brush.verticalGradient(listOf(colors.rugHighlight, colors.rug), top, bottom))
-    drawPath(outline, colors.rugBorder, style = Stroke(2.5f))
-    drawPath(contour(13f), colors.rugBorder.copy(alpha = 0.35f), style = Stroke(1.5f))
 }

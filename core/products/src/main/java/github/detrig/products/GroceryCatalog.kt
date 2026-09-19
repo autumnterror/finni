@@ -75,6 +75,7 @@ class GroceryCatalog : SellableCatalog<FoodItem> {
         ),
         items = PRODUCTS + MEALS + DRINKS,
         gridLayout = StoreGridLayout(columns = 3),
+        receiptTypeCode = StoreReceiptTypeCodes.Grocery,
     )
 
     companion object {

@@ -10,12 +10,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.ImageBitmap
@@ -45,6 +51,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetBackButton
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetFilterChip
 import github.detrig.designsystem.component.FinPetGridColumns
@@ -71,43 +79,56 @@ private val ProductTitleHeight = 40.dp
 private val ProductDetailHeight = 24.dp
 private val ProductPriceHeight = 32.dp
 
+/** Applies Android display-cutout and navigation safe areas only to storefront screens. */
+@Composable
+internal fun Modifier.shopSafeDrawingPadding(): Modifier = windowInsetsPadding(
+    insets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical),
+)
+
 @Composable
 internal fun ShopHeader(
     title: String,
     balanceRub: Long?,
     onBack: () -> Unit,
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
         FinPetBackButton(
             onClick = onBack,
             contentDescription = stringResource(R.string.shop_back),
+            modifier = Modifier.align(Alignment.CenterStart),
         )
         Text(
             text = title,
-            modifier = Modifier.weight(1f),
-            style = AppTheme.typography.sectionTitle,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 96.dp),
+            style = AppTheme.typography.screenTitle,
             color = AppTheme.colors.storefront.onSurface,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        ShopBalanceBadge(balanceRub)
+        ShopBalanceBadge(
+            balanceRub = balanceRub,
+            modifier = Modifier.align(Alignment.CenterEnd),
+        )
     }
 }
 
 @Composable
-private fun ShopBalanceBadge(balanceRub: Long?) {
+private fun ShopBalanceBadge(
+    balanceRub: Long?,
+    modifier: Modifier = Modifier,
+) {
     val value = balanceRub?.toString() ?: "—"
     val valueStyle = compactCurrencyStyle(value.length)
 
     Surface(
-        modifier = Modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget),
+        modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget),
         shape = AppTheme.shapes.storefrontControl,
         color = AppTheme.colors.storefront.surface,
         contentColor = AppTheme.colors.storefront.onSurface,
@@ -359,7 +380,7 @@ private fun ShopCartQuantityBadge(
 }
 
 @Composable
-private fun ShopDetailIcon(icon: ShopItemDetailIcon) {
+internal fun ShopDetailIcon(icon: ShopItemDetailIcon) {
     when (icon) {
         ShopItemDetailIcon.SATIETY -> SatietyAppleIcon()
         ShopItemDetailIcon.HAPPINESS -> Text(
@@ -449,23 +470,23 @@ private fun SatietyAppleIcon() {
 }
 
 @Composable
-private fun ShopProductArtwork(
+internal fun ShopProductArtwork(
     item: SellableItem,
     artworkResolver: ShopArtworkResolver,
+    artworkSize: androidx.compose.ui.unit.Dp = ProductArtworkHeight,
+    modifier: Modifier = Modifier.fillMaxWidth(),
 ) {
     val artwork = artworkResolver.resolve(item.imageKey)
     val placeholderDescription = stringResource(R.string.shop_product_image_placeholder)
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(ProductArtworkHeight),
+        modifier = modifier.height(artworkSize),
         contentAlignment = Alignment.Center,
     ) {
         if (artwork != null) {
             Image(
                 painter = artworkPainter(artwork),
                 contentDescription = item.title,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(artworkSize),
                 contentScale = ContentScale.Fit,
             )
         } else {
@@ -476,6 +497,38 @@ private fun ShopProductArtwork(
                 modifier = Modifier.semantics { contentDescription = placeholderDescription },
             )
         }
+    }
+}
+
+@Composable
+internal fun ShopCartIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = AppTheme.colors.storefront.onPrimaryAction,
+) {
+    val strokeWidth = AppTheme.sizes.borderStrong
+    Canvas(modifier = modifier.size(26.dp)) {
+        val basket = Path().apply {
+            moveTo(size.width * 0.18f, size.height * 0.36f)
+            lineTo(size.width * 0.82f, size.height * 0.36f)
+            lineTo(size.width * 0.72f, size.height * 0.8f)
+            lineTo(size.width * 0.28f, size.height * 0.8f)
+            close()
+        }
+        drawPath(basket, color = tint, style = Stroke(strokeWidth.toPx()))
+        drawLine(
+            color = tint,
+            start = androidx.compose.ui.geometry.Offset(size.width * 0.36f, size.height * 0.36f),
+            end = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.14f),
+            strokeWidth = strokeWidth.toPx(),
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = tint,
+            start = androidx.compose.ui.geometry.Offset(size.width * 0.64f, size.height * 0.36f),
+            end = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.14f),
+            strokeWidth = strokeWidth.toPx(),
+            cap = StrokeCap.Round,
+        )
     }
 }
 

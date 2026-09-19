@@ -8,5 +8,26 @@
     <string name="shop_retry">Повторить</string>
     <string name="shop_item_accessibility">%1$s, цена %2$d рублей</string>
     <string name="shop_item_cart_quantity">В корзине: %1$d</string>
+    <string name="shop_open_cart">В корзину</string>
+    <string name="shop_cart_title">Корзина</string>
+    <string name="shop_cart_empty">Корзина пока пуста</string>
+    <string name="shop_cart_total">Итого</string>
+    <string name="shop_receipt_number">Чек № %1$s</string>
+    <string name="shop_receipt_item">Товар</string>
+    <string name="shop_receipt_quantity">Кол-во</string>
+    <string name="shop_receipt_amount">Сумма</string>
+    <string name="shop_receipt_unit_price">%1$d монет / шт.</string>
+    <string name="shop_receipt_total">ИТОГО</string>
+    <string name="shop_pay">Оплатить</string>
+    <string name="shop_decrease_quantity">Уменьшить количество: %1$s</string>
+    <string name="shop_increase_quantity">Увеличить количество: %1$s</string>
+    <string name="shop_not_enough_money">Не хватает %1$d ₽</string>
+    <string name="shop_total_accessibility">Итого: %1$d рублей</string>
+    <string name="shop_confirm_payment_title">Оплатить товары?</string>
+    <string name="shop_confirm_payment_body">Итого: %1$d ₽</string>
+    <string name="shop_confirm_payment">Оплатить</string>
+    <string name="shop_cancel">Отмена</string>
+    <string name="shop_payment_error">Не удалось оплатить товары. Попробуйте ещё раз.</string>
+    <string name="shop_payment_insufficient_funds">Недостаточно монет для оплаты.</string>
     <string name="shop_product_image_placeholder">Изображение товара появится здесь</string>
 </resources>
