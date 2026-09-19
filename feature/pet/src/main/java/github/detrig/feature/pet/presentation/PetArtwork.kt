@@ -14,6 +14,7 @@ internal data class PetArtwork(
 
 /** Портреты кадрируются из тех же базовых спрайтов и масок, что используются в комнате. */
 internal fun PetSpecies.artwork(): PetArtwork = when (this) {
+    PetSpecies.Hamster -> error("Hamster uses layered artwork")
     PetSpecies.Cat -> PetArtwork(
         R.drawable.pet_cat_base, R.drawable.pet_cat_color_mask,
         PetFaceCrop(left = 0.12f, top = 0f, side = 0.76f),

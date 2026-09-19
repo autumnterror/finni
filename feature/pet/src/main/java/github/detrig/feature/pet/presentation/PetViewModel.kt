@@ -21,6 +21,9 @@ internal class PetViewModel(
             }
             is PetViewEvent.SpeciesSelected -> updateCreating { copy(species = viewEvent.value) }
             is PetViewEvent.ColorSelected -> updateCreating { copy(color = viewEvent.value) }
+            is PetViewEvent.HamsterAppearanceChanged -> updateCreating {
+                copy(hamsterAppearance = viewEvent.value)
+            }
             PetViewEvent.CreateClicked -> create()
             PetViewEvent.PetClicked -> if (stateData is PetViewState.Ready) {
                 commands.onNext(PetCommand.ShowGreeting)
@@ -48,7 +51,12 @@ internal class PetViewModel(
             updateState(current.copy(nameError = error))
             return
         }
-        createPet(current.name, current.species, current.color)
+        createPet(
+            name = current.name,
+            species = current.species,
+            color = current.color,
+            hamsterAppearance = current.hamsterAppearance,
+        )
         commands.onNext(PetCommand.ShowGreeting)
     }
 

@@ -56,6 +56,8 @@ fun PetScene(
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
+    val hamsterAssets = rememberHamsterAssets()
+    val hamsterBlink = rememberHamsterBlink()
     Box(modifier) {
         Canvas(Modifier.fillMaxSize()) {
             drawOval(
@@ -65,21 +67,30 @@ fun PetScene(
             )
         }
         Box(Modifier.fillMaxSize().petCalmIdleAnimation(animateIdle)) {
-            Image(
-                bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
-                contentDescription = description,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-                filterQuality = FilterQuality.None,
-            )
-            Image(
-                bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-                colorFilter = profile.color.colorFilter(),
-                filterQuality = FilterQuality.None,
-            )
+            if (profile.species == PetSpecies.Hamster && hamsterAssets != null) {
+                HamsterPreview(
+                    assets = hamsterAssets,
+                    appearance = profile.hamsterAppearance,
+                    modifier = Modifier.fillMaxSize(),
+                    blink = hamsterBlink,
+                )
+            } else if (profile.species != PetSpecies.Hamster) {
+                Image(
+                    bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
+                    contentDescription = description,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                    filterQuality = FilterQuality.None,
+                )
+                Image(
+                    bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = profile.color.colorFilter(),
+                    filterQuality = FilterQuality.None,
+                )
+            }
         }
     }
 }
@@ -90,6 +101,7 @@ internal fun rememberPetAppearanceBitmap(
     maxSidePx: Int,
 ): ImageBitmap? {
     require(maxSidePx > 0)
+    if (profile.species == PetSpecies.Hamster) return null
     val resources = LocalResources.current
     val tint = profile.color.tint()
     val tintArgb = tint.toArgb()
@@ -148,6 +160,7 @@ private fun decodeSampledBitmap(
 @Composable
 internal fun PetSpecies.title(): String = stringResource(
     when (this) {
+        PetSpecies.Hamster -> R.string.pet_species_hamster
         PetSpecies.Cat -> R.string.pet_species_cat
         PetSpecies.Dog -> R.string.pet_species_dog
         PetSpecies.Rat -> R.string.pet_species_rat
