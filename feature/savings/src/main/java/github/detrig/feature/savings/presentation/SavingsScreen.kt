@@ -6,26 +6,35 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.FinPetAmountInput
+import github.detrig.designsystem.component.FinPetBackButton
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetMoneyAmount
 import github.detrig.designsystem.component.FinPetOutlinedButton
-import github.detrig.designsystem.component.FinPetProgressIndicator
+import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
+import github.detrig.designsystem.component.FinPetStorefrontCard
+import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.feature.economy.domain.EconomyState
+import github.detrig.feature.economy.domain.PeriodicIncome
 import github.detrig.feature.economy.domain.RejectionReason
+import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.savings.R
 import github.detrig.feature.savings.SavingsFeature
 import github.detrig.feature.savings.api.SavingsGoalDraft
@@ -39,50 +48,73 @@ internal fun SavingsScreen() {
     SavingsContent(state, viewModel::perform)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SavingsContent(state: SavingsViewState, onEvent: (SavingsViewEvent) -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.savings_title)) },
-                navigationIcon = {
-                    TextButton(onClick = { onEvent(SavingsViewEvent.Back) }) {
-                        Text(stringResource(R.string.savings_back))
-                    }
-                },
+    Scaffold(containerColor = AppTheme.colors.storefront.background) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            SavingsHeader(
+                balanceRub = state.economy?.availableRub,
+                onBack = { onEvent(SavingsViewEvent.Back) },
             )
-        },
-    ) { padding ->
-        when {
-            state.loading -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
-            else -> Column(
-                Modifier.fillMaxSize().padding(padding).padding(AppTheme.spacing.lg)
-                    .verticalScroll(rememberScrollState()).testTag("savings_screen"),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.lg),
-            ) {
-                val economy = state.economy
-                if (economy != null) BalanceCard(economy.availableRub, economy.savingsRub)
-                state.goal?.let { GoalCard(it) }
-                if (state.goal == null) {
-                    Text(stringResource(R.string.savings_choose_goal), style = AppTheme.typography.sectionTitle)
-                } else {
-                    Text(stringResource(R.string.savings_other_goals), style = AppTheme.typography.label)
+            when {
+                state.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    CircularProgressIndicator(color = AppTheme.colors.storefront.outline)
                 }
-                GoalChoices(state.starterGoals, state.busy) { onEvent(SavingsViewEvent.GoalSelected(it)) }
-                if (state.goal != null) {
-                    Button(
-                        onClick = { onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.DEPOSIT)) },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.minimumTouchTarget)
-                            .testTag("savings_deposit"),
-                    ) { Text(stringResource(R.string.savings_deposit)) }
-                    OutlinedButton(
-                        onClick = { onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.WITHDRAW)) },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.minimumTouchTarget)
-                            .testTag("savings_withdraw"),
-                    ) { Text(stringResource(R.string.savings_withdraw)) }
+
+                else -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            horizontal = AppTheme.spacing.lg,
+                            vertical = AppTheme.spacing.sm,
+                        )
+                        .testTag("savings_screen"),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.lg),
+                ) {
+                    val economy = state.economy
+                    if (economy != null) {
+                        BalanceCard(economy.availableRub, economy.savingsRub)
+                    }
+                    state.goal?.let { GoalCard(it) }
+                    Text(
+                        text = stringResource(
+                            if (state.goal == null) {
+                                R.string.savings_choose_goal
+                            } else {
+                                R.string.savings_other_goals
+                            },
+                        ),
+                        style = if (state.goal == null) {
+                            AppTheme.typography.sectionTitle
+                        } else {
+                            AppTheme.typography.label
+                        },
+                        color = AppTheme.colors.storefront.onSurface,
+                    )
+                    GoalChoices(state.starterGoals, state.busy) {
+                        onEvent(SavingsViewEvent.GoalSelected(it))
+                    }
+                    if (state.goal != null) {
+                        FinPetButton(
+                            text = stringResource(R.string.savings_deposit),
+                            onClick = {
+                                onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.DEPOSIT))
+                            },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth().testTag("savings_deposit"),
+                            style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                        )
+                        FinPetOutlinedButton(
+                            text = stringResource(R.string.savings_withdraw),
+                            onClick = {
+                                onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.WITHDRAW))
+                            },
+                            enabled = !state.busy,
+                            modifier = Modifier.fillMaxWidth().testTag("savings_withdraw"),
+                            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                        )
+                    }
                 }
             }
         }
@@ -123,24 +155,76 @@ private fun SavingsContent(state: SavingsViewState, onEvent: (SavingsViewEvent) 
 }
 
 @Composable
+private fun SavingsHeader(balanceRub: Long?, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FinPetBackButton(
+            onClick = onBack,
+            contentDescription = stringResource(R.string.savings_back),
+        )
+        Text(
+            text = stringResource(R.string.savings_title),
+            modifier = Modifier.weight(1f),
+            style = AppTheme.typography.sectionTitle,
+            color = AppTheme.colors.storefront.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        FinPetStorefrontBalanceBadge(balanceRub)
+    }
+}
+
+@Composable
 private fun BalanceCard(availableRub: Long, savingsRub: Long) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(AppTheme.spacing.md), verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
-            Text(stringResource(R.string.savings_wallet, availableRub), style = AppTheme.typography.bodyStrong)
-            Text(stringResource(R.string.savings_total, savingsRub), style = AppTheme.typography.body)
+    FinPetStorefrontCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = AppTheme.colors.storefront.selectedSurface,
+    ) {
+        Column(
+            Modifier.padding(AppTheme.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+        ) {
+            Text(
+                text = stringResource(R.string.savings_total_label),
+                style = AppTheme.typography.sectionTitle,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+            FinPetMoneyAmount(savingsRub.toString())
+            Text(
+                text = stringResource(R.string.savings_wallet, availableRub),
+                style = AppTheme.typography.caption,
+                color = AppTheme.colors.textSecondary,
+            )
         }
     }
 }
 
 @Composable
-private fun GoalCard(progress: github.detrig.feature.economy.domain.SavingsGoalProgress) {
-    ElevatedCard(Modifier.fillMaxWidth().testTag("savings_goal")) {
-        Column(Modifier.padding(AppTheme.spacing.md), verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
-            Text(progress.goal.title, style = AppTheme.typography.sectionTitle)
-            Text(stringResource(R.string.savings_progress, progress.savedRub, progress.goal.targetRub), style = AppTheme.typography.bodyStrong)
-            FinPetProgressIndicator(
+private fun GoalCard(progress: SavingsGoalProgress) {
+    FinPetStorefrontCard(Modifier.fillMaxWidth().testTag("savings_goal")) {
+        Column(Modifier.padding(AppTheme.spacing.lg), verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)) {
+            Text(
+                text = stringResource(R.string.savings_goal_label),
+                style = AppTheme.typography.label,
+                color = AppTheme.colors.actionPrimary,
+            )
+            Text(
+                text = progress.goal.title,
+                style = AppTheme.typography.sectionTitle,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+            Text(
+                stringResource(R.string.savings_progress, progress.savedRub, progress.goal.targetRub),
+                style = AppTheme.typography.bodyStrong,
+            )
+            FinPetStorefrontProgressIndicator(
                 progress = (progress.savedRub.toFloat() / progress.goal.targetRub).coerceIn(0f, 1f),
-                color = AppTheme.colors.statusPositive.accent,
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
@@ -156,11 +240,13 @@ private fun GoalCard(progress: github.detrig.feature.economy.domain.SavingsGoalP
 private fun GoalChoices(goals: List<SavingsGoalDraft>, busy: Boolean, onGoal: (SavingsGoalDraft) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
         goals.forEach { goal ->
-            OutlinedButton(
+            FinPetOutlinedButton(
+                text = stringResource(R.string.savings_goal_choice, goal.title, goal.targetRub),
                 onClick = { onGoal(goal) },
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.minimumTouchTarget),
-            ) { Text(stringResource(R.string.savings_goal_choice, goal.title, goal.targetRub)) }
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+            )
         }
     }
 }
@@ -253,15 +339,42 @@ private fun SavingsNotice.message(): String = when (this) {
     }
 }
 
-@Preview(name = "Перевод в копилку", widthDp = 360, heightDp = 560, showBackground = true)
+@Preview(name = "Копилка", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable
-private fun TransferDialogPreview() {
+private fun SavingsContentPreview() {
+    val income = PeriodicIncome(
+        amountRub = 500,
+        periodMillis = 604_800_000,
+        nextAtMillis = 1_700_000_000_000,
+    )
     FinPetTheme {
-        TransferDialog(
-            direction = SavingsTransferDirection.DEPOSIT,
-            busy = false,
-            onDismiss = {},
-            onConfirm = {},
+        SavingsContent(
+            state = SavingsViewState(
+                economy = EconomyState(
+                    availableRub = 480,
+                    savingsRub = 160,
+                    debtRub = 0,
+                    periodicIncome = income,
+                ),
+                goal = SavingsGoalProgress(
+                    goal = SavingsGoal(
+                        id = "starter:drawing-set",
+                        title = "Набор для рисования",
+                        targetRub = 500,
+                    ),
+                    savedRub = 160,
+                    remainingRub = 340,
+                    isReached = false,
+                    nextPeriodicIncome = income,
+                ),
+                starterGoals = listOf(
+                    SavingsGoalDraft("starter:pet-toy", "Игрушка для питомца", 300),
+                    SavingsGoalDraft("starter:drawing-set", "Набор для рисования", 500),
+                    SavingsGoalDraft("starter:big-dream", "Большая мечта", 800),
+                ),
+                loading = false,
+            ),
+            onEvent = {},
         )
     }
 }

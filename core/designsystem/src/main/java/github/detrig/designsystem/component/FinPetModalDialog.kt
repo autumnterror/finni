@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -203,18 +204,9 @@ fun FinPetModalSection(
         FinPetModalSectionTone.Highlighted -> AppTheme.colors.storefront.selectedSurface
         FinPetModalSectionTone.Warning -> AppTheme.colors.currencyContainer
     }
-    FinPetCard(
-        modifier = modifier.shadow(
-            elevation = AppTheme.elevation.low,
-            shape = AppTheme.shapes.storefrontControl,
-            ambientColor = AppTheme.colors.storefront.shadow,
-            spotColor = AppTheme.colors.storefront.shadow,
-        ),
-        shape = AppTheme.shapes.storefrontControl,
+    FinPetStorefrontCard(
+        modifier = modifier,
         containerColor = container,
-        contentColor = AppTheme.colors.storefront.onSurface,
-        borderColor = AppTheme.colors.storefront.outline,
-        borderWidth = AppTheme.sizes.borderStrong,
         content = content,
     )
 }
@@ -256,6 +248,42 @@ fun FinPetMoneyAmount(
                 }
             }
             Text(text = amount, style = AppTheme.typography.currency, maxLines = 1)
+        }
+    }
+}
+
+/** Компактный баланс для шапки, совпадающий с балансом каталога магазина. */
+@Composable
+fun FinPetStorefrontBalanceBadge(
+    balanceRub: Long?,
+    modifier: Modifier = Modifier,
+) {
+    val value = balanceRub?.toString() ?: "—"
+    val valueStyle: TextStyle = when {
+        value.length >= 7 -> AppTheme.typography.caption
+        value.length >= 5 -> AppTheme.typography.bodyStrong
+        else -> AppTheme.typography.currency
+    }
+    Surface(
+        modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget),
+        shape = AppTheme.shapes.storefrontControl,
+        color = AppTheme.colors.storefront.surface,
+        contentColor = AppTheme.colors.storefront.onSurface,
+        border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
+        shadowElevation = AppTheme.elevation.low,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "₽",
+                color = AppTheme.colors.currencyAccent,
+                style = valueStyle,
+                maxLines = 1,
+            )
+            Text(text = value, style = valueStyle, maxLines = 1)
         }
     }
 }
