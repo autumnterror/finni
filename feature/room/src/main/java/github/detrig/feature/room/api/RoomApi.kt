@@ -12,5 +12,6 @@ interface RoomApi {
     fun Content(
         modifier: Modifier = Modifier,
         petContent: @Composable (Modifier) -> Unit = {},
+        onMirrorClick: () -> Unit = {},
     )
 }

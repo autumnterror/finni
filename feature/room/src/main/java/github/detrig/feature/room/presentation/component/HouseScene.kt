@@ -47,6 +47,7 @@ internal fun HouseScene(
     onPiggyBankClick: () -> Unit,
     onTestsClick: () -> Unit,
     onWardrobeClick: () -> Unit,
+    onMirrorClick: () -> Unit,
     onFoodClick: () -> Unit,
     onDishesClick: () -> Unit,
     onFeedingClick: () -> Unit,
@@ -143,6 +144,7 @@ internal fun HouseScene(
                         motion.pause()
                         save()
                         when (id) {
+                            "decor_mirror" -> onMirrorClick()
                             "phone" -> onMarketClick()
                             "bed" -> onBedClick()
                             "calendar" -> onCalendarClick()

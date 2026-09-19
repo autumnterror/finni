@@ -24,7 +24,7 @@ internal class PetApiImpl(
     @Composable
     override fun RequirePet(
         modifier: Modifier,
-        content: @Composable (PetProfile, () -> Unit) -> Unit,
+        content: @Composable (PetProfile, () -> Unit, () -> Unit) -> Unit,
     ) {
         PetHostScreen(modifier = modifier, content = content)
     }

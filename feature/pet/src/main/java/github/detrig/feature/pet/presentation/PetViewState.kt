@@ -17,6 +17,7 @@ internal sealed interface PetViewState : CoreViewState {
         val color: PetColor = PetColor.Sunny,
         val hamsterAppearance: HamsterAppearance = HamsterAppearance(),
         val nameError: PetNameValidationError? = null,
+        val existingProfile: PetProfile? = null,
     ) : PetViewState {
         val canCreate: Boolean get() = PetNameRules.validate(name) == null
     }

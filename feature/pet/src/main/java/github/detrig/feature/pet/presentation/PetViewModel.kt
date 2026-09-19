@@ -24,6 +24,8 @@ internal class PetViewModel(
             is PetViewEvent.HamsterAppearanceChanged -> updateCreating {
                 copy(hamsterAppearance = viewEvent.value)
             }
+            PetViewEvent.CustomizeClicked -> customize()
+            PetViewEvent.CancelCustomization -> cancelCustomization()
             PetViewEvent.CreateClicked -> create()
             PetViewEvent.PetClicked -> if (stateData is PetViewState.Ready) {
                 commands.onNext(PetCommand.ShowGreeting)
@@ -57,7 +59,28 @@ internal class PetViewModel(
             color = current.color,
             hamsterAppearance = current.hamsterAppearance,
         )
-        commands.onNext(PetCommand.ShowGreeting)
+        if (current.existingProfile == null) {
+            commands.onNext(PetCommand.ShowGreeting)
+        }
+    }
+
+    private fun customize() {
+        val current = nullableState<PetViewState.Ready>() ?: return
+        val profile = current.profile
+        updateState(
+            PetViewState.Creating(
+                name = profile.name,
+                species = profile.species,
+                color = profile.color,
+                hamsterAppearance = profile.hamsterAppearance,
+                existingProfile = profile,
+            ),
+        )
+    }
+
+    private fun cancelCustomization() {
+        val current = nullableState<PetViewState.Creating>() ?: return
+        current.existingProfile?.let { updateState(PetViewState.Ready(it)) }
     }
 
     private fun updateCreating(block: PetViewState.Creating.() -> PetViewState.Creating) {

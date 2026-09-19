@@ -118,6 +118,7 @@ internal fun PetCreationScreen(
     state: PetViewState.Creating,
     onEvent: (PetViewEvent) -> Unit,
     modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
 ) {
     val assets = rememberHamsterAssets()
     val blink = rememberHamsterBlink()
@@ -130,7 +131,7 @@ internal fun PetCreationScreen(
         blink = blink,
         canFinish = assets != null,
         modifier = modifier,
-        onBack = {},
+        onBack = onBack,
         onCategorySelected = { categoryName = it.name },
         onAppearanceChanged = { onEvent(PetViewEvent.HamsterAppearanceChanged(it)) },
         onReset = { onEvent(PetViewEvent.HamsterAppearanceChanged(HamsterAppearance())) },

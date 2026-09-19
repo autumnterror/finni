@@ -8,10 +8,11 @@ import github.detrig.feature.gamesession.presentation.component.GameSessionHome
 @Composable
 internal fun GameSessionScreen() {
     val component = GameSessionFeature.component()
-    component.petApi.RequirePet(modifier = Modifier) { petProfile, onPetClick ->
+    component.petApi.RequirePet(modifier = Modifier) { petProfile, onPetClick, onCustomizeClick ->
         GameSessionHome { modifier ->
             component.roomApi.Content(
                 modifier = modifier,
+                onMirrorClick = onCustomizeClick,
                 petContent = { petModifier ->
                     component.petApi.Content(
                         profile = petProfile,

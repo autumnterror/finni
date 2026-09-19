@@ -13,7 +13,7 @@ interface PetApi {
     @Composable
     fun RequirePet(
         modifier: Modifier = Modifier,
-        content: @Composable (PetProfile, onPetClick: () -> Unit) -> Unit,
+        content: @Composable (PetProfile, onPetClick: () -> Unit, onCustomizeClick: () -> Unit) -> Unit,
     )
 
     /** Рисует актуальную внешность питомца в переданном игровой сценой месте. */
