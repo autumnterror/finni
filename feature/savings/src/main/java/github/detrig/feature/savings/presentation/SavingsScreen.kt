@@ -11,13 +11,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import github.detrig.designsystem.component.FinPetAmountInput
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetModalDialog
+import github.detrig.designsystem.component.FinPetModalSection
+import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.savings.R
 import github.detrig.feature.savings.SavingsFeature
@@ -86,14 +93,32 @@ private fun SavingsContent(state: SavingsViewState, onEvent: (SavingsViewEvent) 
             onConfirm = { onEvent(SavingsViewEvent.TransferConfirmed(it)) })
     }
     state.notice?.let { notice ->
-        AlertDialog(
-            onDismissRequest = { onEvent(SavingsViewEvent.NoticeDismissed) },
-            title = { Text(stringResource(R.string.savings_notice_title)) },
-            text = { Text(notice.message()) },
-            confirmButton = { TextButton(onClick = { onEvent(SavingsViewEvent.NoticeDismissed) }) {
-                Text(stringResource(R.string.savings_ok))
-            } },
-        )
+        val dismissNotice = { onEvent(SavingsViewEvent.NoticeDismissed) }
+        FinPetModalDialog(
+            title = stringResource(R.string.savings_notice_title),
+            onDismissRequest = dismissNotice,
+            modifier = Modifier.testTag("savings_notice"),
+            actions = {
+                FinPetButton(
+                    text = stringResource(R.string.savings_ok),
+                    onClick = dismissNotice,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+            },
+        ) {
+            FinPetModalSection(
+                modifier = Modifier.fillMaxWidth(),
+                tone = notice.sectionTone(),
+            ) {
+                Text(
+                    text = notice.message(),
+                    modifier = Modifier.padding(AppTheme.spacing.md),
+                    style = AppTheme.typography.body,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
+        }
     }
 }
 
@@ -149,32 +174,69 @@ private fun TransferDialog(
 ) {
     var amount by rememberSaveable(direction) { mutableStateOf("") }
     val parsed = amount.toLongOrNull()?.takeIf { it > 0 }
-    AlertDialog(
-        onDismissRequest = { if (!busy) onDismiss() },
-        title = { Text(stringResource(if (direction == SavingsTransferDirection.DEPOSIT) R.string.savings_deposit_title else R.string.savings_withdraw_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
-                Text(stringResource(if (direction == SavingsTransferDirection.DEPOSIT) R.string.savings_deposit_description else R.string.savings_withdraw_description))
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { value -> amount = value.filter { character -> character.isDigit() } },
-                    label = { Text(stringResource(R.string.savings_amount)) },
-                    suffix = { Text(stringResource(R.string.savings_rub)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("savings_transfer_amount"),
-                )
-            }
+    FinPetModalDialog(
+        title = stringResource(
+            if (direction == SavingsTransferDirection.DEPOSIT) {
+                R.string.savings_deposit_title
+            } else {
+                R.string.savings_withdraw_title
+            },
+        ),
+        onDismissRequest = onDismiss,
+        dismissEnabled = !busy,
+        modifier = Modifier.testTag("savings_transfer_dialog"),
+        actions = {
+            FinPetButton(
+                text = stringResource(
+                    if (direction == SavingsTransferDirection.DEPOSIT) {
+                        R.string.savings_confirm_deposit
+                    } else {
+                        R.string.savings_confirm_withdraw
+                    },
+                ),
+                onClick = { parsed?.let(onConfirm) },
+                enabled = parsed != null && !busy,
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+            FinPetOutlinedButton(
+                text = stringResource(R.string.savings_cancel),
+                onClick = onDismiss,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+            )
         },
-        confirmButton = {
-            Button(onClick = { parsed?.let(onConfirm) }, enabled = parsed != null && !busy) {
-                Text(stringResource(if (direction == SavingsTransferDirection.DEPOSIT) R.string.savings_confirm_deposit else R.string.savings_confirm_withdraw))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.savings_cancel)) }
-        },
-    )
+    ) {
+        Text(
+            stringResource(
+                if (direction == SavingsTransferDirection.DEPOSIT) {
+                    R.string.savings_deposit_description
+                } else {
+                    R.string.savings_withdraw_description
+                },
+            ),
+            style = AppTheme.typography.body,
+        )
+        Text(
+            text = stringResource(R.string.savings_amount),
+            style = AppTheme.typography.bodyStrong,
+            color = AppTheme.colors.storefront.onSurface,
+        )
+        FinPetAmountInput(
+            value = amount,
+            onValueChange = { value -> amount = value.filter { character -> character.isDigit() } },
+            enabled = !busy,
+            suffix = stringResource(R.string.savings_rub),
+            modifier = Modifier.fillMaxWidth().testTag("savings_transfer_amount"),
+        )
+    }
+}
+
+private fun SavingsNotice.sectionTone(): FinPetModalSectionTone = when (this) {
+    is SavingsNotice.Rejected -> FinPetModalSectionTone.Warning
+    SavingsNotice.GoalSaved,
+    is SavingsNotice.TransferCompleted -> FinPetModalSectionTone.Highlighted
 }
 
 @Composable
@@ -188,5 +250,18 @@ private fun SavingsNotice.message(): String = when (this) {
         RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS -> stringResource(R.string.savings_not_enough_wallet, missingRub)
         RejectionReason.INSUFFICIENT_SAVINGS -> stringResource(R.string.savings_not_enough_savings, missingRub)
         else -> stringResource(R.string.savings_transfer_error)
+    }
+}
+
+@Preview(name = "Перевод в копилку", widthDp = 360, heightDp = 560, showBackground = true)
+@Composable
+private fun TransferDialogPreview() {
+    FinPetTheme {
+        TransferDialog(
+            direction = SavingsTransferDirection.DEPOSIT,
+            busy = false,
+            onDismiss = {},
+            onConfirm = {},
+        )
     }
 }

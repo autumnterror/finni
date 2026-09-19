@@ -1,21 +1,27 @@
 package github.detrig.feature.room.presentation.component
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Slider
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetModalDialog
+import github.detrig.designsystem.component.FinPetModalSection
+import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetProgressIndicator
+import github.detrig.designsystem.component.FinPetStorefrontSlider
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.planning.domain.CategoryPlanProgress
 import github.detrig.feature.planning.domain.PlanCategory
 import github.detrig.feature.planning.domain.PlanProgressTone
@@ -31,30 +37,46 @@ internal fun WeeklyPlanEditorDialog(
     onPercentChanged: (PlanCategory, Int) -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = {},
+    FinPetModalDialog(
+        title = stringResource(R.string.plan_title),
+        onDismissRequest = null,
         modifier = Modifier.testTag("weekly_plan_editor"),
-        title = { Text(stringResource(R.string.plan_title)) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-            ) {
-                Text(stringResource(R.string.plan_description), style = AppTheme.typography.body)
-                Text(stringResource(R.string.plan_total, editor.total), style = AppTheme.typography.bodyStrong)
-                PercentageSlider(PlanCategory.MANDATORY, editor.mandatory, onPercentChanged)
-                PercentageSlider(PlanCategory.WANTS, editor.wants, onPercentChanged)
-                PercentageSlider(PlanCategory.SAVINGS, editor.savings, onPercentChanged)
-            }
-        },
-        confirmButton = {
-            Button(
+        actions = {
+            FinPetButton(
+                text = if (isSaving) stringResource(R.string.plan_saving) else stringResource(R.string.plan_save),
                 onClick = onSave,
                 enabled = !isSaving && editor.total == 100,
-                modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget),
-            ) { Text(if (isSaving) stringResource(R.string.plan_saving) else stringResource(R.string.plan_save)) }
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
         },
-    )
+    ) {
+        FinPetModalSection(
+            modifier = Modifier.fillMaxWidth(),
+            tone = FinPetModalSectionTone.Highlighted,
+        ) {
+            Text(
+                text = stringResource(R.string.plan_description),
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                style = AppTheme.typography.body,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+        }
+        FinPetModalSection(
+            modifier = Modifier.fillMaxWidth(),
+            tone = FinPetModalSectionTone.Warning,
+        ) {
+            Text(
+                text = stringResource(R.string.plan_total, editor.total),
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                style = AppTheme.typography.bodyStrong,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+        }
+        PercentageSlider(PlanCategory.MANDATORY, editor.mandatory, onPercentChanged)
+        PercentageSlider(PlanCategory.WANTS, editor.wants, onPercentChanged)
+        PercentageSlider(PlanCategory.SAVINGS, editor.savings, onPercentChanged)
+    }
 }
 
 @Composable
@@ -63,18 +85,29 @@ private fun PercentageSlider(
     value: Int,
     onPercentChanged: (PlanCategory, Int) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(category.title(), style = AppTheme.typography.bodyStrong)
-            Text(stringResource(R.string.plan_percent, value), style = AppTheme.typography.bodyStrong)
+    FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(category.title(), style = AppTheme.typography.bodyStrong)
+                Text(
+                    stringResource(R.string.plan_percent, value),
+                    style = AppTheme.typography.metricValue,
+                    color = AppTheme.colors.actionPrimary,
+                )
+            }
+            FinPetStorefrontSlider(
+                value = value.toFloat(),
+                onValueChange = { onPercentChanged(category, it.roundToInt()) },
+                valueRange = 0f..100f,
+                steps = 99,
+                modifier = Modifier
+                    .heightIn(min = AppTheme.sizes.minimumTouchTarget)
+                    .testTag("weekly_plan_${category.code}"),
+            )
         }
-        Slider(
-            value = value.toFloat(),
-            onValueChange = { onPercentChanged(category, it.roundToInt()) },
-            valueRange = 0f..100f,
-            steps = 99,
-            modifier = Modifier.testTag("weekly_plan_${category.code}"),
-        )
     }
 }
 
@@ -83,42 +116,46 @@ internal fun WeeklyPlanProgressDialog(
     progress: WeeklyPlanProgress,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    FinPetModalDialog(
+        title = stringResource(R.string.plan_progress_title, progress.plan.weekNumber),
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("weekly_plan_progress"),
-        title = { Text(stringResource(R.string.plan_progress_title, progress.plan.weekNumber)) },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.lg),
-            ) {
-                Text(stringResource(R.string.plan_progress_description), style = AppTheme.typography.body)
-                progress.categories.forEach { CategoryProgressRow(it) }
-            }
+        actions = {
+            FinPetButton(
+                text = stringResource(R.string.plan_close),
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = AppTheme.sizes.minimumTouchTarget)) {
-                Text(stringResource(R.string.plan_close))
-            }
-        },
-    )
+    ) {
+        Text(stringResource(R.string.plan_progress_description), style = AppTheme.typography.body)
+        progress.categories.forEach { CategoryProgressRow(it) }
+    }
 }
 
 @Composable
 private fun CategoryProgressRow(progress: CategoryPlanProgress) {
     val color = progress.tone.color()
-    Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(progress.category.title(), style = AppTheme.typography.bodyStrong)
-            Text(stringResource(R.string.plan_actual_of_planned, progress.actualRub, progress.plannedRub),
-                style = AppTheme.typography.caption)
+    FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(progress.category.title(), style = AppTheme.typography.bodyStrong)
+                Text(
+                    stringResource(R.string.plan_actual_of_planned, progress.actualRub, progress.plannedRub),
+                    style = AppTheme.typography.caption,
+                )
+            }
+            FinPetProgressIndicator(
+                progress = progress.progress,
+                color = color,
+                modifier = Modifier.fillMaxWidth().testTag("plan_progress_${progress.category.code}"),
+            )
+            Text(progress.tone.label(), style = AppTheme.typography.caption, color = color)
         }
-        FinPetProgressIndicator(
-            progress = progress.progress,
-            color = color,
-            modifier = Modifier.fillMaxWidth().testTag("plan_progress_${progress.category.code}"),
-        )
-        Text(progress.tone.label(), style = AppTheme.typography.caption, color = color)
     }
 }
 
@@ -141,4 +178,17 @@ private fun PlanProgressTone.color(): Color = when (this) {
     PlanProgressTone.ON_TRACK -> AppTheme.colors.statusPositive.accent
     PlanProgressTone.WARNING -> AppTheme.colors.statusWarning.accent
     PlanProgressTone.OVER_LIMIT -> AppTheme.colors.statusCritical.accent
+}
+
+@Preview(name = "План на неделю", widthDp = 360, heightDp = 760, showBackground = true)
+@Composable
+private fun WeeklyPlanDialogPreview() {
+    FinPetTheme {
+        WeeklyPlanEditorDialog(
+            editor = PlanEditorState(mandatory = 50, wants = 30, savings = 20),
+            isSaving = false,
+            onPercentChanged = { _, _ -> },
+            onSave = {},
+        )
+    }
 }
