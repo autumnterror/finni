@@ -4,6 +4,7 @@ import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.shop.api.ShopHost
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
+import github.detrig.feature.shop.domain.ShopCartStore
 import github.detrig.feature.shop.navigation.ShopRouter
 import github.detrig.products.ProductId
 import github.detrig.products.SellableCatalog
@@ -11,11 +12,14 @@ import github.detrig.products.SellableItem
 import github.detrig.products.StoreCategoryId
 import github.detrig.products.StoreId
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 
 internal class ShopViewModel(
     private val storeId: StoreId,
     catalogRegistry: ShopCatalogRegistry,
     private val host: ShopHost,
+    private val cartStore: ShopCartStore,
+    private val receiptStore: ShopReceiptStore,
     private val router: ShopRouter,
 ) : CoreViewModel<ShopViewState, ShopViewEvent>(ShopViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
@@ -25,7 +29,9 @@ internal class ShopViewModel(
         when (viewEvent) {
             ShopViewEvent.Load,
             ShopViewEvent.Retry -> load()
-            ShopViewEvent.Back -> router.back()
+            ShopViewEvent.Back -> if (stateData.receipt == null) router.back() else dismissReceipt()
+            ShopViewEvent.OpenCart -> router.openCart(storeId)
+            ShopViewEvent.ReceiptDismissed -> dismissReceipt()
             is ShopViewEvent.CategorySelected -> selectCategory(viewEvent.categoryId)
             is ShopViewEvent.ProductClicked -> addProductToCart(viewEvent.productId)
         }
@@ -58,11 +64,17 @@ internal class ShopViewModel(
             },
         ) {
             host.preparePlayer()
-            host.observeBalanceRub().collect { balance ->
+            combine(
+                host.observeBalanceRub(),
+                cartStore.observe(storeId),
+                receiptStore.observe(storeId),
+            ) { balance, cart, receipt -> Triple(balance, cart, receipt) }.collect { (balance, cart, receipt) ->
                 updateState {
                     copy(
                         storefront = resolvedCatalog.storefront,
                         balanceRub = balance,
+                        cart = cart,
+                        receipt = receipt,
                         loading = false,
                         error = null,
                     )
@@ -80,8 +92,12 @@ internal class ShopViewModel(
     private fun addProductToCart(productId: ProductId) {
         val storefront = stateData.storefront ?: return
         if (storefront.items.none { it.id == productId }) return
-        updateState {
-            copy(cart = cart.add(productId))
-        }
+        cartStore.add(storeId, productId)
+    }
+
+    private fun dismissReceipt() {
+        if (stateData.receipt == null) return
+        receiptStore.clear(storeId)
+        router.closeToRoom()
     }
 }

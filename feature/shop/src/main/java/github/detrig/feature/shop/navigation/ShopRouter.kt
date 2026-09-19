@@ -5,7 +5,9 @@ import github.detrig.products.StoreId
 
 internal interface ShopRouter {
     fun open(storeId: StoreId)
+    fun openCart(storeId: StoreId)
     fun back()
+    fun closeToRoom()
 }
 
 internal class ShopRouterImpl(
@@ -15,5 +17,11 @@ internal class ShopRouterImpl(
         navigator.navigate(ShopRoute.Catalog(storeId.value), launchSingleTop = true)
     }
 
+    override fun openCart(storeId: StoreId) {
+        navigator.navigate(ShopRoute.Cart(storeId.value), launchSingleTop = true)
+    }
+
     override fun back() = navigator.back()
+
+    override fun closeToRoom() = navigator.backToHostStartRoute()
 }

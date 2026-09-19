@@ -1,6 +1,7 @@
 package github.detrig.feature.shop.presentation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,13 +27,16 @@ internal fun ShopScreen(storeId: StoreId) {
     LaunchedEffect(viewModel) { viewModel.perform(ShopViewEvent.Load) }
     BackHandler { viewModel.perform(ShopViewEvent.Back) }
 
-    Scaffold(containerColor = AppTheme.colors.storefront.background) { padding ->
+    Scaffold(
+        containerColor = AppTheme.colors.storefront.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { padding ->
         ShopContent(
             state = state,
             artworkResolver = component.artworkResolver,
             itemDetailsResolver = component.itemDetailsResolver,
             onEvent = viewModel::perform,
-            modifier = Modifier,
+            modifier = Modifier.shopSafeDrawingPadding(),
             contentPadding = padding,
         )
     }

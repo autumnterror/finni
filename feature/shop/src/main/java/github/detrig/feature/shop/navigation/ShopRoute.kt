@@ -7,4 +7,7 @@ import kotlinx.serialization.Serializable
 internal sealed interface ShopRoute : NavKey {
     @Serializable
     data class Catalog(val storeId: String) : ShopRoute
+
+    @Serializable
+    data class Cart(val storeId: String) : ShopRoute
 }

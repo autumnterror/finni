@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetOutlinedButton
@@ -78,6 +80,34 @@ internal fun ShopContent(
                     modifier = Modifier.weight(1f),
                 )
             }
+            if (!state.cart.isEmpty) {
+                FinPetButton(
+                    onClick = { onEvent(ShopViewEvent.OpenCart) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = AppTheme.spacing.lg,
+                            end = AppTheme.spacing.lg,
+                            top = AppTheme.spacing.md,
+                            bottom = AppTheme.spacing.xl,
+                        ),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        ShopCartIcon(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .align(Alignment.CenterStart),
+                        )
+                        Text(
+                            text = stringResource(R.string.shop_open_cart),
+                            modifier = Modifier.align(Alignment.Center),
+                            style = AppTheme.typography.button,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (state.loading) {
@@ -113,6 +143,13 @@ internal fun ShopContent(
                     style = FinPetButtonDefaults.storefrontOutlinedStyle(),
                 )
             },
+        )
+    }
+
+    state.receipt?.let { receipt ->
+        ShopReceiptDialog(
+            receipt = receipt,
+            onDismiss = { onEvent(ShopViewEvent.ReceiptDismissed) },
         )
     }
 }

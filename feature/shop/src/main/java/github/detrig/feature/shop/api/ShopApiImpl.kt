@@ -4,6 +4,7 @@ import github.detrig.core.presentation.navigation.v3.EntryHostProviderInstaller
 import github.detrig.core.presentation.navigation.v3.composable
 import github.detrig.feature.shop.navigation.ShopRoute
 import github.detrig.feature.shop.navigation.ShopRouter
+import github.detrig.feature.shop.presentation.ShopCartScreen
 import github.detrig.feature.shop.presentation.ShopScreen
 import github.detrig.products.StoreId
 
@@ -14,5 +15,6 @@ internal class ShopApiImpl(
 
     override fun entries(): EntryHostProviderInstaller = {
         composable<ShopRoute.Catalog> { route -> ShopScreen(StoreId(route.storeId)) }
+        composable<ShopRoute.Cart> { route -> ShopCartScreen(StoreId(route.storeId)) }
     }
 }

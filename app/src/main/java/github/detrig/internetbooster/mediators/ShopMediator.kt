@@ -36,6 +36,7 @@ internal class ShopMediator(
         debit = { operationId, amountRub, context ->
             economyMediator.getApi().debit(operationId, amountRub, context)
         },
+        purchaseHistory = { economyMediator.getApi().getExpenseHistory() },
     )
 
     private val detailsResolver = ShopItemDetailsResolver { item ->
