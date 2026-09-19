@@ -9,11 +9,15 @@ metadata:
 
 Используй этот skill, когда нужно добавить экран, route, graph, router, nested graph или Activity на базе локального Nav3 core.
 
+Не создавай и не обновляй README или документацию модуля/feature автоматически после реализации. Пиши их только по явному запросу пользователя; существующие документы можно читать как контекст.
+
+Если задача добавляет или меняет визуальный Compose UI, используй `android-core-compose-ui`; для ViewModel и UI-state — `android-core-ui-mvvm`. Правка только route/router/graph не требует этих скиллов.
+
 ## Перед правками
 
 | Файл | Зачем читать |
 |------|--------------|
-| `core/src/main/java/github/detrig/core/navigation_notes.md` | карта navigation core |
+| `guides/navigation_notes.md` | карта navigation core |
 | `core/src/main/java/github/detrig/core/presentation/navigation/GlobalNavigator.kt` | глобальный вход для router |
 | `core/src/main/java/github/detrig/core/presentation/navigation/v3/Nav3GraphSpec.kt` | host и nested graph |
 | `core/src/main/java/github/detrig/core/presentation/navigation/v3/Nav3Entries.kt` | `composable` и `nestedGraph` DSL |

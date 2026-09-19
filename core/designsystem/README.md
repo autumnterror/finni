@@ -25,6 +25,20 @@ floor, furniture, toy, outline, and fog colors. Its vector artwork consumes this
 palette; room controls reuse shared spacing, sizes, typography, and motion.
 Existing `roomBackground` and `roomObject*` tokens remain available to shared UI.
 
+## Reusable storefront UI
+
+- `FinPetButton` and `FinPetOutlinedButton` keep their legacy text API and also
+  expose a `RowScope` content overload, optional leading icon, and copyable style.
+- `FinPetButtonDefaults.storefrontPrimaryStyle()` and
+  `storefrontOutlinedStyle()` apply the shared catalog geometry and colors.
+- `FinPetFilterChip` and `FinPetFilterChipRow` render data-driven categories.
+- `FinPetLazyGrid` accepts fixed or adaptive columns; `FinPetLazyRow` is the
+  domain-independent horizontal counterpart.
+
+Storefront components consume `AppTheme.colors.storefront` and
+`AppTheme.shapes.storefrontControl`; feature modules should not duplicate those
+visual values.
+
 ## Applying the brandbook
 
 1. Add the brand fonts and reusable brand assets to this module.

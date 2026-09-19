@@ -21,5 +21,15 @@ internal fun wireframeTheme(base: FinPetThemePack): FinPetThemePack {
         roomObjectBorder = line, roomObjectShadow = Color.Transparent,
         statusInfo = feedback, statusPositive = feedback, statusWarning = feedback, statusCritical = feedback,
         intensityLow = ink, intensityMedium = ink, intensityHigh = ink,
+        storefront = FinPetStorefrontColors(
+            background = paper,
+            surface = paper,
+            selectedSurface = paper,
+            primaryAction = ink,
+            onPrimaryAction = paper,
+            onSurface = ink,
+            outline = line,
+            shadow = Color.Transparent,
+        ),
     ))
 }

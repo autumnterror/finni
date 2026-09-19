@@ -1,19 +1,23 @@
 ---
 name: android-core-ui-mvvm
-description: Писать Compose UI и ViewModel в стиле проекта через CoreViewModel, CoreViewState, CoreViewEvent, CommandsQueue, ViewCommand и SimpleLce.
+description: Создавать и менять Android ViewModel, UI-state, события, одноразовые команды и обработку ошибок через CoreViewModel, CoreViewState, CoreViewEvent, CommandsQueue и SimpleLce. Для визуальной Compose-разметки и превью использовать android-core-compose-ui.
 metadata:
-  short-description: Android UI/MVVM core
+  short-description: Android MVVM and UI state
 ---
 
-# Android Core UI/MVVM
+# Android Core MVVM And UI State
 
-Используй этот skill, когда нужно создать экран, ViewModel, state, event, command, loading/content/error состояние или обработку ошибок во ViewModel.
+Используй этот skill, когда нужно создать или изменить ViewModel, state, event, command, loading/content/error состояние, обработку ошибок или связать UI с состоянием.
+
+Визуальная Compose-разметка, дизайн-система и превью описаны в `android-core-compose-ui`. Читай его, если задача затрагивает отрисовку; не дублируй здесь его правила.
+
+Не создавай и не обновляй README или документацию модуля/feature автоматически после реализации. Пиши их только по явному запросу пользователя; существующие документы можно читать как контекст.
 
 ## Перед правками
 
 | Файл | Зачем читать |
 |------|--------------|
-| `core/src/main/java/github/detrig/core/ui_mvvm_notes.md` | общий гайд UI/MVVM |
+| `guides/ui_mvvm_notes.md` | общий гайд UI/MVVM |
 | `core/src/main/java/github/detrig/core/mvvm/CoreViewModel.kt` | базовый ViewModel |
 | `core/src/main/java/github/detrig/core/mvvm/CoreViewState.kt` | marker для state |
 | `core/src/main/java/github/detrig/core/mvvm/CoreViewEvent.kt` | marker для event |
@@ -155,3 +159,4 @@ private fun loadProfile() = launchCoroutine(
 - [ ] Асинхронная работа идет через `launchCoroutine`.
 - [ ] Ошибки экрана обрабатываются через `ExceptionConsumer`, если нужен локальный UI-state.
 - [ ] Одноразовые действия идут через `commands.onNext(...)`.
+- [ ] Если изменен визуальный Compose UI, применен `android-core-compose-ui`.

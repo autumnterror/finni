@@ -12,6 +12,7 @@ import github.detrig.internetbooster.mediators.RoomMediator
 import github.detrig.internetbooster.mediators.PlanningMediator
 import github.detrig.internetbooster.mediators.WeekMediator
 import github.detrig.internetbooster.mediators.SavingsMediator
+import github.detrig.internetbooster.mediators.ShopMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 
 internal interface AppModule {
@@ -41,6 +42,13 @@ internal class AppModuleImpl(
     private val savingsMediator: SavingsMediator by lazy {
         SavingsMediator(coreComponent, economyMediator, planningMediator, weekMediator)
     }
+    private val shopMediator: ShopMediator by lazy {
+        ShopMediator(
+            coreComponent = coreComponent,
+            economyMediator = economyMediator,
+            weekMediator = weekMediator,
+        )
+    }
 
     private val gameStateMediator: GameStateMediator by lazy {
         GameStateMediator(databaseModule, economyMediator)
@@ -61,7 +69,15 @@ internal class AppModuleImpl(
     }
 
     private val roomMediator: RoomMediator by lazy {
-        RoomMediator(coreComponent, gameStateMediator, economyMediator, weekMediator, planningMediator, savingsMediator)
+        RoomMediator(
+            coreComponent,
+            gameStateMediator,
+            economyMediator,
+            weekMediator,
+            planningMediator,
+            savingsMediator,
+            shopMediator,
+        )
     }
 
     private val miniGamesCommonMediator: MiniGamesCommonMediator by lazy {
@@ -77,20 +93,13 @@ internal class AppModuleImpl(
         weekMediator.init()
         planningMediator.init()
         savingsMediator.init()
+        shopMediator.init()
         gameStateMediator.init()
         petMediator.init()
         github.detrig.internetbooster.mediators.FlightMediator(
             coreComponent,
             gameStateMediator,
             petMediator,
-        ).init()
-        github.detrig.internetbooster.mediators.ProductMarketMediator(
-            coreComponent,
-            github.detrig.internetbooster.database.ProductMarketDatabaseModule(coreComponent.context),
-            economyMediator,
-            weekMediator,
-            planningMediator,
-            savingsMediator,
         ).init()
         github.detrig.internetbooster.mediators.FishingMediator(
             coreComponent,

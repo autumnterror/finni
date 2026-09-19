@@ -1,0 +1,142 @@
+package github.detrig.feature.shop.presentation
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetOutlinedButton
+import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.feature.shop.R
+import github.detrig.feature.shop.api.ShopArtworkResolver
+import github.detrig.feature.shop.api.ShopItemDetail
+import github.detrig.feature.shop.api.ShopItemDetailIcon
+import github.detrig.feature.shop.api.ShopItemDetailsResolver
+import github.detrig.products.FoodItem
+import github.detrig.products.GroceryCatalog
+
+@Composable
+internal fun ShopContent(
+    state: ShopViewState,
+    artworkResolver: ShopArtworkResolver,
+    itemDetailsResolver: ShopItemDetailsResolver,
+    onEvent: (ShopViewEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .testTag("shop_screen"),
+    ) {
+        val storefront = state.storefront
+        if (storefront != null) {
+            ShopHeader(
+                title = storefront.title,
+                balanceRub = state.balanceRub,
+                onBack = { onEvent(ShopViewEvent.Back) },
+            )
+            ShopCategoryRow(
+                storefront = storefront,
+                selectedCategoryId = state.selectedCategoryId,
+                onSelected = { onEvent(ShopViewEvent.CategorySelected(it)) },
+            )
+            if (state.visibleItems.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.shop_empty_category),
+                        style = AppTheme.typography.body,
+                    )
+                }
+            } else {
+                ShopProductGrid(
+                    items = state.visibleItems,
+                    columns = storefront.gridLayout.columns,
+                    quantityInCart = state::quantityInCart,
+                    onItemClick = { onEvent(ShopViewEvent.ProductClicked(it)) },
+                    artworkResolver = artworkResolver,
+                    itemDetailsResolver = itemDetailsResolver,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (state.loading) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = stringResource(R.string.shop_loading),
+                            modifier = Modifier.padding(top = AppTheme.spacing.md),
+                            style = AppTheme.typography.body,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (state.error == ShopError.LOAD) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.shop_error_title)) },
+            text = { Text(stringResource(R.string.shop_error_body)) },
+            confirmButton = {
+                FinPetButton(
+                    text = stringResource(R.string.shop_retry),
+                    onClick = { onEvent(ShopViewEvent.Retry) },
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+            },
+            dismissButton = {
+                FinPetOutlinedButton(
+                    text = stringResource(R.string.shop_back),
+                    onClick = { onEvent(ShopViewEvent.Back) },
+                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                )
+            },
+        )
+    }
+}
+
+private val shopContentPreviewDetails = ShopItemDetailsResolver { item ->
+    val food = item as? FoodItem ?: return@ShopItemDetailsResolver emptyList()
+    listOf(ShopItemDetail("+${food.effects.satietyPercent}%", ShopItemDetailIcon.SATIETY))
+}
+
+@Preview(name = "Product catalog", widthDp = 432, heightDp = 920, showBackground = true)
+@Composable
+private fun ShopContentPreview() {
+    FinPetTheme {
+        ShopContent(
+            state = ShopViewState(
+                storefront = GroceryCatalog().storefront,
+                cart = github.detrig.products.StoreCart.Empty
+                    .add(GroceryCatalog().storefront.items.first().id, quantity = 2),
+                balanceRub = 12_500,
+                loading = false,
+            ),
+            artworkResolver = ShopArtworkResolver.Empty,
+            itemDetailsResolver = shopContentPreviewDetails,
+            onEvent = {},
+        )
+    }
+}

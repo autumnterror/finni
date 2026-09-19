@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shop_back">Назад</string>
+    <string name="shop_empty_category">В этой категории пока нет товаров</string>
+    <string name="shop_loading">Загружаем товары…</string>
+    <string name="shop_error_title">Не удалось открыть магазин</string>
+    <string name="shop_error_body">Попробуйте ещё раз.</string>
+    <string name="shop_retry">Повторить</string>
+    <string name="shop_item_accessibility">%1$s, цена %2$d рублей</string>
+    <string name="shop_item_cart_quantity">В корзине: %1$d</string>
+    <string name="shop_product_image_placeholder">Изображение товара появится здесь</string>
+</resources>

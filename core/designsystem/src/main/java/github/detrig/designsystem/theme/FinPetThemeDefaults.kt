@@ -90,6 +90,16 @@ private val prototypeColors = FinPetColors(
         accent = Color(0xFFC7363E),
         onContainer = Color(0xFF7A1E24),
     ),
+    storefront = FinPetStorefrontColors(
+        background = Color(0xFFFFF2C9),
+        surface = Color(0xFFFFFCF4),
+        selectedSurface = Color(0xFFE6F3CC),
+        primaryAction = Color(0xFF9BCB69),
+        onPrimaryAction = Color(0xFF533E32),
+        onSurface = Color(0xFF533E32),
+        outline = Color(0xFF533E32),
+        shadow = Color(0x33533E32),
+    ),
 )
 
 private val prototypeTypography = FinPetTypography(
@@ -125,6 +135,7 @@ private val prototypeShapes = FinPetShapes(
     badge = RoundedCornerShape(8.dp),
     dialog = RoundedCornerShape(8.dp),
     sheet = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+    storefrontControl = RoundedCornerShape(18.dp),
 )
 
 private val prototypeElevation = FinPetElevation(

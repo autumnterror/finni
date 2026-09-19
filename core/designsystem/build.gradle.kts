@@ -35,6 +35,7 @@ dependencies {
     api(libs.androidx.ui)
     api(libs.androidx.ui.graphics)
     api(libs.androidx.material3)
+    api(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.runtime.saveable)
 
     implementation(libs.androidx.compose.animation.core)

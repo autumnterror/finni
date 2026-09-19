@@ -11,6 +11,19 @@ data class FinPetFeedbackColors(
     val onContainer: Color,
 )
 
+/** Цветовые роли каталога магазина. Они общие для еды, одежды и интерьера. */
+@Immutable
+data class FinPetStorefrontColors(
+    val background: Color,
+    val surface: Color,
+    val selectedSurface: Color,
+    val primaryAction: Color,
+    val onPrimaryAction: Color,
+    val onSurface: Color,
+    val outline: Color,
+    val shadow: Color,
+)
+
 /** Семантические цвета приложения. Названия не зависят от текущей палитры. */
 @Immutable
 data class FinPetColors(
@@ -62,4 +75,14 @@ data class FinPetColors(
     val flightGrass: Color = actionPrimary,
     val flightGrassLight: Color = sceneGround,
     val house: FinPetHouseColors = FinPetHouseColors(),
+    val storefront: FinPetStorefrontColors = FinPetStorefrontColors(
+        background = currencyContainer,
+        surface = surfaceElevated,
+        selectedSurface = actionSecondary,
+        primaryAction = actionPrimary,
+        onPrimaryAction = onActionPrimary,
+        onSurface = textPrimary,
+        outline = borderDefault,
+        shadow = sceneShadow,
+    ),
 )

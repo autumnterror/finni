@@ -49,6 +49,14 @@ class FinPetThemePackTest {
     }
 
     @Test
+    fun `storefront controls have readable contrast`() {
+        val storefront = theme.colors.storefront
+
+        assertTrue(contrastRatio(storefront.onPrimaryAction, storefront.primaryAction) >= 4.5f)
+        assertTrue(contrastRatio(storefront.onSurface, storefront.surface) >= 4.5f)
+    }
+
+    @Test
     fun `pet customization colors are distinct`() {
         val colors = theme.colors
         val petColors = setOf(

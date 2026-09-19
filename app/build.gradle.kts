@@ -60,6 +60,7 @@ dependencies {
 
     implementation(project(":core"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:products"))
     implementation(project(":feature:game-session"))
     implementation(project(":feature:game-state"))
     implementation(project(":feature:economy"))
@@ -67,7 +68,7 @@ dependencies {
     implementation(project(":feature:planning"))
     implementation(project(":feature:savings"))
     implementation(project(":feature:room"))
-    implementation(project(":feature:product-market"))
+    implementation(project(":feature:shop"))
     implementation(project(":feature:pet"))
     implementation(project(":feature:mini-games:common"))
     implementation(project(":feature:mini-games:fishing"))
