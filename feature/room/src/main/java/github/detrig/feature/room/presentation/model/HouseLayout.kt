@@ -54,12 +54,14 @@ internal object HouseLayout {
     const val VIEWPORT_WIDTH = 1f
     const val INITIAL_CAMERA_X = 3.05f
     const val IMAGE_ASPECT = 2169f / 725f
-    const val PET_WIDTH = 0.29f
+    // The hamster artwork occupies about 88% of its square canvas. This size
+    // makes the visible pet height match the floor-scale reference on mobile.
+    const val PET_WIDTH = 0.67f
     const val PET_FLOOR_BASELINE = 0.90f
     const val PET_SPEED = 0.9f
     const val PET_SLOWDOWN_DISTANCE = 0.1f
     const val PET_STOP_DISTANCE = 0.02f
-    const val PET_WALK_MARGIN = 0.2f
+    const val PET_WALK_MARGIN = 0.36f
     const val WALK_CYCLE_DISTANCE = 0.18f
     const val LOCK_SIZE_FRACTION = 0.34f
     const val SAVE_DELAY_MILLIS = 350L
