@@ -40,6 +40,7 @@ class FinPetMigrationTest {
                     MIGRATION_10_11,
                     MIGRATION_11_12,
                     MIGRATION_12_13,
+                    MIGRATION_13_14,
                 )
                 .build()
             try {
@@ -49,9 +50,10 @@ class FinPetMigrationTest {
                 assertEquals(45L, economy.savingsRub)
                 assertEquals(20L, economy.debtRub)
                 assertFalse(db.roomZoneDao().isOwned("current", "flight"))
-                assertEquals(13, db.openHelper.readableDatabase.version)
+                assertEquals(14, db.openHelper.readableDatabase.version)
                 assertNotNull(db.weekDao().getState())
                 db.planningDao().getPlan(2)
+                assertTrue(db.learningDao().getPendingXpRewards("current").isEmpty())
             } finally {
                 db.close()
                 context.deleteDatabase(name)
@@ -91,6 +93,7 @@ class FinPetMigrationTest {
                 MIGRATION_10_11,
                 MIGRATION_11_12,
                 MIGRATION_12_13,
+                MIGRATION_13_14,
             )
             .build()
         try {
@@ -104,9 +107,10 @@ class FinPetMigrationTest {
             assertEquals(if (hasFishingSave) fishingPayload else null, db.fishingDao().read("current")?.payload)
             if (from == 8) assertEquals(3, db.petPlayEffectDao().find("current:round")?.happinessDelta)
             else assertNull(db.petPlayEffectDao().find("current:round"))
-            assertEquals(13, db.openHelper.readableDatabase.version)
+            assertEquals(14, db.openHelper.readableDatabase.version)
             assertNotNull(db.weekDao().getState())
             db.planningDao().getPlan(2)
+            assertTrue(db.learningDao().getPendingXpRewards("current").isEmpty())
             db.openHelper.readableDatabase.query("SELECT count(*) FROM financial_operations").use {
                 it.moveToFirst(); assertEquals(if (from >= 7) 1 else 0, it.getInt(0))
             }

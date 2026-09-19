@@ -16,14 +16,24 @@ import github.detrig.feature.week.data.local.WeekStateEntity
 import github.detrig.feature.planning.data.local.PlanActualOperationEntity
 import github.detrig.feature.planning.data.local.PlanningDao
 import github.detrig.feature.planning.data.local.WeeklyPlanEntity
+import github.detrig.feature.learning.data.local.AchievementUnlockEntity
+import github.detrig.feature.learning.data.local.AchievementXpOutboxEntity
+import github.detrig.feature.learning.data.local.LearningActionEntity
+import github.detrig.feature.learning.data.local.LearningDao
+import github.detrig.feature.learning.data.local.LearningExplanationEntity
+import github.detrig.feature.learning.data.local.LearningMetricOccurrenceEntity
+import github.detrig.feature.learning.data.local.LearningMetricProgressEntity
 
 @Database(
     entities = [GameStateEntity::class, RoomZoneEntity::class,
         github.detrig.feature.gamestate.data.local.PetPlayEffectEntity::class,
         github.detrig.minigames.fishing.data.FishingProgressEntity::class,
         EconomyStateEntity::class, FinancialOperationEntity::class, SavingsGoalEntity::class, ParentHelpStateEntity::class,
-        WeekStateEntity::class, WeeklyPlanEntity::class, PlanActualOperationEntity::class],
-    version = 13,
+        WeekStateEntity::class, WeeklyPlanEntity::class, PlanActualOperationEntity::class,
+        LearningActionEntity::class, LearningMetricOccurrenceEntity::class,
+        LearningMetricProgressEntity::class, AchievementUnlockEntity::class,
+        LearningExplanationEntity::class, AchievementXpOutboxEntity::class],
+    version = 14,
     exportSchema = false,
 )
 abstract class FinPetDatabase : RoomDatabase() {
@@ -32,6 +42,7 @@ abstract class FinPetDatabase : RoomDatabase() {
     abstract fun economyDao(): EconomyDao
     abstract fun weekDao(): WeekDao
     abstract fun planningDao(): PlanningDao
+    abstract fun learningDao(): LearningDao
 
     abstract fun roomZoneDao(): RoomZoneDao
 

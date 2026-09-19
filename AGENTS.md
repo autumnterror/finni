@@ -35,7 +35,9 @@ The product must feel like a **virtual-pet game with financial decisions**, not 
 
 The educational basis is the **Unified Framework of Financial Literacy Competencies**, for children aged 7-11.
 
-Educational progress is represented internally through a hidden SkillId system.
+Educational progress is represented through achievements earned from meaningful
+financial actions. Every achievement has a stable child-facing definition and a
+separate plain-language sentence for the parent section.
 
 ### 2.3. Canonical MVP loop
 
@@ -107,7 +109,7 @@ Priority order:
 
 1. happiness;
 2. premium food as optional comfort;
-3. SkillId with BASIC / ADVANCED levels;
+3. achievement-based educational progress with parent-facing mapping;
 4. limited side jobs;
 5. debt only for an important purchase;
 6. early end of an unrecoverable crisis week;
@@ -182,14 +184,15 @@ Question
 → Next question
 ```
 
-Tests are allowed, but they are only one evidence source.
+Tests are allowed, but they are only one possible learning action and must not
+replace decisions inside the weekly game loop.
 
 ### 4.4. Mistakes teach; they do not punish progression
 
 Do not use:
 - negative XP;
 - player-level loss;
-- permanent skill regression;
+- permanent educational-progress regression;
 - deletion of purchased items;
 - shaming language;
 - pet death;
@@ -229,7 +232,9 @@ Before the active week begins, the player distributes available money across at 
 - optional expenses;
 - savings.
 
-A free remainder may also be displayed.
+A free remainder acts as the financial reserve and must also be displayed. It may
+be represented as the share left after the three planned categories rather than
+as a fourth spending category.
 
 Example:
 
@@ -239,7 +244,7 @@ Available: 500
 Mandatory      200
 Wants          150
 Savings        100
-Free remainder  50
+Financial reserve / free remainder  50
 ```
 
 Rules:
@@ -455,9 +460,9 @@ MVP rules:
 
 The game may show an estimated time to goal if calculation is simple and transparent.
 
-Savings can produce behaviour evidence.
+Meaningful savings actions can advance achievement progress.
 
-Opening the savings screen is not evidence.
+Opening the savings screen does not advance achievement progress.
 
 ---
 
@@ -527,7 +532,7 @@ After crisis resolution:
 - the pet receives required care;
 - progress is not deleted;
 - XP is not reduced;
-- SkillId mastery is not reduced;
+- unlocked achievements and accumulated achievement progress are not reduced;
 - purchased items remain;
 - the week is recorded as an early finish.
 
@@ -583,14 +588,13 @@ Suggested event shape:
 eventId
 source
 type
-targetSkillId
-frameworkLevel
 conditions
 content
 choices/actions
 consequences
 feedback
-evidenceType
+learningActionType
+learningContext
 repeatGroup
 dayEligibility
 ```
@@ -599,222 +603,216 @@ Do not build every event as a separate one-off screen.
 
 ---
 
-## 15. SkillId Educational Model
+## 15. Achievement-Based Educational Model
 
-### 15.1. SkillId is hidden from the child
+### 15.1. Learning loop and system boundary
 
-SkillId is internal educational analytics.
-
-The child should not see:
-- technical SkillId names;
-- competency scores;
-- mastery numbers.
-
-The adult/parent section may show plain-language progress.
-
-### 15.2. MVP SkillId groups
-
-Use these seven high-level competencies:
+Educational progress follows this loop:
 
 ```text
-budget_management
-savings
-purchase_decision
-price_evaluation
-debt_management
+Meaningful financial action
+↓
+Game consequence
+↓
+Short feedback from the pet
+↓
+Achievement progress or unlock
+↓
+Plain-language progress in the parent section
+```
+
+Achievements show which financial actions the child has encountered and learned
+to apply. XP shows game and pet progression. They are separate systems, even
+though every first achievement unlock grants a configured amount of XP.
+
+Opening a screen, reading a hint, recomposition, or repeating the same operation
+ID is not a qualifying financial action. Mistakes may trigger explanation and a
+future repeat, but never remove progress or an unlocked achievement.
+
+### 15.2. Topics, metrics, points, and achievements
+
+The current MVP catalog contains four learning topics:
+
+```text
+budget_planning
+savings_building
+payments_and_purchases
 financial_security
-digital_finance
 ```
 
-Do not create feature-local duplicate IDs.
+Each topic contains concrete metrics. A normal metric has two progress points and
+two achievements:
 
-Do not split one competency into many near-synonymous IDs such as:
-- `needs_vs_wants`;
-- `prioritize_needs`;
-- `limited_budget`;
-- `allocate_limited_budget`;
+1. **Introduction** — the child first encounters or performs the action, usually
+   with an explanation from the pet.
+2. **Learned** — the child repeats the action, performs it independently, or
+   applies it in changed conditions according to that metric's rule.
 
-when they are manifestations of `budget_management`.
+Application in changed conditions is a qualifying path to the second achievement,
+not a third generic achievement. Thresholds such as the number of weeks or repeats
+are configuration and must not be scattered through feature UI code.
 
-### 15.3. Framework level
+Financial-security metrics are the deliberate exception. Each has three progress
+steps but still only two achievements:
 
-Each SkillId has:
+1. guided suspicious situation → Introduction achievement;
+2. independent safe response;
+3. safe response reinforced in a later situation → Learned achievement.
+
+A topic is considered completed when the second achievement is unlocked for all
+of its active metrics. Topic completion may be shown as a visual frame or badge,
+but it does not replace the individual achievements or their parent-facing rows.
+
+### 15.3. Current metric catalog and parent mapping
+
+Every achievement definition must contain a stable parent-facing sentence. Each
+unlocked achievement creates its own row in the parent section; a topic-level
+summary must not hide or replace these rows.
+
+#### Budget planning
+
+| Metric | Introduction row | Learned row |
+|---|---|---|
+| `reasonable_plan` | Ребёнок ознакомился с распределением денег между обязательными расходами, желаниями, сбережениями и финансовой подушкой. | Ребёнок научился составлять недельный план, в котором хватает денег на обязательные расходы. |
+| `follow_plan` | Ребёнок ознакомился со сравнением недельного плана с фактическими расходами. | Ребёнок научился следовать недельному плану на протяжении нескольких игровых периодов. |
+| `adapt_to_change` | Ребёнок ознакомился с тем, как неожиданный расход, дополнительный доход или изменение цены влияет на бюджет. | Ребёнок научился адаптировать оставшиеся расходы к изменившейся финансовой ситуации. |
+
+The Introduction achievement for `reasonable_plan` may be granted after the first
+completed planning attempt and explanation, even when the plan is weak. The
+Learned achievement requires an adequate plan. A confirmed weekly plan remains
+fixed; adaptation means changing later decisions and the use of remaining money,
+not silently rewriting the confirmed plan.
+
+At the end of a period, feedback evaluates plan quality separately from adherence:
+
+- adequate plan + small justified deviation: positive explanation;
+- adequate plan + poor adherence: explain what changed and how to improve;
+- weak plan + close adherence: acknowledge consistency while explaining why the
+  original plan was risky.
+
+After the introductory cycles, adaptation may be checked through a known future
+expense, extra income, an unexpected mandatory expense, or a configured temporary
+price change. A price-change scenario is not mandatory until its rules and content
+are approved.
+
+#### Savings building
+
+| Metric | Introduction row | Learned row |
+|---|---|---|
+| `create_goal` | Ребёнок ознакомился с созданием финансовой цели. | Ребёнок научился самостоятельно выбирать и создавать достижимую финансовую цель. |
+| `plan_saving` | Ребёнок ознакомился с включением сбережений в недельный план. | Ребёнок научился планировать регулярные пополнения финансовой цели. |
+| `regular_contribution` | Ребёнок ознакомился с откладыванием денег на финансовую цель. | Ребёнок научился пополнять финансовую цель на протяжении нескольких игровых периодов. |
+| `reach_goal` | Ребёнок ознакомился с завершением накопления на выбранную цель. | Ребёнок научился доводить план накопления до достижения цели. |
+
+The piggy-bank introduction explains its purpose but does not itself advance a
+metric. Creating a goal, confirming a plan with savings, a successful transfer,
+and reaching a target are separate learning actions. Friendly reminders are
+allowed; the pet must not guilt the child or imply that affection depends on
+buying the desired item.
+
+#### Payments and purchases
+
+| Metric | Introduction row | Learned row |
+|---|---|---|
+| `reasonable_purchase` | Ребёнок ознакомился с проверкой того, подходит ли покупка текущему бюджету и обязательным потребностям. | Ребёнок научился оценивать покупку с учётом доступных денег и предстоящих обязательных расходов. |
+| `promotion_decision` | Ребёнок ознакомился с проверкой реальной пользы акции. | Ребёнок научился оценивать акции с учётом цены, необходимости покупки и доступных денег. |
+| `impulse_decision` | Ребёнок ознакомился с паузой перед импульсивной покупкой. | Ребёнок научился оценивать импульсивное желание, не ставя под угрозу обязательные расходы. |
+
+A choice is not judged only by whether the child bought or refused an item. The
+rule must consider mandatory needs, basket contents, current and planned money,
+remaining days, and the consequence of the choice. Receipt checking is a deferred
+metric and must not be added to the active catalog until a receipt mechanic exists.
+
+#### Financial security
+
+| Metric | Introduction row | Learned row |
+|---|---|---|
+| `confirmation_code_request` | Ребёнок ознакомился с тем, почему просьба сообщить код подтверждения подозрительна. | Ребёнок научился не сообщать коды подтверждения и обращаться за помощью к взрослому. |
+| `unknown_link` | Ребёнок ознакомился с тем, почему неизвестная ссылка может быть опасна. | Ребёнок научился не переходить по неизвестным ссылкам и самостоятельно выбирать безопасную реакцию. |
+
+On the first occurrence, the pet points out that something looks suspicious and
+explains the nature of the risk. The second occurrence checks an independent
+choice; the third reinforces it in a later or changed situation. Only the first
+and third steps unlock achievements.
+
+### 15.4. Required learning-module contracts
+
+The learning module owns:
+
+- the achievement catalog and thresholds;
+- mapping successful game actions to metric progress;
+- idempotent processing of learning actions;
+- accumulated metric progress and unlocked achievements;
+- first-time explanation state;
+- the mapping from every achievement to its parent-facing sentence;
+- an idempotent request to grant XP for each first unlock.
+
+Source features own the truth about what happened. Planning, Savings, Shop,
+Events, and Week Summary report immutable successful outcomes with a stable
+`learningActionId`; they do not increment achievement counters or write learning
+tables directly. The learning module evaluates those facts centrally.
+
+Minimum equivalent domain concepts:
 
 ```text
-BASIC
-ADVANCED
+LearningAction
+  actionId
+  actionType
+  weekId / game period
+  sourceOperationId?
+  immutable context required by the rule
+
+AchievementDefinition
+  achievementId
+  topicId
+  metricId
+  stage: INTRODUCTION | LEARNED
+  threshold/rule
+  xpReward
+  parentText
+
+MetricProgress
+  metricId
+  progressSteps
+  qualifyingRepeats / distinct periods where required
+
+AchievementUnlock
+  achievementId
+  sourceActionId
+  unlockedAtGameTime
+  xpGrantId
 ```
 
-This is the **educational result level** from the Framework.
+The public API must at minimum support idempotent action recording, observing
+unlocked achievements, observing parent progress rows, and checking/marking
+first-time explanations. A generic application-wide event bus is not required for
+MVP; direct feature contracts and coordinators are sufficient.
 
-It is not the child's mastery score.
+A committed qualifying game action must not lose its learning action after process
+death. Use the same shared Room transaction when practical, or persist a small
+source outbox with the domain outcome and retry `LearningApi.record`. A
+fire-and-forget callback after commit is not sufficient.
 
-### 15.4. Mastery
+Achievement unlock and XP delivery must survive process death without duplication.
+Use the stable grant ID derived from the profile and achievement, or an equivalent
+transactional outbox. Reprocessing the same learning action returns the existing
+result and neither advances progress nor grants XP again.
 
-Each BASIC/ADVANCED branch may have mastery:
-
-```text
-0 = no evidence
-1 = introduced
-2 = independently applied
-3 = reinforced / transferred
-```
-
-Example:
-
-```yaml
-skillId: savings
-
-basic:
-  mastery: 3
-
-advanced:
-  mastery: 1
-```
-
-### 15.5. Evidence types
-
-Supported:
-
-```text
-knowledgeEvidence
-scenarioEvidence
-behaviourEvidence
-transferEvidence
-```
-
-Tests and scenarios may both confirm a result if they actually measure that result.
-
-Behaviour outcomes such as regular saving must not be completed by a single correct quiz answer.
-
-Mastery 3 should normally require:
-- repeated application;
-- another context;
-- or a meaningful transfer situation.
-
-### 15.6. Skill definitions
-
-#### `budget_management`
-
-BASIC:
-- distinguish income and expenses;
-- distinguish mandatory and optional expenses;
-- understand that expenses should not exceed income;
-- create a simple personal budget;
-- make decisions consistent with that budget.
-
-ADVANCED:
-- calculate amounts for spending and savings;
-- reduce optional expenses;
-- choose necessary over desired when resources are limited.
-
-#### `savings`
-
-BASIC:
-- understand why savings exist;
-- set a savings goal;
-- create a simple plan;
-- regularly save part of personal money.
-
-ADVANCED:
-- estimate time to goal;
-- judge goal realism;
-- prefer saving over an impulsive purchase.
-
-#### `purchase_decision`
-
-BASIC:
-- plan a purchase;
-- identify needed purchases;
-- justify item choice;
-- check the result of a purchase.
-
-ADVANCED:
-- account for approximate cost in advance;
-- resist unplanned purchase pressure;
-- make a reasoned choice.
-
-#### `price_evaluation`
-
-BASIC:
-- understand price-tag information;
-- compare prices;
-- calculate total purchase cost.
-
-ADVANCED:
-- compare similar offers;
-- choose using price, quality, and need.
-
-#### `debt_management`
-
-BASIC:
-- understand debt;
-- understand repayment responsibility;
-- understand that debt has risk.
-
-ADVANCED:
-- evaluate debt consequences;
-- understand when debt helps in an unexpected situation;
-- understand when debt worsens the financial position;
-- make a considered borrowing decision.
-
-#### `financial_security`
-
-BASIC:
-- protect personal financial information;
-- do not share passwords/logins/card data;
-- do not follow unknown links;
-- ask a trusted adult for help in a suspicious situation.
-
-ADVANCED:
-- recognize fraud;
-- select a safe response;
-- resist manipulation.
-
-#### `digital_finance`
-
-BASIC:
-- understand the purpose of a budgeting/savings app;
-- record income and expenses;
-- use the app for planning and saving.
-
-ADVANCED:
-- regularly keep records;
-- review own decisions using history and period summaries.
-
-### 15.7. Attitudes are not single-click scores
-
-Framework outcomes such as:
-- responsibility;
-- motivation;
-- caution;
-- willingness;
-- striving;
-
-must not be converted into a numeric score after one click.
-
-Use them as:
-- long-term behaviour indicators;
-- parent-facing qualitative observations;
-- scenario-selection signals.
+The detailed current technical contract lives in `docs/features/learning.md`.
 
 ---
 
 ## 16. XP and Pet Progression
 
-XP is a **game progression system**, not educational mastery.
+XP is a **game progression system**, not the educational progress store.
 
-SkillId and XP are independent systems.
-
-Do not implement:
-
-```text
-Skill mastery → automatic XP
-```
-
-as the only progression relationship.
+Achievements and XP are separate systems. Every achievement grants XP exactly
+once when it is first unlocked, using a stable grant ID. The achievement remains
+the educational record; the XP amount must not be used to infer which financial
+action the child learned.
 
 Primary XP sources may include:
+- first achievement unlocks;
 - completed week;
 - achieved financial goal;
 - key game task;
@@ -866,7 +864,8 @@ Show:
 - product goals;
 - covered themes;
 - overall progress;
-- plain-language BASIC / ADVANCED progress;
+- one plain-language row for every unlocked achievement;
+- topic-level progress derived from the achievement catalog;
 - qualitative observations.
 
 Do not show judgmental labels.
@@ -875,14 +874,14 @@ Preferred:
 
 ```text
 Budget planning
-Basic: applies confidently
-Advanced: learning in progress
+Ребёнок ознакомился с составлением недельного плана.
+Ребёнок научился оставлять достаточно денег на обязательные расходы.
 ```
 
 Avoid:
 
 ```text
-budget_management = 2/3
+reasonable_plan = 2/2
 child made 4 bad decisions
 ```
 
@@ -954,8 +953,11 @@ At minimum:
 - current weekly actuals;
 - week history required by MVP;
 - event history;
-- SkillId BASIC/ADVANCED mastery;
-- evidence;
+- processed learning actions;
+- metric progress;
+- unlocked achievements;
+- first-time learning explanations already shown;
+- pending/applied achievement XP grant IDs;
 - XP;
 - pet stage;
 - unlocked mini-games/content.
@@ -1074,7 +1076,7 @@ Avoid circular dependencies such as:
 
 ```text
 Shop → Pet → Shop
-Events → Skills → Events
+Events → Learning → Events
 Week → Economy → Week
 ```
 
@@ -1091,8 +1093,10 @@ Do not duplicate:
 - day advancement;
 - hunger change rules;
 - debt rules;
-- SkillId mastery transitions;
-- evidence recording;
+- achievement rules and thresholds;
+- learning-action idempotency;
+- achievement-to-parent-text mapping;
+- achievement XP grant IDs;
 - XP rules.
 
 ### 24.4. UI does not own persistence
@@ -1117,7 +1121,8 @@ Examples:
 - debt created;
 - debt repaid;
 - event resolved;
-- evidence recorded;
+- learning action recorded;
+- achievement unlocked;
 - XP granted;
 - pet stage changed.
 
@@ -1178,14 +1183,15 @@ allowedReason
 status
 ```
 
-### SkillProgress
+### Educational progress
 
 ```text
-skillId
-basicMastery
-advancedMastery
-needsRepeat flags / equivalent
-evidence history
+achievement catalog version
+processed learning action IDs
+progress steps by metric
+unlocked achievement IDs
+first-time explanation flags
+achievement XP grant status
 ```
 
 ### XP / Progression
@@ -1197,7 +1203,7 @@ petStage
 unlocks
 ```
 
-Do not mix SkillId mastery and XP in one numeric field.
+Do not mix achievement progress and XP in one numeric field.
 
 ---
 
@@ -1291,8 +1297,12 @@ Prioritize high-risk domain behavior.
 - side-job weekly limits;
 - crisis-week condition;
 - hunger transitions;
-- SkillId BASIC/ADVANCED mastery transitions;
-- evidence recording;
+- standard two-step achievement thresholds;
+- financial-security three-step/two-achievement thresholds;
+- learning-action idempotency;
+- complete achievement-to-parent-row mapping;
+- first-time explanation shown once;
+- one XP grant per first achievement unlock;
 - XP grant idempotency;
 - pet-stage thresholds;
 - persistence/restoration;
@@ -1317,7 +1327,34 @@ Prioritize high-risk domain behavior.
 
 Creating or updating a module/feature does not require a README, a document under `docs/features/`, or a completion report file. Write or update this documentation only when explicitly requested by the user.
 
-Continue reading existing documentation and shared contracts when relevant. Do not delete existing documents just because new documentation is optional. When documentation is requested, use the following template only for the relevant parts of that request.
+Continue reading existing documentation and shared contracts when relevant. Do
+not delete existing documents just because new documentation is optional. When
+documentation is requested or an existing feature document needs an update,
+prefer this location:
+
+```text
+docs/features/<feature_name>.md
+```
+
+Use only the relevant parts of this checklist:
+
+- goal;
+- educational goal;
+- ownership;
+- modules;
+- domain model;
+- dependencies;
+- provided contracts;
+- UI;
+- persistence;
+- events;
+- learning actions and achievement integration;
+- configuration;
+- edge cases;
+- acceptance criteria.
+
+Existing feature documentation is a living contract and must be updated when an
+implementation change affects behavior already described there.
 
 ---
 
@@ -1368,11 +1405,13 @@ This feature provides/emits:
 ## Events
 ...
 
-## Skill Integration
-SkillId:
-Framework level:
-Evidence types:
-Feedback:
+## Achievement Integration
+Learning actions emitted:
+Metrics affected:
+Achievement IDs and thresholds:
+First-time explanation and feedback:
+Parent-facing rows:
+XP reward:
 
 ## Configuration
 ...
@@ -1415,11 +1454,13 @@ If money is involved:
 
 ### Education
 If educational:
-- maps to one of the canonical SkillIds;
-- BASIC/ADVANCED is explicit;
-- evidence type is explicit;
+- emits an idempotent learning action only after a real game outcome;
+- maps to a metric and achievements in the shared catalog;
+- defines the Introduction/Learned threshold;
+- provides a parent-facing row for every achievement;
+- grants configured XP exactly once per first unlock;
 - feedback explains consequence;
-- poor choices do not delete prior mastery.
+- poor choices do not delete prior progress or achievements.
 
 ### Time/week
 If time is involved:
@@ -1450,12 +1491,14 @@ Do not:
 - create an unlimited side-job faucet;
 - offer debt for cosmetic/optional purchases;
 - allow multiple active debts;
-- merge XP and SkillId into one progression number;
-- create dozens of near-duplicate SkillIds;
+- merge XP and achievement progress into one progression number;
+- duplicate achievement rules or counters inside feature modules;
+- advance learning progress merely for opening a screen or showing a hint;
+- award progress twice for the same operation/action ID;
 - score motivation/responsibility from one click;
 - turn the notebook into the whole game;
 - make mini-games the main income source;
-- decrease XP/mastery after mistakes;
+- decrease XP or achievement progress after mistakes;
 - use shaming copy;
 - build a finance-dashboard aesthetic;
 - duplicate wallet/plan/week logic inside features;
@@ -1502,9 +1545,11 @@ Feedback
 ↓
 XP / pet growth
 │
-└── parallel educational evidence
+└── meaningful learning actions
     ↓
-SkillId BASIC / ADVANCED
+Metric progress
+    ↓
+Introduction / Learned achievements
     ↓
 Parent section
 ```
@@ -1512,7 +1557,8 @@ Parent section
 When uncertain, prefer consistency with:
 - weekly planning;
 - shared economy contracts;
-- hidden educational analytics;
-- independent XP;
+- action-based achievement progress;
+- explicit achievement-to-parent-row mapping;
+- separate, idempotent XP rewards;
 - neutral consequences;
 - the child-facing virtual-pet experience.
