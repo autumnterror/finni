@@ -55,7 +55,7 @@ UI поддерживает загрузку, ошибку с повтором, 
 Внутренний журнал последних 32 событий CAST, BITE, SNAG, CATCH, OBJECT_DELIVERED, LOSS, FINISH входит в сохранение, не передаётся в сеть. Наружу — только идемпотентный эффект завершения с `sessionId`.
 
 ## Skills Integration
-Новых skillId и финансовых evidence нет. Применяются проектные Android UI/MVVM, data/storage, feature DI и Nav3 контракты.
+Финансовых `LearningAction` и достижений нет. Применяются проектные Android UI/MVVM, data/storage, feature DI и Nav3 контракты.
 
 ## Configuration
 Единственный действующий баланс: `feature/mini-games/fishing/src/main/assets/fishing_balance.json`. В нём время, диапазоны глубин, скорость движения/камеры, число рыб и длительность удержания, массы, рывки, натяжение, опасности, подмотка, область зацепа и погружение после тапа.

@@ -133,3 +133,72 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         """.trimIndent())
     }
 }
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `learning_actions` (
+                `profileId` TEXT NOT NULL,
+                `actionId` TEXT NOT NULL,
+                `actionType` TEXT NOT NULL,
+                `gamePeriod` INTEGER NOT NULL,
+                `sourceOperationId` TEXT,
+                `payloadFingerprint` TEXT NOT NULL,
+                `catalogVersion` INTEGER NOT NULL,
+                PRIMARY KEY(`profileId`, `actionId`)
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_learning_actions_profileId_actionType` ON `learning_actions` (`profileId`, `actionType`)")
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `learning_metric_occurrences` (
+                `profileId` TEXT NOT NULL,
+                `metricId` TEXT NOT NULL,
+                `actionId` TEXT NOT NULL,
+                `gamePeriod` INTEGER NOT NULL,
+                PRIMARY KEY(`profileId`, `metricId`, `actionId`)
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_learning_metric_occurrences_profileId_metricId_gamePeriod` ON `learning_metric_occurrences` (`profileId`, `metricId`, `gamePeriod`)")
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `learning_metric_progress` (
+                `profileId` TEXT NOT NULL,
+                `metricId` TEXT NOT NULL,
+                `progressSteps` INTEGER NOT NULL,
+                `qualifyingRepeats` INTEGER NOT NULL,
+                `distinctPeriods` INTEGER NOT NULL,
+                `currentStreak` INTEGER NOT NULL,
+                `lastQualifyingPeriod` INTEGER,
+                PRIMARY KEY(`profileId`, `metricId`)
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `achievement_unlocks` (
+                `profileId` TEXT NOT NULL,
+                `achievementId` TEXT NOT NULL,
+                `sourceActionId` TEXT NOT NULL,
+                `unlockedAtGamePeriod` INTEGER NOT NULL,
+                `xpGrantId` TEXT NOT NULL,
+                PRIMARY KEY(`profileId`, `achievementId`)
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_achievement_unlocks_profileId_sourceActionId` ON `achievement_unlocks` (`profileId`, `sourceActionId`)")
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `learning_explanations` (
+                `profileId` TEXT NOT NULL,
+                `explanationId` TEXT NOT NULL,
+                PRIMARY KEY(`profileId`, `explanationId`)
+            )
+        """.trimIndent())
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `achievement_xp_outbox` (
+                `grantId` TEXT NOT NULL,
+                `profileId` TEXT NOT NULL,
+                `achievementId` TEXT NOT NULL,
+                `amount` INTEGER NOT NULL,
+                `delivered` INTEGER NOT NULL,
+                PRIMARY KEY(`grantId`)
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_achievement_xp_outbox_profileId_delivered` ON `achievement_xp_outbox` (`profileId`, `delivered`)")
+    }
+}
