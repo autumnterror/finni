@@ -11,4 +11,5 @@ data class FinPetShapes(
     val badge: CornerBasedShape,
     val dialog: CornerBasedShape,
     val sheet: CornerBasedShape,
+    val storefrontControl: CornerBasedShape = button,
 )

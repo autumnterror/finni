@@ -9,14 +9,16 @@ metadata:
 
 Используй этот skill, когда нужно добавить Retrofit API, repository, mapper, локальное хранение, SharedPreferences storage, Room entity/dao/database или обработку ошибок data layer.
 
+Не создавай и не обновляй README или документацию модуля/feature автоматически после реализации. Пиши их только по явному запросу пользователя; существующие документы можно читать как контекст.
+
 ## Перед правками
 
 | Файл | Зачем читать |
 |------|--------------|
-| `core/src/main/java/github/detrig/core/network_notes.md` | как устроена сеть в core |
-| `core/src/main/java/github/detrig/core/storage_notes.md` | SharedPreferences и session memory |
-| `core/src/main/java/github/detrig/core/room_notes.md` | Room helpers и размещение базы |
-| `core/src/main/java/github/detrig/core/exception_notes.md` | ошибки приложения |
+| `guides/network_notes.md` | как устроена сеть в core |
+| `guides/storage_notes.md` | SharedPreferences и session memory |
+| `guides/room_notes.md` | Room helpers и размещение базы |
+| `guides/exception_notes.md` | ошибки приложения |
 | `core/src/main/java/github/detrig/core/exception/mapper/CoreExceptionMapper.kt` | маппинг Throwable -> AppException |
 | `core/src/main/java/github/detrig/core/infrastructure/preferences/SharedStorage.kt` | базовый preferences storage |
 | `core/src/main/java/github/detrig/core/memory/GlobalSessionMemory.kt` | RAM-хранилище сессии |
@@ -128,7 +130,13 @@ internal class AuthSessionStorage(
 
 ## Room
 
-Core дает только helpers. Конкретные `AppDatabase`, `Entity`, `Dao` и migrations создаются в app/feature слоях.
+Core дает только helpers. Конкретные `AppDatabase`, `Entity` и `Dao` создаются в app/feature слоях.
+
+### Миграции на этапе разработки
+
+Для текущего дорелизного этапа проекта миграции БД не требуются. При изменении схемы не добавляй ручные `Migration`, `AutoMigration`, цепочки переходов старых версий или совместимость со старыми dev-схемами, если пользователь отдельно этого не попросил.
+
+Сохраняй корректную актуальную схему и версию БД. Если существующая локальная тестовая база несовместима, явно сообщи о необходимости ее пересоздания и используй только согласованный dev-only сброс. Отсутствие миграций не разрешает молча очищать прогресс, включать destructive fallback для release или удалять существующий migration-код вне отдельной задачи. На выпущенные приложения с пользовательскими данными это временное правило автоматически не переносится.
 
 ```kotlin
 @Database(
@@ -207,3 +215,4 @@ dependencies {
 - [ ] SharedPreferences storage наследуется от `SharedStorage`.
 - [ ] Room database создается через `RoomDatabaseFactory`.
 - [ ] Несколько DAO-операций в одной операции идут через `RoomTransactionRunner`.
+- [ ] Для дорелизных изменений схемы не добавлены миграции без отдельного запроса; данные не сбрасываются молча.

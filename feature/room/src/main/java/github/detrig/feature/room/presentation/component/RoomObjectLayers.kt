@@ -3,6 +3,7 @@ package github.detrig.feature.room.presentation.component
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -38,15 +39,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 @Composable
@@ -136,17 +138,7 @@ internal fun RoomObjectLayers(
                 )
             }
         }
-        val sprites by produceState<Map<String, RoomSprite>>(emptyMap(), resources, widthPx, heightPx) {
-            value = withContext(Dispatchers.Default) {
-                placements.associate { placement ->
-                    val destination = destinations.getValue(placement.id)
-                    placement.id to RoomSprite.load(
-                        resources, roomObjectAsset(placement.id),
-                        destination.width.roundToInt(), destination.height.roundToInt(),
-                    )
-                }
-            }
-        }
+        val sprites by RoomSpriteCache.sprites(resources).collectAsState()
 
         fun hitObject(position: Offset): String? {
             // A foreground decoration blocks objects behind it, but transparent gaps pass through.
@@ -265,3 +257,21 @@ private fun Rect.scaledFromBottom(scale: Float) = Rect(
 )
 
 private const val PRESS_SCALE = 1.045f
+
+@Preview(name = "Предметы комнаты", widthDp = 360, heightDp = 240)
+@Composable
+private fun RoomObjectLayersPreview() {
+    FinPetTheme {
+        Box(
+            Modifier.size(360.dp, 240.dp)
+                .background(AppTheme.colors.house.floor),
+        ) {
+            RoomObjectLayers(
+                zones = emptyList(),
+                enabled = false,
+                buyingZoneId = null,
+                onObjectClick = {},
+            )
+        }
+    }
+}

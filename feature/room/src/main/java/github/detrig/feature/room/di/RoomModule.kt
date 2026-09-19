@@ -21,7 +21,7 @@ import github.detrig.feature.room.presentation.RoomViewModel
 internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     private val positions by lazy { github.detrig.feature.room.data.local.HousePositionStorage(dependencies.housePreferences()) }
     private val previewRequests = github.detrig.feature.room.navigation.RoomPreviewRequests()
-    override val api: RoomApi by lazy { RoomApiImpl(previewRequests) }
+    override val api: RoomApi by lazy { RoomApiImpl(previewRequests, dependencies.resources()) }
     private val repository by lazy {
         RoomRepositoryImpl(
             RoomZoneCatalog(), dependencies.gameStateApi(), dependencies.economyApi(), dependencies.weekApi(),

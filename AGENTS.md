@@ -11,7 +11,7 @@ The project is developed feature-by-feature and AI-first. A developer or agent m
 3. keep feature ownership explicit;
 4. reuse shared domain and design-system primitives;
 5. avoid hidden coupling and duplicate global logic;
-6. update documentation when a change affects shared behavior.
+6. create or update module/feature documentation only when explicitly requested; keep approved shared rules in this contract consistent.
 
 This file is aligned with **MVP 6.2**.
 
@@ -960,7 +960,9 @@ At minimum:
 - pet stage;
 - unlocked mini-games/content.
 
-Schema changes require migrations.
+During the current pre-release development stage, schema changes do not require database migrations. Do not add manual migrations, auto-migrations, or compatibility code for old development schemas unless explicitly requested.
+
+If a local development database needs to be recreated after a schema change, use an explicitly agreed development-only reset. This rule does not authorize deleting existing migration code or silently clearing data, and does not apply automatically to released applications with user data to preserve.
 
 Do not silently reset progress.
 
@@ -1199,48 +1201,11 @@ Do not mix SkillId mastery and XP in one numeric field.
 
 ---
 
-## 26. Design-System Rules
+## 26. Android UI Skill
 
-There is no final brandbook assumption unless the repository contains one.
+Before creating or changing visual Compose UI, read `.codex/skills/android-core-compose-ui/SKILL.md`. It owns the detailed rules for design-system components, theme tokens, layout, and previews; do not duplicate those rules in this contract.
 
-Feature code must not hardcode brand styling.
-
-Avoid:
-- one-off colors;
-- arbitrary fonts;
-- repeated custom radii;
-- duplicate button styles;
-- one-off status components.
-
-Use semantic tokens such as:
-
-```text
-actionPrimary
-surfaceBase
-surfaceElevated
-textPrimary
-textSecondary
-statusPositive
-statusWarning
-statusCritical
-```
-
-The design system should own:
-- colors;
-- typography;
-- spacing;
-- shapes;
-- elevation;
-- icons;
-- touch targets;
-- motion;
-- common buttons;
-- purchase summary;
-- plan cards;
-- feedback cards;
-- progress indicators;
-- item cards;
-- confirmation sheets.
+For ViewModel, UI-state, events, and commands, use `android-core-ui-mvvm`. DI and navigation remain governed by their respective Android skills.
 
 ---
 
@@ -1348,36 +1313,15 @@ Prioritize high-risk domain behavior.
 
 ---
 
-## 31. Feature Documentation Requirement
+## 31. Optional Feature Documentation
 
-Before implementing a non-trivial feature, create or update:
+Creating or updating a module/feature does not require a README, a document under `docs/features/`, or a completion report file. Write or update this documentation only when explicitly requested by the user.
 
-```text
-docs/features/<feature_name>.md
-```
-
-Each feature document must describe:
-
-- goal;
-- educational goal;
-- ownership;
-- modules;
-- domain model;
-- dependencies;
-- provided contracts;
-- UI;
-- persistence;
-- events;
-- SkillId integration;
-- configuration;
-- edge cases;
-- acceptance criteria.
-
-Feature documentation is a living document and must be updated with implementation changes.
+Continue reading existing documentation and shared contracts when relevant. Do not delete existing documents just because new documentation is optional. When documentation is requested, use the following template only for the relevant parts of that request.
 
 ---
 
-## 32. Feature Ownership Template
+## 32. Optional Feature Ownership Template
 
 ```markdown
 # Feature: <name>
@@ -1488,7 +1432,8 @@ If time is involved:
 - important domain rules tested;
 - repeated taps/navigation do not duplicate side effects;
 - no debug shortcuts leak into normal flow;
-- feature documentation is current.
+- Android UI changes follow the relevant skill referenced in section 26;
+- module/feature documentation is created or updated only when explicitly requested.
 
 ---
 

@@ -20,6 +20,7 @@ internal class RoomMediator(
     private val weekMediator: WeekMediator,
     private val planningMediator: PlanningMediator,
     private val savingsMediator: SavingsMediator,
+    private val shopMediator: ShopMediator,
 ) : Mediator<RoomApi> {
     fun init() {
         RoomFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -31,7 +32,7 @@ internal class RoomMediator(
                 override fun planningApi(): github.detrig.feature.planning.api.PlanningApi = planningMediator.getApi()
                 override fun savingsApi(): github.detrig.feature.savings.api.SavingsApi = savingsMediator.getApi()
                 override fun marketLauncher() = github.detrig.feature.room.api.RoomMarketLauncher {
-                    github.detrig.feature.productmarket.ProductMarketFeature.getApi().open()
+                    shopMediator.getApi().open(github.detrig.products.GroceryStoreIds.Store)
                 }
                 override fun globalMessageController(): GlobalMessageController = coreComponent.globalMessageController
                 override fun resources(): Resources = coreComponent.resources
@@ -39,6 +40,8 @@ internal class RoomMediator(
                     RoomGameLauncherImpl(coreComponent.globalMessageController, coreComponent.resources)
             }
         }
+        // The room is the persistent hub: warm its assets before the first navigation to it.
+        RoomFeature.getApi()
     }
 
     override fun getApi(): RoomApi = RoomFeature.getApi()

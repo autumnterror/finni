@@ -1,6 +1,7 @@
 package github.detrig.feature.room.presentation.component
 
 import android.content.res.Resources
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.geometry.Offset
@@ -14,7 +15,7 @@ import github.detrig.feature.room.R
 internal class RoomSprite private constructor(
     val image: ImageBitmap,
     val content: IntRect,
-    private val hitMask: BooleanArray,
+    private val hitMask: LongArray,
 ) {
     fun contains(position: Offset, destination: Rect): Boolean {
         if (!destination.contains(position)) return false
@@ -22,33 +23,34 @@ internal class RoomSprite private constructor(
             .toInt().coerceIn(content.left, content.right - 1)
         val y = (content.top + (position.y - destination.top) / destination.height * content.height)
             .toInt().coerceIn(content.top, content.bottom - 1)
-        return hitMask[y * image.width + x]
+        val index = y * image.width + x
+        return (hitMask[index ushr 6] and (1L shl (index and 63))) != 0L
     }
 
     companion object {
         private const val HIT_ALPHA = 96
+        private const val DECODE_HEADROOM = 1.1f
 
         fun load(resources: Resources, @DrawableRes resource: Int, width: Int, height: Int): RoomSprite {
             val dimensions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeResource(resources, resource, dimensions)
             var sample = 1
-            // Keep headroom for the press animation and transparent padding in the source.
-            while (dimensions.outWidth / (sample * 2) >= width * 1.5f &&
-                dimensions.outHeight / (sample * 2) >= height * 1.5f
+            // The press animation peaks at 1.045x, so 10% keeps the rendered sprite sharp
+            // without retaining source-sized bitmaps in the long-lived room cache.
+            while (dimensions.outWidth / (sample * 2) >= width * DECODE_HEADROOM &&
+                dimensions.outHeight / (sample * 2) >= height * DECODE_HEADROOM
             ) sample *= 2
             val bitmap = requireNotNull(BitmapFactory.decodeResource(resources, resource,
                 BitmapFactory.Options().apply { inScaled = false; inSampleSize = sample },
             ))
             val pixels = IntArray(bitmap.width * bitmap.height)
             bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            val hitMask = BooleanArray(pixels.size)
             var left = bitmap.width
             var top = bitmap.height
             var right = -1
             var bottom = -1
             pixels.forEachIndexed { index, color ->
                 if ((color ushr 24) >= HIT_ALPHA) {
-                    hitMask[index] = true
                     val x = index % bitmap.width
                     val y = index / bitmap.width
                     left = minOf(left, x)
@@ -58,14 +60,49 @@ internal class RoomSprite private constructor(
                 }
             }
             require(right >= left && bottom >= top) { "Room sprite has no visible content: $resource" }
-            // Trim only transparent outer padding; never construct or alter an object's silhouette.
             val content = IntRect(
-                (left - 2).coerceAtLeast(0), (top - 2).coerceAtLeast(0),
-                (right + 3).coerceAtMost(bitmap.width), (bottom + 3).coerceAtMost(bitmap.height),
+                (left - 2).coerceAtLeast(0),
+                (top - 2).coerceAtLeast(0),
+                (right + 3).coerceAtMost(bitmap.width),
+                (bottom + 3).coerceAtMost(bitmap.height),
             )
-            return RoomSprite(bitmap.asImageBitmap(), content, hitMask)
+            val contentPixels = pixels.crop(content, bitmap.width)
+            val contentBitmap = Bitmap.createBitmap(
+                content.width,
+                content.height,
+                Bitmap.Config.ARGB_8888,
+            ).apply {
+                setPixels(contentPixels, 0, content.width, 0, 0, content.width, content.height)
+            }
+            bitmap.recycle()
+
+            // One bit per rendered pixel preserves the exact alpha hit area without a BooleanArray.
+            val hitMask = LongArray((contentPixels.size + Long.SIZE_BITS - 1) / Long.SIZE_BITS)
+            contentPixels.forEachIndexed { index, color ->
+                if ((color ushr 24) >= HIT_ALPHA) {
+                    hitMask[index ushr 6] = hitMask[index ushr 6] or (1L shl (index and 63))
+                }
+            }
+            return RoomSprite(
+                image = contentBitmap.asImageBitmap(),
+                content = IntRect(0, 0, content.width, content.height),
+                hitMask = hitMask,
+            )
         }
     }
+}
+
+private fun IntArray.crop(content: IntRect, sourceWidth: Int): IntArray {
+    val cropped = IntArray(content.width * content.height)
+    repeat(content.height) { row ->
+        copyInto(
+            destination = cropped,
+            destinationOffset = row * content.width,
+            startIndex = (content.top + row) * sourceWidth + content.left,
+            endIndex = (content.top + row) * sourceWidth + content.right,
+        )
+    }
+    return cropped
 }
 
 @DrawableRes

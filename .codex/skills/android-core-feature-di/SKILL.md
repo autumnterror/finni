@@ -9,13 +9,17 @@ metadata:
 
 Используй этот skill, когда нужно создать feature-модуль, дописать DI, подключить зависимости feature или оформить public API модуля.
 
+Не создавай и не обновляй README или документацию модуля/feature автоматически после реализации. Пиши их только по явному запросу пользователя; существующие документы можно читать как контекст.
+
+Если задача затрагивает визуальный Compose UI, используй `android-core-compose-ui`; если ViewModel и UI-state — `android-core-ui-mvvm`. Не загружай их для правки только DI.
+
 ## Перед правками
 
 Сначала проверь актуальные файлы проекта:
 
 | Файл | Зачем читать |
 |------|--------------|
-| `core/src/main/java/github/detrig/core/di_notes.md` | общая схема DI |
+| `guides/di_notes.md` | общая схема DI |
 | `core/src/main/java/github/detrig/core/di/DiComponentFieldDemand.kt` | как работает `diDemand` |
 | `core/src/main/java/github/detrig/core/di/ModuleDependenciesProvider.kt` | как feature получает зависимости |
 | `core/src/main/java/github/detrig/core/di/CoreComponent.kt` | что core отдает наружу |
