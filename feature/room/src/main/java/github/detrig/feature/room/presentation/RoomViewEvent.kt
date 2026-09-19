@@ -11,7 +11,11 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object BedClicked : RoomViewEvent
     data object CalendarClicked : RoomViewEvent
     data object PiggyBankClicked : RoomViewEvent
-    data object ParentHelpBoardClicked : RoomViewEvent
+    data object TestsClicked : RoomViewEvent
+    data object WardrobeClicked : RoomViewEvent
+    data object FoodClicked : RoomViewEvent
+    data object DishesClicked : RoomViewEvent
+    data object FeedingClicked : RoomViewEvent
     data class ParentHelpOfferClicked(val offerId: String) : RoomViewEvent
     data object CloseParentHelpDialog : RoomViewEvent
     data object CloseAllowanceNotice : RoomViewEvent

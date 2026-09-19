@@ -2,27 +2,24 @@ package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
-import github.detrig.designsystem.theme.AppTheme
-import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseMotionState
@@ -48,7 +45,11 @@ internal fun HouseScene(
     onBedClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
-    onParentHelpBoardClick: () -> Unit,
+    onTestsClick: () -> Unit,
+    onWardrobeClick: () -> Unit,
+    onFoodClick: () -> Unit,
+    onDishesClick: () -> Unit,
+    onFeedingClick: () -> Unit,
     onSavePosition: (HousePosition) -> Unit,
     previewZoneId: String?,
     onPreviewReady: (String) -> Unit,
@@ -58,21 +59,14 @@ internal fun HouseScene(
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
     val savePosition by rememberUpdatedState(onSavePosition)
     val previewReady by rememberUpdatedState(onPreviewReady)
-    val zonesById = remember(zones) { zones.associateBy { it.id } }
-    val marketDescription = stringResource(R.string.house_market)
-    val bedDescription = stringResource(R.string.house_bed)
-    val calendarDescription = stringResource(R.string.house_calendar)
-    val piggyBankDescription = stringResource(R.string.house_piggy_bank)
-    val parentHelpBoardDescription = stringResource(R.string.house_parent_help_board)
-    val touchTarget = AppTheme.sizes.preferredTouchTarget
 
     BoxWithConstraints(modifier.clipToBounds().testTag("house_scene")) {
         val unitDp = maxWidth
+        val sceneHeightDp = maxHeight
         val unitPx = with(LocalDensity.current) { unitDp.toPx() }
+        val heightPx = with(LocalDensity.current) { sceneHeightDp.toPx() }
         // Первая отрисовка уже в сохранённой точке, без кадра с левой границей дома.
         val scroll = remember { ScrollState((motion.cameraLeftX * unitPx).roundToInt()) }
-        val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
-        val horizon = HouseLayout.horizon(heightPx, unitPx)
         var ready by remember { mutableStateOf(false) }
 
         fun save() {
@@ -101,7 +95,7 @@ internal fun HouseScene(
             }
             try {
                 while (isActive) {
-                    snapshotFlow { motion.needsStep }.first { it }
+                    snapshotFlow<Boolean> { motion.needsStep }.first { it }
                     var previous = withFrameNanos { it }
                     while (motion.needsStep && isActive) {
                         val now = withFrameNanos { it }
@@ -134,78 +128,42 @@ internal fun HouseScene(
             previewReady(id)
         }
 
-        HouseBackground(cameraLeftX = { scroll.value / unitPx }, modifier = Modifier.fillMaxSize())
-        // Общая прокрутка даёт touch slop, отмену тапа при свайпе, инерцию и TalkBack scrollTo.
-        Box(Modifier.fillMaxSize().testTag("house_scroll").horizontalScroll(scroll, enabled = active && ready)) {
+        Box(
+            Modifier.fillMaxSize().testTag("house_scroll")
+                .horizontalScroll(scroll, enabled = active && ready),
+        ) {
             Box(Modifier.width(unitDp * HouseLayout.WORLD_WIDTH).fillMaxHeight()) {
-                HouseLayout.objects.forEach { placement ->
-                    val width = unitDp * placement.width
-                    val height = unitDp * placement.height
-                    val interactive = placement.zoneId != null || placement.opensMarket || placement.id == "bed" ||
-                        placement.id == "calendar" || placement.id == "piggy_bank"
-                        || placement.id == "task_board"
-                    val hitWidth = if (interactive) maxOf(width, touchTarget) else width
-                    val hitHeight = if (interactive) maxOf(height, touchTarget) else height
-                    val hitWidthPx = with(LocalDensity.current) { hitWidth.toPx() }
-                    val hitHeightPx = with(LocalDensity.current) { hitHeight.toPx() }
-                    val bounds = Modifier.offset {
-                        IntOffset(
-                            (placement.centerX * unitPx - hitWidthPx / 2).roundToInt(),
-                            (horizon + placement.baseY * unitPx - placement.height * unitPx / 2 - hitHeightPx / 2).roundToInt(),
-                        )
-                    }.size(hitWidth, hitHeight).zIndex(placement.layer)
-                    val zone = placement.zoneId?.let(zonesById::get)
-                    when {
-                        zone != null -> RoomZonePlace(
-                            zone, placement.art, width, height,
-                            isBuying = buyingZoneId == zone.id,
-                            enabled = active && ready && buyingZoneId == null,
-                            onClick = { motion.pause(); save(); onZoneClick(zone.id) },
-                            modifier = bounds,
-                        )
-                        placement.opensMarket -> Box(
-                            bounds.testTag("room_product_market")
-                                .clickable(enabled = active && ready, role = Role.Button) {
-                                    motion.pause(); save(); onMarketClick()
-                                }.semantics { contentDescription = marketDescription },
-                            contentAlignment = Alignment.Center,
-                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
-                        placement.id == "bed" -> Box(
-                            bounds.testTag("room_bed")
-                                .clickable(enabled = active && ready, role = Role.Button) {
-                                    motion.pause(); save(); onBedClick()
-                                }.semantics { contentDescription = bedDescription },
-                            contentAlignment = Alignment.Center,
-                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
-                        placement.id == "calendar" -> Box(
-                            bounds.testTag("room_calendar")
-                                .clickable(enabled = active && ready, role = Role.Button) {
-                                    motion.pause(); save(); onCalendarClick()
-                                }.semantics { contentDescription = calendarDescription },
-                            contentAlignment = Alignment.Center,
-                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
-                        placement.id == "piggy_bank" -> Box(
-                            bounds.testTag("room_piggy_bank")
-                                .clickable(enabled = active && ready, role = Role.Button) {
-                                    motion.pause(); save(); onPiggyBankClick()
-                                }.semantics { contentDescription = piggyBankDescription },
-                            contentAlignment = Alignment.Center,
-                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
-                        placement.id == "task_board" -> Box(
-                            bounds.testTag("room_parent_help_board")
-                                .clickable(enabled = active && ready, role = Role.Button) {
-                                    motion.pause(); save(); onParentHelpBoardClick()
-                                }.semantics { contentDescription = parentHelpBoardDescription },
-                            contentAlignment = Alignment.Center,
-                        ) { HouseObjectArtwork(placement.art, Modifier.size(width, height)) }
-                        else -> HouseObjectArtwork(placement.art, bounds)
-                    }
-                }
+                HouseBackground(Modifier.fillMaxSize())
+
+                RoomObjectLayers(
+                    zones = zones,
+                    enabled = active && ready,
+                    buyingZoneId = buyingZoneId,
+                    onObjectClick = { id ->
+                        motion.pause()
+                        save()
+                        when (id) {
+                            "phone" -> onMarketClick()
+                            "bed" -> onBedClick()
+                            "calendar" -> onCalendarClick()
+                            "piggy_bank" -> onPiggyBankClick()
+                            "task_board" -> onTestsClick()
+                            "wardrobe" -> onWardrobeClick()
+                            "fridge" -> onFoodClick()
+                            "sink" -> onDishesClick()
+                            "bowls" -> onFeedingClick()
+                            else -> onZoneClick(id)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+
                 // Один питомец, без обработчика касаний поверх предметов.
                 petContent(Modifier.offset {
                     IntOffset(
                         ((motion.petX - HouseLayout.PET_WIDTH / 2) * unitPx).roundToInt(),
-                        (horizon + (HouseLayout.PET_FLOOR_OFFSET - HouseLayout.PET_WIDTH) * unitPx).roundToInt(),
+                        (HouseLayout.PET_FLOOR_BASELINE * heightPx -
+                            HouseLayout.PET_WIDTH * unitPx).roundToInt(),
                     )
                 }.size(unitDp * HouseLayout.PET_WIDTH).zIndex(3f).graphicsLayer {
                     scaleX = if (motion.facingRight) 1f else -1f
@@ -214,13 +172,6 @@ internal fun HouseScene(
                     rotationZ = step * 2f
                 }.testTag("house_pet"))
             }
-        }
-        if (!motion.hintSeen) {
-            Text(stringResource(R.string.house_swipe_hint),
-                style = AppTheme.typography.caption, color = AppTheme.colors.house.outline,
-                modifier = Modifier.align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-                    .padding(AppTheme.spacing.lg))
         }
     }
 }

@@ -54,7 +54,11 @@ internal class RoomViewModel(
             RoomViewEvent.BedClicked -> sleep()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openSavings()
-            RoomViewEvent.ParentHelpBoardClicked -> showParentHelp()
+            RoomViewEvent.TestsClicked,
+            RoomViewEvent.WardrobeClicked,
+            RoomViewEvent.FoodClicked,
+            RoomViewEvent.FeedingClicked -> router.showEntryComingSoon()
+            RoomViewEvent.DishesClicked -> showParentHelp()
             is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
             RoomViewEvent.CloseParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(parentHelpDialog = null))

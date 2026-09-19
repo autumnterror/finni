@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.room.R
-import github.detrig.feature.room.presentation.component.HouseHud
 import github.detrig.feature.room.presentation.component.HouseScene
 import github.detrig.designsystem.component.FinPetCard
 import androidx.compose.ui.platform.testTag
@@ -43,14 +42,17 @@ internal fun RoomContent(
                     onBedClick = { onEvent(RoomViewEvent.BedClicked) },
                     onCalendarClick = { onEvent(RoomViewEvent.CalendarClicked) },
                     onPiggyBankClick = { onEvent(RoomViewEvent.PiggyBankClicked) },
-                    onParentHelpBoardClick = { onEvent(RoomViewEvent.ParentHelpBoardClicked) },
+                    onTestsClick = { onEvent(RoomViewEvent.TestsClicked) },
+                    onWardrobeClick = { onEvent(RoomViewEvent.WardrobeClicked) },
+                    onFoodClick = { onEvent(RoomViewEvent.FoodClicked) },
+                    onDishesClick = { onEvent(RoomViewEvent.DishesClicked) },
+                    onFeedingClick = { onEvent(RoomViewEvent.FeedingClicked) },
                     onSavePosition = { onEvent(RoomViewEvent.SavePosition(it)) },
                     previewZoneId = previewZoneId,
                     onPreviewReady = onPreviewReady,
                     modifier = Modifier.fillMaxSize(),
                     petContent = petContent,
                 )
-                HouseHud(state.progress, active, Modifier.align(Alignment.TopCenter))
                 if (state.sleeping) {
                     FinPetCard(Modifier.align(Alignment.Center).testTag("room_sleeping")) {
                         Text(stringResource(R.string.room_sleeping),

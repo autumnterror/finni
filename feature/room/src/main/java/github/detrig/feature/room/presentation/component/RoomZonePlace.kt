@@ -29,6 +29,7 @@ internal fun RoomZonePlace(
     isBuying: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    renderArtwork: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val description = when (val access = zone.access) {
@@ -44,12 +45,14 @@ internal fun RoomZonePlace(
             stateDescription = description
         }, contentAlignment = Alignment.Center,
     ) {
-        when (zone.access) {
-            is RoomZoneAccess.Unavailable -> RoomZoneFog(Modifier.size(artWidth, artHeight))
-            RoomZoneAccess.Open, is RoomZoneAccess.Buyable -> {
-                HouseObjectArtwork(art, Modifier.size(artWidth, artHeight))
-                if (zone.access is RoomZoneAccess.Buyable) {
-                    RoomZoneLock(Modifier.size(maxOf(artWidth * HouseLayout.LOCK_SIZE_FRACTION, AppTheme.sizes.iconMedium)))
+        if (renderArtwork) {
+            when (zone.access) {
+                is RoomZoneAccess.Unavailable -> RoomZoneFog(Modifier.size(artWidth, artHeight))
+                RoomZoneAccess.Open, is RoomZoneAccess.Buyable -> {
+                    HouseObjectArtwork(art, Modifier.size(artWidth, artHeight))
+                    if (zone.access is RoomZoneAccess.Buyable) {
+                        RoomZoneLock(Modifier.size(maxOf(artWidth * HouseLayout.LOCK_SIZE_FRACTION, AppTheme.sizes.iconMedium)))
+                    }
                 }
             }
         }
