@@ -128,7 +128,7 @@ internal fun RoomScreen(
     }
     content?.planEditor?.takeIf {
         canShowDialogs &&
-        content.allowanceNotice == null && content.zeroBalanceHelpNotice == null && content.planDialogue == null
+        content.allowanceNotice == null && content.zeroBalanceHelpNotice == null
     }?.let { editor ->
         WeeklyPlanEditorDialog(
             editor = editor,
@@ -137,7 +137,9 @@ internal fun RoomScreen(
             petName = petName,
             petPortrait = petPortrait,
             tutorialStep = content.planTutorialStep,
+            feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
             onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
+            onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
             onPercentChanged = { category, percent ->
                 viewModel.perform(RoomViewEvent.PlanPercentChanged(category, percent))
             },
@@ -154,10 +156,7 @@ internal fun RoomScreen(
         )
     }
     content?.planDialogue?.takeIf { dialogue ->
-        canShowDialogs && (
-            dialogue is PlanDialogueState.Saved ||
-            (content.planEditor != null && content.allowanceNotice == null && content.zeroBalanceHelpNotice == null)
-        )
+        canShowDialogs && dialogue is PlanDialogueState.Saved
     }?.let { dialogue ->
         FinPetDialogueDialog(
             speakerName = petName,

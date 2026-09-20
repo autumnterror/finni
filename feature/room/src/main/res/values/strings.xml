@@ -84,7 +84,7 @@
     <string name="plan_mandatory">Обязательное</string>
     <string name="plan_wants">Желания</string>
     <string name="plan_savings">Накопления</string>
-    <string name="plan_save">Проверить и сохранить</string>
+    <string name="plan_save">Сохранить план</string>
     <string name="plan_saving">Сохраняем…</string>
     <string name="plan_progress_title">План · неделя %1$d</string>
     <string name="plan_progress_description">Серый фон — запланированная сумма. Цветная часть — уже потрачено или отложено.</string>

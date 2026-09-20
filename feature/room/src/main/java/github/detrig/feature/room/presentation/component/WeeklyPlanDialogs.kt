@@ -42,7 +42,9 @@ internal fun WeeklyPlanEditorDialog(
     petName: String,
     petPortrait: @Composable (Modifier) -> Unit,
     tutorialStep: PlanTutorialStep?,
+    feedbackCards: List<String>?,
     onTutorialNext: () -> Unit,
+    onFeedbackFinished: () -> Unit,
     onPercentChanged: (PlanCategory, Int) -> Unit,
     onSave: () -> Unit,
 ) {
@@ -54,7 +56,7 @@ internal fun WeeklyPlanEditorDialog(
             FinPetButton(
                 text = if (isSaving) stringResource(R.string.plan_saving) else stringResource(R.string.plan_save),
                 onClick = onSave,
-                enabled = tutorialStep == null && !isSaving && editor.total <= 100,
+                enabled = tutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -106,21 +108,21 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.MANDATORY,
             value = editor.mandatory,
             highlighted = tutorialStep == PlanTutorialStep.MANDATORY,
-            enabled = tutorialStep == null,
+            enabled = tutorialStep == null && feedbackCards == null,
             onPercentChanged = onPercentChanged,
         )
         PercentageSlider(
             category = PlanCategory.WANTS,
             value = editor.wants,
             highlighted = tutorialStep == PlanTutorialStep.WANTS,
-            enabled = tutorialStep == null,
+            enabled = tutorialStep == null && feedbackCards == null,
             onPercentChanged = onPercentChanged,
         )
         PercentageSlider(
             category = PlanCategory.SAVINGS,
             value = editor.savings,
             highlighted = tutorialStep == PlanTutorialStep.SAVINGS,
-            enabled = tutorialStep == null,
+            enabled = tutorialStep == null && feedbackCards == null,
             onPercentChanged = onPercentChanged,
         )
         if (tutorialStep != null) {
@@ -131,6 +133,14 @@ internal fun WeeklyPlanEditorDialog(
                 onPageChanged = { onTutorialNext() },
                 dismissOnBackPress = false,
                 onFinished = onTutorialNext,
+            )
+        } else if (feedbackCards != null) {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = feedbackCards,
+                portrait = petPortrait,
+                dismissOnBackPress = false,
+                onFinished = onFeedbackFinished,
             )
         }
     }
@@ -285,8 +295,13 @@ private fun WeeklyPlanDialogPreview() {
             petPortrait = { modifier ->
                 Box(modifier.background(AppTheme.colors.actionSecondary))
             },
-            tutorialStep = PlanTutorialStep.MANDATORY,
+            tutorialStep = null,
+            feedbackCards = listOf(
+                "Этот план пока ненадёжный: на важное может не хватить денег. " +
+                    "Подними «Обязательное» хотя бы до 40%.",
+            ),
             onTutorialNext = {},
+            onFeedbackFinished = {},
             onPercentChanged = { _, _ -> },
             onSave = {},
         )
