@@ -9,10 +9,14 @@ import github.detrig.feature.room.presentation.component.RoomSpriteCache
 
 internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
-    resources: Resources,
+    private val resources: Resources,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)
+    }
+
+    override suspend fun preloadAssets() {
+        RoomSpriteCache.awaitPreloaded(resources)
     }
 
     override fun requestZonePreview(zoneId: String) = requests.request(zoneId)
@@ -21,11 +25,15 @@ internal class RoomApiImpl(
         modifier: Modifier,
         petContent: @Composable (Modifier) -> Unit,
         onMirrorClick: () -> Unit,
+        onPhoneClick: () -> Unit,
+        active: Boolean,
     ) {
         RoomScreen(
             modifier = modifier,
             petContent = petContent,
             onMirrorClick = onMirrorClick,
+            onPhoneClick = onPhoneClick,
+            externalActive = active,
             previewRequests = requests,
         )
     }

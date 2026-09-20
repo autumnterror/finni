@@ -42,11 +42,12 @@ fun FinPetStorefrontProgressIndicator(
     progress: Float,
     modifier: Modifier = Modifier,
     color: Color = AppTheme.colors.storefront.primaryAction,
+    height: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
     val trackColor = AppTheme.colors.currencyContainer
     val outlineColor = AppTheme.colors.storefront.outline
     val outlineWidth = AppTheme.sizes.borderStrong
-    Canvas(modifier.height(16.dp)) {
+    Canvas(modifier.height(height)) {
         val stroke = outlineWidth.toPx()
         val inset = stroke / 2f
         val barHeight = size.height - stroke

@@ -12,12 +12,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -30,8 +32,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import github.detrig.feature.pet.domain.model.HamsterAppearance
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -115,8 +125,72 @@ internal class HamsterAssets(
         return output
     }
 
+    /** Checks the same alpha silhouette that is rendered on screen. */
+    fun contains(
+        appearance: HamsterAppearance,
+        position: Offset,
+        containerSize: Size,
+        blink: Boolean = false,
+    ): Boolean {
+        if (containerSize.width <= 0f || containerSize.height <= 0f ||
+            position.x !in 0f..containerSize.width || position.y !in 0f..containerSize.height
+        ) return false
+
+        val canvasX = (position.x / containerSize.width * canvasSize).toInt()
+        val canvasY = (position.y / containerSize.height * canvasSize).toInt()
+        return resolve(appearance, blink).any { layer ->
+            val bitmap = layer.sprite.image.asAndroidBitmap()
+            val localX = canvasX - layer.sprite.x
+            val localY = canvasY - layer.sprite.y
+            localX in 0 until bitmap.width && localY in 0 until bitmap.height &&
+                android.graphics.Color.alpha(bitmap.getPixel(localX, localY)) >= HIT_ALPHA
+        }
+    }
+
     private companion object {
+        const val HIT_ALPHA = 96
         val PLACEHOLDER = Regex("\\{(\\w+)\\}")
+    }
+}
+
+/** Process-lifetime cache shared by onboarding, the room and mini-games. */
+internal object HamsterAssetsCache {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val loadLock = Any()
+    private val cachedAssets = MutableStateFlow<HamsterAssets?>(null)
+    private var loadJob: Deferred<HamsterAssets>? = null
+
+    fun assets(assetManager: AssetManager): StateFlow<HamsterAssets?> {
+        preload(assetManager)
+        return cachedAssets
+    }
+
+    fun preload(assetManager: AssetManager) {
+        getOrCreate(assetManager)
+    }
+
+    suspend fun awaitPreloaded(assetManager: AssetManager): HamsterAssets =
+        getOrCreate(assetManager).await()
+
+    private fun getOrCreate(assetManager: AssetManager): Deferred<HamsterAssets> {
+        synchronized(loadLock) {
+            cachedAssets.value?.let { return CompletableDeferred(it) }
+            loadJob?.let { return it }
+
+            val job = scope.async(start = CoroutineStart.LAZY) {
+                loadHamsterAssets(assetManager).also { cachedAssets.value = it }
+            }
+            loadJob = job
+            job.invokeOnCompletion { cause ->
+                if (cause != null) {
+                    synchronized(loadLock) {
+                        if (loadJob === job) loadJob = null
+                    }
+                }
+            }
+            job.start()
+            return job
+        }
     }
 }
 
@@ -208,9 +282,7 @@ private fun loadHamsterThumbnails(
 @Composable
 internal fun rememberHamsterAssets(): HamsterAssets? {
     val assetManager = LocalContext.current.assets
-    val state by produceState<HamsterAssets?>(initialValue = null, assetManager) {
-        value = runCatching { loadHamsterAssets(assetManager) }.getOrNull()
-    }
+    val state by HamsterAssetsCache.assets(assetManager).collectAsState()
     return state
 }
 

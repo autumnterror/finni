@@ -1,16 +1,13 @@
 package github.detrig.feature.pet.api
 
-import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import github.detrig.feature.pet.R
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.repository.PetRepository
+import github.detrig.feature.pet.presentation.HamsterAssetsCache
 import github.detrig.feature.pet.presentation.PetHostScreen
 import github.detrig.feature.pet.presentation.PetScene
 import github.detrig.feature.pet.presentation.PetPortrait
@@ -18,7 +15,12 @@ import github.detrig.feature.pet.presentation.rememberPetAppearanceBitmap
 
 internal class PetApiImpl(
     private val repository: PetRepository,
+    private val assets: android.content.res.AssetManager,
 ) : PetApi {
+    override suspend fun preloadAssets() {
+        HamsterAssetsCache.awaitPreloaded(assets)
+    }
+
     override fun observeProfile() = repository.observeProfile()
 
     @Composable
@@ -31,14 +33,7 @@ internal class PetApiImpl(
 
     @Composable
     override fun Content(profile: PetProfile, modifier: Modifier, onClick: (() -> Unit)?) {
-        val clickModifier = if (onClick != null) {
-            modifier.clickable(
-                onClickLabel = stringResource(R.string.pet_talk_to, profile.name),
-                role = Role.Button,
-                onClick = onClick,
-            )
-        } else modifier
-        PetScene(profile = profile, modifier = clickModifier)
+        PetScene(profile = profile, modifier = modifier, onClick = onClick)
     }
 
     @Composable

@@ -17,6 +17,7 @@ internal class PetMediator(
             object : PetDependencies {
                 override fun profilePreferences(): SharedPreferences =
                     coreComponent.context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+                override fun assets() = coreComponent.context.assets
             }
         }
     }

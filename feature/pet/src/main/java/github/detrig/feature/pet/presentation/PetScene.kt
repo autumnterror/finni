@@ -14,6 +14,11 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -31,11 +36,17 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import github.detrig.designsystem.theme.AppTheme
@@ -52,13 +63,29 @@ fun PetScene(
     profile: PetProfile,
     modifier: Modifier = Modifier,
     animateIdle: Boolean = true,
+    onClick: (() -> Unit)? = null,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
-    val hamsterAssets = rememberHamsterAssets()
+    val hamsterAssets = if (profile.species == PetSpecies.Hamster) rememberHamsterAssets() else null
     val hamsterBlink = if (profile.species == PetSpecies.Hamster) rememberHamsterBlink() else false
-    Box(modifier) {
+    val clickModifier = when {
+        onClick == null -> modifier
+        profile.species == PetSpecies.Hamster && hamsterAssets != null -> modifier.hamsterClickable(
+            assets = hamsterAssets,
+            appearance = profile.hamsterAppearance,
+            blink = hamsterBlink,
+            contentDescription = description,
+            onClick = onClick,
+        )
+        else -> modifier.clickable(
+            onClickLabel = stringResource(R.string.pet_talk_to, profile.name),
+            role = Role.Button,
+            onClick = onClick,
+        )
+    }
+    Box(clickModifier) {
         Canvas(Modifier.fillMaxSize()) {
             drawOval(
                 color = shadowColor,
@@ -94,6 +121,35 @@ fun PetScene(
         }
     }
 }
+
+private fun Modifier.hamsterClickable(
+    assets: HamsterAssets,
+    appearance: github.detrig.feature.pet.domain.model.HamsterAppearance,
+    blink: Boolean,
+    contentDescription: String,
+    onClick: () -> Unit,
+): Modifier = pointerInput(assets, appearance, blink) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val containerSize = Size(size.width.toFloat(), size.height.toFloat())
+        if (!assets.contains(appearance, down.position, containerSize, blink)) {
+            return@awaitEachGesture
+        }
+        down.consume()
+        val up = waitForUpOrCancellation()
+        if (up != null && assets.contains(appearance, up.position, containerSize, blink)) {
+            up.consume()
+            onClick()
+        }
+    }
+}.semantics {
+    this.contentDescription = contentDescription
+    role = Role.Button
+    onClick {
+        onClick()
+        true
+    }
+}.focusable()
 
 @Composable
 internal fun rememberPetAppearanceBitmap(

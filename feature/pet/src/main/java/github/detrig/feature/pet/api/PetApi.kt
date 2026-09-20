@@ -7,6 +7,9 @@ import github.detrig.feature.pet.domain.model.PetProfile
 import kotlinx.coroutines.flow.Flow
 
 interface PetApi {
+    /** Blocks until the shared hamster assets are ready for the first frame. */
+    suspend fun preloadAssets()
+
     fun observeProfile(): Flow<PetProfile?>
 
     /** Не пропускает игрока в основной интерфейс, пока питомец не создан. */
