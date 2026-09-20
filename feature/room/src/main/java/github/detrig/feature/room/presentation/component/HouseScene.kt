@@ -41,12 +41,13 @@ internal fun HouseScene(
     active: Boolean,
     buyingZoneId: String?,
     onZoneClick: (String) -> Unit,
-    onMarketClick: () -> Unit,
+    onPhoneClick: () -> Unit,
     onBedClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
     onTestsClick: () -> Unit,
     onWardrobeClick: () -> Unit,
+    onMirrorClick: () -> Unit,
     onFoodClick: () -> Unit,
     onDishesClick: () -> Unit,
     onFeedingClick: () -> Unit,
@@ -143,7 +144,8 @@ internal fun HouseScene(
                         motion.pause()
                         save()
                         when (id) {
-                            "phone" -> onMarketClick()
+                            "decor_mirror" -> onMirrorClick()
+                            "phone" -> onPhoneClick()
                             "bed" -> onBedClick()
                             "calendar" -> onCalendarClick()
                             "piggy_bank" -> onPiggyBankClick()

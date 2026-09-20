@@ -4,6 +4,7 @@ data class PetProfile(
     val name: String,
     val species: PetSpecies,
     val color: PetColor,
+    val hamsterAppearance: HamsterAppearance = HamsterAppearance(),
 ) {
     val appearanceId: String
         get() = "${species.storageKey}:${color.storageKey}"

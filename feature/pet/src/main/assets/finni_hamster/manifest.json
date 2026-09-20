@@ -1,0 +1,992 @@
+{
+  "schemaVersion": 1,
+  "revision": 2,
+  "id": "finni_hamster_reference_v2",
+  "canvas": {
+    "width": 1024,
+    "height": 1024
+  },
+  "sourceCanvas": {
+    "width": 1024,
+    "height": 1024
+  },
+  "pose": "reference_seated",
+  "groundAnchor": {
+    "x": 512,
+    "y": 958
+  },
+  "defaultAppearance": {
+    "palette": "caramel",
+    "coat": "belly",
+    "fur": "smooth",
+    "ears": "round",
+    "mark": "none",
+    "eyes": "round"
+  },
+  "options": {
+    "palette": {
+      "caramel": "Рыжий · как в референсе",
+      "cream": "Кремовый",
+      "chocolate": "Шоколадный",
+      "gray": "Дымчато-серый",
+      "taupe": "Серо-бежевый",
+      "white": "Белый"
+    },
+    "coat": {
+      "belly": "Как в референсе",
+      "plain": "Однотонный",
+      "spots": "Пятнистый",
+      "belt": "Светлый пояс",
+      "cap": "Тёмная шапочка"
+    },
+    "fur": {
+      "smooth": "Гладкая · как в референсе",
+      "cheeks": "Пушистые щёчки",
+      "fluffy": "Пушистый"
+    },
+    "ears": {
+      "round": "Исходные",
+      "wide": "Более широкие",
+      "folded": "Одно отогнуто"
+    },
+    "mark": {
+      "none": "Без дополнительной отметины",
+      "paw": "Светлая лапка",
+      "earspot": "Пятнышко у левого уха",
+      "tuft": "Светлая прядка"
+    },
+    "eyes": {
+      "round": "Круглые · как в референсе",
+      "oval": "Овальные"
+    }
+  },
+  "palettes": {
+    "caramel": {
+      "base": "#E2A76C",
+      "light": "#F7E2C1",
+      "dark": "#A06F42",
+      "mark": "#FFF3D9"
+    },
+    "cream": {
+      "base": "#E5C591",
+      "light": "#FBECCD",
+      "dark": "#B38D60",
+      "mark": "#FFFAEE"
+    },
+    "chocolate": {
+      "base": "#AE8062",
+      "light": "#EAD0AA",
+      "dark": "#845B40",
+      "mark": "#FFEDD2"
+    },
+    "gray": {
+      "base": "#AAB2B7",
+      "light": "#E6E9E3",
+      "dark": "#7B8891",
+      "mark": "#FFF9EC"
+    },
+    "taupe": {
+      "base": "#B5A38E",
+      "light": "#EADCC8",
+      "dark": "#8E7863",
+      "mark": "#FFF2DF"
+    },
+    "white": {
+      "base": "#E8DECD",
+      "light": "#FCF6E7",
+      "dark": "#B6A187",
+      "mark": "#FFFFFF"
+    }
+  },
+  "renderOrder": [
+    {
+      "id": "tail_fill",
+      "tint": "base"
+    },
+    {
+      "id": "tail_shade"
+    },
+    {
+      "id": "tail_detail"
+    },
+    {
+      "id": "ear_{ears}_fill",
+      "tint": "base"
+    },
+    {
+      "id": "ear_{ears}_reference_light",
+      "tint": "light",
+      "when": {
+        "coat": "belly"
+      }
+    },
+    {
+      "id": "ear_{ears}_reference_dark",
+      "tint": "dark",
+      "when": {
+        "coat": "belly"
+      }
+    },
+    {
+      "id": "ear_{ears}_coat_spots_dark",
+      "tint": "dark",
+      "when": {
+        "coat": "spots"
+      }
+    },
+    {
+      "id": "ear_{ears}_coat_cap_dark",
+      "tint": "dark",
+      "when": {
+        "coat": "cap"
+      }
+    },
+    {
+      "id": "ear_{ears}_mark_earspot",
+      "tint": "dark",
+      "when": {
+        "mark": "earspot"
+      }
+    },
+    {
+      "id": "ear_{ears}_mark_tuft",
+      "tint": "mark",
+      "when": {
+        "mark": "tuft"
+      }
+    },
+    {
+      "id": "body_{fur}_fill",
+      "tint": "base"
+    },
+    {
+      "id": "body_{fur}_reference_light",
+      "tint": "light",
+      "when": {
+        "coat": "belly"
+      }
+    },
+    {
+      "id": "body_{fur}_reference_dark",
+      "tint": "dark",
+      "when": {
+        "coat": "belly"
+      }
+    },
+    {
+      "id": "body_{fur}_coat_spots_light",
+      "tint": "light",
+      "when": {
+        "coat": "spots"
+      }
+    },
+    {
+      "id": "body_{fur}_coat_spots_dark",
+      "tint": "dark",
+      "when": {
+        "coat": "spots"
+      }
+    },
+    {
+      "id": "body_{fur}_coat_belt_light",
+      "tint": "light",
+      "when": {
+        "coat": "belt"
+      }
+    },
+    {
+      "id": "body_{fur}_coat_cap_dark",
+      "tint": "dark",
+      "when": {
+        "coat": "cap"
+      }
+    },
+    {
+      "id": "mark_paw",
+      "tint": "mark",
+      "when": {
+        "mark": "paw"
+      }
+    },
+    {
+      "id": "ear_{ears}_shade"
+    },
+    {
+      "id": "body_{fur}_shade"
+    },
+    {
+      "id": "ear_{ears}_detail"
+    },
+    {
+      "id": "body_{fur}_detail"
+    },
+    {
+      "id": "arm_left_detail"
+    },
+    {
+      "id": "arm_right_detail"
+    },
+    {
+      "id": "foot_left"
+    },
+    {
+      "id": "foot_right"
+    },
+    {
+      "id": "face_nose_mouth"
+    },
+    {
+      "id": "face_whiskers_left"
+    },
+    {
+      "id": "face_whiskers_right"
+    },
+    {
+      "id": "eyes_{eyes}_left",
+      "when": {
+        "blink": false
+      }
+    },
+    {
+      "id": "eyes_closed_left",
+      "when": {
+        "blink": true
+      }
+    },
+    {
+      "id": "eyes_{eyes}_right",
+      "when": {
+        "blink": false
+      }
+    },
+    {
+      "id": "eyes_closed_right",
+      "when": {
+        "blink": true
+      }
+    }
+  ],
+  "layers": {
+    "tail_fill": {
+      "file": "assets/hd/tail_fill.webp",
+      "x": 139,
+      "y": 748,
+      "width": 54,
+      "height": 112,
+      "kind": "mask",
+      "group": "tail",
+      "bytes": 452
+    },
+    "tail_shade": {
+      "file": "assets/hd/tail_shade.webp",
+      "x": 151,
+      "y": 768,
+      "width": 42,
+      "height": 79,
+      "kind": "shading",
+      "group": "tail",
+      "bytes": 558
+    },
+    "tail_detail": {
+      "file": "assets/hd/tail_detail.webp",
+      "x": 137,
+      "y": 748,
+      "width": 56,
+      "height": 113,
+      "kind": "detail",
+      "group": "tail",
+      "bytes": 1862
+    },
+    "body_smooth_fill": {
+      "file": "assets/hd/body_smooth_fill.webp",
+      "x": 170,
+      "y": 258,
+      "width": 690,
+      "height": 706,
+      "kind": "mask",
+      "group": "body",
+      "bytes": 4820
+    },
+    "body_smooth_shade": {
+      "file": "assets/hd/body_smooth_shade.webp",
+      "x": 186,
+      "y": 258,
+      "width": 647,
+      "height": 704,
+      "kind": "shading",
+      "group": "body",
+      "bytes": 37304
+    },
+    "body_smooth_detail": {
+      "file": "assets/hd/body_smooth_detail.webp",
+      "x": 179,
+      "y": 258,
+      "width": 667,
+      "height": 697,
+      "kind": "detail",
+      "group": "body",
+      "bytes": 15724
+    },
+    "body_smooth_reference_light": {
+      "file": "assets/hd/body_smooth_reference_light.webp",
+      "x": 220,
+      "y": 326,
+      "width": 611,
+      "height": 616,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 8570
+    },
+    "body_smooth_reference_dark": {
+      "file": "assets/hd/body_smooth_reference_dark.webp",
+      "x": 186,
+      "y": 258,
+      "width": 647,
+      "height": 704,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 8390
+    },
+    "body_smooth_coat_spots_light": {
+      "file": "assets/hd/body_smooth_coat_spots_light.webp",
+      "x": 208,
+      "y": 359,
+      "width": 331,
+      "height": 568,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2276
+    },
+    "body_smooth_coat_spots_dark": {
+      "file": "assets/hd/body_smooth_coat_spots_dark.webp",
+      "x": 656,
+      "y": 693,
+      "width": 154,
+      "height": 148,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 1052
+    },
+    "body_smooth_coat_belt_light": {
+      "file": "assets/hd/body_smooth_coat_belt_light.webp",
+      "x": 180,
+      "y": 701,
+      "width": 642,
+      "height": 147,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2206
+    },
+    "body_smooth_coat_cap_dark": {
+      "file": "assets/hd/body_smooth_coat_cap_dark.webp",
+      "x": 251,
+      "y": 258,
+      "width": 307,
+      "height": 50,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 898
+    },
+    "body_cheeks_fill": {
+      "file": "assets/hd/body_cheeks_fill.webp",
+      "x": 171,
+      "y": 258,
+      "width": 691,
+      "height": 706,
+      "kind": "mask",
+      "group": "body",
+      "bytes": 4822
+    },
+    "body_cheeks_shade": {
+      "file": "assets/hd/body_cheeks_shade.webp",
+      "x": 186,
+      "y": 258,
+      "width": 647,
+      "height": 704,
+      "kind": "shading",
+      "group": "body",
+      "bytes": 37848
+    },
+    "body_cheeks_detail": {
+      "file": "assets/hd/body_cheeks_detail.webp",
+      "x": 179,
+      "y": 258,
+      "width": 668,
+      "height": 697,
+      "kind": "detail",
+      "group": "body",
+      "bytes": 16394
+    },
+    "body_cheeks_reference_light": {
+      "file": "assets/hd/body_cheeks_reference_light.webp",
+      "x": 220,
+      "y": 326,
+      "width": 611,
+      "height": 616,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 8754
+    },
+    "body_cheeks_reference_dark": {
+      "file": "assets/hd/body_cheeks_reference_dark.webp",
+      "x": 186,
+      "y": 258,
+      "width": 647,
+      "height": 704,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 8172
+    },
+    "body_cheeks_coat_spots_light": {
+      "file": "assets/hd/body_cheeks_coat_spots_light.webp",
+      "x": 208,
+      "y": 359,
+      "width": 331,
+      "height": 568,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2276
+    },
+    "body_cheeks_coat_spots_dark": {
+      "file": "assets/hd/body_cheeks_coat_spots_dark.webp",
+      "x": 656,
+      "y": 693,
+      "width": 154,
+      "height": 148,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 1052
+    },
+    "body_cheeks_coat_belt_light": {
+      "file": "assets/hd/body_cheeks_coat_belt_light.webp",
+      "x": 180,
+      "y": 701,
+      "width": 642,
+      "height": 147,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2206
+    },
+    "body_cheeks_coat_cap_dark": {
+      "file": "assets/hd/body_cheeks_coat_cap_dark.webp",
+      "x": 250,
+      "y": 258,
+      "width": 308,
+      "height": 50,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 900
+    },
+    "body_fluffy_fill": {
+      "file": "assets/hd/body_fluffy_fill.webp",
+      "x": 171,
+      "y": 258,
+      "width": 709,
+      "height": 706,
+      "kind": "mask",
+      "group": "body",
+      "bytes": 5206
+    },
+    "body_fluffy_shade": {
+      "file": "assets/hd/body_fluffy_shade.webp",
+      "x": 186,
+      "y": 258,
+      "width": 661,
+      "height": 704,
+      "kind": "shading",
+      "group": "body",
+      "bytes": 38810
+    },
+    "body_fluffy_detail": {
+      "file": "assets/hd/body_fluffy_detail.webp",
+      "x": 175,
+      "y": 258,
+      "width": 686,
+      "height": 697,
+      "kind": "detail",
+      "group": "body",
+      "bytes": 17638
+    },
+    "body_fluffy_reference_light": {
+      "file": "assets/hd/body_fluffy_reference_light.webp",
+      "x": 206,
+      "y": 325,
+      "width": 638,
+      "height": 617,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 8968
+    },
+    "body_fluffy_reference_dark": {
+      "file": "assets/hd/body_fluffy_reference_dark.webp",
+      "x": 186,
+      "y": 258,
+      "width": 663,
+      "height": 704,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 8536
+    },
+    "body_fluffy_coat_spots_light": {
+      "file": "assets/hd/body_fluffy_coat_spots_light.webp",
+      "x": 208,
+      "y": 359,
+      "width": 331,
+      "height": 568,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2276
+    },
+    "body_fluffy_coat_spots_dark": {
+      "file": "assets/hd/body_fluffy_coat_spots_dark.webp",
+      "x": 656,
+      "y": 693,
+      "width": 154,
+      "height": 148,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 1052
+    },
+    "body_fluffy_coat_belt_light": {
+      "file": "assets/hd/body_fluffy_coat_belt_light.webp",
+      "x": 176,
+      "y": 701,
+      "width": 661,
+      "height": 147,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2306
+    },
+    "body_fluffy_coat_cap_dark": {
+      "file": "assets/hd/body_fluffy_coat_cap_dark.webp",
+      "x": 243,
+      "y": 258,
+      "width": 315,
+      "height": 51,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 978
+    },
+    "ear_round_fill": {
+      "file": "assets/hd/ear_round_fill.webp",
+      "x": 286,
+      "y": 62,
+      "width": 553,
+      "height": 262,
+      "kind": "mask",
+      "group": "ear",
+      "bytes": 2482
+    },
+    "ear_round_shade": {
+      "file": "assets/hd/ear_round_shade.webp",
+      "x": 308,
+      "y": 75,
+      "width": 517,
+      "height": 245,
+      "kind": "shading",
+      "group": "ear",
+      "bytes": 9152
+    },
+    "ear_round_detail": {
+      "file": "assets/hd/ear_round_detail.webp",
+      "x": 284,
+      "y": 61,
+      "width": 556,
+      "height": 262,
+      "kind": "detail",
+      "group": "ear",
+      "bytes": 16526
+    },
+    "ear_round_reference_dark": {
+      "file": "assets/hd/ear_round_reference_dark.webp",
+      "x": 304,
+      "y": 75,
+      "width": 521,
+      "height": 249,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 3162
+    },
+    "ear_round_coat_spots_dark": {
+      "file": "assets/hd/ear_round_coat_spots_dark.webp",
+      "x": 601,
+      "y": 138,
+      "width": 154,
+      "height": 127,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 1026
+    },
+    "ear_round_coat_cap_dark": {
+      "file": "assets/hd/ear_round_coat_cap_dark.webp",
+      "x": 286,
+      "y": 62,
+      "width": 553,
+      "height": 260,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2786
+    },
+    "ear_round_mark_earspot": {
+      "file": "assets/hd/ear_round_mark_earspot.webp",
+      "x": 381,
+      "y": 189,
+      "width": 80,
+      "height": 69,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 522
+    },
+    "ear_round_mark_tuft": {
+      "file": "assets/hd/ear_round_mark_tuft.webp",
+      "x": 514,
+      "y": 123,
+      "width": 74,
+      "height": 106,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 758
+    },
+    "ear_wide_fill": {
+      "file": "assets/hd/ear_wide_fill.webp",
+      "x": 286,
+      "y": 55,
+      "width": 582,
+      "height": 269,
+      "kind": "mask",
+      "group": "ear",
+      "bytes": 2656
+    },
+    "ear_wide_shade": {
+      "file": "assets/hd/ear_wide_shade.webp",
+      "x": 310,
+      "y": 70,
+      "width": 541,
+      "height": 252,
+      "kind": "shading",
+      "group": "ear",
+      "bytes": 10328
+    },
+    "ear_wide_detail": {
+      "file": "assets/hd/ear_wide_detail.webp",
+      "x": 285,
+      "y": 54,
+      "width": 584,
+      "height": 269,
+      "kind": "detail",
+      "group": "ear",
+      "bytes": 18902
+    },
+    "ear_wide_reference_light": {
+      "file": "assets/hd/ear_wide_reference_light.webp",
+      "x": 319,
+      "y": 159,
+      "width": 522,
+      "height": 140,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 126
+    },
+    "ear_wide_reference_dark": {
+      "file": "assets/hd/ear_wide_reference_dark.webp",
+      "x": 304,
+      "y": 70,
+      "width": 547,
+      "height": 252,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 3454
+    },
+    "ear_wide_coat_spots_dark": {
+      "file": "assets/hd/ear_wide_coat_spots_dark.webp",
+      "x": 601,
+      "y": 138,
+      "width": 154,
+      "height": 127,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 1034
+    },
+    "ear_wide_coat_cap_dark": {
+      "file": "assets/hd/ear_wide_coat_cap_dark.webp",
+      "x": 286,
+      "y": 55,
+      "width": 582,
+      "height": 267,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2972
+    },
+    "ear_wide_mark_earspot": {
+      "file": "assets/hd/ear_wide_mark_earspot.webp",
+      "x": 381,
+      "y": 189,
+      "width": 80,
+      "height": 69,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 522
+    },
+    "ear_wide_mark_tuft": {
+      "file": "assets/hd/ear_wide_mark_tuft.webp",
+      "x": 514,
+      "y": 123,
+      "width": 74,
+      "height": 106,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 732
+    },
+    "ear_folded_fill": {
+      "file": "assets/hd/ear_folded_fill.webp",
+      "x": 285,
+      "y": 62,
+      "width": 559,
+      "height": 262,
+      "kind": "mask",
+      "group": "ear",
+      "bytes": 2440
+    },
+    "ear_folded_shade": {
+      "file": "assets/hd/ear_folded_shade.webp",
+      "x": 308,
+      "y": 75,
+      "width": 522,
+      "height": 247,
+      "kind": "shading",
+      "group": "ear",
+      "bytes": 9292
+    },
+    "ear_folded_detail": {
+      "file": "assets/hd/ear_folded_detail.webp",
+      "x": 284,
+      "y": 60,
+      "width": 560,
+      "height": 262,
+      "kind": "detail",
+      "group": "ear",
+      "bytes": 16824
+    },
+    "ear_folded_reference_light": {
+      "file": "assets/hd/ear_folded_reference_light.webp",
+      "x": 350,
+      "y": 193,
+      "width": 439,
+      "height": 101,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 100
+    },
+    "ear_folded_reference_dark": {
+      "file": "assets/hd/ear_folded_reference_dark.webp",
+      "x": 307,
+      "y": 75,
+      "width": 525,
+      "height": 249,
+      "kind": "mask",
+      "group": "coat",
+      "bytes": 3234
+    },
+    "ear_folded_coat_spots_dark": {
+      "file": "assets/hd/ear_folded_coat_spots_dark.webp",
+      "x": 601,
+      "y": 138,
+      "width": 154,
+      "height": 127,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 1046
+    },
+    "ear_folded_coat_cap_dark": {
+      "file": "assets/hd/ear_folded_coat_cap_dark.webp",
+      "x": 285,
+      "y": 62,
+      "width": 559,
+      "height": 260,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 2734
+    },
+    "ear_folded_mark_earspot": {
+      "file": "assets/hd/ear_folded_mark_earspot.webp",
+      "x": 381,
+      "y": 189,
+      "width": 80,
+      "height": 69,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 522
+    },
+    "ear_folded_mark_tuft": {
+      "file": "assets/hd/ear_folded_mark_tuft.webp",
+      "x": 514,
+      "y": 123,
+      "width": 74,
+      "height": 106,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 728
+    },
+    "mark_paw": {
+      "file": "assets/hd/mark_paw.webp",
+      "x": 407,
+      "y": 558,
+      "width": 104,
+      "height": 91,
+      "kind": "mask",
+      "group": "marks",
+      "bytes": 672
+    },
+    "face_nose_mouth": {
+      "file": "assets/hd/face_nose_mouth.webp",
+      "x": 451,
+      "y": 367,
+      "width": 95,
+      "height": 110,
+      "kind": "detail",
+      "group": "face",
+      "bytes": 3358
+    },
+    "face_whiskers_left": {
+      "file": "assets/hd/face_whiskers_left.webp",
+      "x": 170,
+      "y": 355,
+      "width": 142,
+      "height": 111,
+      "kind": "detail",
+      "group": "face",
+      "bytes": 3632
+    },
+    "face_whiskers_right": {
+      "file": "assets/hd/face_whiskers_right.webp",
+      "x": 711,
+      "y": 434,
+      "width": 150,
+      "height": 99,
+      "kind": "detail",
+      "group": "face",
+      "bytes": 3512
+    },
+    "arm_left_detail": {
+      "file": "assets/hd/arm_left_detail.webp",
+      "x": 404,
+      "y": 555,
+      "width": 131,
+      "height": 115,
+      "kind": "detail",
+      "group": "limbs",
+      "bytes": 4418
+    },
+    "arm_right_detail": {
+      "file": "assets/hd/arm_right_detail.webp",
+      "x": 569,
+      "y": 661,
+      "width": 137,
+      "height": 106,
+      "kind": "detail",
+      "group": "limbs",
+      "bytes": 4336
+    },
+    "foot_left": {
+      "file": "assets/hd/foot_left.webp",
+      "x": 278,
+      "y": 888,
+      "width": 142,
+      "height": 77,
+      "kind": "detail",
+      "group": "limbs",
+      "bytes": 4184
+    },
+    "foot_right": {
+      "file": "assets/hd/foot_right.webp",
+      "x": 638,
+      "y": 883,
+      "width": 148,
+      "height": 80,
+      "kind": "detail",
+      "group": "limbs",
+      "bytes": 4530
+    },
+    "eyes_round_left": {
+      "file": "assets/hd/eyes_round_left.webp",
+      "x": 364,
+      "y": 291,
+      "width": 70,
+      "height": 70,
+      "kind": "detail",
+      "group": "eyes",
+      "bytes": 1784
+    },
+    "eyes_round_right": {
+      "file": "assets/hd/eyes_round_right.webp",
+      "x": 615,
+      "y": 335,
+      "width": 68,
+      "height": 72,
+      "kind": "detail",
+      "group": "eyes",
+      "bytes": 1794
+    },
+    "eyes_oval_left": {
+      "file": "assets/hd/eyes_oval_left.webp",
+      "x": 375,
+      "y": 288,
+      "width": 50,
+      "height": 77,
+      "kind": "detail",
+      "group": "eyes",
+      "bytes": 1492
+    },
+    "eyes_oval_right": {
+      "file": "assets/hd/eyes_oval_right.webp",
+      "x": 623,
+      "y": 333,
+      "width": 50,
+      "height": 75,
+      "kind": "detail",
+      "group": "eyes",
+      "bytes": 1480
+    },
+    "eyes_closed_left": {
+      "file": "assets/hd/eyes_closed_left.webp",
+      "x": 352,
+      "y": 310,
+      "width": 91,
+      "height": 46,
+      "kind": "detail",
+      "group": "eyes",
+      "bytes": 1230
+    },
+    "eyes_closed_right": {
+      "file": "assets/hd/eyes_closed_right.webp",
+      "x": 603,
+      "y": 353,
+      "width": 92,
+      "height": 46,
+      "kind": "detail",
+      "group": "eyes",
+      "bytes": 1208
+    },
+    "ear_round_reference_light": {
+      "file": "assets/hd/ear_round_reference_light.webp",
+      "x": 0,
+      "y": 0,
+      "width": 1,
+      "height": 1,
+      "kind": "mask",
+      "group": "patterns",
+      "bytes": 34
+    }
+  },
+  "notes": {
+    "registration": "All sources share one canvas. Upper ear layers include a small forehead attachment area to preserve the original continuous outline.",
+    "texture": "Colour masks are below separate texture/shading and original linework. Never apply SrcIn tint to detail or shading layers."
+  },
+  "storage": {
+    "format": "WebP lossless RGBA",
+    "layers": 71,
+    "compressedBytes": 1136290,
+    "decodedRgbaBytes": 40969868
+  },
+  "runtimeVariant": "customization-hd-1024"
+}

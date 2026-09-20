@@ -13,7 +13,6 @@ internal class PetRepositoryImpl(
     override fun observeProfile(): StateFlow<PetProfile?> = profile
 
     override fun saveProfile(value: PetProfile) {
-        check(profile.value == null) { "Pet profile has already been created" }
         storage.saveProfile(value)
         profile.value = value
     }

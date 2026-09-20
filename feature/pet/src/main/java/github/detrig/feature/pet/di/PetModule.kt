@@ -15,7 +15,7 @@ internal class PetModule(
     private val repository by lazy { PetRepositoryImpl(storage) }
     private val createPet by lazy { CreatePetInteractor(repository) }
 
-    override val api: PetApi by lazy { PetApiImpl(repository) }
+    override val api: PetApi by lazy { PetApiImpl(repository, dependencies.assets()) }
 
     override fun getPetViewModel(): PetViewModel = PetViewModel(repository, createPet)
 }

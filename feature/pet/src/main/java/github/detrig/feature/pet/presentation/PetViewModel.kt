@@ -21,6 +21,11 @@ internal class PetViewModel(
             }
             is PetViewEvent.SpeciesSelected -> updateCreating { copy(species = viewEvent.value) }
             is PetViewEvent.ColorSelected -> updateCreating { copy(color = viewEvent.value) }
+            is PetViewEvent.HamsterAppearanceChanged -> updateCreating {
+                copy(hamsterAppearance = viewEvent.value)
+            }
+            PetViewEvent.CustomizeClicked -> customize()
+            PetViewEvent.CancelCustomization -> cancelCustomization()
             PetViewEvent.CreateClicked -> create()
             PetViewEvent.PetClicked -> if (stateData is PetViewState.Ready) {
                 commands.onNext(PetCommand.ShowGreeting)
@@ -48,8 +53,34 @@ internal class PetViewModel(
             updateState(current.copy(nameError = error))
             return
         }
-        createPet(current.name, current.species, current.color)
-        commands.onNext(PetCommand.ShowGreeting)
+        createPet(
+            name = current.name,
+            species = current.species,
+            color = current.color,
+            hamsterAppearance = current.hamsterAppearance,
+        )
+        if (current.existingProfile == null) {
+            commands.onNext(PetCommand.ShowGreeting)
+        }
+    }
+
+    private fun customize() {
+        val current = nullableState<PetViewState.Ready>() ?: return
+        val profile = current.profile
+        updateState(
+            PetViewState.Creating(
+                name = profile.name,
+                species = profile.species,
+                color = profile.color,
+                hamsterAppearance = profile.hamsterAppearance,
+                existingProfile = profile,
+            ),
+        )
+    }
+
+    private fun cancelCustomization() {
+        val current = nullableState<PetViewState.Creating>() ?: return
+        current.existingProfile?.let { updateState(PetViewState.Ready(it)) }
     }
 
     private fun updateCreating(block: PetViewState.Creating.() -> PetViewState.Creating) {

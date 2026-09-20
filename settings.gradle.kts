@@ -35,6 +35,7 @@ include(":feature:learning")
 include(":feature:savings")
 include(":feature:room")
 include(":feature:pet")
+include(":feature:phone")
 
 include(":feature:mini-games:common")
 include(":feature:mini-games:fishing")

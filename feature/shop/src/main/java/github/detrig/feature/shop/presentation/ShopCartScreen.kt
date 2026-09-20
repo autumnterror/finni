@@ -20,15 +20,24 @@ import github.detrig.products.StoreCart
 import github.detrig.products.StoreId
 
 @Composable
-internal fun ShopCartScreen(storeId: StoreId) {
+internal fun ShopCartScreen(
+    storeId: StoreId,
+    onBack: (() -> Unit)? = null,
+    onCheckoutCompleted: (() -> Unit)? = null,
+) {
     val component = ShopFeature.component()
-    val viewModel: ShopCartViewModel = viewModel(key = "cart:${storeId.value}") {
-        component.cartViewModel(storeId)
+    val viewModel: ShopCartViewModel = viewModel(key = "cart:${storeId.value}:${onBack != null}") {
+        component.cartViewModel(
+            storeId = storeId,
+            onBack = onBack,
+            onCheckoutCompleted = onCheckoutCompleted,
+        )
     }
     val state by viewModel.state().observeAsState(ShopCartViewState())
 
     LaunchedEffect(viewModel) { viewModel.perform(ShopCartViewEvent.Load) }
-    BackHandler { viewModel.perform(ShopCartViewEvent.Back) }
+    val handleBack = { onBack?.invoke() ?: viewModel.perform(ShopCartViewEvent.Back) }
+    BackHandler { handleBack() }
 
     Scaffold(
         containerColor = AppTheme.colors.storefront.background,
@@ -39,7 +48,8 @@ internal fun ShopCartScreen(storeId: StoreId) {
             artworkResolver = component.artworkResolver,
             itemDetailsResolver = component.itemDetailsResolver,
             onEvent = viewModel::perform,
-            modifier = Modifier.shopSafeDrawingPadding(),
+            onBack = handleBack,
+            modifier = if (onBack == null) Modifier.shopSafeDrawingPadding() else Modifier,
             contentPadding = padding,
         )
     }

@@ -14,6 +14,17 @@ import kotlin.math.roundToInt
 /** Цветной крупный план мордочки для диалогов и будущих экранов обучения. */
 @Composable
 fun PetPortrait(profile: PetProfile, modifier: Modifier = Modifier) {
+    if (profile.species == github.detrig.feature.pet.domain.model.PetSpecies.Hamster) {
+        val assets = rememberHamsterAssets()
+        if (assets != null) {
+            HamsterPreview(
+                assets = assets,
+                appearance = profile.hamsterAppearance,
+                modifier = modifier,
+            )
+        }
+        return
+    }
     val artwork = profile.species.artwork()
     val base = ImageBitmap.imageResource(artwork.baseRes)
     val mask = ImageBitmap.imageResource(artwork.colorMaskRes)

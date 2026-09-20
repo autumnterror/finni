@@ -11,6 +11,14 @@ internal interface ShopComponent {
     val api: ShopApi
     val artworkResolver: ShopArtworkResolver
     val itemDetailsResolver: ShopItemDetailsResolver
-    fun viewModel(storeId: StoreId): ShopViewModel
-    fun cartViewModel(storeId: StoreId): ShopCartViewModel
+    fun viewModel(
+        storeId: StoreId,
+        onOpenCart: (() -> Unit)? = null,
+        closeAfterReceipt: (() -> Unit)? = null,
+    ): ShopViewModel
+    fun cartViewModel(
+        storeId: StoreId,
+        onBack: (() -> Unit)? = null,
+        onCheckoutCompleted: (() -> Unit)? = null,
+    ): ShopCartViewModel
 }

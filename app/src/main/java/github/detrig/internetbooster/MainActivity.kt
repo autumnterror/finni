@@ -10,13 +10,16 @@ import androidx.core.view.WindowInsetsControllerCompat
 import github.detrig.core.view.Nav3Activity
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.internetbooster.navigation.appGraph
+import github.detrig.internetbooster.startup.AppStartupGate
 
 class MainActivity : Nav3Activity(
     navHostSpec = appGraph(),
 ) {
     @Composable
     override fun ProvideAppContent(content: @Composable () -> Unit) {
-        FinPetTheme(content = content)
+        FinPetTheme {
+            AppStartupGate(content)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

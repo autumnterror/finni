@@ -1,6 +1,5 @@
 <resources>
     <string name="zone_flight">Полёт</string>
-    <string name="room_loading">Открываем комнату…</string>
     <string name="room_error">Не получилось открыть комнату</string>
     <string name="room_retry">Попробовать ещё</string>
     <string name="room_buy_price">Купить · %1$d ₽</string>
@@ -37,6 +36,7 @@
     <string name="house_calendar">Календарь · посмотреть план</string>
     <string name="house_parent_help_board">Тесты</string>
     <string name="house_wardrobe">Гардероб</string>
+    <string name="house_mirror">Зеркало · изменить внешность</string>
     <string name="house_food">Еда</string>
     <string name="house_dishes">Посуда · подработка</string>
     <string name="house_feeding">Кормление</string>

@@ -28,7 +28,7 @@ import github.detrig.feature.pet.presentation.component.PetCreationScreen
 @Composable
 internal fun PetHostScreen(
     modifier: Modifier = Modifier,
-    content: @Composable (PetProfile, () -> Unit) -> Unit,
+    content: @Composable (PetProfile, () -> Unit, () -> Unit) -> Unit,
 ) {
     val viewModel: PetViewModel = viewModel { PetFeature.component().getPetViewModel() }
     val state by viewModel.state().observeAsState(PetViewState.Loading)
@@ -52,9 +52,14 @@ internal fun PetHostScreen(
             state = current,
             onEvent = viewModel::perform,
             modifier = modifier,
+            onBack = { viewModel.perform(PetViewEvent.CancelCustomization) },
         )
         is PetViewState.Ready -> {
-            content(current.profile) { viewModel.perform(PetViewEvent.PetClicked) }
+            content(
+                current.profile,
+                { viewModel.perform(PetViewEvent.PetClicked) },
+                { viewModel.perform(PetViewEvent.CustomizeClicked) },
+            )
             if (greetingVisible) {
                 FinPetDialogueDialog(
                     speakerName = current.profile.name,

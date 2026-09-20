@@ -14,6 +14,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -31,15 +33,28 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.PointerInputModifierNode
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.pet.R
+import github.detrig.feature.pet.domain.model.HamsterAppearance
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.model.PetSpecies
@@ -52,11 +67,29 @@ fun PetScene(
     profile: PetProfile,
     modifier: Modifier = Modifier,
     animateIdle: Boolean = true,
+    onClick: (() -> Unit)? = null,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
-    Box(modifier) {
+    val hamsterAssets = if (profile.species == PetSpecies.Hamster) rememberHamsterAssets() else null
+    val hamsterBlink = if (profile.species == PetSpecies.Hamster) rememberHamsterBlink() else false
+    val clickModifier = when {
+        onClick == null -> modifier
+        profile.species == PetSpecies.Hamster && hamsterAssets != null -> modifier.hamsterClickable(
+            assets = hamsterAssets,
+            appearance = profile.hamsterAppearance,
+            blink = hamsterBlink,
+            contentDescription = description,
+            onClick = onClick,
+        )
+        else -> modifier.clickable(
+            onClickLabel = stringResource(R.string.pet_talk_to, profile.name),
+            role = Role.Button,
+            onClick = onClick,
+        )
+    }
+    Box(clickModifier) {
         Canvas(Modifier.fillMaxSize()) {
             drawOval(
                 color = shadowColor,
@@ -65,22 +98,138 @@ fun PetScene(
             )
         }
         Box(Modifier.fillMaxSize().petCalmIdleAnimation(animateIdle)) {
-            Image(
-                bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
-                contentDescription = description,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-                filterQuality = FilterQuality.None,
-            )
-            Image(
-                bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-                colorFilter = profile.color.colorFilter(),
-                filterQuality = FilterQuality.None,
-            )
+            if (profile.species == PetSpecies.Hamster && hamsterAssets != null) {
+                HamsterPreview(
+                    assets = hamsterAssets,
+                    appearance = profile.hamsterAppearance,
+                    modifier = Modifier.fillMaxSize(),
+                    blink = hamsterBlink,
+                )
+            } else if (profile.species != PetSpecies.Hamster) {
+                Image(
+                    bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
+                    contentDescription = description,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                    filterQuality = FilterQuality.None,
+                )
+                Image(
+                    bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = profile.color.colorFilter(),
+                    filterQuality = FilterQuality.None,
+                )
+            }
         }
+    }
+}
+
+private fun Modifier.hamsterClickable(
+    assets: HamsterAssets,
+    appearance: HamsterAppearance,
+    blink: Boolean,
+    contentDescription: String,
+    onClick: () -> Unit,
+): Modifier = this.then(
+    HamsterClickableElement(
+        assets = assets,
+        appearance = appearance,
+        blink = blink,
+        onClick = onClick,
+    ),
+).semantics {
+    this.contentDescription = contentDescription
+    role = Role.Button
+    onClick {
+        onClick()
+        true
+    }
+}.focusable()
+
+/**
+ * A transparent hamster sprite must not block a room object behind it.
+ *
+ * A regular [androidx.compose.ui.input.pointer.pointerInput] modifier still wins the sibling
+ * hit-test for the whole square that contains the sprite, even when its gesture handler decides
+ * not to consume the down event. This node opts into sibling sharing and consumes the gesture only
+ * when the alpha mask says that the pointer is on an actual hamster pixel.
+ */
+private data class HamsterClickableElement(
+    val assets: HamsterAssets,
+    val appearance: HamsterAppearance,
+    val blink: Boolean,
+    val onClick: () -> Unit,
+) : ModifierNodeElement<HamsterClickableNode>() {
+    override fun create(): HamsterClickableNode = HamsterClickableNode(
+        assets = assets,
+        appearance = appearance,
+        blink = blink,
+        onClick = onClick,
+    )
+
+    override fun update(node: HamsterClickableNode) {
+        node.update(
+            assets = assets,
+            appearance = appearance,
+            blink = blink,
+            onClick = onClick,
+        )
+    }
+}
+
+private class HamsterClickableNode(
+    private var assets: HamsterAssets,
+    private var appearance: HamsterAppearance,
+    private var blink: Boolean,
+    private var onClick: () -> Unit,
+) : Modifier.Node(), PointerInputModifierNode {
+    private var pressedPointerId: androidx.compose.ui.input.pointer.PointerId? = null
+
+    override fun sharePointerInputWithSiblings(): Boolean = true
+
+    override fun onPointerEvent(pointerEvent: PointerEvent, pass: PointerEventPass, bounds: IntSize) {
+        if (pass != PointerEventPass.Main || bounds.width <= 0 || bounds.height <= 0) return
+
+        val containerSize = Size(bounds.width.toFloat(), bounds.height.toFloat())
+        if (pressedPointerId == null) {
+            val down = pointerEvent.changes.firstOrNull { it.changedToDownIgnoreConsumed() } ?: return
+            if (assets.contains(appearance, down.position, containerSize, blink)) {
+                pressedPointerId = down.id
+                down.consume()
+            }
+            return
+        }
+
+        val change = pointerEvent.changes.firstOrNull { it.id == pressedPointerId } ?: return
+        if (change.changedToUpIgnoreConsumed()) {
+            val isInside = assets.contains(appearance, change.position, containerSize, blink)
+            pressedPointerId = null
+            if (isInside) {
+                change.consume()
+                onClick()
+            }
+        }
+    }
+
+    override fun onCancelPointerInput() {
+        pressedPointerId = null
+    }
+
+    fun update(
+        assets: HamsterAssets,
+        appearance: HamsterAppearance,
+        blink: Boolean,
+        onClick: () -> Unit,
+    ) {
+        if (this.assets !== assets || this.appearance != appearance || this.blink != blink) {
+            pressedPointerId = null
+        }
+        this.assets = assets
+        this.appearance = appearance
+        this.blink = blink
+        this.onClick = onClick
     }
 }
 
@@ -90,6 +239,24 @@ internal fun rememberPetAppearanceBitmap(
     maxSidePx: Int,
 ): ImageBitmap? {
     require(maxSidePx > 0)
+    if (profile.species == PetSpecies.Hamster) {
+        val assets = rememberHamsterAssets()
+        val blink = rememberHamsterBlink()
+        val bitmap by produceState<ImageBitmap?>(
+            initialValue = null,
+            assets,
+            profile.hamsterAppearance,
+            blink,
+            maxSidePx,
+        ) {
+            value = assets?.let {
+                withContext(Dispatchers.Default) {
+                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink).asImageBitmap()
+                }
+            }
+        }
+        return bitmap
+    }
     val resources = LocalResources.current
     val tint = profile.color.tint()
     val tintArgb = tint.toArgb()
@@ -148,6 +315,7 @@ private fun decodeSampledBitmap(
 @Composable
 internal fun PetSpecies.title(): String = stringResource(
     when (this) {
+        PetSpecies.Hamster -> R.string.pet_species_hamster
         PetSpecies.Cat -> R.string.pet_species_cat
         PetSpecies.Dog -> R.string.pet_species_dog
         PetSpecies.Rat -> R.string.pet_species_rat

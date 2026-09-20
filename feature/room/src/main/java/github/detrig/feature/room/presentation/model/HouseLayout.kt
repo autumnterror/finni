@@ -54,12 +54,14 @@ internal object HouseLayout {
     const val VIEWPORT_WIDTH = 1f
     const val INITIAL_CAMERA_X = 3.05f
     const val IMAGE_ASPECT = 2169f / 725f
-    const val PET_WIDTH = 0.29f
+    // The hamster artwork occupies about 88% of its square canvas. This size
+    // makes the visible pet height match the floor-scale reference on mobile.
+    const val PET_WIDTH = 0.67f
     const val PET_FLOOR_BASELINE = 0.90f
     const val PET_SPEED = 0.9f
     const val PET_SLOWDOWN_DISTANCE = 0.1f
     const val PET_STOP_DISTANCE = 0.02f
-    const val PET_WALK_MARGIN = 0.2f
+    const val PET_WALK_MARGIN = 0.36f
     const val WALK_CYCLE_DISTANCE = 0.18f
     const val LOCK_SIZE_FRACTION = 0.34f
     const val SAVE_DELAY_MILLIS = 350L
@@ -136,7 +138,7 @@ internal object HouseLayout {
         asset("decor_window", HouseObjectArt.WINDOW, 499f, 340f, 379f, 117f, 605f, 304f, layer = 0f),
         asset("decor_bedside_table", HouseObjectArt.NIGHTSTAND, 171f, 186f, 332f, 424f, 406f, 504f, layer = 0f),
         asset("decor_lamp", HouseObjectArt.NIGHTSTAND, 118f, 166f, 345f, 355f, 395f, 435f, layer = 1f),
-        asset("decor_mirror", HouseObjectArt.MIRROR, 203f, 439f, 760f, 285f, 841f, 502f, layer = 0f),
+        asset("decor_mirror", HouseObjectArt.MIRROR, 203f, 439f, 760f, 285f, 841f, 502f, layer = 0f, interactive = true),
         asset("decor_sofa", HouseObjectArt.SOFA, 907f, 451f, 884f, 333f, 1229f, 507f, layer = 0f),
         asset("decor_coffee_table", HouseObjectArt.DINING_TABLE, 482f, 197f, 968f, 474f, 1144f, 550f, layer = 2f),
         asset("decor_cabinet", HouseObjectArt.CABINET, 421f, 273f, 1235f, 403f, 1385f, 507f, layer = 0f),
