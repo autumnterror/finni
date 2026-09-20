@@ -16,9 +16,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -36,8 +33,13 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.PointerInputModifierNode
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.imageResource
@@ -47,10 +49,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.pet.R
+import github.detrig.feature.pet.domain.model.HamsterAppearance
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.model.PetSpecies
@@ -124,25 +128,18 @@ fun PetScene(
 
 private fun Modifier.hamsterClickable(
     assets: HamsterAssets,
-    appearance: github.detrig.feature.pet.domain.model.HamsterAppearance,
+    appearance: HamsterAppearance,
     blink: Boolean,
     contentDescription: String,
     onClick: () -> Unit,
-): Modifier = pointerInput(assets, appearance, blink) {
-    awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
-        val containerSize = Size(size.width.toFloat(), size.height.toFloat())
-        if (!assets.contains(appearance, down.position, containerSize, blink)) {
-            return@awaitEachGesture
-        }
-        down.consume()
-        val up = waitForUpOrCancellation()
-        if (up != null && assets.contains(appearance, up.position, containerSize, blink)) {
-            up.consume()
-            onClick()
-        }
-    }
-}.semantics {
+): Modifier = this.then(
+    HamsterClickableElement(
+        assets = assets,
+        appearance = appearance,
+        blink = blink,
+        onClick = onClick,
+    ),
+).semantics {
     this.contentDescription = contentDescription
     role = Role.Button
     onClick {
@@ -150,6 +147,91 @@ private fun Modifier.hamsterClickable(
         true
     }
 }.focusable()
+
+/**
+ * A transparent hamster sprite must not block a room object behind it.
+ *
+ * A regular [androidx.compose.ui.input.pointer.pointerInput] modifier still wins the sibling
+ * hit-test for the whole square that contains the sprite, even when its gesture handler decides
+ * not to consume the down event. This node opts into sibling sharing and consumes the gesture only
+ * when the alpha mask says that the pointer is on an actual hamster pixel.
+ */
+private data class HamsterClickableElement(
+    val assets: HamsterAssets,
+    val appearance: HamsterAppearance,
+    val blink: Boolean,
+    val onClick: () -> Unit,
+) : ModifierNodeElement<HamsterClickableNode>() {
+    override fun create(): HamsterClickableNode = HamsterClickableNode(
+        assets = assets,
+        appearance = appearance,
+        blink = blink,
+        onClick = onClick,
+    )
+
+    override fun update(node: HamsterClickableNode) {
+        node.update(
+            assets = assets,
+            appearance = appearance,
+            blink = blink,
+            onClick = onClick,
+        )
+    }
+}
+
+private class HamsterClickableNode(
+    private var assets: HamsterAssets,
+    private var appearance: HamsterAppearance,
+    private var blink: Boolean,
+    private var onClick: () -> Unit,
+) : Modifier.Node(), PointerInputModifierNode {
+    private var pressedPointerId: androidx.compose.ui.input.pointer.PointerId? = null
+
+    override fun sharePointerInputWithSiblings(): Boolean = true
+
+    override fun onPointerEvent(pointerEvent: PointerEvent, pass: PointerEventPass, bounds: IntSize) {
+        if (pass != PointerEventPass.Main || bounds.width <= 0 || bounds.height <= 0) return
+
+        val containerSize = Size(bounds.width.toFloat(), bounds.height.toFloat())
+        if (pressedPointerId == null) {
+            val down = pointerEvent.changes.firstOrNull { it.changedToDownIgnoreConsumed() } ?: return
+            if (assets.contains(appearance, down.position, containerSize, blink)) {
+                pressedPointerId = down.id
+                down.consume()
+            }
+            return
+        }
+
+        val change = pointerEvent.changes.firstOrNull { it.id == pressedPointerId } ?: return
+        if (change.changedToUpIgnoreConsumed()) {
+            val isInside = assets.contains(appearance, change.position, containerSize, blink)
+            pressedPointerId = null
+            if (isInside) {
+                change.consume()
+                onClick()
+            }
+        }
+    }
+
+    override fun onCancelPointerInput() {
+        pressedPointerId = null
+    }
+
+    fun update(
+        assets: HamsterAssets,
+        appearance: HamsterAppearance,
+        blink: Boolean,
+        onClick: () -> Unit,
+    ) {
+        if (this.assets !== assets || this.appearance != appearance || this.blink != blink) {
+            pressedPointerId = null
+        }
+        this.assets = assets
+        this.appearance = appearance
+        this.blink = blink
+        this.onClick = onClick
+    }
+}
 
 @Composable
 internal fun rememberPetAppearanceBitmap(
