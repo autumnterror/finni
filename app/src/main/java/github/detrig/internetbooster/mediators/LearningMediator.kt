@@ -10,6 +10,7 @@ import github.detrig.feature.learning.api.LearningXpRewardGateway
 import github.detrig.feature.learning.api.XpGrantResult
 import github.detrig.feature.learning.data.local.LearningDao
 import github.detrig.feature.learning.domain.LearningConfig
+import github.detrig.feature.learning.domain.BudgetPlanningLearning
 import github.detrig.internetbooster.database.AppDatabaseModule
 
 internal class LearningMediator(
@@ -21,8 +22,9 @@ internal class LearningMediator(
                 override fun learningDao(): LearningDao = databaseModule.learningDao
                 override fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
 
-                // Конкретные rules подключаются вместе с первой учебной темой.
-                override fun config(): LearningConfig = LearningConfig()
+                override fun config(): LearningConfig = LearningConfig(
+                    metricRules = listOf(BudgetPlanningLearning.reasonablePlanRule()),
+                )
 
                 // XP остаётся в outbox до появления ProgressionApi.
                 override fun xpRewardGateway(): LearningXpRewardGateway = DeferredXpRewardGateway

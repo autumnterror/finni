@@ -19,7 +19,7 @@ internal fun GameState.toRoomProgress(
     dayOfWeek = week.dayOfWeek,
     daysUntilAllowance = week.daysUntilAllowance,
     planProgress = planProgress,
-    requiresPlan = week.weekNumber >= 2 && planProgress == null,
+    requiresPlan = planProgress == null,
     petHunger = pet.hunger,
     petHappiness = pet.happiness,
 )

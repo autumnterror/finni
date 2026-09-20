@@ -88,6 +88,7 @@ internal class AppModuleImpl(
             economyMediator,
             weekMediator,
             planningMediator,
+            learningMediator,
             savingsMediator,
             shopMediator,
         )

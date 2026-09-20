@@ -10,6 +10,7 @@ internal data class PlanEditorState(
     val savings: Int = PlanPercentages.DEFAULT.savings,
 ) {
     val total: Int get() = mandatory + wants + savings
+    val reserve: Int get() = PlanPercentages.TOTAL_PERCENT - total
 
     fun toPercentages() = PlanPercentages(mandatory, wants, savings)
 
@@ -17,9 +18,12 @@ internal data class PlanEditorState(
         val current = value(category)
         val selected = requestedPercent.coerceIn(0, PlanPercentages.TOTAL_PERCENT)
         if (selected == current) return this
-        val remaining = PlanPercentages.TOTAL_PERCENT - selected
         val first = otherFirst(category)
         val second = otherSecond(category)
+        if (selected + first + second <= PlanPercentages.TOTAL_PERCENT) {
+            return withValue(category, selected)
+        }
+        val remaining = PlanPercentages.TOTAL_PERCENT - selected
         val oldRemaining = first + second
         val nextFirst = if (oldRemaining == 0) remaining / 2 else remaining * first / oldRemaining
         val nextSecond = remaining - nextFirst
@@ -28,6 +32,12 @@ internal data class PlanEditorState(
             PlanCategory.WANTS -> copy(wants = selected, mandatory = nextFirst, savings = nextSecond)
             PlanCategory.SAVINGS -> copy(savings = selected, mandatory = nextFirst, wants = nextSecond)
         }
+    }
+
+    private fun withValue(category: PlanCategory, value: Int) = when (category) {
+        PlanCategory.MANDATORY -> copy(mandatory = value)
+        PlanCategory.WANTS -> copy(wants = value)
+        PlanCategory.SAVINGS -> copy(savings = value)
     }
 
     private fun value(category: PlanCategory) = when (category) {

@@ -3,14 +3,27 @@ package github.detrig.feature.planning.domain
 internal object PlanningCalculator {
     private const val WARNING_MULTIPLIER = 1.25
 
+    fun assess(percentages: PlanPercentages, config: PlanningConfig): PlanAssessment = when {
+        percentages.mandatory < config.minimumMandatoryPercent -> PlanAssessment.NeedsChanges(
+            reason = PlanAdjustmentReason.MANDATORY_TOO_LOW,
+            recommendedPercent = config.minimumMandatoryPercent,
+        )
+        percentages.reserve < config.minimumReservePercent -> PlanAssessment.NeedsChanges(
+            reason = PlanAdjustmentReason.RESERVE_TOO_LOW,
+            recommendedPercent = config.minimumReservePercent,
+        )
+        percentages.savings < config.minimumSavingsPercent -> PlanAssessment.NeedsChanges(
+            reason = PlanAdjustmentReason.SAVINGS_TOO_LOW,
+            recommendedPercent = config.minimumSavingsPercent,
+        )
+        else -> PlanAssessment.Adequate
+    }
+
     fun progress(plan: WeeklyPlan, actuals: Map<PlanCategory, Long>): WeeklyPlanProgress {
-        val mandatory = (plan.availableRub * plan.percentages.mandatory) / PlanPercentages.TOTAL_PERCENT
-        val wants = (plan.availableRub * plan.percentages.wants) / PlanPercentages.TOTAL_PERCENT
-        val savings = plan.availableRub - mandatory - wants
         val planned = mapOf(
-            PlanCategory.MANDATORY to mandatory,
-            PlanCategory.WANTS to wants,
-            PlanCategory.SAVINGS to savings,
+            PlanCategory.MANDATORY to plan.plannedRub(PlanCategory.MANDATORY),
+            PlanCategory.WANTS to plan.plannedRub(PlanCategory.WANTS),
+            PlanCategory.SAVINGS to plan.plannedRub(PlanCategory.SAVINGS),
         )
         return WeeklyPlanProgress(plan, PlanCategory.entries.map { category ->
             val expected = checkNotNull(planned[category])

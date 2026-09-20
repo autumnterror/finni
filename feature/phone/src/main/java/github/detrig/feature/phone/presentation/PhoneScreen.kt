@@ -82,11 +82,12 @@ private const val HOME_APP_LABEL_Y = 499f
 @Composable
 internal fun PhoneScreen(route: PhoneRoute) {
     val component = PhoneFeature.component()
-    component.petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _ ->
+    component.petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _, _ ->
         Box(Modifier.fillMaxSize()) {
             component.roomApi.Content(
                 modifier = Modifier.fillMaxSize(),
                 active = false,
+                canShowDialogs = false,
                 petContent = { petModifier ->
                     component.petApi.Content(profile = petProfile, modifier = petModifier)
                 },

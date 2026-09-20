@@ -13,10 +13,11 @@ data class PlanPercentages(
 ) {
     init {
         require(mandatory >= 0 && wants >= 0 && savings >= 0)
-        require(total == TOTAL_PERCENT) { "The plan must equal 100%" }
+        require(total <= TOTAL_PERCENT) { "The plan must not exceed 100%" }
     }
 
     val total: Int get() = mandatory + wants + savings
+    val reserve: Int get() = TOTAL_PERCENT - total
 
     fun percent(category: PlanCategory): Int = when (category) {
         PlanCategory.MANDATORY -> mandatory
@@ -26,15 +27,36 @@ data class PlanPercentages(
 
     companion object {
         const val TOTAL_PERCENT = 100
-        val DEFAULT = PlanPercentages(mandatory = 40, wants = 35, savings = 25)
+        val DEFAULT = PlanPercentages(mandatory = 40, wants = 25, savings = 20)
     }
+}
+
+enum class PlanAdjustmentReason {
+    MANDATORY_TOO_LOW,
+    RESERVE_TOO_LOW,
+    SAVINGS_TOO_LOW,
+}
+
+sealed interface PlanAssessment {
+    data object Adequate : PlanAssessment
+
+    data class NeedsChanges(
+        val reason: PlanAdjustmentReason,
+        val recommendedPercent: Int,
+    ) : PlanAssessment
 }
 
 data class WeeklyPlan(
     val weekNumber: Long,
     val availableRub: Long,
     val percentages: PlanPercentages,
-)
+) {
+    val reserveRub: Long
+        get() = availableRub - PlanCategory.entries.sumOf { category -> plannedRub(category) }
+
+    fun plannedRub(category: PlanCategory): Long =
+        (availableRub * percentages.percent(category)) / PlanPercentages.TOTAL_PERCENT
+}
 
 enum class PlanProgressTone { ON_TRACK, WARNING, OVER_LIMIT }
 

@@ -14,6 +14,9 @@ internal class PlanningRepository(
     private val transactionRunner: RoomTransactionRunner,
     private val config: PlanningConfig,
 ) : PlanningApi {
+    override fun assessPlan(percentages: PlanPercentages): PlanAssessment =
+        PlanningCalculator.assess(percentages, config)
+
     override suspend fun getPlanProgress(weekNumber: Long): WeeklyPlanProgress? = transactionRunner.runInTransaction {
         dao.getPlan(weekNumber)?.toProgress(dao.getActualOperations(weekNumber))
     }
@@ -28,7 +31,7 @@ internal class PlanningRepository(
         availableRub: Long,
         percentages: PlanPercentages,
     ): SavePlanResult = transactionRunner.runInTransaction {
-        require(weekNumber >= 2) { "The first game week has no plan" }
+        require(weekNumber >= 1) { "The game week must be positive" }
         require(availableRub >= 0)
         dao.getPlan(weekNumber)?.let { return@runInTransaction SavePlanResult.AlreadySaved(it.toProgress(dao.getActualOperations(weekNumber))) }
         val entity = WeeklyPlanEntity(weekNumber, availableRub, percentages.mandatory, percentages.wants, percentages.savings)

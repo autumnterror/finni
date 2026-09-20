@@ -35,11 +35,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import github.detrig.designsystem.R
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 
 /** Общая карточка реплик. Источник текста и портрета задаёт вызывающая фича. */
 @Composable
@@ -47,6 +49,8 @@ fun FinPetDialogueDialog(
     speakerName: String,
     cards: List<String>,
     portrait: @Composable (Modifier) -> Unit,
+    onPageChanged: (Int) -> Unit = {},
+    dismissOnBackPress: Boolean = true,
     onFinished: () -> Unit,
 ) {
     require(cards.isNotEmpty()) { "Dialogue must contain at least one card" }
@@ -65,6 +69,7 @@ fun FinPetDialogueDialog(
         onDismissRequest = onFinished,
         properties = PopupProperties(
             focusable = true,
+            dismissOnBackPress = dismissOnBackPress,
             dismissOnClickOutside = false,
         ),
     ) {
@@ -77,7 +82,12 @@ fun FinPetDialogueDialog(
                     onClickLabel = tapHint,
                     role = Role.Button,
                 ) {
-                    if (pageIndex < lastIndex) pageIndex++ else onFinished()
+                    if (pageIndex < lastIndex) {
+                        pageIndex++
+                        onPageChanged(pageIndex)
+                    } else {
+                        onFinished()
+                    }
                 }
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.xl)
@@ -145,5 +155,23 @@ fun FinPetDialogueDialog(
                 }
             }
         }
+    }
+}
+
+@Preview(name = "Диалог питомца", widthDp = 360, heightDp = 740, showBackground = true)
+@Composable
+private fun FinPetDialogueDialogPreview() {
+    FinPetTheme {
+        FinPetDialogueDialog(
+            speakerName = "Барсик",
+            cards = listOf(
+                "Обязательное — еда и другие важные вещи.",
+                "Желания — приятные покупки, без которых можно обойтись.",
+            ),
+            portrait = { modifier ->
+                Box(modifier.background(AppTheme.colors.actionSecondary))
+            },
+            onFinished = {},
+        )
     }
 }
