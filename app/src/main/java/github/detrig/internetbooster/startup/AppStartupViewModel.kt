@@ -24,7 +24,9 @@ internal class AppStartupViewModel(
     ) {
         updateState(AppStartupViewState.Loading())
         preloader.preload { progress ->
-            updateStateFromIo(AppStartupViewState.Loading(progress))
+            // preload runs from viewModelScope's main context, so keep progress
+            // updates synchronous and do not let a queued postValue overwrite Ready.
+            updateState(AppStartupViewState.Loading(progress))
         }
         updateState(AppStartupViewState.Ready)
     }
