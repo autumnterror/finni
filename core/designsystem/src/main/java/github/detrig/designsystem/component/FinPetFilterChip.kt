@@ -70,6 +70,16 @@ object FinPetFilterChipDefaults {
             textStyle = AppTheme.typography.button,
         )
     }
+
+    /** Compact storefront geometry for controls embedded inside the phone. */
+    @Composable
+    fun storefrontCompactStyle(): FinPetFilterChipStyle = storefrontStyle().copy(
+        minHeight = AppTheme.sizes.minimumTouchTarget - 4.dp,
+        contentPadding = PaddingValues(
+            horizontal = AppTheme.spacing.lg,
+            vertical = AppTheme.spacing.sm - 2.dp,
+        ),
+    )
 }
 
 /** Selectable chip с явным состоянием и touch target не меньше 48 dp. */

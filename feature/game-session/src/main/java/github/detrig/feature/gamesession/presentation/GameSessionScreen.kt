@@ -13,6 +13,7 @@ internal fun GameSessionScreen() {
             component.roomApi.Content(
                 modifier = modifier,
                 onMirrorClick = onCustomizeClick,
+                onPhoneClick = { component.phoneApi.open() },
                 petContent = { petModifier ->
                     component.petApi.Content(
                         profile = petProfile,

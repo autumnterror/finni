@@ -36,6 +36,7 @@ internal fun ShopContent(
     artworkResolver: ShopArtworkResolver,
     itemDetailsResolver: ShopItemDetailsResolver,
     onEvent: (ShopViewEvent) -> Unit,
+    onBack: () -> Unit = { onEvent(ShopViewEvent.Back) },
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
@@ -50,7 +51,7 @@ internal fun ShopContent(
             ShopHeader(
                 title = storefront.title,
                 balanceRub = state.balanceRub,
-                onBack = { onEvent(ShopViewEvent.Back) },
+                onBack = onBack,
             )
             ShopCategoryRow(
                 storefront = storefront,
@@ -139,7 +140,7 @@ internal fun ShopContent(
             dismissButton = {
                 FinPetOutlinedButton(
                     text = stringResource(R.string.shop_back),
-                    onClick = { onEvent(ShopViewEvent.Back) },
+                    onClick = onBack,
                     style = FinPetButtonDefaults.storefrontOutlinedStyle(),
                 )
             },

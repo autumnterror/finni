@@ -25,6 +25,8 @@ internal class ShopCartViewModel(
     private val cartStore: ShopCartStore,
     private val receiptStore: ShopReceiptStore,
     private val router: ShopRouter,
+    private val onBack: (() -> Unit)? = null,
+    private val onCheckoutCompleted: (() -> Unit)? = null,
 ) : CoreViewModel<ShopCartViewState, ShopCartViewEvent>(ShopCartViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
@@ -33,7 +35,7 @@ internal class ShopCartViewModel(
         when (viewEvent) {
             ShopCartViewEvent.Load,
             ShopCartViewEvent.Retry -> load()
-            ShopCartViewEvent.Back -> router.back()
+            ShopCartViewEvent.Back -> onBack?.invoke() ?: router.back()
             is ShopCartViewEvent.Increase -> add(viewEvent.productId)
             is ShopCartViewEvent.Decrease -> removeOne(viewEvent.productId)
             ShopCartViewEvent.PayClicked -> checkout()
@@ -136,7 +138,7 @@ internal class ShopCartViewModel(
                             checkoutRejection = null,
                         )
                     }
-                    router.back()
+                    onCheckoutCompleted?.invoke() ?: router.back()
                 }
 
                 is ShopCheckoutResult.Rejected -> {

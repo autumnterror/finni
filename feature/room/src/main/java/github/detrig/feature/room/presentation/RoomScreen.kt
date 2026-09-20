@@ -26,6 +26,8 @@ internal fun RoomScreen(
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
+    onPhoneClick: () -> Unit = {},
+    externalActive: Boolean = true,
     previewRequests: RoomPreviewRequests,
 ) {
     val viewModel: RoomViewModel = viewModel { RoomFeature.component().getRoomViewModel() }
@@ -54,7 +56,8 @@ internal fun RoomScreen(
     RoomContent(
         state, viewModel::perform, modifier, petContent,
         onMirrorClick = onMirrorClick,
-        active = resumed && focused && dialogZoneId == null && content?.planEditor == null &&
+        onPhoneClick = onPhoneClick,
+        active = externalActive && resumed && focused && dialogZoneId == null && content?.planEditor == null &&
             content?.isPlanSummaryVisible != true && content?.parentHelpDialog == null && content?.allowanceNotice == null &&
             content?.zeroBalanceHelpNotice == null,
         previewZoneId = requestedZoneId,

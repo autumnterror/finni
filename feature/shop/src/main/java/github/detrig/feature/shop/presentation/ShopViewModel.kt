@@ -21,6 +21,8 @@ internal class ShopViewModel(
     private val cartStore: ShopCartStore,
     private val receiptStore: ShopReceiptStore,
     private val router: ShopRouter,
+    private val onOpenCart: (() -> Unit)? = null,
+    private val closeAfterReceipt: (() -> Unit)? = null,
 ) : CoreViewModel<ShopViewState, ShopViewEvent>(ShopViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
@@ -30,7 +32,7 @@ internal class ShopViewModel(
             ShopViewEvent.Load,
             ShopViewEvent.Retry -> load()
             ShopViewEvent.Back -> if (stateData.receipt == null) router.back() else dismissReceipt()
-            ShopViewEvent.OpenCart -> router.openCart(storeId)
+            ShopViewEvent.OpenCart -> onOpenCart?.invoke() ?: router.openCart(storeId)
             ShopViewEvent.ReceiptDismissed -> dismissReceipt()
             is ShopViewEvent.CategorySelected -> selectCategory(viewEvent.categoryId)
             is ShopViewEvent.ProductClicked -> addProductToCart(viewEvent.productId)
@@ -98,6 +100,6 @@ internal class ShopViewModel(
     private fun dismissReceipt() {
         if (stateData.receipt == null) return
         receiptStore.clear(storeId)
-        router.closeToRoom()
+        closeAfterReceipt?.invoke() ?: router.closeToRoom()
     }
 }

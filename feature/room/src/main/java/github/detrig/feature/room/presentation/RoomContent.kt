@@ -22,6 +22,7 @@ internal fun RoomContent(
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
+    onPhoneClick: () -> Unit = {},
     active: Boolean = true,
     previewZoneId: String? = null,
     onPreviewReady: (String) -> Unit = {},
@@ -56,7 +57,7 @@ internal fun RoomContent(
                 HouseScene(
                     state.zones, state.initialPosition, active && !state.sleeping, state.buyingZoneId,
                     onZoneClick = { onEvent(RoomViewEvent.ZoneClicked(it)) },
-                    onMarketClick = { onEvent(RoomViewEvent.MarketClicked) },
+                    onPhoneClick = onPhoneClick,
                     onBedClick = { onEvent(RoomViewEvent.BedClicked) },
                     onCalendarClick = { onEvent(RoomViewEvent.CalendarClicked) },
                     onPiggyBankClick = { onEvent(RoomViewEvent.PiggyBankClicked) },

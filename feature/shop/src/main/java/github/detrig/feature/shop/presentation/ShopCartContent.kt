@@ -57,6 +57,7 @@ internal fun ShopCartContent(
     artworkResolver: ShopArtworkResolver,
     itemDetailsResolver: ShopItemDetailsResolver,
     onEvent: (ShopCartViewEvent) -> Unit,
+    onBack: () -> Unit = { onEvent(ShopCartViewEvent.Back) },
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
@@ -70,7 +71,7 @@ internal fun ShopCartContent(
             ShopHeader(
                 title = stringResource(R.string.shop_cart_title),
                 balanceRub = state.balanceRub,
-                onBack = { onEvent(ShopCartViewEvent.Back) },
+                onBack = onBack,
             )
             if (state.lines.isEmpty()) {
                 Box(
@@ -145,7 +146,7 @@ internal fun ShopCartContent(
             dismissButton = {
                 FinPetOutlinedButton(
                     text = stringResource(R.string.shop_back),
-                    onClick = { onEvent(ShopCartViewEvent.Back) },
+                    onClick = onBack,
                     style = FinPetButtonDefaults.storefrontOutlinedStyle(),
                 )
             },

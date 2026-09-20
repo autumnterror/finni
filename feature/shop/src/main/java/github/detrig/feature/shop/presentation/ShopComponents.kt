@@ -55,6 +55,7 @@ import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetFilterChip
+import github.detrig.designsystem.component.FinPetFilterChipDefaults
 import github.detrig.designsystem.component.FinPetGridColumns
 import github.detrig.designsystem.component.FinPetLazyGrid
 import github.detrig.designsystem.component.FinPetLazyRow
@@ -100,6 +101,7 @@ internal fun ShopHeader(
             onClick = onBack,
             contentDescription = stringResource(R.string.shop_back),
             modifier = Modifier.align(Alignment.CenterStart),
+            size = AppTheme.sizes.preferredTouchTarget - 4.dp,
         )
         Text(
             text = title,
@@ -128,7 +130,7 @@ private fun ShopBalanceBadge(
     val valueStyle = compactCurrencyStyle(value.length)
 
     Surface(
-        modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget),
+        modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget - 4.dp),
         shape = AppTheme.shapes.storefrontControl,
         color = AppTheme.colors.storefront.surface,
         contentColor = AppTheme.colors.storefront.onSurface,
@@ -188,7 +190,7 @@ internal fun ShopCategoryRow(
         items = options,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AppTheme.spacing.sm),
+            .padding(top = AppTheme.spacing.xs, bottom = AppTheme.spacing.sm),
         contentPadding = PaddingValues(horizontal = AppTheme.spacing.lg),
         itemSpacing = AppTheme.spacing.sm,
         key = ShopFilterOption::key,
@@ -199,6 +201,7 @@ internal fun ShopCategoryRow(
             selected = selectedCategoryId == categoryId,
             onClick = { onSelected(categoryId) },
             modifier = Modifier.testTag("shop_category_${option.key}"),
+            style = FinPetFilterChipDefaults.storefrontCompactStyle(),
         )
     }
 }

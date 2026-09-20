@@ -41,7 +41,7 @@ internal fun HouseScene(
     active: Boolean,
     buyingZoneId: String?,
     onZoneClick: (String) -> Unit,
-    onMarketClick: () -> Unit,
+    onPhoneClick: () -> Unit,
     onBedClick: () -> Unit,
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
@@ -145,7 +145,7 @@ internal fun HouseScene(
                         save()
                         when (id) {
                             "decor_mirror" -> onMirrorClick()
-                            "phone" -> onMarketClick()
+                            "phone" -> onPhoneClick()
                             "bed" -> onBedClick()
                             "calendar" -> onCalendarClick()
                             "piggy_bank" -> onPiggyBankClick()

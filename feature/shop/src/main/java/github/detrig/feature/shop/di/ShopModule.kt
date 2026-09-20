@@ -22,21 +22,33 @@ internal class ShopModule(
 
     override val api: ShopApi by lazy { ShopApiImpl(router) }
 
-    override fun viewModel(storeId: StoreId) = ShopViewModel(
+    override fun viewModel(
+        storeId: StoreId,
+        onOpenCart: (() -> Unit)?,
+        closeAfterReceipt: (() -> Unit)?,
+    ) = ShopViewModel(
         storeId = storeId,
         catalogRegistry = dependencies.catalogRegistry(),
         host = dependencies.host(),
         cartStore = cartStore,
         receiptStore = receiptStore,
         router = router,
+        onOpenCart = onOpenCart,
+        closeAfterReceipt = closeAfterReceipt,
     )
 
-    override fun cartViewModel(storeId: StoreId) = ShopCartViewModel(
+    override fun cartViewModel(
+        storeId: StoreId,
+        onBack: (() -> Unit)?,
+        onCheckoutCompleted: (() -> Unit)?,
+    ) = ShopCartViewModel(
         storeId = storeId,
         catalogRegistry = dependencies.catalogRegistry(),
         host = dependencies.host(),
         cartStore = cartStore,
         receiptStore = receiptStore,
         router = router,
+        onBack = onBack,
+        onCheckoutCompleted = onCheckoutCompleted,
     )
 }

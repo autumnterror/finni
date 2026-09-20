@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 
@@ -27,31 +28,33 @@ fun FinPetBackButton(
     contentDescription: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    size: Dp = AppTheme.sizes.preferredTouchTarget,
 ) {
     val style = FinPetButtonDefaults.storefrontOutlinedStyle().copy(
         containerColor = AppTheme.colors.currencyContainer,
         contentColor = AppTheme.colors.storefront.outline,
         contentPadding = PaddingValues(AppTheme.spacing.none),
+        minHeight = size,
     )
 
     FinPetButton(
         onClick = onClick,
         modifier = modifier
-            .size(AppTheme.sizes.preferredTouchTarget)
+            .size(size)
             .semantics { this.contentDescription = contentDescription },
         enabled = enabled,
         style = style,
     ) {
-        FinPetBackArrow()
+        FinPetBackArrow(buttonSize = size)
     }
 }
 
 @Composable
-private fun FinPetBackArrow() {
+private fun FinPetBackArrow(buttonSize: Dp) {
     val color = LocalContentColor.current
     val strokeWidth = AppTheme.sizes.borderStrong * 2
 
-    Canvas(modifier = Modifier.size(AppTheme.sizes.iconLarge)) {
+    Canvas(modifier = Modifier.size(buttonSize * (AppTheme.sizes.iconLarge.value / AppTheme.sizes.preferredTouchTarget.value))) {
         val tail = Offset(x = size.width * 0.8f, y = size.height * 0.5f)
         val tip = Offset(x = size.width * 0.2f, y = size.height * 0.5f)
         val upperArm = Offset(x = size.width * 0.45f, y = size.height * 0.24f)

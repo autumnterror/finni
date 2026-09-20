@@ -19,13 +19,28 @@ import github.detrig.products.GroceryCatalog
 import github.detrig.products.StoreId
 
 @Composable
-internal fun ShopScreen(storeId: StoreId) {
+internal fun ShopScreen(
+    storeId: StoreId,
+    onBack: (() -> Unit)? = null,
+    onOpenCart: (() -> Unit)? = null,
+    closeAfterReceipt: (() -> Unit)? = null,
+) {
     val component = ShopFeature.component()
-    val viewModel: ShopViewModel = viewModel(key = storeId.value) { component.viewModel(storeId) }
+    val viewModel: ShopViewModel = viewModel(key = "${storeId.value}:${onBack != null}") {
+        component.viewModel(
+            storeId = storeId,
+            onOpenCart = onOpenCart,
+            closeAfterReceipt = closeAfterReceipt,
+        )
+    }
     val state by viewModel.state().observeAsState(ShopViewState())
 
     LaunchedEffect(viewModel) { viewModel.perform(ShopViewEvent.Load) }
-    BackHandler { viewModel.perform(ShopViewEvent.Back) }
+    val handleBack = {
+        if (state.receipt == null) onBack?.invoke() ?: viewModel.perform(ShopViewEvent.Back)
+        else viewModel.perform(ShopViewEvent.Back)
+    }
+    BackHandler { handleBack() }
 
     Scaffold(
         containerColor = AppTheme.colors.storefront.background,
@@ -36,7 +51,8 @@ internal fun ShopScreen(storeId: StoreId) {
             artworkResolver = component.artworkResolver,
             itemDetailsResolver = component.itemDetailsResolver,
             onEvent = viewModel::perform,
-            modifier = Modifier.shopSafeDrawingPadding(),
+            onBack = handleBack,
+            modifier = if (onBack == null) Modifier.shopSafeDrawingPadding() else Modifier,
             contentPadding = padding,
         )
     }
