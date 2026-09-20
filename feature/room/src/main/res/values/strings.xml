@@ -1,6 +1,5 @@
 <resources>
     <string name="zone_flight">Полёт</string>
-    <string name="room_loading">Открываем комнату…</string>
     <string name="room_error">Не получилось открыть комнату</string>
     <string name="room_retry">Попробовать ещё</string>
     <string name="room_buy_price">Купить · %1$d ₽</string>
