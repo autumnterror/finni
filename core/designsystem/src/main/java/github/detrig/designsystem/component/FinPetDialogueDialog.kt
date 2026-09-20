@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +50,7 @@ fun FinPetDialogueDialog(
     speakerName: String,
     cards: List<String>,
     portrait: @Composable (Modifier) -> Unit,
+    underlay: @Composable BoxScope.() -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
     dismissOnBackPress: Boolean = true,
     onFinished: () -> Unit,
@@ -74,6 +76,10 @@ fun FinPetDialogueDialog(
         ),
     ) {
         Box(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            underlay()
+            Box(
             modifier = Modifier
                 .fillMaxSize()
                 .clickable(
@@ -155,6 +161,7 @@ fun FinPetDialogueDialog(
                 }
             }
         }
+    }
     }
 }
 

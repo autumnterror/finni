@@ -1,17 +1,37 @@
 package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,6 +68,32 @@ internal fun WeeklyPlanEditorDialog(
     onPercentChanged: (PlanCategory, Int) -> Unit,
     onSave: () -> Unit,
 ) {
+    val mandatoryRequester = remember { BringIntoViewRequester() }
+    val wantsRequester = remember { BringIntoViewRequester() }
+    val savingsRequester = remember { BringIntoViewRequester() }
+    val reserveRequester = remember { BringIntoViewRequester() }
+    var mandatoryBounds by remember { mutableStateOf<Rect?>(null) }
+    var wantsBounds by remember { mutableStateOf<Rect?>(null) }
+    var savingsBounds by remember { mutableStateOf<Rect?>(null) }
+    var reserveBounds by remember { mutableStateOf<Rect?>(null) }
+
+    LaunchedEffect(tutorialStep) {
+        val requester = when (tutorialStep) {
+            PlanTutorialStep.MANDATORY -> mandatoryRequester
+            PlanTutorialStep.WANTS -> wantsRequester
+            PlanTutorialStep.SAVINGS -> savingsRequester
+            PlanTutorialStep.RESERVE -> reserveRequester
+            PlanTutorialStep.INTRODUCTION,
+            PlanTutorialStep.PRACTICE,
+            null,
+            -> null
+        }
+        if (requester != null) {
+            withFrameNanos { }
+            requester.bringIntoView()
+        }
+    }
+
     FinPetModalDialog(
         title = stringResource(R.string.plan_title),
         onDismissRequest = null,
@@ -64,7 +110,6 @@ internal fun WeeklyPlanEditorDialog(
     ) {
         FinPetModalSection(
             modifier = Modifier.fillMaxWidth(),
-            tone = FinPetModalSectionTone.Highlighted,
         ) {
             Text(
                 text = stringResource(R.string.plan_description, availableRub),
@@ -84,15 +129,12 @@ internal fun WeeklyPlanEditorDialog(
             )
         }
         FinPetModalSection(
-            modifier = Modifier.fillMaxWidth(),
-            tone = if (tutorialStep == PlanTutorialStep.RESERVE) {
-                FinPetModalSectionTone.Highlighted
-            } else {
-                FinPetModalSectionTone.Neutral
-            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(reserveRequester)
+                .onGloballyPositioned { reserveBounds = it.boundsInWindow() },
         ) {
             Column(Modifier.padding(AppTheme.spacing.md)) {
-                if (tutorialStep == PlanTutorialStep.RESERVE) TutorialHighlightLabel()
                 Text(
                     text = stringResource(
                         R.string.plan_reserve,
@@ -107,22 +149,28 @@ internal fun WeeklyPlanEditorDialog(
         PercentageSlider(
             category = PlanCategory.MANDATORY,
             value = editor.mandatory,
-            highlighted = tutorialStep == PlanTutorialStep.MANDATORY,
             enabled = tutorialStep == null && feedbackCards == null,
+            modifier = Modifier
+                .bringIntoViewRequester(mandatoryRequester)
+                .onGloballyPositioned { mandatoryBounds = it.boundsInWindow() },
             onPercentChanged = onPercentChanged,
         )
         PercentageSlider(
             category = PlanCategory.WANTS,
             value = editor.wants,
-            highlighted = tutorialStep == PlanTutorialStep.WANTS,
             enabled = tutorialStep == null && feedbackCards == null,
+            modifier = Modifier
+                .bringIntoViewRequester(wantsRequester)
+                .onGloballyPositioned { wantsBounds = it.boundsInWindow() },
             onPercentChanged = onPercentChanged,
         )
         PercentageSlider(
             category = PlanCategory.SAVINGS,
             value = editor.savings,
-            highlighted = tutorialStep == PlanTutorialStep.SAVINGS,
             enabled = tutorialStep == null && feedbackCards == null,
+            modifier = Modifier
+                .bringIntoViewRequester(savingsRequester)
+                .onGloballyPositioned { savingsBounds = it.boundsInWindow() },
             onPercentChanged = onPercentChanged,
         )
         if (tutorialStep != null) {
@@ -130,6 +178,19 @@ internal fun WeeklyPlanEditorDialog(
                 speakerName = petName,
                 cards = PlanTutorialStep.entries.map { it.message() },
                 portrait = petPortrait,
+                underlay = {
+                    PlanTutorialSpotlight(
+                        targetBounds = when (tutorialStep) {
+                            PlanTutorialStep.MANDATORY -> mandatoryBounds
+                            PlanTutorialStep.WANTS -> wantsBounds
+                            PlanTutorialStep.SAVINGS -> savingsBounds
+                            PlanTutorialStep.RESERVE -> reserveBounds
+                            PlanTutorialStep.INTRODUCTION,
+                            PlanTutorialStep.PRACTICE,
+                            -> null
+                        },
+                    )
+                },
                 onPageChanged = { onTutorialNext() },
                 dismissOnBackPress = false,
                 onFinished = onTutorialNext,
@@ -157,31 +218,55 @@ private fun PlanTutorialStep.message(): String = stringResource(when (this) {
 })
 
 @Composable
-private fun TutorialHighlightLabel() {
-    Text(
-        text = stringResource(R.string.plan_tutorial_highlight),
-        style = AppTheme.typography.caption,
-        color = AppTheme.colors.actionPrimary,
-    )
+private fun PlanTutorialSpotlight(targetBounds: Rect?) {
+    if (targetBounds == null) return
+    val density = LocalDensity.current
+    val paddingPx = with(density) { AppTheme.spacing.sm.toPx() }
+    val cornerRadiusPx = with(density) { AppTheme.spacing.md.toPx() }
+    val scrimColor = AppTheme.colors.sceneShadow.copy(alpha = 0.72f)
+    val clearColor = AppTheme.colors.storefront.surface
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
+    ) {
+        val left = (targetBounds.left - paddingPx).coerceAtLeast(0f)
+        val top = (targetBounds.top - paddingPx).coerceAtLeast(0f)
+        val right = (targetBounds.right + paddingPx).coerceAtMost(size.width)
+        val bottom = (targetBounds.bottom + paddingPx).coerceAtMost(size.height)
+        val spotlightSize = Size(
+            width = (right - left).coerceAtLeast(0f),
+            height = (bottom - top).coerceAtLeast(0f),
+        )
+        val cornerRadius = CornerRadius(cornerRadiusPx)
+
+        drawRect(scrimColor)
+        drawRoundRect(
+            color = clearColor,
+            topLeft = Offset(left, top),
+            size = spotlightSize,
+            cornerRadius = cornerRadius,
+            blendMode = BlendMode.Clear,
+        )
+    }
 }
 
 @Composable
 private fun PercentageSlider(
     category: PlanCategory,
     value: Int,
-    highlighted: Boolean,
     enabled: Boolean,
+    modifier: Modifier = Modifier,
     onPercentChanged: (PlanCategory, Int) -> Unit,
 ) {
     FinPetModalSection(
-        modifier = Modifier.fillMaxWidth(),
-        tone = if (highlighted) FinPetModalSectionTone.Highlighted else FinPetModalSectionTone.Neutral,
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
         ) {
-            if (highlighted) TutorialHighlightLabel()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(category.title(), style = AppTheme.typography.bodyStrong)
                 Text(
@@ -295,11 +380,8 @@ private fun WeeklyPlanDialogPreview() {
             petPortrait = { modifier ->
                 Box(modifier.background(AppTheme.colors.actionSecondary))
             },
-            tutorialStep = null,
-            feedbackCards = listOf(
-                "Этот план пока ненадёжный: на важное может не хватить денег. " +
-                    "Подними «Обязательное» хотя бы до 40%.",
-            ),
+            tutorialStep = PlanTutorialStep.MANDATORY,
+            feedbackCards = null,
             onTutorialNext = {},
             onFeedbackFinished = {},
             onPercentChanged = { _, _ -> },

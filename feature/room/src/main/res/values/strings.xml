@@ -100,7 +100,6 @@
     <string name="plan_tutorial_savings">«Накопления» — деньги для большой цели.</string>
     <string name="plan_tutorial_reserve">То, что не распределено ползунками, останется финансовым запасом на неожиданности.</string>
     <string name="plan_tutorial_try">Теперь подвигай ползунки. Хороший план оставляет деньги на важное, накопления и запас.</string>
-    <string name="plan_tutorial_highlight">Сейчас объясняю эту часть</string>
     <string name="plan_feedback_mandatory">Этот план пока ненадёжный: на важное может не хватить денег. Подними «Обязательное» хотя бы до %1$d%%.</string>
     <string name="plan_feedback_reserve">В этом плане почти нет запаса на неожиданности. Оставь в запасе хотя бы %1$d%%.</string>
     <string name="plan_feedback_savings">В этом плане мало денег для будущей цели. Выдели на накопления хотя бы %1$d%%.</string>
