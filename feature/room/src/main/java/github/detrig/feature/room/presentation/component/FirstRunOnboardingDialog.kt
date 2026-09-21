@@ -1,0 +1,178 @@
+package github.detrig.feature.room.presentation.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetModalSection
+import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetOutlinedButton
+import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
+import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.feature.room.R
+import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.presentation.FirstRunOnboardingState
+
+@Composable
+internal fun FirstRunOnboardingDialog(
+    state: FirstRunOnboardingState,
+    petName: String,
+    petPortrait: @Composable (Modifier) -> Unit,
+    onContinue: () -> Unit,
+    onDepositSelected: (Boolean) -> Unit,
+) {
+    val cards = state.cards(petName) ?: return
+    val isDepositChoice = state.step == FirstRunOnboardingStep.FIRST_DEPOSIT
+    FinPetDialogueDialog(
+        speakerName = petName,
+        cards = cards,
+        portrait = petPortrait,
+        dismissOnBackPress = false,
+        advanceOnTap = !isDepositChoice,
+        additionalContent = {
+            when (state.step) {
+                FirstRunOnboardingStep.GOAL_CREATED -> GoalProgressCard(state)
+                FirstRunOnboardingStep.FIRST_DEPOSIT -> Column(
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                ) {
+                    FinPetButton(
+                        text = stringResource(R.string.onboarding_deposit_now),
+                        onClick = { onDepositSelected(true) },
+                        modifier = Modifier.fillMaxWidth(),
+                        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                    )
+                    FinPetOutlinedButton(
+                        text = stringResource(R.string.onboarding_deposit_later),
+                        onClick = { onDepositSelected(false) },
+                        modifier = Modifier.fillMaxWidth(),
+                        style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                    )
+                }
+                else -> Unit
+            }
+        },
+        onFinished = onContinue,
+    )
+}
+
+@Composable
+private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when (step) {
+    FirstRunOnboardingStep.INTRODUCTION -> listOf(
+        stringResource(R.string.onboarding_intro_1, petName),
+        stringResource(R.string.onboarding_intro_2),
+        stringResource(R.string.onboarding_intro_3),
+        stringResource(R.string.onboarding_intro_4),
+    )
+    FirstRunOnboardingStep.MONEY_EXPLANATION -> listOf(
+        stringResource(R.string.onboarding_money_1),
+        stringResource(R.string.onboarding_money_2),
+    )
+    FirstRunOnboardingStep.PLAN_TRANSITION -> listOf(
+        stringResource(R.string.onboarding_plan_transition_1),
+        stringResource(R.string.onboarding_plan_transition_2),
+    )
+    FirstRunOnboardingStep.PLAN_SAVED -> listOf(
+        stringResource(R.string.onboarding_plan_saved_1),
+    )
+    FirstRunOnboardingStep.GAME_DISCOVERY -> listOf(
+        stringResource(R.string.onboarding_games_discovery_1),
+        stringResource(R.string.onboarding_games_discovery_2),
+        stringResource(R.string.onboarding_games_discovery_3),
+        stringResource(R.string.onboarding_games_discovery_4),
+        stringResource(R.string.onboarding_games_discovery_5),
+        stringResource(R.string.onboarding_games_discovery_6),
+    )
+    FirstRunOnboardingStep.PIGGY_BANK -> listOf(
+        stringResource(R.string.onboarding_piggy_1),
+        stringResource(R.string.onboarding_piggy_2),
+    )
+    FirstRunOnboardingStep.GOAL_CREATED -> listOf(
+        stringResource(R.string.onboarding_goal_created_1, goalTitle.orEmpty()),
+        stringResource(
+            if (goalSavedRub > 0) {
+                R.string.onboarding_goal_created_with_savings
+            } else {
+                R.string.onboarding_goal_created_2
+            },
+        ),
+        stringResource(R.string.onboarding_goal_created_3),
+    )
+    FirstRunOnboardingStep.FIRST_DEPOSIT -> listOf(
+        stringResource(R.string.onboarding_deposit_question),
+    )
+    FirstRunOnboardingStep.DEPOSIT_DONE -> listOf(
+        stringResource(R.string.onboarding_deposit_done),
+    )
+    FirstRunOnboardingStep.DEPOSIT_SKIPPED -> listOf(
+        stringResource(R.string.onboarding_deposit_skipped),
+    )
+    FirstRunOnboardingStep.WISH,
+    FirstRunOnboardingStep.FIRST_MONEY,
+    FirstRunOnboardingStep.PLAN,
+    FirstRunOnboardingStep.GAME_SELECTION,
+    FirstRunOnboardingStep.PIGGY_TAP,
+    FirstRunOnboardingStep.WAITING_FOR_GOAL,
+    FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
+    FirstRunOnboardingStep.GAMES,
+    FirstRunOnboardingStep.FINISH,
+    FirstRunOnboardingStep.COMPLETED,
+    -> null
+}
+
+@Composable
+private fun GoalProgressCard(state: FirstRunOnboardingState) {
+    val target = state.goalTargetRub?.coerceAtLeast(1) ?: 1
+    FinPetModalSection(
+        modifier = Modifier.fillMaxWidth(),
+        tone = FinPetModalSectionTone.Highlighted,
+    ) {
+        Column(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            Text(
+                text = state.goalTitle.orEmpty(),
+                style = AppTheme.typography.bodyStrong,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.onboarding_goal_progress, state.goalSavedRub, target),
+                style = AppTheme.typography.body,
+            )
+            FinPetStorefrontProgressIndicator(
+                progress = (state.goalSavedRub.toFloat() / target).coerceIn(0f, 1f),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Preview(name = "Первое желание Финни", widthDp = 360, heightDp = 740, showBackground = true)
+@Composable
+private fun FirstRunOnboardingDialogPreview() {
+    FinPetTheme {
+        FirstRunOnboardingDialog(
+            state = FirstRunOnboardingState(FirstRunOnboardingStep.GAME_DISCOVERY),
+            petName = "Финни",
+            petPortrait = { modifier ->
+                Box(modifier.background(AppTheme.colors.actionSecondary), contentAlignment = Alignment.Center) {
+                    Text("🐹", style = AppTheme.typography.screenTitle)
+                }
+            },
+            onContinue = {},
+            onDepositSelected = {},
+        )
+    }
+}

@@ -43,7 +43,7 @@ internal class AppModuleImpl(
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
     private val learningMediator: LearningMediator by lazy { LearningMediator(databaseModule) }
     private val savingsMediator: SavingsMediator by lazy {
-        SavingsMediator(coreComponent, economyMediator, planningMediator, weekMediator)
+        SavingsMediator(coreComponent, economyMediator, planningMediator, weekMediator, petMediator)
     }
     private val shopMediator: ShopMediator by lazy {
         ShopMediator(

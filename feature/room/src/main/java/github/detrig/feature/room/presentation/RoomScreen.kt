@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
@@ -33,7 +37,10 @@ import github.detrig.feature.room.presentation.component.ZeroBalanceHelpDialog
 import github.detrig.feature.room.presentation.component.AchievementMenuButton
 import github.detrig.feature.room.presentation.component.AchievementUnlockedBanner
 import github.detrig.feature.room.presentation.component.AchievementsDialog
+import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
+import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
 import github.detrig.feature.room.R
@@ -75,7 +82,32 @@ internal fun RoomScreen(
     LaunchedEffect(viewModel) { viewModel.perform(RoomViewEvent.Load) }
     val requestedZoneId by previewRequests.zoneId.collectAsState()
     val content = state as? RoomViewState.Content
-    Box(modifier = modifier) {
+    val onboarding = content?.onboarding
+    val focusObjectId = onboarding?.focusObjectId ?: requestedZoneId
+    var focusedObjectId by remember { mutableStateOf<String?>(null) }
+    var spotlightBoundsInWindow by remember { mutableStateOf<Rect?>(null) }
+    var roomOriginInWindow by remember { mutableStateOf(Offset.Zero) }
+    val spotlightBounds = spotlightBoundsInWindow?.let { bounds ->
+        Rect(
+            left = bounds.left - roomOriginInWindow.x,
+            top = bounds.top - roomOriginInWindow.y,
+            right = bounds.right - roomOriginInWindow.x,
+            bottom = bounds.bottom - roomOriginInWindow.y,
+        )
+    }
+    LaunchedEffect(focusObjectId) {
+        focusedObjectId = null
+        spotlightBoundsInWindow = null
+    }
+    LaunchedEffect(resumed, onboarding != null) {
+        if (resumed && onboarding != null) viewModel.perform(RoomViewEvent.Resumed)
+    }
+    val hasAllowedOnboardingObjects = onboarding?.allowedObjectIds?.isNotEmpty() == true
+    Box(
+        modifier = modifier.onGloballyPositioned { coordinates ->
+            roomOriginInWindow = coordinates.positionInWindow()
+        },
+    ) {
         RoomContent(
             state = state,
             onEvent = viewModel::perform,
@@ -83,18 +115,31 @@ internal fun RoomScreen(
             petContent = petContent,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,
-            active = externalActive && canShowDialogs && resumed && focused && dialogZoneId == null &&
+            active = externalActive && canShowDialogs && resumed &&
+                (focused || hasAllowedOnboardingObjects) && dialogZoneId == null &&
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
-                content?.zeroBalanceHelpNotice == null && content?.planDialogue == null,
-            previewZoneId = requestedZoneId,
+                content?.zeroBalanceHelpNotice == null && content?.planDialogue == null &&
+                (onboarding == null || hasAllowedOnboardingObjects),
+            focusObjectId = focusObjectId,
+            highlightedObjectIds = onboarding?.highlightedObjectIds.orEmpty(),
+            allowedObjectIds = onboarding?.allowedObjectIds.orEmpty(),
+            onHighlightedObjectBoundsChanged = { spotlightBoundsInWindow = it },
             onPreviewReady = { id ->
-                previewRequests.consume(id)
-                viewModel.perform(RoomViewEvent.ZonePreviewed(id))
+                if (focusObjectId == id) focusedObjectId = id
+                if (requestedZoneId == id) {
+                    previewRequests.consume(id)
+                    viewModel.perform(RoomViewEvent.ZonePreviewed(id))
+                }
             },
         )
-        if (externalActive && content != null && content.achievementBanner == null) {
+        if (onboarding?.step?.let(spotlightSteps::contains) == true &&
+            focusedObjectId == focusObjectId && spotlightBounds != null
+        ) {
+            TutorialSpotlight(spotlightBounds)
+        }
+        if (externalActive && content != null && content.achievementBanner == null && onboarding == null) {
             AchievementMenuButton(
                 onClick = { viewModel.perform(RoomViewEvent.AchievementsClicked) },
                 modifier = Modifier
@@ -114,6 +159,19 @@ internal fun RoomScreen(
     }
     content?.allowanceNotice?.let { notice ->
         AllowanceReceiptDialog(notice) { viewModel.perform(RoomViewEvent.CloseAllowanceNotice) }
+    }
+    onboarding?.takeIf {
+        canShowDialogs && it.step == FirstRunOnboardingStep.FIRST_MONEY
+    }?.let {
+        AllowanceReceiptDialog(
+            notice = AllowanceNoticeState(
+                grossRub = content.progress.balanceRub.toLong(),
+                parentHelpRepaidRub = 0,
+                receivedRub = content.progress.balanceRub.toLong(),
+            ),
+            firstRun = true,
+            onDismiss = { viewModel.perform(RoomViewEvent.FirstRunMoneyNoticeClosed) },
+        )
     }
     content?.zeroBalanceHelpNotice?.let { notice ->
         ZeroBalanceHelpDialog(notice) { viewModel.perform(RoomViewEvent.CloseZeroBalanceHelpNotice) }
@@ -139,6 +197,7 @@ internal fun RoomScreen(
             tutorialStep = content.planTutorialStep,
             feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
             onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
+            onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
             onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
             onPercentChanged = { category, percent ->
                 viewModel.perform(RoomViewEvent.PlanPercentChanged(category, percent))
@@ -165,7 +224,23 @@ internal fun RoomScreen(
             onFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
         )
     }
-    content?.achievementBanner?.takeIf { canShowDialogs }?.let { achievement ->
+    onboarding?.takeIf { firstRun ->
+        val spotlightRequired = firstRun.step in spotlightSteps
+        canShowDialogs &&
+            (firstRun.focusObjectId == null || focusedObjectId == firstRun.focusObjectId) &&
+            (!spotlightRequired || spotlightBounds != null)
+    }?.let { firstRun ->
+        FirstRunOnboardingDialog(
+            state = firstRun,
+            petName = petName,
+            petPortrait = petPortrait,
+            onContinue = { viewModel.perform(RoomViewEvent.FirstRunOnboardingContinue) },
+            onDepositSelected = {
+                viewModel.perform(RoomViewEvent.FirstRunDepositSelected(it))
+            },
+        )
+    }
+    content?.achievementBanner?.takeIf { canShowDialogs && onboarding == null }?.let { achievement ->
         AchievementUnlockedBanner(
             achievement = achievement,
             onDismiss = { viewModel.perform(RoomViewEvent.AchievementBannerDismissed) },
@@ -175,6 +250,13 @@ internal fun RoomScreen(
         if (content != null && zone?.access !is RoomZoneAccess.Buyable) dialogZoneId = null
     }
 }
+
+private val spotlightSteps = setOf(
+    FirstRunOnboardingStep.GAME_DISCOVERY,
+    FirstRunOnboardingStep.GAME_SELECTION,
+    FirstRunOnboardingStep.PIGGY_BANK,
+    FirstRunOnboardingStep.PIGGY_TAP,
+)
 
 @Composable
 private fun PlanDialogueState.cards(): List<String> = when (this) {

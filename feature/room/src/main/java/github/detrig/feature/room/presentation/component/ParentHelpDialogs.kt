@@ -141,7 +141,11 @@ private fun ParentHelpMoneyRow(labelRes: Int, amountRub: Long) {
 }
 
 @Composable
-internal fun AllowanceReceiptDialog(notice: AllowanceNoticeState, onDismiss: () -> Unit) {
+internal fun AllowanceReceiptDialog(
+    notice: AllowanceNoticeState,
+    firstRun: Boolean = false,
+    onDismiss: () -> Unit,
+) {
     FinPetModalDialog(
         title = stringResource(R.string.allowance_notice_title),
         onDismissRequest = onDismiss,
@@ -156,7 +160,13 @@ internal fun AllowanceReceiptDialog(notice: AllowanceNoticeState, onDismiss: () 
         },
     ) {
         FinPetMoneyAmount(notice.grossRub.toString())
-        Text(stringResource(R.string.allowance_notice_received, notice.grossRub), style = AppTheme.typography.body)
+        Text(
+            stringResource(
+                if (firstRun) R.string.allowance_notice_first_received else R.string.allowance_notice_received,
+                notice.grossRub,
+            ),
+            style = AppTheme.typography.body,
+        )
         if (notice.parentHelpRepaidRub > 0) {
             FinPetModalSection(
                 modifier = Modifier.fillMaxWidth(),

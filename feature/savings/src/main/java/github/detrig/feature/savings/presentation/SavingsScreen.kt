@@ -20,6 +20,7 @@ import github.detrig.designsystem.component.FinPetAmountInput
 import github.detrig.designsystem.component.FinPetBackButton
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
@@ -38,18 +39,38 @@ import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.savings.R
 import github.detrig.feature.savings.SavingsFeature
 import github.detrig.feature.savings.api.SavingsGoalDraft
+import github.detrig.feature.pet.api.PetApi
 
 @Composable
-internal fun SavingsScreen() {
-    val viewModel: SavingsViewModel = viewModel { SavingsFeature.component().viewModel() }
+internal fun SavingsScreen(
+    firstRunOnboarding: Boolean,
+    suggestedGoalId: String?,
+    petApi: PetApi,
+) {
+    val viewModel: SavingsViewModel = viewModel {
+        SavingsFeature.component().viewModel(firstRunOnboarding, suggestedGoalId)
+    }
     val state by viewModel.state().observeAsState(SavingsViewState())
+    val petProfile by petApi.observeProfile().collectAsState(initial = null)
     LaunchedEffect(viewModel) { viewModel.perform(SavingsViewEvent.Load) }
     BackHandler { viewModel.perform(SavingsViewEvent.Back) }
-    SavingsContent(state, viewModel::perform)
+    SavingsContent(
+        state = state,
+        petName = petProfile?.name ?: stringResource(R.string.savings_pet_name),
+        petPortrait = { modifier ->
+            petProfile?.let { profile -> petApi.Portrait(profile, modifier) }
+        },
+        onEvent = viewModel::perform,
+    )
 }
 
 @Composable
-private fun SavingsContent(state: SavingsViewState, onEvent: (SavingsViewEvent) -> Unit) {
+private fun SavingsContent(
+    state: SavingsViewState,
+    petName: String,
+    petPortrait: @Composable (Modifier) -> Unit,
+    onEvent: (SavingsViewEvent) -> Unit,
+) {
     Scaffold(containerColor = AppTheme.colors.storefront.background) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             SavingsHeader(
@@ -92,7 +113,11 @@ private fun SavingsContent(state: SavingsViewState, onEvent: (SavingsViewEvent) 
                         },
                         color = AppTheme.colors.storefront.onSurface,
                     )
-                    GoalChoices(state.starterGoals, state.busy) {
+                    GoalChoices(
+                        goals = state.starterGoals,
+                        suggestedGoalId = state.suggestedGoalId,
+                        busy = state.busy,
+                    ) {
                         onEvent(SavingsViewEvent.GoalSelected(it))
                     }
                     if (state.goal != null) {
@@ -152,6 +177,76 @@ private fun SavingsContent(state: SavingsViewState, onEvent: (SavingsViewEvent) 
             }
         }
     }
+    if (state.notice == null && state.transferDirection == null) {
+        SavingsOnboardingDialog(
+            state = state,
+            petName = petName,
+            petPortrait = petPortrait,
+            onEvent = onEvent,
+        )
+    }
+}
+
+@Composable
+private fun SavingsOnboardingDialog(
+    state: SavingsViewState,
+    petName: String,
+    petPortrait: @Composable (Modifier) -> Unit,
+    onEvent: (SavingsViewEvent) -> Unit,
+) {
+    val step = state.onboardingStep ?: return
+    val cards = when (step) {
+        SavingsOnboardingStep.INTRODUCTION -> listOf(
+            stringResource(R.string.savings_onboarding_intro_1),
+            stringResource(R.string.savings_onboarding_intro_2),
+            stringResource(R.string.savings_onboarding_intro_3),
+        )
+        SavingsOnboardingStep.GOAL_CREATED -> listOf(
+            stringResource(R.string.savings_onboarding_goal_created),
+            stringResource(R.string.savings_onboarding_goal_hint),
+        )
+        SavingsOnboardingStep.FIRST_DEPOSIT -> listOf(
+            stringResource(R.string.savings_onboarding_deposit_question),
+        )
+        SavingsOnboardingStep.DEPOSIT_DONE -> listOf(
+            stringResource(R.string.savings_onboarding_deposit_done),
+        )
+        SavingsOnboardingStep.DEPOSIT_SKIPPED -> listOf(
+            stringResource(R.string.savings_onboarding_deposit_skipped),
+        )
+        SavingsOnboardingStep.SELECT_GOAL,
+        SavingsOnboardingStep.WAITING_FOR_DEPOSIT,
+        -> return
+    }
+    val isDepositChoice = step == SavingsOnboardingStep.FIRST_DEPOSIT
+    FinPetDialogueDialog(
+        speakerName = petName,
+        cards = cards,
+        portrait = petPortrait,
+        dismissOnBackPress = false,
+        advanceOnTap = !isDepositChoice,
+        additionalContent = {
+            if (isDepositChoice) {
+                FinPetButton(
+                    text = stringResource(R.string.savings_onboarding_deposit_now),
+                    onClick = {
+                        onEvent(SavingsViewEvent.OnboardingDepositSelected(depositNow = true))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+                FinPetOutlinedButton(
+                    text = stringResource(R.string.savings_onboarding_deposit_later),
+                    onClick = {
+                        onEvent(SavingsViewEvent.OnboardingDepositSelected(depositNow = false))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                )
+            }
+        },
+        onFinished = { onEvent(SavingsViewEvent.OnboardingContinue) },
+    )
 }
 
 @Composable
@@ -237,11 +332,20 @@ private fun GoalCard(progress: SavingsGoalProgress) {
 }
 
 @Composable
-private fun GoalChoices(goals: List<SavingsGoalDraft>, busy: Boolean, onGoal: (SavingsGoalDraft) -> Unit) {
+private fun GoalChoices(
+    goals: List<SavingsGoalDraft>,
+    suggestedGoalId: String?,
+    busy: Boolean,
+    onGoal: (SavingsGoalDraft) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
         goals.forEach { goal ->
             FinPetOutlinedButton(
-                text = stringResource(R.string.savings_goal_choice, goal.title, goal.targetRub),
+                text = if (goal.id == suggestedGoalId) {
+                    stringResource(R.string.savings_goal_choice_suggested, goal.title, goal.targetRub)
+                } else {
+                    stringResource(R.string.savings_goal_choice, goal.title, goal.targetRub)
+                },
                 onClick = { onGoal(goal) },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
@@ -368,12 +472,18 @@ private fun SavingsContentPreview() {
                     nextPeriodicIncome = income,
                 ),
                 starterGoals = listOf(
-                    SavingsGoalDraft("starter:pet-toy", "Игрушка для питомца", 300),
+                    SavingsGoalDraft("room-zone:fishing", "Рыбалка", 400),
                     SavingsGoalDraft("starter:drawing-set", "Набор для рисования", 500),
                     SavingsGoalDraft("starter:big-dream", "Большая мечта", 800),
                 ),
                 loading = false,
             ),
+            petName = "Финни",
+            petPortrait = { modifier ->
+                Box(modifier = modifier, contentAlignment = Alignment.Center) {
+                    Text("🐹", style = AppTheme.typography.screenTitle)
+                }
+            },
             onEvent = {},
         )
     }

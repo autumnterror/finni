@@ -1,6 +1,9 @@
 package github.detrig.feature.gamestate.domain
 
+import github.detrig.feature.gamestate.domain.model.MiniGameAccess
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
@@ -49,6 +52,13 @@ class GameStateInitialConfigTest {
         invalidConfigs.forEach { createConfig ->
             assertThrows(IllegalArgumentException::class.java) { createConfig() }
         }
+    }
+
+    @Test
+    fun fishingStartsLockedWhileFreeGamesRemainAvailable() {
+        assertFalse(MiniGameAccess.isInitiallyOpen("fishing"))
+        assertTrue(MiniGameAccess.isInitiallyOpen("ball"))
+        assertTrue(MiniGameAccess.isInitiallyOpen("flight"))
     }
 
 }

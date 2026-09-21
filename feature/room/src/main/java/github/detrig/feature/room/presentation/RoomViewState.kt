@@ -8,6 +8,7 @@ import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
+import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 
 internal data class ParentHelpDialogState(
     val offers: List<ParentHelpOffer>,
@@ -21,6 +22,44 @@ internal data class AllowanceNoticeState(
 )
 
 internal data class ZeroBalanceHelpNoticeState(val amountRub: Long)
+
+internal data class FirstRunOnboardingState(
+    val step: FirstRunOnboardingStep,
+    val suggestedGoalZoneId: String? = null,
+    val selectableGoalZoneIds: Set<String> = FIRST_SAVINGS_GOAL_ZONE_IDS,
+    val goalTitle: String? = null,
+    val goalTargetRub: Long? = null,
+    val goalSavedRub: Long = 0,
+) {
+    val focusObjectId: String? get() = when (step) {
+        FirstRunOnboardingStep.GAME_DISCOVERY,
+        FirstRunOnboardingStep.GAME_SELECTION,
+        -> "drawing"
+        FirstRunOnboardingStep.PIGGY_BANK,
+        FirstRunOnboardingStep.PIGGY_TAP,
+        FirstRunOnboardingStep.WAITING_FOR_GOAL,
+        -> "piggy_bank"
+        else -> null
+    }
+
+    val highlightedObjectIds: Set<String> get() = when (step) {
+        FirstRunOnboardingStep.GAME_DISCOVERY,
+        FirstRunOnboardingStep.GAME_SELECTION,
+        -> selectableGoalZoneIds
+        FirstRunOnboardingStep.PIGGY_BANK,
+        FirstRunOnboardingStep.PIGGY_TAP,
+        -> setOf("piggy_bank")
+        else -> emptySet()
+    }
+
+    val allowedObjectIds: Set<String> get() = when (step) {
+        FirstRunOnboardingStep.GAME_SELECTION -> selectableGoalZoneIds
+        FirstRunOnboardingStep.PIGGY_TAP -> setOf("piggy_bank")
+        else -> emptySet()
+    }
+}
+
+internal val FIRST_SAVINGS_GOAL_ZONE_IDS = linkedSetOf("drawing", "music", "fishing")
 
 internal data class PlanAchievementFeedback(
     val id: String,
@@ -73,6 +112,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val isRequestingParentHelp: Boolean = false,
         val allowanceNotice: AllowanceNoticeState? = null,
         val zeroBalanceHelpNotice: ZeroBalanceHelpNoticeState? = null,
+        val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
     ) : RoomViewState
 }

@@ -1,7 +1,7 @@
 package github.detrig.feature.room.presentation.component
 
-import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.ScrollState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
+import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseMotionState
@@ -52,12 +54,16 @@ internal fun HouseScene(
     onDishesClick: () -> Unit,
     onFeedingClick: () -> Unit,
     onSavePosition: (HousePosition) -> Unit,
-    previewZoneId: String?,
+    focusObjectId: String?,
+    highlightedObjectIds: Set<String>,
+    allowedObjectIds: Set<String>,
+    onHighlightedObjectBoundsChanged: (Rect?) -> Unit,
     onPreviewReady: (String) -> Unit,
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier) -> Unit = {},
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
+    val appMotion = AppTheme.motion
     val savePosition by rememberUpdatedState(onSavePosition)
     val previewReady by rememberUpdatedState(onPreviewReady)
 
@@ -90,7 +96,6 @@ internal fun HouseScene(
             if (!ready) return@LaunchedEffect
             if (!active) {
                 motion.pause()
-                scroll.stopScroll(MutatePriority.PreventUserInput)
                 save()
                 return@LaunchedEffect
             }
@@ -116,12 +121,19 @@ internal fun HouseScene(
                 .debounce(HouseLayout.SAVE_DELAY_MILLIS).filter { it }.collect { save() }
         }
         DisposableEffect(motion, unitPx) { onDispose { save() } }
-        LaunchedEffect(previewZoneId, ready, active) {
-            val id = previewZoneId ?: return@LaunchedEffect
-            if (!ready || !active) return@LaunchedEffect
-            val placement = HouseLayout.objects.find { it.zoneId == id }
+        LaunchedEffect(focusObjectId, ready) {
+            val id = focusObjectId ?: return@LaunchedEffect
+            if (!ready) return@LaunchedEffect
+            val placement = HouseLayout.objects.find { it.id == id || it.zoneId == id }
             if (placement != null) {
-                scroll.scrollTo((HouseLayout.clampCamera(placement.centerX - 0.5f) * unitPx).roundToInt())
+                scroll.stopScroll()
+                scroll.animateScrollTo(
+                    value = (HouseLayout.clampCamera(placement.centerX - 0.5f) * unitPx).roundToInt(),
+                    animationSpec = tween(
+                        durationMillis = appMotion.durationSlowMillis,
+                        easing = appMotion.standardEasing,
+                    ),
+                )
                 motion.cameraLeftX = scroll.value / unitPx
                 motion.hintSeen = true
                 save()
@@ -139,6 +151,9 @@ internal fun HouseScene(
                 RoomObjectLayers(
                     zones = zones,
                     enabled = active && ready,
+                    highlightedObjectIds = highlightedObjectIds,
+                    allowedObjectIds = allowedObjectIds,
+                    onHighlightedObjectBoundsChanged = onHighlightedObjectBoundsChanged,
                     buyingZoneId = buyingZoneId,
                     onObjectClick = { id ->
                         motion.pause()

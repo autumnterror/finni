@@ -11,6 +11,7 @@ import github.detrig.feature.savings.domain.TransferToSavingsInteractor
 import github.detrig.feature.savings.navigation.SavingsRoute
 import github.detrig.feature.savings.navigation.SavingsRouter
 import github.detrig.feature.savings.presentation.SavingsScreen
+import github.detrig.feature.pet.api.PetApi
 
 internal class SavingsApiImpl(
     private val router: SavingsRouter,
@@ -18,10 +19,19 @@ internal class SavingsApiImpl(
     private val economy: EconomyApi,
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
+    private val petApi: PetApi,
 ) : SavingsApi {
-    override fun open() = router.open()
+    override fun open(firstRunOnboarding: Boolean, suggestedGoalId: String?) =
+        router.open(firstRunOnboarding, suggestedGoalId)
+
     override fun entries(): EntryHostProviderInstaller = {
-        composable<SavingsRoute.Home> { SavingsScreen() }
+        composable<SavingsRoute.Home> { route ->
+            SavingsScreen(
+                firstRunOnboarding = route.firstRunOnboarding,
+                suggestedGoalId = route.suggestedGoalId,
+                petApi = petApi,
+            )
+        }
     }
     override suspend fun createGoal(draft: SavingsGoalDraft): SavingsGoal = createGoal(draft)
     override suspend fun getActiveGoalProgress(): SavingsGoalProgress? =

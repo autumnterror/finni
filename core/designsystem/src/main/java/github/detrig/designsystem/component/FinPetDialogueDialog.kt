@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -51,8 +52,10 @@ fun FinPetDialogueDialog(
     cards: List<String>,
     portrait: @Composable (Modifier) -> Unit,
     underlay: @Composable BoxScope.() -> Unit = {},
+    additionalContent: @Composable ColumnScope.() -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
     dismissOnBackPress: Boolean = true,
+    advanceOnTap: Boolean = true,
     onFinished: () -> Unit,
 ) {
     require(cards.isNotEmpty()) { "Dialogue must contain at least one card" }
@@ -82,19 +85,25 @@ fun FinPetDialogueDialog(
             Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClickLabel = tapHint,
-                    role = Role.Button,
-                ) {
-                    if (pageIndex < lastIndex) {
-                        pageIndex++
-                        onPageChanged(pageIndex)
+                .then(
+                    if (advanceOnTap) {
+                        Modifier.clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClickLabel = tapHint,
+                            role = Role.Button,
+                        ) {
+                            if (pageIndex < lastIndex) {
+                                pageIndex++
+                                onPageChanged(pageIndex)
+                            } else {
+                                onFinished()
+                            }
+                        }
                     } else {
-                        onFinished()
-                    }
-                }
+                        Modifier
+                    },
+                )
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.xl)
                 .testTag("finpet_dialogue"),
@@ -145,18 +154,21 @@ fun FinPetDialogueDialog(
                             )
                         }
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = tapHint,
-                            style = AppTheme.typography.caption,
-                            color = AppTheme.colors.textSecondary,
-                        )
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            text = stringResource(R.string.dialogue_progress, pageIndex + 1, cards.size),
-                            style = AppTheme.typography.label,
-                            color = AppTheme.colors.textSecondary,
-                        )
+                    additionalContent()
+                    if (advanceOnTap) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = tapHint,
+                                style = AppTheme.typography.caption,
+                                color = AppTheme.colors.textSecondary,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                text = stringResource(R.string.dialogue_progress, pageIndex + 1, cards.size),
+                                style = AppTheme.typography.label,
+                                color = AppTheme.colors.textSecondary,
+                            )
+                        }
                     }
                 }
             }

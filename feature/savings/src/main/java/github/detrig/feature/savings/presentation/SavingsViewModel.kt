@@ -21,7 +21,15 @@ internal class SavingsViewModel(
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
     private val router: SavingsRouter,
-) : CoreViewModel<SavingsViewState, SavingsViewEvent>(SavingsViewState(starterGoals = configuration.starterGoals)) {
+    firstRunOnboarding: Boolean,
+    suggestedGoalId: String?,
+) : CoreViewModel<SavingsViewState, SavingsViewEvent>(
+    SavingsViewState(
+        starterGoals = configuration.starterGoals.prioritize(suggestedGoalId),
+        suggestedGoalId = suggestedGoalId,
+        onboardingStep = SavingsOnboardingStep.SELECT_GOAL.takeIf { firstRunOnboarding },
+    ),
+) {
     private var loadingJob: Job? = null
     private var actionJob: Job? = null
 
@@ -31,9 +39,21 @@ internal class SavingsViewModel(
             SavingsViewEvent.Back -> router.back()
             is SavingsViewEvent.GoalSelected -> selectGoal(viewEvent.goal)
             is SavingsViewEvent.TransferOpened -> updateState { copy(transferDirection = viewEvent.direction, notice = null) }
-            SavingsViewEvent.TransferDismissed -> if (!stateData.busy) updateState { copy(transferDirection = null) }
+            SavingsViewEvent.TransferDismissed -> if (!stateData.busy) updateState {
+                copy(
+                    transferDirection = null,
+                    onboardingStep = if (onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT) {
+                        SavingsOnboardingStep.FIRST_DEPOSIT
+                    } else {
+                        onboardingStep
+                    },
+                )
+            }
             is SavingsViewEvent.TransferConfirmed -> transfer(viewEvent.amountRub)
             SavingsViewEvent.NoticeDismissed -> updateState { copy(notice = null) }
+            SavingsViewEvent.OnboardingContinue -> continueOnboarding()
+            is SavingsViewEvent.OnboardingDepositSelected ->
+                selectOnboardingDeposit(viewEvent.depositNow)
         }
     }
 
@@ -63,7 +83,14 @@ internal class SavingsViewModel(
         actionJob = launchCoroutine(handleAction = actionFailure()) {
             createGoal(draft)
             refreshGoal()
-            updateState { copy(busy = false, notice = SavingsNotice.GoalSaved) }
+            updateState {
+                val isOnboarding = onboardingStep != null
+                copy(
+                    busy = false,
+                    notice = SavingsNotice.GoalSaved.takeUnless { isOnboarding },
+                    onboardingStep = SavingsOnboardingStep.GOAL_CREATED.takeIf { isOnboarding },
+                )
+            }
         }
     }
 
@@ -81,17 +108,30 @@ internal class SavingsViewModel(
             when (result) {
                 is FinancialOperationResult.Applied,
                 is FinancialOperationResult.AlreadyApplied -> updateState {
+                    val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT
                     copy(
                         busy = false,
                         transferDirection = null,
-                        notice = SavingsNotice.TransferCompleted(direction, amountRub),
+                        notice = SavingsNotice.TransferCompleted(direction, amountRub)
+                            .takeUnless { isOnboardingDeposit },
+                        onboardingStep = if (isOnboardingDeposit) {
+                            SavingsOnboardingStep.DEPOSIT_DONE
+                        } else {
+                            onboardingStep
+                        },
                     )
                 }
                 is FinancialOperationResult.Rejected -> updateState {
+                    val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT
                     copy(
                         busy = false,
                         transferDirection = null,
                         notice = SavingsNotice.Rejected(result.reason, missingRub(result.reason, amountRub, result.state)),
+                        onboardingStep = if (isOnboardingDeposit) {
+                            SavingsOnboardingStep.FIRST_DEPOSIT
+                        } else {
+                            onboardingStep
+                        },
                     )
                 }
             }
@@ -105,7 +145,60 @@ internal class SavingsViewModel(
     }.coerceAtLeast(0)
 
     private fun actionFailure() = ExceptionConsumer {
-        updateState { copy(busy = false, transferDirection = null) }
+        updateState {
+            copy(
+                busy = false,
+                transferDirection = null,
+                onboardingStep = if (onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT) {
+                    SavingsOnboardingStep.FIRST_DEPOSIT
+                } else {
+                    onboardingStep
+                },
+            )
+        }
         true
     }
+
+    private fun continueOnboarding() {
+        when (stateData.onboardingStep) {
+            SavingsOnboardingStep.INTRODUCTION -> updateState {
+                copy(
+                    onboardingStep = if (goal == null) {
+                        SavingsOnboardingStep.SELECT_GOAL
+                    } else {
+                        SavingsOnboardingStep.GOAL_CREATED
+                    },
+                )
+            }
+            SavingsOnboardingStep.GOAL_CREATED -> router.back()
+            SavingsOnboardingStep.DEPOSIT_DONE,
+            SavingsOnboardingStep.DEPOSIT_SKIPPED,
+            -> router.back()
+            SavingsOnboardingStep.SELECT_GOAL,
+            SavingsOnboardingStep.FIRST_DEPOSIT,
+            SavingsOnboardingStep.WAITING_FOR_DEPOSIT,
+            null,
+            -> Unit
+        }
+    }
+
+    private fun selectOnboardingDeposit(depositNow: Boolean) {
+        if (stateData.onboardingStep != SavingsOnboardingStep.FIRST_DEPOSIT) return
+        updateState {
+            if (depositNow) {
+                copy(
+                    onboardingStep = SavingsOnboardingStep.WAITING_FOR_DEPOSIT,
+                    transferDirection = SavingsTransferDirection.DEPOSIT,
+                    notice = null,
+                )
+            } else {
+                copy(onboardingStep = SavingsOnboardingStep.DEPOSIT_SKIPPED)
+            }
+        }
+    }
+}
+
+internal fun List<SavingsGoalDraft>.prioritize(suggestedGoalId: String?): List<SavingsGoalDraft> {
+    val suggested = firstOrNull { it.id == suggestedGoalId } ?: return this
+    return listOf(suggested) + filterNot { it.id == suggested.id }
 }

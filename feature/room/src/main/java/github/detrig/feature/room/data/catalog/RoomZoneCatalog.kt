@@ -12,7 +12,7 @@ internal class RoomZoneCatalog {
         RoomZoneDefinition("music", "music", "music", 350, 1),
         RoomZoneDefinition("workshop", "workshop", "workshop", 450, 2),
         RoomZoneDefinition("puzzle", "puzzle", "puzzle", 250, 1),
-        RoomZoneDefinition("fishing", "fishing", "fishing", 400, 2),
+        RoomZoneDefinition("fishing", "fishing", "fishing", 400, 1),
         RoomZoneDefinition("garden", "garden", "garden", 550, 2),
         RoomZoneDefinition("flight", "flight", "flight", 300, 1,
             initiallyOpen = MiniGameAccess.isInitiallyOpen("flight")),

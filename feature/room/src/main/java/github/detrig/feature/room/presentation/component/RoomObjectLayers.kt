@@ -7,13 +7,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,6 +33,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -43,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.designsystem.component.FinPetCard
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.presentation.model.HouseLayout
@@ -56,6 +63,9 @@ internal fun RoomObjectLayers(
     zones: List<RoomZoneUiModel>,
     enabled: Boolean,
     buyingZoneId: String?,
+    highlightedObjectIds: Set<String> = emptySet(),
+    allowedObjectIds: Set<String> = emptySet(),
+    onHighlightedObjectBoundsChanged: (Rect?) -> Unit = {},
     onObjectClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,6 +73,7 @@ internal fun RoomObjectLayers(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val click by rememberUpdatedState(onObjectClick)
+    val highlightedBoundsChanged by rememberUpdatedState(onHighlightedObjectBoundsChanged)
     val canInteract by rememberUpdatedState(enabled && buyingZoneId == null)
     val placements = remember { HouseLayout.objects.sortedBy { it.layer } }
     val zonesById = remember(zones) { zones.associateBy { it.id } }
@@ -80,6 +91,10 @@ internal fun RoomObjectLayers(
     )
     val motion = AppTheme.motion
     val touchTarget = AppTheme.sizes.preferredTouchTarget
+    val priceBadgeOffset = AppTheme.spacing.xl
+    val lockSize = AppTheme.sizes.iconMedium
+    val priceBadgeOffsetPx = with(density) { priceBadgeOffset.toPx() }
+    val lockSizePx = with(density) { lockSize.toPx() }
     val pressScale = remember { Animatable(1f) }
     var pressedId by remember { mutableStateOf<String?>(null) }
     var animationJob by remember { mutableStateOf<Job?>(null) }
@@ -155,12 +170,14 @@ internal fun RoomObjectLayers(
         }
 
         Canvas(
-            Modifier.fillMaxSize().pointerInput(sprites, enabled, buyingZoneId) {
+            Modifier.fillMaxSize().pointerInput(sprites, enabled, buyingZoneId, allowedObjectIds) {
                 if (!canInteract || sprites.isEmpty()) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     if (dispatching) return@awaitEachGesture
-                    val id = hitObject(down.position) ?: return@awaitEachGesture
+                    val id = hitObject(down.position)?.takeIf {
+                        allowedObjectIds.isEmpty() || it in allowedObjectIds
+                    } ?: return@awaitEachGesture
                     press(id)
                     try {
                         val up = waitForUpOrCancellation()
@@ -207,6 +224,7 @@ internal fun RoomObjectLayers(
             val targetWidthPx = with(density) { targetWidth.toPx() }
             val targetHeightPx = with(density) { targetHeight.toPx() }
             val actionable = canInteract && sprites.isNotEmpty()
+                && (allowedObjectIds.isEmpty() || placement.id in allowedObjectIds)
             val performClick = {
                 if (actionable && !dispatching) { press(placement.id); activate(placement.id) }
             }
@@ -231,6 +249,15 @@ internal fun RoomObjectLayers(
                             actionable
                         } else false
                     }
+                    .then(
+                        if (actionable && placement.id in allowedObjectIds) {
+                            Modifier.pointerInput(placement.id, actionable) {
+                                detectTapGestures { performClick() }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
                     .focusable(actionable),
             )
             if (buyingZoneId == placement.id) {
@@ -246,6 +273,74 @@ internal fun RoomObjectLayers(
                     }.size(progressSize),
                 )
             }
+            if (zone?.access is RoomZoneAccess.Buyable) {
+                val price = zone.access.priceRub
+                val badgeWidth = maxOf(targetWidth, AppTheme.sizes.preferredTouchTarget)
+                FinPetCard(
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            (destination.center.x - with(density) { badgeWidth.toPx() } / 2f).roundToInt(),
+                            (destination.bottom - priceBadgeOffsetPx).roundToInt(),
+                        )
+                    }.width(badgeWidth),
+                    shape = AppTheme.shapes.compact,
+                    borderColor = AppTheme.colors.currencyAccent,
+                    borderWidth = AppTheme.sizes.borderThin,
+                    elevation = AppTheme.elevation.low,
+                ) {
+                    Text(
+                        text = stringResource(R.string.room_money, price),
+                        modifier = Modifier.padding(horizontal = AppTheme.spacing.xs),
+                        style = AppTheme.typography.caption,
+                        color = AppTheme.colors.textPrimary,
+                    )
+                }
+                RoomZoneLock(
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            (destination.center.x - lockSizePx / 2f).roundToInt(),
+                            (destination.center.y - lockSizePx / 2f).roundToInt(),
+                        )
+                    }.size(lockSize),
+                )
+            }
+        }
+
+        val highlightedBounds = placements.mapNotNull { placement ->
+            destinations[placement.id]?.takeIf {
+                placement.id in highlightedObjectIds ||
+                    placement.zoneId?.let(highlightedObjectIds::contains) == true
+            }
+        }.reduceOrNull { combined, bounds ->
+            Rect(
+                left = minOf(combined.left, bounds.left),
+                top = minOf(combined.top, bounds.top),
+                right = maxOf(combined.right, bounds.right),
+                bottom = maxOf(combined.bottom, bounds.bottom),
+            )
+        }
+        if (highlightedBounds != null) {
+            Box(
+                Modifier
+                    .offset {
+                        IntOffset(
+                            highlightedBounds.left.roundToInt(),
+                            highlightedBounds.top.roundToInt(),
+                        )
+                    }
+                    .size(
+                        with(density) { highlightedBounds.width.toDp() },
+                        with(density) { highlightedBounds.height.toDp() },
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        highlightedBoundsChanged(coordinates.boundsInWindow())
+                    },
+            )
+        }
+
+        DisposableEffect(highlightedObjectIds) {
+            if (highlightedObjectIds.isEmpty()) highlightedBoundsChanged(null)
+            onDispose { highlightedBoundsChanged(null) }
         }
     }
 }
@@ -271,6 +366,9 @@ private fun RoomObjectLayersPreview() {
                 zones = emptyList(),
                 enabled = false,
                 buyingZoneId = null,
+                highlightedObjectIds = emptySet(),
+                allowedObjectIds = emptySet(),
+                onHighlightedObjectBoundsChanged = {},
                 onObjectClick = {},
             )
         }

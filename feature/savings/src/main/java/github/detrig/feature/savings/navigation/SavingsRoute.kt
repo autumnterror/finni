@@ -5,5 +5,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal sealed interface SavingsRoute : NavKey {
-    @Serializable data object Home : SavingsRoute
+    @Serializable
+    data class Home(
+        val firstRunOnboarding: Boolean = false,
+        val suggestedGoalId: String? = null,
+    ) : SavingsRoute
 }

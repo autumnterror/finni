@@ -64,6 +64,7 @@ internal fun WeeklyPlanEditorDialog(
     tutorialStep: PlanTutorialStep?,
     feedbackCards: List<String>?,
     onTutorialNext: () -> Unit,
+    onFeedbackEdit: () -> Unit,
     onFeedbackFinished: () -> Unit,
     onPercentChanged: (PlanCategory, Int) -> Unit,
     onSave: () -> Unit,
@@ -179,7 +180,7 @@ internal fun WeeklyPlanEditorDialog(
                 cards = PlanTutorialStep.entries.map { it.message() },
                 portrait = petPortrait,
                 underlay = {
-                    PlanTutorialSpotlight(
+                    TutorialSpotlight(
                         targetBounds = when (tutorialStep) {
                             PlanTutorialStep.MANDATORY -> mandatoryBounds
                             PlanTutorialStep.WANTS -> wantsBounds
@@ -201,6 +202,21 @@ internal fun WeeklyPlanEditorDialog(
                 cards = feedbackCards,
                 portrait = petPortrait,
                 dismissOnBackPress = false,
+                advanceOnTap = false,
+                additionalContent = {
+                    FinPetButton(
+                        text = stringResource(R.string.plan_feedback_edit),
+                        onClick = onFeedbackEdit,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                    )
+                    github.detrig.designsystem.component.FinPetOutlinedButton(
+                        text = stringResource(R.string.plan_feedback_save_anyway),
+                        onClick = onFeedbackFinished,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                    )
+                },
                 onFinished = onFeedbackFinished,
             )
         }
@@ -218,7 +234,7 @@ private fun PlanTutorialStep.message(): String = stringResource(when (this) {
 })
 
 @Composable
-private fun PlanTutorialSpotlight(targetBounds: Rect?) {
+internal fun TutorialSpotlight(targetBounds: Rect?) {
     if (targetBounds == null) return
     val density = LocalDensity.current
     val paddingPx = with(density) { AppTheme.spacing.sm.toPx() }
@@ -383,6 +399,7 @@ private fun WeeklyPlanDialogPreview() {
             tutorialStep = PlanTutorialStep.MANDATORY,
             feedbackCards = null,
             onTutorialNext = {},
+            onFeedbackEdit = {},
             onFeedbackFinished = {},
             onPercentChanged = { _, _ -> },
             onSave = {},

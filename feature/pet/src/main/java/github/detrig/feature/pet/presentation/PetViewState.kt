@@ -6,14 +6,12 @@ import github.detrig.feature.pet.domain.model.HamsterAppearance
 import github.detrig.feature.pet.domain.model.PetNameRules
 import github.detrig.feature.pet.domain.model.PetNameValidationError
 import github.detrig.feature.pet.domain.model.PetProfile
-import github.detrig.feature.pet.domain.model.PetSpecies
 
 internal sealed interface PetViewState : CoreViewState {
     data object Loading : PetViewState
 
     data class Creating(
         val name: String = "Финни",
-        val species: PetSpecies = PetSpecies.Hamster,
         val color: PetColor = PetColor.Sunny,
         val hamsterAppearance: HamsterAppearance = HamsterAppearance(),
         val nameError: PetNameValidationError? = null,

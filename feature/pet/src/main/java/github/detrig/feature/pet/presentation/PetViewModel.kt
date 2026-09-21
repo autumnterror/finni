@@ -19,7 +19,6 @@ internal class PetViewModel(
                 val limited = PetNameRules.limit(viewEvent.value)
                 copy(name = limited, nameError = PetNameRules.validate(limited))
             }
-            is PetViewEvent.SpeciesSelected -> updateCreating { copy(species = viewEvent.value) }
             is PetViewEvent.ColorSelected -> updateCreating { copy(color = viewEvent.value) }
             is PetViewEvent.HamsterAppearanceChanged -> updateCreating {
                 copy(hamsterAppearance = viewEvent.value)
@@ -55,13 +54,9 @@ internal class PetViewModel(
         }
         createPet(
             name = current.name,
-            species = current.species,
             color = current.color,
             hamsterAppearance = current.hamsterAppearance,
         )
-        if (current.existingProfile == null) {
-            commands.onNext(PetCommand.ShowGreeting)
-        }
     }
 
     private fun customize() {
@@ -70,7 +65,6 @@ internal class PetViewModel(
         updateState(
             PetViewState.Creating(
                 name = profile.name,
-                species = profile.species,
                 color = profile.color,
                 hamsterAppearance = profile.hamsterAppearance,
                 existingProfile = profile,
