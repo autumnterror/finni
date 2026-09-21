@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":feature:economy"))
     implementation(project(":feature:week"))
     implementation(project(":feature:planning"))
+    implementation(project(":feature:learning"))
     implementation(project(":feature:savings"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

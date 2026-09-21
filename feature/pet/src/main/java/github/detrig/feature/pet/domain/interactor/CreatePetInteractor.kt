@@ -12,12 +12,16 @@ internal class CreatePetInteractor(
 ) {
     operator fun invoke(
         name: String,
-        species: PetSpecies,
         color: PetColor,
         hamsterAppearance: HamsterAppearance = HamsterAppearance(),
     ): PetProfile {
         val normalizedName = PetNameRules.normalize(name)
         require(PetNameRules.validate(normalizedName) == null) { "Invalid pet name" }
-        return PetProfile(normalizedName, species, color, hamsterAppearance).also(repository::saveProfile)
+        return PetProfile(
+            name = normalizedName,
+            species = PetSpecies.Hamster,
+            color = color,
+            hamsterAppearance = hamsterAppearance,
+        ).also(repository::saveProfile)
     }
 }

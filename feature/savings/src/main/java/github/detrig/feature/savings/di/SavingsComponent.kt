@@ -5,5 +5,5 @@ import github.detrig.feature.savings.presentation.SavingsViewModel
 
 internal interface SavingsComponent {
     val api: SavingsApi
-    fun viewModel(): SavingsViewModel
+    fun viewModel(firstRunOnboarding: Boolean, suggestedGoalId: String?): SavingsViewModel
 }

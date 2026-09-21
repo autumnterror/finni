@@ -29,6 +29,7 @@ class PlanningRepositoryTest {
             val repository = PlanningRepository(
                 database.planningDao(), RoomTransactionRunner(database), PlanningConfig(seedDemoProgress = false),
             )
+            assertTrue(repository.savePlan(1, 500, PlanPercentages.DEFAULT) is SavePlanResult.Saved)
             val saved = repository.savePlan(2, 1_000, PlanPercentages.DEFAULT)
             assertTrue(saved is SavePlanResult.Saved)
             assertTrue(repository.savePlan(2, 1_200, PlanPercentages(20, 40, 40)) is SavePlanResult.AlreadySaved)

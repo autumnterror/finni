@@ -13,6 +13,7 @@ internal class SavingsMediator(
     private val economy: EconomyMediator,
     private val planning: PlanningMediator,
     private val week: WeekMediator,
+    private val pet: PetMediator,
 ) : Mediator<SavingsApi> {
     fun init() {
         SavingsFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -20,6 +21,7 @@ internal class SavingsMediator(
                 override fun economyApi() = economy.getApi()
                 override fun planningApi() = planning.getApi()
                 override fun weekApi() = week.getApi()
+                override fun petApi() = pet.getApi()
                 override fun globalNavigator() = core.globalNavigator
                 override fun configuration() = SavingsConfiguration()
             }

@@ -35,4 +35,16 @@ class MvpAchievementCatalogTest {
         assertTrue(security.filter { it.stage == AchievementStage.LEARNED }
             .all { it.requiredProgressSteps == 3 })
     }
+
+    @Test
+    fun budgetPlanningRuleCanUnlockBothReasonablePlanAchievements() {
+        val rule = BudgetPlanningLearning.reasonablePlanRule()
+        val catalog = MvpAchievementCatalog.create(LearningConfig(metricRules = listOf(rule)))
+
+        assertEquals(
+            2,
+            catalog.definitionsForMetric(LearningMetricIds.BUDGET_REASONABLE_PLAN).size,
+        )
+        assertEquals(2, rule.milestones.maxOf { it.progressSteps })
+    }
 }

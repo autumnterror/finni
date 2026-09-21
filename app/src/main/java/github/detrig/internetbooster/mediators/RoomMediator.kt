@@ -19,6 +19,7 @@ internal class RoomMediator(
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
     private val planningMediator: PlanningMediator,
+    private val learningMediator: LearningMediator,
     private val savingsMediator: SavingsMediator,
     private val shopMediator: ShopMediator,
 ) : Mediator<RoomApi> {
@@ -30,6 +31,7 @@ internal class RoomMediator(
                 override fun economyApi(): EconomyApi = economyMediator.getApi()
                 override fun weekApi(): github.detrig.feature.week.api.WeekApi = weekMediator.getApi()
                 override fun planningApi(): github.detrig.feature.planning.api.PlanningApi = planningMediator.getApi()
+                override fun learningApi(): github.detrig.feature.learning.api.LearningApi = learningMediator.getApi()
                 override fun savingsApi(): github.detrig.feature.savings.api.SavingsApi = savingsMediator.getApi()
                 override fun marketLauncher() = github.detrig.feature.room.api.RoomMarketLauncher {
                     shopMediator.getApi().open(github.detrig.products.GroceryStoreIds.Store)

@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.res.stringResource
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.room.R
@@ -24,7 +25,10 @@ internal fun RoomContent(
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
     active: Boolean = true,
-    previewZoneId: String? = null,
+    focusObjectId: String? = null,
+    highlightedObjectIds: Set<String> = emptySet(),
+    allowedObjectIds: Set<String> = emptySet(),
+    onHighlightedObjectBoundsChanged: (Rect?) -> Unit = {},
     onPreviewReady: (String) -> Unit = {},
 ) {
     Box(modifier.fillMaxSize().background(AppTheme.colors.house.floor), contentAlignment = Alignment.Center) {
@@ -46,7 +50,10 @@ internal fun RoomContent(
                 onDishesClick = {},
                 onFeedingClick = {},
                 onSavePosition = {},
-                previewZoneId = null,
+                focusObjectId = null,
+                highlightedObjectIds = emptySet(),
+                allowedObjectIds = emptySet(),
+                onHighlightedObjectBoundsChanged = {},
                 onPreviewReady = {},
                 modifier = Modifier.fillMaxSize(),
                 petContent = petContent,
@@ -68,7 +75,10 @@ internal fun RoomContent(
                     onDishesClick = { onEvent(RoomViewEvent.DishesClicked) },
                     onFeedingClick = { onEvent(RoomViewEvent.FeedingClicked) },
                     onSavePosition = { onEvent(RoomViewEvent.SavePosition(it)) },
-                    previewZoneId = previewZoneId,
+                    focusObjectId = focusObjectId,
+                    highlightedObjectIds = highlightedObjectIds,
+                    allowedObjectIds = allowedObjectIds,
+                    onHighlightedObjectBoundsChanged = onHighlightedObjectBoundsChanged,
                     onPreviewReady = onPreviewReady,
                     modifier = Modifier.fillMaxSize(),
                     petContent = petContent,

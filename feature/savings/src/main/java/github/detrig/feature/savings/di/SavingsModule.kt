@@ -18,14 +18,23 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
     private val transferFrom by lazy { TransferFromSavingsInteractor(dependencies.economyApi()) }
 
     override val api: SavingsApi by lazy {
-        SavingsApiImpl(router, createGoal, dependencies.economyApi(), transferTo, transferFrom)
+        SavingsApiImpl(
+            router,
+            createGoal,
+            dependencies.economyApi(),
+            transferTo,
+            transferFrom,
+            dependencies.petApi(),
+        )
     }
-    override fun viewModel() = SavingsViewModel(
+    override fun viewModel(firstRunOnboarding: Boolean, suggestedGoalId: String?) = SavingsViewModel(
         economy = dependencies.economyApi(),
         configuration = dependencies.configuration(),
         createGoal = createGoal,
         transferTo = transferTo,
         transferFrom = transferFrom,
         router = router,
+        firstRunOnboarding = firstRunOnboarding,
+        suggestedGoalId = suggestedGoalId,
     )
 }

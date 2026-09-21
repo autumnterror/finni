@@ -23,14 +23,20 @@ internal class RoomApiImpl(
     @Composable
     override fun Content(
         modifier: Modifier,
+        petName: String,
+        canShowDialogs: Boolean,
         petContent: @Composable (Modifier) -> Unit,
+        petPortrait: @Composable (Modifier) -> Unit,
         onMirrorClick: () -> Unit,
         onPhoneClick: () -> Unit,
         active: Boolean,
     ) {
         RoomScreen(
             modifier = modifier,
+            petName = petName,
+            canShowDialogs = canShowDialogs,
             petContent = petContent,
+            petPortrait = petPortrait,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,
             externalActive = active,

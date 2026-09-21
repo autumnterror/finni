@@ -5,7 +5,14 @@ import github.detrig.feature.savings.api.SavingsApi
 import github.detrig.feature.savings.api.SavingsGoalDraft
 
 internal class OpenSavingsInteractor(private val savings: SavingsApi) {
-    operator fun invoke() = savings.open()
+    operator fun invoke(
+        firstRunOnboarding: Boolean = false,
+        suggestedGoalId: String? = null,
+    ) = savings.open(firstRunOnboarding, suggestedGoalId)
+}
+
+internal class LoadActiveSavingsGoalInteractor(private val savings: SavingsApi) {
+    suspend operator fun invoke() = savings.getActiveGoalProgress()
 }
 
 internal class SaveZoneAsSavingsGoalInteractor(

@@ -1,4 +1,16 @@
 package github.detrig.feature.planning.domain
 
-/** Временный сценарий для демонстрации: каждый новый сохранённый план получает все три статуса. */
-data class PlanningConfig(val seedDemoProgress: Boolean = true)
+/** Балансировочные правила плана и временный сценарий демонстрационного прогресса. */
+data class PlanningConfig(
+    val seedDemoProgress: Boolean = true,
+    val minimumMandatoryPercent: Int = 40,
+    val minimumSavingsPercent: Int = 10,
+    val minimumReservePercent: Int = 10,
+) {
+    init {
+        require(minimumMandatoryPercent in 0..PlanPercentages.TOTAL_PERCENT)
+        require(minimumSavingsPercent in 0..PlanPercentages.TOTAL_PERCENT)
+        require(minimumReservePercent in 0..PlanPercentages.TOTAL_PERCENT)
+        require(minimumMandatoryPercent + minimumSavingsPercent + minimumReservePercent <= PlanPercentages.TOTAL_PERCENT)
+    }
+}

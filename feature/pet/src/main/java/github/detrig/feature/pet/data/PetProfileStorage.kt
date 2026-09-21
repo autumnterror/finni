@@ -17,9 +17,13 @@ internal class PetProfileStorage(
         return runCatching {
             val json = JSONObject(payload)
             require(json.getInt(VERSION_KEY) == CURRENT_VERSION)
-            PetProfile(
+            val storedSpecies = requireNotNull(PetSpecies.fromStorageKey(json.getString(SPECIES_KEY)))
+            val profile = PetProfile(
                 name = json.getString(NAME_KEY),
-                species = requireNotNull(PetSpecies.fromStorageKey(json.getString(SPECIES_KEY))),
+                // Старые dev-профили могли хранить другой вид. Новый онбординг
+                // поддерживает только хомяка, поэтому сохраняем остальные данные,
+                // но нормализуем вид при чтении.
+                species = PetSpecies.Hamster,
                 color = requireNotNull(PetColor.fromStorageKey(json.getString(COLOR_KEY))),
                 hamsterAppearance = HamsterAppearance(
                     palette = json.optString(PALETTE_KEY, HamsterAppearance.DEFAULT_PALETTE),
@@ -30,6 +34,8 @@ internal class PetProfileStorage(
                     eyes = json.optString(EYES_KEY, HamsterAppearance.DEFAULT_EYES),
                 ),
             )
+            if (storedSpecies != PetSpecies.Hamster) saveProfile(profile)
+            profile
         }.getOrNull()
     }
 
@@ -37,7 +43,7 @@ internal class PetProfileStorage(
         val payload = JSONObject()
             .put(VERSION_KEY, CURRENT_VERSION)
             .put(NAME_KEY, profile.name)
-            .put(SPECIES_KEY, profile.species.storageKey)
+            .put(SPECIES_KEY, PetSpecies.Hamster.storageKey)
             .put(COLOR_KEY, profile.color.storageKey)
             .put(PALETTE_KEY, profile.hamsterAppearance.palette)
             .put(COAT_KEY, profile.hamsterAppearance.coat)

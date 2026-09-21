@@ -6,7 +6,7 @@ import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 
 interface SavingsApi {
-    fun open()
+    fun open(firstRunOnboarding: Boolean = false, suggestedGoalId: String? = null)
     fun entries(): EntryHostProviderInstaller
     suspend fun createGoal(draft: SavingsGoalDraft): SavingsGoal
     suspend fun getActiveGoalProgress(): SavingsGoalProgress?

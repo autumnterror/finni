@@ -8,6 +8,7 @@ import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.week.api.WeekApi
 import github.detrig.feature.planning.api.PlanningApi
+import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.savings.api.SavingsApi
 import github.detrig.feature.room.api.RoomGameLauncher
 
@@ -17,6 +18,7 @@ interface RoomDependencies {
     fun economyApi(): EconomyApi
     fun weekApi(): WeekApi
     fun planningApi(): PlanningApi
+    fun learningApi(): LearningApi
     fun savingsApi(): SavingsApi
     fun gameLauncher(): RoomGameLauncher
     fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher

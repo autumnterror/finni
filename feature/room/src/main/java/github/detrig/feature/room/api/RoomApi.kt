@@ -14,7 +14,10 @@ interface RoomApi {
     @Composable
     fun Content(
         modifier: Modifier = Modifier,
+        petName: String = "",
+        canShowDialogs: Boolean = true,
         petContent: @Composable (Modifier) -> Unit = {},
+        petPortrait: @Composable (Modifier) -> Unit = {},
         onMirrorClick: () -> Unit = {},
         onPhoneClick: () -> Unit = {},
         active: Boolean = true,
