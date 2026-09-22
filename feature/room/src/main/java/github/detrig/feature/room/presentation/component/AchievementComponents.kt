@@ -1,6 +1,8 @@
 package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,19 +18,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
-import github.detrig.designsystem.component.FinPetFeedbackSurface
-import github.detrig.designsystem.component.FinPetFeedbackTone
 import github.detrig.designsystem.component.FinPetIconButton
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
@@ -37,6 +49,9 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.PlanAchievementFeedback
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 @Composable
 internal fun AchievementMenuButton(
@@ -80,8 +95,10 @@ internal fun AchievementMenuButton(
 internal fun AchievementUnlockedBanner(
     achievement: PlanAchievementFeedback,
     onDismiss: () -> Unit,
+    onHeightChanged: (Dp) -> Unit = {},
 ) {
     val closeLabel = stringResource(R.string.achievement_banner_close)
+    val density = LocalDensity.current
     Popup(
         alignment = Alignment.TopCenter,
         properties = PopupProperties(focusable = false),
@@ -90,71 +107,267 @@ internal fun AchievementUnlockedBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.md),
+                .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.sm),
             contentAlignment = Alignment.TopCenter,
         ) {
-            FinPetFeedbackSurface(
-                tone = FinPetFeedbackTone.Positive,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = AppTheme.sizes.contentMaxWidth),
-            ) { style ->
-                Row(
-                    modifier = Modifier.padding(AppTheme.spacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
+                    .widthIn(max = ACHIEVEMENT_BANNER_MAX_WIDTH)
+                    .onSizeChanged { size ->
+                        onHeightChanged(with(density) { size.height.toDp() })
+                    },
+            ) {
+                AchievementBurst(Modifier.matchParentSize())
+                FinPetCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = ACHIEVEMENT_CARD_SIDE_INSET,
+                            top = ACHIEVEMENT_RIBBON_OVERLAP,
+                            end = ACHIEVEMENT_CARD_SIDE_INSET,
+                        )
+                        .shadow(
+                            elevation = AppTheme.elevation.high,
+                            shape = AppTheme.shapes.storefrontControl,
+                            ambientColor = AppTheme.colors.storefront.shadow,
+                            spotColor = AppTheme.colors.storefront.shadow,
+                        )
+                        .clip(AppTheme.shapes.storefrontControl)
+                        .clickable(
+                            onClickLabel = closeLabel,
+                            role = Role.Button,
+                            onClick = onDismiss,
+                        ),
+                    shape = AppTheme.shapes.storefrontControl,
+                    containerColor = AppTheme.colors.surfaceElevated,
+                    contentColor = AppTheme.colors.storefront.onSurface,
+                    borderColor = AppTheme.colors.storefront.outline,
+                    borderWidth = AppTheme.sizes.borderStrong * 2,
                 ) {
-                    Text(
-                        text = "★",
-                        style = AppTheme.typography.screenTitle,
-                        color = style.accent,
-                    )
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.achievement_banner_title),
-                            style = AppTheme.typography.label,
-                            color = style.accent,
-                        )
-                        Text(
-                            text = achievement.title,
-                            style = AppTheme.typography.bodyStrong,
-                            color = style.content,
-                        )
-                        Text(
-                            text = achievement.description,
-                            style = AppTheme.typography.caption,
-                            color = style.content,
-                        )
-                    }
-                    FinPetIconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.semantics { contentDescription = closeLabel },
+                    Box(
+                        modifier = Modifier.background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    AppTheme.colors.surfaceElevated,
+                                    AppTheme.colors.currencyContainer,
+                                    AppTheme.colors.surfaceElevated,
+                                ),
+                            ),
+                        ),
                     ) {
-                        val strokeWidth = AppTheme.sizes.borderStrong
-                        Canvas(Modifier.size(AppTheme.sizes.iconMedium)) {
-                            val stroke = strokeWidth.toPx()
-                            val inset = size.minDimension * 0.22f
-                            drawLine(
-                                color = style.accent,
-                                start = Offset(inset, inset),
-                                end = Offset(size.width - inset, size.height - inset),
-                                strokeWidth = stroke,
-                                cap = StrokeCap.Round,
-                            )
-                            drawLine(
-                                color = style.accent,
-                                start = Offset(size.width - inset, inset),
-                                end = Offset(inset, size.height - inset),
-                                strokeWidth = stroke,
-                                cap = StrokeCap.Round,
-                            )
+                        AchievementSparkles(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(
+                                    top = AppTheme.spacing.lg,
+                                    end = AppTheme.spacing.lg,
+                                )
+                                .size(width = 62.dp, height = 46.dp),
+                        )
+                        Row(
+                            modifier = Modifier.padding(
+                                start = AppTheme.spacing.lg,
+                                top = ACHIEVEMENT_CARD_TOP_PADDING,
+                                end = AppTheme.spacing.lg,
+                                bottom = AppTheme.spacing.sm,
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AchievementMedal(Modifier.size(ACHIEVEMENT_MEDAL_SIZE))
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                            ) {
+                                Text(
+                                    text = achievement.title,
+                                    style = AppTheme.typography.sectionTitle,
+                                    color = AppTheme.colors.storefront.onSurface,
+                                )
+                                Text(
+                                    text = achievement.description,
+                                    style = AppTheme.typography.body,
+                                    color = AppTheme.colors.storefront.onSurface,
+                                )
+                            }
                         }
                     }
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth(ACHIEVEMENT_RIBBON_WIDTH_FRACTION)
+                        .shadow(
+                            elevation = AppTheme.elevation.medium,
+                            shape = AppTheme.shapes.storefrontControl,
+                            ambientColor = AppTheme.colors.storefront.shadow,
+                            spotColor = AppTheme.colors.storefront.shadow,
+                        )
+                        .clip(AppTheme.shapes.storefrontControl)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    AppTheme.colors.currencyContainer,
+                                    AppTheme.colors.currencyAccent,
+                                ),
+                            ),
+                        )
+                        .padding(
+                            horizontal = AppTheme.spacing.lg,
+                            vertical = AppTheme.spacing.sm,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.achievement_banner_title),
+                        style = AppTheme.typography.bodyStrong,
+                        color = AppTheme.colors.storefront.onSurface,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun AchievementBurst(modifier: Modifier = Modifier) {
+    val color = AppTheme.colors.currencyAccent
+    val borderWidth = AppTheme.sizes.borderStrong
+    Canvas(modifier) {
+        val stroke = borderWidth.toPx() * 3f
+        val rayLength = size.width * 0.035f
+        listOf(0.35f, 0.58f, 0.79f).forEachIndexed { index, yFraction ->
+            val slant = when (index) {
+                0 -> -rayLength * 0.7f
+                2 -> rayLength * 0.7f
+                else -> 0f
+            }
+            val y = size.height * yFraction
+            drawLine(
+                color = color,
+                start = Offset(2.dp.toPx(), y + slant),
+                end = Offset(2.dp.toPx() + rayLength, y),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = color,
+                start = Offset(size.width - 2.dp.toPx(), y + slant),
+                end = Offset(size.width - 2.dp.toPx() - rayLength, y),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AchievementMedal(modifier: Modifier = Modifier) {
+    val gold = AppTheme.colors.currencyAccent
+    val goldLight = AppTheme.colors.currencyContainer
+    val outline = AppTheme.colors.storefront.outline
+    val ribbon = AppTheme.colors.statusCritical.accent
+    val borderWidth = AppTheme.sizes.borderStrong
+    Canvas(modifier) {
+        val center = Offset(size.width * 0.5f, size.height * 0.4f)
+        val radius = size.minDimension * 0.31f
+        val ribbonStroke = Stroke(
+            width = borderWidth.toPx(),
+        )
+        val leftRibbon = Path().apply {
+            moveTo(size.width * 0.28f, size.height * 0.49f)
+            lineTo(size.width * 0.18f, size.height * 0.94f)
+            lineTo(size.width * 0.37f, size.height * 0.84f)
+            lineTo(size.width * 0.5f, size.height * 0.98f)
+            lineTo(size.width * 0.55f, size.height * 0.49f)
+            close()
+        }
+        val rightRibbon = Path().apply {
+            moveTo(size.width * 0.45f, size.height * 0.49f)
+            lineTo(size.width * 0.5f, size.height * 0.98f)
+            lineTo(size.width * 0.64f, size.height * 0.84f)
+            lineTo(size.width * 0.82f, size.height * 0.94f)
+            lineTo(size.width * 0.72f, size.height * 0.49f)
+            close()
+        }
+        drawPath(leftRibbon, ribbon)
+        drawPath(leftRibbon, outline, style = ribbonStroke)
+        drawPath(rightRibbon, ribbon)
+        drawPath(rightRibbon, outline, style = ribbonStroke)
+        drawCircle(color = outline, radius = radius + 4.dp.toPx(), center = center)
+        drawCircle(color = gold, radius = radius, center = center)
+        drawCircle(color = goldLight, radius = radius * 0.73f, center = center)
+        drawCircle(
+            color = gold,
+            radius = radius * 0.73f,
+            center = center,
+            style = Stroke(width = borderWidth.toPx() * 2f),
+        )
+        drawPath(
+            path = starPath(center, radius * 0.54f, radius * 0.26f),
+            color = gold,
+        )
+    }
+}
+
+@Composable
+private fun AchievementSparkles(modifier: Modifier = Modifier) {
+    val color = AppTheme.colors.currencyAccent
+    Canvas(modifier) {
+        drawSparkle(
+            center = Offset(size.width * 0.32f, size.height * 0.36f),
+            radius = size.minDimension * 0.25f,
+            color = color,
+        )
+        drawSparkle(
+            center = Offset(size.width * 0.72f, size.height * 0.7f),
+            radius = size.minDimension * 0.13f,
+            color = color,
+        )
+    }
+}
+
+private fun starPath(center: Offset, outerRadius: Float, innerRadius: Float): Path = Path().apply {
+    repeat(10) { index ->
+        val angle = -PI / 2 + index * PI / 5
+        val radius = if (index % 2 == 0) outerRadius else innerRadius
+        val point = Offset(
+            x = center.x + cos(angle).toFloat() * radius,
+            y = center.y + sin(angle).toFloat() * radius,
+        )
+        if (index == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y)
+    }
+    close()
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSparkle(
+    center: Offset,
+    radius: Float,
+    color: Color,
+) {
+    val path = Path().apply {
+        moveTo(center.x, center.y - radius)
+        lineTo(center.x + radius * 0.25f, center.y - radius * 0.25f)
+        lineTo(center.x + radius, center.y)
+        lineTo(center.x + radius * 0.25f, center.y + radius * 0.25f)
+        lineTo(center.x, center.y + radius)
+        lineTo(center.x - radius * 0.25f, center.y + radius * 0.25f)
+        lineTo(center.x - radius, center.y)
+        lineTo(center.x - radius * 0.25f, center.y - radius * 0.25f)
+        close()
+    }
+    drawPath(path, color)
+}
+
+private val ACHIEVEMENT_BANNER_MAX_WIDTH = 520.dp
+private val ACHIEVEMENT_CARD_SIDE_INSET = 14.dp
+private val ACHIEVEMENT_RIBBON_OVERLAP = 10.dp
+private val ACHIEVEMENT_CARD_TOP_PADDING = 32.dp
+private val ACHIEVEMENT_MEDAL_SIZE = 68.dp
+private const val ACHIEVEMENT_RIBBON_WIDTH_FRACTION = 0.8f
 
 @Composable
 internal fun AchievementsDialog(
@@ -269,6 +482,28 @@ private fun AchievementsPreview() {
                     description = "В твоём плане хватает денег на обязательные расходы.",
                     isUnlocked = false,
                 ),
+            ),
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(name = "Открыто достижение", widthDp = 360, heightDp = 300, showBackground = true)
+@Preview(
+    name = "Открыто достижение — крупный текст",
+    widthDp = 360,
+    heightDp = 340,
+    fontScale = 1.3f,
+    showBackground = true,
+)
+@Composable
+private fun AchievementUnlockedBannerPreview() {
+    FinPetTheme {
+        AchievementUnlockedBanner(
+            achievement = PlanAchievementFeedback(
+                id = "first-purchase",
+                title = "Первая покупка",
+                description = "Ты впервые купил продукты в магазине!",
             ),
             onDismiss = {},
         )

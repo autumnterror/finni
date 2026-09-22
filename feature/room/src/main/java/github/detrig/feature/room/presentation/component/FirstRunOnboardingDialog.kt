@@ -12,12 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import github.detrig.designsystem.component.FinPetButton
-import github.detrig.designsystem.component.FinPetButtonDefaults
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
-import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
@@ -30,6 +30,7 @@ internal fun FirstRunOnboardingDialog(
     state: FirstRunOnboardingState,
     petName: String,
     petPortrait: @Composable (Modifier) -> Unit,
+    topInset: Dp = 0.dp,
     onContinue: () -> Unit,
     onDepositSelected: (Boolean) -> Unit,
 ) {
@@ -39,33 +40,37 @@ internal fun FirstRunOnboardingDialog(
         speakerName = petName,
         cards = cards,
         portrait = petPortrait,
+        topInset = topInset,
         dismissOnBackPress = false,
         advanceOnTap = !isDepositChoice,
+        actions = if (isDepositChoice) {
+            listOf(
+                FinPetDialogueAction(
+                    id = DEPOSIT_NOW_ACTION_ID,
+                    label = stringResource(R.string.onboarding_deposit_now),
+                ),
+                FinPetDialogueAction(
+                    id = DEPOSIT_LATER_ACTION_ID,
+                    label = stringResource(R.string.onboarding_deposit_later),
+                ),
+            )
+        } else {
+            emptyList()
+        },
+        onActionSelected = { action ->
+            onDepositSelected(action.id == DEPOSIT_NOW_ACTION_ID)
+        },
         additionalContent = {
-            when (state.step) {
-                FirstRunOnboardingStep.GOAL_CREATED -> GoalProgressCard(state)
-                FirstRunOnboardingStep.FIRST_DEPOSIT -> Column(
-                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
-                ) {
-                    FinPetButton(
-                        text = stringResource(R.string.onboarding_deposit_now),
-                        onClick = { onDepositSelected(true) },
-                        modifier = Modifier.fillMaxWidth(),
-                        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                    )
-                    FinPetOutlinedButton(
-                        text = stringResource(R.string.onboarding_deposit_later),
-                        onClick = { onDepositSelected(false) },
-                        modifier = Modifier.fillMaxWidth(),
-                        style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                    )
-                }
-                else -> Unit
+            if (state.step == FirstRunOnboardingStep.GOAL_CREATED) {
+                GoalProgressCard(state)
             }
         },
         onFinished = onContinue,
     )
 }
+
+private const val DEPOSIT_NOW_ACTION_ID = "deposit_now"
+private const val DEPOSIT_LATER_ACTION_ID = "deposit_later"
 
 @Composable
 private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when (step) {

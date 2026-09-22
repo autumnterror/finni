@@ -35,8 +35,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
@@ -63,6 +66,7 @@ internal fun WeeklyPlanEditorDialog(
     petPortrait: @Composable (Modifier) -> Unit,
     tutorialStep: PlanTutorialStep?,
     feedbackCards: List<String>?,
+    dialogueTopInset: Dp = 0.dp,
     onTutorialNext: () -> Unit,
     onFeedbackEdit: () -> Unit,
     onFeedbackFinished: () -> Unit,
@@ -194,6 +198,7 @@ internal fun WeeklyPlanEditorDialog(
                 },
                 onPageChanged = { onTutorialNext() },
                 dismissOnBackPress = false,
+                topInset = dialogueTopInset,
                 onFinished = onTutorialNext,
             )
         } else if (feedbackCards != null) {
@@ -203,25 +208,28 @@ internal fun WeeklyPlanEditorDialog(
                 portrait = petPortrait,
                 dismissOnBackPress = false,
                 advanceOnTap = false,
-                additionalContent = {
-                    FinPetButton(
-                        text = stringResource(R.string.plan_feedback_edit),
-                        onClick = onFeedbackEdit,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                    )
-                    github.detrig.designsystem.component.FinPetOutlinedButton(
-                        text = stringResource(R.string.plan_feedback_save_anyway),
-                        onClick = onFeedbackFinished,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                    )
+                topInset = dialogueTopInset,
+                actions = listOf(
+                    FinPetDialogueAction(
+                        id = PLAN_EDIT_ACTION_ID,
+                        label = stringResource(R.string.plan_feedback_edit),
+                    ),
+                    FinPetDialogueAction(
+                        id = PLAN_SAVE_ACTION_ID,
+                        label = stringResource(R.string.plan_feedback_save_anyway),
+                    ),
+                ),
+                onActionSelected = { action ->
+                    if (action.id == PLAN_EDIT_ACTION_ID) onFeedbackEdit() else onFeedbackFinished()
                 },
                 onFinished = onFeedbackFinished,
             )
         }
     }
 }
+
+private const val PLAN_EDIT_ACTION_ID = "edit_plan"
+private const val PLAN_SAVE_ACTION_ID = "save_plan"
 
 @Composable
 private fun PlanTutorialStep.message(): String = stringResource(when (this) {
