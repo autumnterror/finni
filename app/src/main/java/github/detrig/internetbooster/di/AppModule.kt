@@ -14,6 +14,8 @@ import github.detrig.internetbooster.mediators.WeekMediator
 import github.detrig.internetbooster.mediators.SavingsMediator
 import github.detrig.internetbooster.mediators.ShopMediator
 import github.detrig.internetbooster.mediators.PhoneMediator
+import github.detrig.internetbooster.mediators.InventoryMediator
+import github.detrig.internetbooster.mediators.FridgeMediator
 import github.detrig.internetbooster.mediators.LearningMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 
@@ -42,6 +44,7 @@ internal class AppModuleImpl(
     private val weekMediator: WeekMediator by lazy { WeekMediator(databaseModule, economyMediator) }
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
     private val learningMediator: LearningMediator by lazy { LearningMediator(databaseModule) }
+    private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
     private val savingsMediator: SavingsMediator by lazy {
         SavingsMediator(coreComponent, economyMediator, planningMediator, weekMediator)
     }
@@ -50,6 +53,7 @@ internal class AppModuleImpl(
             coreComponent = coreComponent,
             economyMediator = economyMediator,
             weekMediator = weekMediator,
+            inventoryApi = inventoryMediator.getApi(),
         )
     }
 
@@ -66,6 +70,17 @@ internal class AppModuleImpl(
         )
     }
 
+    private val fridgeMediator: FridgeMediator by lazy {
+        FridgeMediator(
+            coreComponent = coreComponent,
+            roomMediator = roomMediator,
+            petMediator = petMediator,
+            inventoryMediator = inventoryMediator,
+            gameStateMediator = gameStateMediator,
+            shopMediator = shopMediator,
+        )
+    }
+
     private val petMediator: PetMediator by lazy {
         PetMediator(coreComponent)
     }
@@ -78,6 +93,7 @@ internal class AppModuleImpl(
             roomMediator = roomMediator,
             petMediator = petMediator,
             phoneMediator = phoneMediator,
+            fridgeMediator = fridgeMediator,
         )
     }
 
@@ -106,6 +122,7 @@ internal class AppModuleImpl(
         weekMediator.init()
         planningMediator.init()
         learningMediator.init()
+        inventoryMediator.init()
         savingsMediator.init()
         shopMediator.init()
         gameStateMediator.init()
@@ -123,6 +140,7 @@ internal class AppModuleImpl(
         ).init()
         roomMediator.init()
         phoneMediator.init()
+        fridgeMediator.init()
         gameSessionMediator.init()
     }
 }

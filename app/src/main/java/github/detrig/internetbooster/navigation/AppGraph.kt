@@ -8,6 +8,7 @@ fun appGraph(): Nav3HostGraphSpec {
     return home.copy(builder = {
         home.builder(this)
         github.detrig.feature.phone.PhoneFeature.getApi().entries()(this)
+        github.detrig.feature.fridge.FridgeFeature.getApi().entries()(this)
         github.detrig.feature.savings.SavingsFeature.getApi().entries()(this)
         github.detrig.feature.shop.ShopFeature.getApi().entries()(this)
         github.detrig.minigames.fishing.FishingFeature.getApi().entries()(this)

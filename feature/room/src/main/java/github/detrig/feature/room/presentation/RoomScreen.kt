@@ -27,8 +27,15 @@ internal fun RoomScreen(
     petContent: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
+    onFoodClick: () -> Unit = {},
+    onFeedingClick: () -> Unit = {},
+    tableFoodContent: @Composable (Modifier) -> Unit = {},
     externalActive: Boolean = true,
     previewRequests: RoomPreviewRequests,
+    focusObjectId: String? = null,
+    petAnchorObjectId: String? = null,
+    petZIndex: Float = 3f,
+    petBaselineFraction: Float? = null,
 ) {
     val viewModel: RoomViewModel = viewModel { RoomFeature.component().getRoomViewModel() }
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
@@ -57,10 +64,17 @@ internal fun RoomScreen(
         state, viewModel::perform, modifier, petContent,
         onMirrorClick = onMirrorClick,
         onPhoneClick = onPhoneClick,
+        onFoodClick = onFoodClick,
+        onFeedingClick = onFeedingClick,
+        tableFoodContent = tableFoodContent,
         active = externalActive && resumed && focused && dialogZoneId == null && content?.planEditor == null &&
             content?.isPlanSummaryVisible != true && content?.parentHelpDialog == null && content?.allowanceNotice == null &&
             content?.zeroBalanceHelpNotice == null,
         previewZoneId = requestedZoneId,
+        focusObjectId = focusObjectId,
+        petAnchorObjectId = petAnchorObjectId,
+        petZIndex = petZIndex,
+        petBaselineFraction = petBaselineFraction,
         onPreviewReady = { id ->
             previewRequests.consume(id)
             viewModel.perform(RoomViewEvent.ZonePreviewed(id))

@@ -1,6 +1,7 @@
 package github.detrig.feature.pet.api
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import github.detrig.feature.pet.domain.model.PetProfile
@@ -25,6 +26,9 @@ interface PetApi {
         profile: PetProfile,
         modifier: Modifier = Modifier,
         onClick: (() -> Unit)? = null,
+        animateIdle: Boolean = true,
+        mouthOpen: Boolean = false,
+        lookAt: Offset? = null,
     )
 
     /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */

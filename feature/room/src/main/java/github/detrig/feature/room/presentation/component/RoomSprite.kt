@@ -142,6 +142,5 @@ internal fun roomObjectAsset(id: String): Int = when (id) {
     "decor_cutting_board" -> R.drawable.room_cutting_board_carrot
     "decor_chair" -> R.drawable.room_chair
     "dining_table" -> R.drawable.room_dining_table
-    "bowls" -> R.drawable.room_food_bowl
     else -> error("Unknown room object: $id")
 }

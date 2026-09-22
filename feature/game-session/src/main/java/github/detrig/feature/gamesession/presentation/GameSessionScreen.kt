@@ -14,6 +14,9 @@ internal fun GameSessionScreen() {
                 modifier = modifier,
                 onMirrorClick = onCustomizeClick,
                 onPhoneClick = { component.phoneApi.open() },
+                onFoodClick = { component.fridgeApi.open() },
+                onFeedingClick = { component.fridgeApi.openFeeding() },
+                tableFoodContent = { tableModifier -> component.fridgeApi.TableContent(tableModifier) },
                 petContent = { petModifier ->
                     component.petApi.Content(
                         profile = petProfile,

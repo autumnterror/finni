@@ -10,6 +10,7 @@ import github.detrig.feature.gamesession.presentation.GameSessionViewModel
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.room.api.RoomApi
 import github.detrig.feature.phone.api.PhoneApi
+import github.detrig.feature.fridge.api.FridgeApi
 
 internal class GameSessionModule(
     private val dependencies: GameSessionDependencies,
@@ -18,6 +19,7 @@ internal class GameSessionModule(
     override val roomApi: RoomApi by lazy { dependencies.roomApi() }
     override val petApi: PetApi by lazy { dependencies.petApi() }
     override val phoneApi: PhoneApi by lazy { dependencies.phoneApi() }
+    override val fridgeApi: FridgeApi by lazy { dependencies.fridgeApi() }
 
     override val api: GameSessionApi by lazy {
         GameSessionApiImpl(router)

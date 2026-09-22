@@ -17,8 +17,6 @@ import github.detrig.feature.room.navigation.RoomRouter
 import github.detrig.feature.room.presentation.mapper.toRoomZones
 import github.detrig.feature.room.domain.model.HousePositionRepository
 import github.detrig.feature.room.presentation.model.HouseLayout
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import github.detrig.feature.planning.domain.SavePlanResult
@@ -45,7 +43,9 @@ internal class RoomViewModel(
     private var savePlanJob: Job? = null
     private var parentHelpJob: Job? = null
     private var zeroBalanceHelpJob: Job? = null
-    private var savedPosition = HouseLayout.initialPosition()
+    // Read this small preference before the first composition of HouseScene. Loading it
+    // from Dispatchers.IO after rendering caused one frame at the default center position.
+    private var savedPosition = HouseLayout.restored(positions.load())
     private var lastLaunchNanos = 0L
 
     override fun perform(viewEvent: RoomViewEvent) {
@@ -101,7 +101,6 @@ internal class RoomViewModel(
                 true
             },
         ) {
-            savedPosition = HouseLayout.restored(withContext(Dispatchers.IO) { positions.load() })
             observeZones().collect { roomData ->
                 val current = nullableState<RoomViewState.Content>()
                 val editor = when {

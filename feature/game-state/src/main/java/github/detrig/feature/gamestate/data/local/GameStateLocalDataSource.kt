@@ -6,6 +6,8 @@ import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.feature.gamestate.domain.model.ZoneOffer
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.gamestate.domain.model.MiniGameAccess
+import github.detrig.feature.gamestate.domain.model.PetFeedingCompletion
+import github.detrig.feature.gamestate.domain.model.PetFeedingResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -61,6 +63,43 @@ internal class GameStateLocalDataSource(
             delta
         }
 
+    /**
+     * Reuses the existing idempotent pet-effect outbox. It lives in the same Room
+     * transaction as the pet counters, so restoring the process cannot feed twice.
+     */
+    suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
+        transactionRunner.runInTransaction {
+            val operationId = "feeding:${completion.operationId}"
+            val current = initialize()
+            val existing = petPlayEffectDao.find(operationId)
+            if (existing != null) {
+                require(existing.gameId == FEEDING_EFFECT_GAME_ID) { "Feeding operation id conflict" }
+                return@runInTransaction PetFeedingResult(
+                    hunger = current.pet.hunger,
+                    happiness = current.pet.happiness,
+                )
+            }
+
+            val hungerDelta = minOf(completion.satietyPercent, 100 - current.pet.hunger)
+            val happinessDelta = minOf(completion.happinessPoints, 100 - current.pet.happiness)
+            check(dao.increaseHunger(hungerDelta) == 1)
+            check(dao.increaseHappiness(happinessDelta) == 1)
+            petPlayEffectDao.insert(
+                PetPlayEffectEntity(
+                    operationId = operationId,
+                    profileId = GameStateEntity.CURRENT_STATE_ID,
+                    sessionId = completion.operationId,
+                    gameId = FEEDING_EFFECT_GAME_ID,
+                    happinessDelta = happinessDelta,
+                    appliedAtMillis = currentTimeMillis(),
+                ),
+            )
+            PetFeedingResult(
+                hunger = current.pet.hunger + hungerDelta,
+                happiness = current.pet.happiness + happinessDelta,
+            )
+        }
+
     suspend fun buyZone(offer: ZoneOffer): ZoneBuyResult = transactionRunner.runInTransaction {
         val current = initialize()
         val sessionId = GameStateEntity.CURRENT_STATE_ID
@@ -88,5 +127,9 @@ internal class GameStateLocalDataSource(
                 else -> error("Economy rejected room purchase: ${debit.reason}")
             }
         }
+    }
+
+    private companion object {
+        const val FEEDING_EFFECT_GAME_ID = "feeding"
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -46,6 +47,7 @@ import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.presentation.model.HouseLayout
+import github.detrig.feature.room.presentation.model.HouseObjectPlacement
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -58,13 +60,17 @@ internal fun RoomObjectLayers(
     buyingZoneId: String?,
     onObjectClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    placements: List<HouseObjectPlacement> = HouseLayout.objects,
+    drawObjectIds: Set<String>? = null,
+    exposeInteractions: Boolean = true,
+    rotationByObjectId: Map<String, Float> = emptyMap(),
 ) {
     val resources = LocalContext.current.resources
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val click by rememberUpdatedState(onObjectClick)
-    val canInteract by rememberUpdatedState(enabled && buyingZoneId == null)
-    val placements = remember { HouseLayout.objects.sortedBy { it.layer } }
+    val canInteract by rememberUpdatedState(enabled && exposeInteractions && buyingZoneId == null)
+    val orderedPlacements = remember(placements) { placements.sortedBy { it.layer } }
     val zonesById = remember(zones) { zones.associateBy { it.id } }
     val labels = mapOf(
         "phone" to stringResource(R.string.house_market),
@@ -76,7 +82,7 @@ internal fun RoomObjectLayers(
         "decor_mirror" to stringResource(R.string.house_mirror),
         "fridge" to stringResource(R.string.house_food),
         "sink" to stringResource(R.string.house_dishes),
-        "bowls" to stringResource(R.string.house_feeding),
+        "dining_table" to stringResource(R.string.house_feeding),
     )
     val motion = AppTheme.motion
     val touchTarget = AppTheme.sizes.preferredTouchTarget
@@ -130,8 +136,8 @@ internal fun RoomObjectLayers(
     BoxWithConstraints(modifier) {
         val widthPx = with(density) { maxWidth.toPx() }
         val heightPx = with(density) { maxHeight.toPx() }
-        val destinations = remember(widthPx, heightPx) {
-            placements.associate { placement ->
+        val destinations = remember(orderedPlacements, widthPx, heightPx) {
+            orderedPlacements.associate { placement ->
                 val bounds = requireNotNull(placement.bounds)
                 placement.id to Rect(
                     bounds.left * widthPx, bounds.top * heightPx,
@@ -143,7 +149,7 @@ internal fun RoomObjectLayers(
 
         fun hitObject(position: Offset): String? {
             // A foreground decoration blocks objects behind it, but transparent gaps pass through.
-            for (placement in placements.asReversed()) {
+            for (placement in orderedPlacements.asReversed()) {
                 val sprite = sprites[placement.id] ?: continue
                 val base = destinations.getValue(placement.id)
                 val destination = if (pressedId == placement.id) base.scaledFromBottom(pressScale.value) else base
@@ -155,7 +161,7 @@ internal fun RoomObjectLayers(
         }
 
         Canvas(
-            Modifier.fillMaxSize().pointerInput(sprites, enabled, buyingZoneId) {
+            Modifier.fillMaxSize().pointerInput(sprites, enabled, buyingZoneId, exposeInteractions) {
                 if (!canInteract || sprites.isEmpty()) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown()
@@ -174,24 +180,27 @@ internal fun RoomObjectLayers(
                 }
             },
         ) {
-            placements.forEach { placement ->
+            orderedPlacements.forEach { placement ->
+                if (drawObjectIds != null && placement.id !in drawObjectIds) return@forEach
                 val sprite = sprites[placement.id] ?: return@forEach
                 val destination = destinations.getValue(placement.id)
                 val factor = if (pressedId == placement.id) pressScale.value else 1f
                 scale(factor, pivot = Offset(destination.center.x, destination.bottom)) {
-                    drawImage(
-                        image = sprite.image,
-                        srcOffset = IntOffset(sprite.content.left, sprite.content.top),
-                        srcSize = IntSize(sprite.content.width, sprite.content.height),
-                        dstOffset = IntOffset(destination.left.roundToInt(), destination.top.roundToInt()),
-                        dstSize = IntSize(destination.width.roundToInt(), destination.height.roundToInt()),
-                        filterQuality = FilterQuality.High,
-                    )
+                    rotate(rotationByObjectId[placement.id] ?: 0f, pivot = Offset(destination.center.x, destination.bottom)) {
+                        drawImage(
+                            image = sprite.image,
+                            srcOffset = IntOffset(sprite.content.left, sprite.content.top),
+                            srcSize = IntSize(sprite.content.width, sprite.content.height),
+                            dstOffset = IntOffset(destination.left.roundToInt(), destination.top.roundToInt()),
+                            dstSize = IntSize(destination.width.roundToInt(), destination.height.roundToInt()),
+                            filterQuality = FilterQuality.High,
+                        )
+                    }
                 }
             }
         }
 
-        placements.filter { it.interactive }.forEach { placement ->
+        if (exposeInteractions) orderedPlacements.filter { it.interactive }.forEach { placement ->
             val zone = placement.zoneId?.let(zonesById::get)
             val label = zone?.let { stringResource(it.appearance.titleRes) } ?: labels[placement.id]
                 ?: return@forEach

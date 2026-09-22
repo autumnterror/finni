@@ -39,6 +39,7 @@ dependencies {
     implementation(project(":feature:pet"))
     implementation(project(":feature:room"))
     implementation(project(":feature:phone"))
+    implementation(project(":feature:fridge"))
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.androidx.core.ktx)

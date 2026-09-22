@@ -9,7 +9,7 @@ internal enum class HouseObjectArt {
     FISHING, GARDEN, SPACE, SCIENCE, FLIGHT,
     BED, NIGHTSTAND, WINDOW, WARDROBE, MIRROR,
     SOFA, PIGGY_BANK, DOOR, CALENDAR, TASK_BOARD, CABINET, PHONE,
-    FRIDGE, SINK, COUNTER, STOVE, BOWLS, DINING_TABLE,
+    FRIDGE, SINK, COUNTER, STOVE, DINING_TABLE,
 }
 
 /** Координаты кликабельной зоны в долях исходного wide-ассета комнаты. */
@@ -168,8 +168,7 @@ internal object HouseLayout {
         asset("sink", HouseObjectArt.SINK, 326f, 291f, 1700f, 334f, 1888f, 502f, interactive = true),
         asset("decor_cutting_board", HouseObjectArt.SINK, 1477f, 364f, 1720f, 331f, 1830f, 361f, layer = 2f),
         asset("decor_chair", HouseObjectArt.DINING_TABLE, 266f, 361f, 1708f, 438f, 1789f, 547f, layer = 1f),
-        asset("dining_table", HouseObjectArt.DINING_TABLE, 523f, 304f, 1785f, 430f, 1970f, 551f, layer = 2f),
-        asset("bowls", HouseObjectArt.BOWLS, 224f, 136f, 1846f, 421f, 1909f, 465f, interactive = true, layer = 3f),
+        asset("dining_table", HouseObjectArt.DINING_TABLE, 523f, 304f, 1785f, 430f, 1970f, 551f, interactive = true, layer = 2f),
     )
 
     fun initialPosition() = HousePosition(VERSION, INITIAL_CAMERA_X, INITIAL_CAMERA_X + 0.5f)

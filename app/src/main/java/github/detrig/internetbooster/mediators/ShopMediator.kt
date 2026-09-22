@@ -16,6 +16,8 @@ import github.detrig.feature.shop.domain.ShopCatalogRegistry
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryStoreIds
+import github.detrig.products.ProductQuantity
+import github.detrig.feature.inventory.api.InventoryApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -24,6 +26,7 @@ internal class ShopMediator(
     private val coreComponent: CoreComponent,
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
+    private val inventoryApi: InventoryApi,
 ) : Mediator<ShopApi> {
     private val groceryCatalog = GroceryCatalog()
     private val artworkResolver = GroceryArtworkResolver(R.drawable.grocery_product_atlas)
@@ -37,6 +40,14 @@ internal class ShopMediator(
             economyMediator.getApi().debit(operationId, amountRub, context)
         },
         purchaseHistory = { economyMediator.getApi().getExpenseHistory() },
+        deliverFood = { operationId, storeId, lines ->
+            if (storeId == GroceryStoreIds.Store) {
+                inventoryApi.deliver(
+                    operationId = operationId,
+                    items = lines.map { ProductQuantity(it.itemId, it.quantity) },
+                )
+            }
+        },
     )
 
     private val detailsResolver = ShopItemDetailsResolver { item ->
@@ -77,4 +88,6 @@ internal class ShopMediator(
     }
 
     override fun getApi(): ShopApi = ShopFeature.getApi()
+
+    fun artworkResolver(): ShopArtworkResolver = artworkResolver
 }

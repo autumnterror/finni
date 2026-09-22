@@ -383,7 +383,7 @@ private fun ShopCartQuantityBadge(
 }
 
 @Composable
-internal fun ShopDetailIcon(icon: ShopItemDetailIcon) {
+fun ShopDetailIcon(icon: ShopItemDetailIcon) {
     when (icon) {
         ShopItemDetailIcon.SATIETY -> SatietyAppleIcon()
         ShopItemDetailIcon.HAPPINESS -> Text(

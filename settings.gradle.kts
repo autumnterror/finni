@@ -36,6 +36,8 @@ include(":feature:savings")
 include(":feature:room")
 include(":feature:pet")
 include(":feature:phone")
+include(":feature:inventory")
+include(":feature:fridge")
 
 include(":feature:mini-games:common")
 include(":feature:mini-games:fishing")

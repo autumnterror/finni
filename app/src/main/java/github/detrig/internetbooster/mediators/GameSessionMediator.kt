@@ -14,6 +14,7 @@ import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.room.api.RoomApi
 import github.detrig.feature.phone.api.PhoneApi
+import github.detrig.feature.fridge.api.FridgeApi
 
 internal class GameSessionMediator(
     private val coreComponent: CoreComponent,
@@ -22,6 +23,7 @@ internal class GameSessionMediator(
     private val roomMediator: RoomMediator,
     private val petMediator: PetMediator,
     private val phoneMediator: PhoneMediator,
+    private val fridgeMediator: FridgeMediator,
 ) : Mediator<GameSessionApi> {
 
     @MainThread
@@ -34,6 +36,7 @@ internal class GameSessionMediator(
                 roomApi = roomMediator.getApi(),
                 petApi = petMediator.getApi(),
                 phoneApi = phoneMediator.getApi(),
+                fridgeApi = fridgeMediator.getApi(),
             )
         }
     }
@@ -51,6 +54,7 @@ private class GameSessionDependenciesImpl(
     private val roomApi: RoomApi,
     private val petApi: PetApi,
     private val phoneApi: PhoneApi,
+    private val fridgeApi: FridgeApi,
 ) : GameSessionDependencies {
 
     override fun globalNavigator(): GlobalNavigator {
@@ -72,4 +76,6 @@ private class GameSessionDependenciesImpl(
     override fun economyApi(): EconomyApi = economyApi
 
     override fun phoneApi(): PhoneApi = phoneApi
+
+    override fun fridgeApi(): FridgeApi = fridgeApi
 }
