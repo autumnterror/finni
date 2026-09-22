@@ -362,13 +362,6 @@ private class HouseDrawing(private val scope: DrawScope, private val c: FinPetHo
                 line(29f, 72f, 70f, 72f, c.outline, 2f)
                 repeat(4) { oval(23f + it * 16, 67f, 4f, 2f, c.metal) }
             }
-            HouseObjectArt.BOWLS -> {
-                shape(c.fabric, 8f, 31f, 39f, 31f, 45f, 78f, 2f, 78f)
-                oval(8f, 22f, 31f, 24f, c.fabricLight)
-                shape(c.warmAccent, 59f, 31f, 90f, 31f, 97f, 78f, 52f, 78f)
-                oval(59f, 22f, 31f, 24f, c.woodShade)
-                oval(70f, 55f, 10f, 12f, c.porcelain)
-            }
             HouseObjectArt.DINING_TABLE -> {
                 box(3f, 18f, 18f, 37f, c.wood, 3f)
                 box(79f, 18f, 18f, 37f, c.wood, 3f)

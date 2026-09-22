@@ -29,4 +29,7 @@ interface GameStateDao {
 
     @Query("UPDATE game_sessions SET happiness = MIN(100, happiness + :delta) WHERE id = 'current'")
     suspend fun increaseHappiness(delta: Int): Int
+
+    @Query("UPDATE game_sessions SET hunger = MIN(100, hunger + :delta) WHERE id = 'current'")
+    suspend fun increaseHunger(delta: Int): Int
 }

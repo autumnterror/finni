@@ -8,13 +8,15 @@ import github.detrig.feature.shop.api.ShopCheckoutRejection
 import github.detrig.feature.shop.api.ShopCheckoutRequest
 import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
+import github.detrig.products.StoreCartLine
+import github.detrig.products.StoreId
 import java.util.Locale
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
  * App-level bridge between the generic shop and the single economy transaction path.
- * A dedicated purchase coordinator will attach inventory delivery when its domain API is connected.
+ * Successful grocery purchases are handed to the inventory boundary after the economy debit.
  */
 internal class ShopCheckoutGateway(
     private val catalogRegistry: ShopCatalogRegistry,
@@ -25,6 +27,11 @@ internal class ShopCheckoutGateway(
         context: OperationContext,
     ) -> FinancialOperationResult,
     private val purchaseHistory: suspend () -> List<FinancialOperation> = { emptyList() },
+    private val deliverFood: suspend (
+        operationId: String,
+        storeId: StoreId,
+        lines: List<StoreCartLine>,
+    ) -> Unit = { _, _, _ -> },
 ) {
     private val checkoutMutex = Mutex()
 
@@ -54,16 +61,22 @@ internal class ShopCheckoutGateway(
                 .joinToString(separator = ";") { "${it.item.id.value}=${it.quantity}" },
         )
         return when (val result = debit(request.operationId, quote.totalRub, context)) {
-            is FinancialOperationResult.Applied -> ShopCheckoutResult.Completed(
-                balanceRub = result.state.availableRub,
-                alreadyApplied = false,
-                receiptNumber = receiptNumber,
-            )
-            is FinancialOperationResult.AlreadyApplied -> ShopCheckoutResult.Completed(
-                balanceRub = result.state.availableRub,
-                alreadyApplied = true,
-                receiptNumber = receiptNumber,
-            )
+            is FinancialOperationResult.Applied -> {
+                deliverFood(request.operationId, request.storeId, request.lines)
+                ShopCheckoutResult.Completed(
+                    balanceRub = result.state.availableRub,
+                    alreadyApplied = false,
+                    receiptNumber = receiptNumber,
+                )
+            }
+            is FinancialOperationResult.AlreadyApplied -> {
+                deliverFood(request.operationId, request.storeId, request.lines)
+                ShopCheckoutResult.Completed(
+                    balanceRub = result.state.availableRub,
+                    alreadyApplied = true,
+                    receiptNumber = receiptNumber,
+                )
+            }
             is FinancialOperationResult.Rejected -> ShopCheckoutResult.Rejected(
                 reason = when (result.reason) {
                     RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS ->

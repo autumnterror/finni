@@ -7,6 +7,7 @@ import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.room.api.RoomApi
 import github.detrig.feature.phone.api.PhoneApi
+import github.detrig.feature.fridge.api.FridgeApi
 
 interface GameSessionDependencies {
 
@@ -21,4 +22,5 @@ interface GameSessionDependencies {
 
     fun roomApi(): RoomApi
     fun phoneApi(): PhoneApi
+    fun fridgeApi(): FridgeApi
 }

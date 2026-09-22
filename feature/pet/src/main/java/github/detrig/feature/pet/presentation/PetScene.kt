@@ -67,6 +67,8 @@ fun PetScene(
     profile: PetProfile,
     modifier: Modifier = Modifier,
     animateIdle: Boolean = true,
+    mouthOpen: Boolean = false,
+    lookAt: Offset? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
@@ -104,6 +106,8 @@ fun PetScene(
                     appearance = profile.hamsterAppearance,
                     modifier = Modifier.fillMaxSize(),
                     blink = hamsterBlink,
+                    mouthOpen = mouthOpen,
+                    lookAt = lookAt,
                 )
             } else if (profile.species != PetSpecies.Hamster) {
                 Image(

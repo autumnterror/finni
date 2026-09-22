@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.repository.PetRepository
@@ -32,8 +33,22 @@ internal class PetApiImpl(
     }
 
     @Composable
-    override fun Content(profile: PetProfile, modifier: Modifier, onClick: (() -> Unit)?) {
-        PetScene(profile = profile, modifier = modifier, onClick = onClick)
+    override fun Content(
+        profile: PetProfile,
+        modifier: Modifier,
+        onClick: (() -> Unit)?,
+        animateIdle: Boolean,
+        mouthOpen: Boolean,
+        lookAt: Offset?,
+    ) {
+        PetScene(
+            profile = profile,
+            modifier = modifier,
+            animateIdle = animateIdle,
+            mouthOpen = mouthOpen,
+            lookAt = lookAt,
+            onClick = onClick,
+        )
     }
 
     @Composable

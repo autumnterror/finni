@@ -8,8 +8,13 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.Rect
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,6 +36,10 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
+import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.domain.model.HamsterAppearance
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +67,7 @@ internal data class HamsterLayerRule(
 )
 
 internal data class HamsterDrawLayer(
+    val id: String,
     val sprite: HamsterSprite,
     val colorFilter: ColorFilter?,
     val tint: Color?,
@@ -90,6 +100,7 @@ internal class HamsterAssets(
             .map { rule ->
                 val id = PLACEHOLDER.replace(rule.id) { properties.getValue(it.groupValues[1]) }
                 HamsterDrawLayer(
+                    id = id,
                     sprite = layers.getValue(id),
                     colorFilter = rule.tint?.let { tintId ->
                         ColorFilter.tint(palette.getValue(tintId), BlendMode.SrcIn)
@@ -306,30 +317,92 @@ internal fun HamsterPreview(
     appearance: HamsterAppearance,
     modifier: Modifier = Modifier,
     blink: Boolean = false,
+    mouthOpen: Boolean = false,
+    lookAt: Offset? = null,
 ) {
     val drawLayers = remember(assets, appearance, blink) {
         assets.resolve(appearance, blink)
     }
+    val mouthOutline = AppTheme.colors.storefront.outline
+    val mouthInterior = AppTheme.colors.textPrimary
+    val mouthBlush = AppTheme.colors.house.blush
+    val mouthOpenness by animateFloatAsState(
+        targetValue = if (mouthOpen) 1f else 0f,
+        animationSpec = tween(durationMillis = 75),
+        label = "hamster_mouth_openness",
+    )
     Canvas(modifier.aspectRatio(1f)) {
         val factor = minOf(size.width, size.height) / assets.canvasSize
         val dx = (size.width - assets.canvasSize * factor) / 2f
         val dy = (size.height - assets.canvasSize * factor) / 2f
+        val eyeOffset = lookAt?.let { target ->
+            val horizontal = ((target.x - 0.5f) * 2f).coerceIn(-1f, 1f)
+            val vertical = ((target.y - 0.40f) * 1.8f).coerceIn(-1f, 1f)
+            Offset(horizontal * 20f * factor, vertical * 12f * factor)
+        } ?: Offset.Zero
         drawLayers.forEach { layer ->
+            val isOpenEye = layer.id.startsWith("eyes_") && !layer.id.startsWith("eyes_closed")
+            val layerOffset = if (isOpenEye) eyeOffset else Offset.Zero
+            // The nose and closed V-mouth share a sprite. Keep the nose and
+            // upper stem, but replace the V with the animated open mouth.
+            val spriteHeight = if (layer.id == "face_nose_mouth" && mouthOpenness > 0.05f) {
+                minOf(layer.sprite.image.height, MOUTH_SPRITE_NOSE_HEIGHT)
+            } else layer.sprite.image.height
             drawImage(
                 image = layer.sprite.image,
                 srcOffset = IntOffset.Zero,
-                srcSize = IntSize(layer.sprite.image.width, layer.sprite.image.height),
+                srcSize = IntSize(layer.sprite.image.width, spriteHeight),
                 dstOffset = IntOffset(
-                    (dx + layer.sprite.x * factor).toInt(),
-                    (dy + layer.sprite.y * factor).toInt(),
+                    (dx + layer.sprite.x * factor + layerOffset.x).toInt(),
+                    (dy + layer.sprite.y * factor + layerOffset.y).toInt(),
                 ),
                 dstSize = IntSize(
                     (layer.sprite.image.width * factor).toInt(),
-                    (layer.sprite.image.height * factor).toInt(),
+                    (spriteHeight * factor).toInt(),
                 ),
                 colorFilter = layer.colorFilter,
                 filterQuality = FilterQuality.High,
             )
+        }
+        if (mouthOpenness > 0.05f) {
+            val center = Offset(dx + 498f * factor, dy + 460f * factor)
+            val mouthWidth = 48f * factor
+            val mouthHeight = (8f + 42f * mouthOpenness) * factor
+            val topLeft = Offset(center.x - mouthWidth / 2f, center.y - 7f * factor)
+            drawOval(
+                color = mouthOutline,
+                topLeft = topLeft,
+                size = Size(mouthWidth, mouthHeight),
+            )
+            drawOval(
+                color = mouthInterior,
+                topLeft = topLeft + Offset(5f * factor, 5f * factor),
+                size = Size(mouthWidth - 10f * factor, (mouthHeight - 10f * factor).coerceAtLeast(1f)),
+            )
+            drawOval(
+                color = mouthBlush,
+                topLeft = Offset(center.x - 13f * factor, topLeft.y + mouthHeight * 0.66f),
+                size = Size(26f * factor, mouthHeight * 0.24f),
+            )
+        }
+    }
+}
+
+private const val MOUTH_SPRITE_NOSE_HEIGHT = 82
+
+@Preview(name = "Хомяк с открытым ртом", widthDp = 220, heightDp = 220)
+@Composable
+private fun HamsterOpenMouthPreview() {
+    FinPetTheme {
+        Box(Modifier.size(220.dp).background(AppTheme.colors.house.floor)) {
+            rememberHamsterAssets()?.let { assets ->
+                HamsterPreview(
+                    assets = assets,
+                    appearance = HamsterAppearance(),
+                    modifier = Modifier.size(220.dp),
+                    mouthOpen = true,
+                )
+            }
         }
     }
 }

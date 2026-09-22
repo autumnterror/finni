@@ -1,5 +1,6 @@
 package github.detrig.feature.phone.presentation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Canvas
@@ -82,6 +83,12 @@ private const val HOME_APP_LABEL_Y = 499f
 @Composable
 internal fun PhoneScreen(route: PhoneRoute) {
     val component = PhoneFeature.component()
+    var activeAppId by rememberSaveable(route) {
+        mutableStateOf((route as? PhoneRoute.App)?.appId)
+    }
+    BackHandler(enabled = activeAppId != null) {
+        activeAppId = null
+    }
     component.petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _, _ ->
         Box(Modifier.fillMaxSize()) {
             component.roomApi.Content(
@@ -94,10 +101,11 @@ internal fun PhoneScreen(route: PhoneRoute) {
             )
             PhoneDevice(
                 route = route,
+                activeAppId = activeAppId,
                 shopApi = component.shopApi,
                 onClose = { component.router.close() },
-                onBack = { component.router.back() },
-                onOpenApp = component.router::openApp,
+                onBack = { activeAppId = null },
+                onOpenApp = { activeAppId = it },
             )
         }
     }
@@ -106,6 +114,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
 @Composable
 private fun PhoneDevice(
     route: PhoneRoute,
+    activeAppId: String?,
     shopApi: ShopApi,
     onClose: () -> Unit,
     onBack: () -> Unit,
@@ -165,14 +174,16 @@ private fun PhoneDevice(
             PhoneCanvasLayer(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                when (route) {
-                    PhoneRoute.Home -> PhoneHomeContent(
+                val openAppId = activeAppId
+                if (openAppId == null) {
+                    PhoneHomeContent(
                         scale = scale,
                         onClose = onClose,
                         onOpenApp = onOpenApp,
                     )
-                    is PhoneRoute.App -> PhoneAppContent(
-                        appId = route.appId,
+                } else {
+                    PhoneAppContent(
+                        appId = openAppId,
                         scale = scale,
                         shopApi = shopApi,
                         onBack = onBack,

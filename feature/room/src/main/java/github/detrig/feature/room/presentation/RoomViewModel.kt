@@ -22,8 +22,6 @@ import github.detrig.feature.room.domain.model.HousePositionRepository
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.room.presentation.model.HouseLayout
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -61,7 +59,9 @@ internal class RoomViewModel(
     private var achievementBannerJob: Job? = null
     private val reconciledPlanWeeks = mutableSetOf<Long>()
     private var reconcilingPlanWeek: Long? = null
-    private var savedPosition = HouseLayout.initialPosition()
+    // Read this small preference before the first composition of HouseScene. Loading it
+    // from Dispatchers.IO after rendering caused one frame at the default center position.
+    private var savedPosition = HouseLayout.restored(positions.load())
     private var lastLaunchNanos = 0L
     private var onboardingStep = FirstRunOnboardingStep.COMPLETED
     private var onboardingGoal: SavingsGoalProgress? = null
@@ -144,7 +144,6 @@ internal class RoomViewModel(
                 true
             },
         ) {
-            savedPosition = HouseLayout.restored(withContext(Dispatchers.IO) { positions.load() })
             onboardingStep = onboardingRepository.load()
             onboardingSuggestedGoalZoneId = onboardingRepository.loadSuggestedGoalZoneId()
                 ?.takeIf(FIRST_SAVINGS_GOAL_ZONE_IDS::contains)
@@ -194,40 +193,40 @@ internal class RoomViewModel(
                             PlanTutorialStep.INTRODUCTION
                         startsPlanning && weeklyPlanLearning.claimIntroduction(roomData.progress.weekNumber) ->
                             PlanTutorialStep.INTRODUCTION
-                    editor == null -> null
-                    else -> current?.planTutorialStep
-                }
-                updateState(
-                    RoomViewState.Content(
-                        zones = roomData.toRoomZones(),
-                        initialPosition = savedPosition,
-                        progress = roomData.progress,
-                        buyingZoneId = current?.buyingZoneId,
-                        savingGoalZoneId = current?.savingGoalZoneId,
-                        sleeping = current?.sleeping ?: false,
-                        planEditor = editor,
-                        planTutorialStep = tutorialStep,
-                        planDialogue = current?.planDialogue,
-                        isSavingPlan = current?.isSavingPlan ?: false,
-                        isPlanSummaryVisible = current?.isPlanSummaryVisible ?: false,
-                        achievements = achievements.map { achievement ->
-                            PlanAchievementFeedback(
-                                id = achievement.id,
-                                title = achievement.title,
-                                description = achievement.description,
-                                isUnlocked = achievement.isUnlocked,
-                            )
-                        },
-                        isAchievementsVisible = current?.isAchievementsVisible ?: false,
-                        achievementBanner = current?.achievementBanner,
-                        pendingAchievementBanners = current?.pendingAchievementBanners.orEmpty(),
-                        parentHelpDialog = current?.parentHelpDialog,
-                        isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
-                        allowanceNotice = current?.allowanceNotice,
-                        zeroBalanceHelpNotice = current?.zeroBalanceHelpNotice,
-                        onboarding = onboardingUiState(),
-                    ),
-                )
+                        editor == null -> null
+                        else -> current?.planTutorialStep
+                    }
+                    updateState(
+                        RoomViewState.Content(
+                            zones = roomData.toRoomZones(),
+                            initialPosition = savedPosition,
+                            progress = roomData.progress,
+                            buyingZoneId = current?.buyingZoneId,
+                            savingGoalZoneId = current?.savingGoalZoneId,
+                            sleeping = current?.sleeping ?: false,
+                            planEditor = editor,
+                            planTutorialStep = tutorialStep,
+                            planDialogue = current?.planDialogue,
+                            isSavingPlan = current?.isSavingPlan ?: false,
+                            isPlanSummaryVisible = current?.isPlanSummaryVisible ?: false,
+                            achievements = achievements.map { achievement ->
+                                PlanAchievementFeedback(
+                                    id = achievement.id,
+                                    title = achievement.title,
+                                    description = achievement.description,
+                                    isUnlocked = achievement.isUnlocked,
+                                )
+                            },
+                            isAchievementsVisible = current?.isAchievementsVisible ?: false,
+                            achievementBanner = current?.achievementBanner,
+                            pendingAchievementBanners = current?.pendingAchievementBanners.orEmpty(),
+                            parentHelpDialog = current?.parentHelpDialog,
+                            isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
+                            allowanceNotice = current?.allowanceNotice,
+                            zeroBalanceHelpNotice = current?.zeroBalanceHelpNotice,
+                            onboarding = onboardingUiState(),
+                        ),
+                    )
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 if (roomData.progress.balanceRub == 0) provideZeroBalanceHelp()
             }

@@ -57,8 +57,15 @@ internal fun RoomScreen(
     petPortrait: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
+    onFoodClick: () -> Unit = {},
+    onFeedingClick: () -> Unit = {},
+    tableFoodContent: @Composable (Modifier) -> Unit = {},
     externalActive: Boolean = true,
     previewRequests: RoomPreviewRequests,
+    focusObjectId: String? = null,
+    petAnchorObjectId: String? = null,
+    petZIndex: Float = 3f,
+    petBaselineFraction: Float? = null,
 ) {
     val viewModel: RoomViewModel = viewModel { RoomFeature.component().getRoomViewModel() }
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
@@ -95,7 +102,7 @@ internal fun RoomScreen(
     } else {
         0.dp
     }
-    val focusObjectId = onboarding?.focusObjectId ?: requestedZoneId
+    val activeFocusObjectId = onboarding?.focusObjectId ?: focusObjectId ?: requestedZoneId
     var focusedObjectId by remember { mutableStateOf<String?>(null) }
     var spotlightBoundsInWindow by remember { mutableStateOf<Rect?>(null) }
     var roomOriginInWindow by remember { mutableStateOf(Offset.Zero) }
@@ -107,7 +114,7 @@ internal fun RoomScreen(
             bottom = bounds.bottom - roomOriginInWindow.y,
         )
     }
-    LaunchedEffect(focusObjectId) {
+    LaunchedEffect(activeFocusObjectId) {
         focusedObjectId = null
         spotlightBoundsInWindow = null
     }
@@ -127,6 +134,9 @@ internal fun RoomScreen(
             petContent = petContent,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,
+            onFoodClick = onFoodClick,
+            onFeedingClick = onFeedingClick,
+            tableFoodContent = tableFoodContent,
             active = externalActive && canShowDialogs && resumed &&
                 (focused || hasAllowedOnboardingObjects) && dialogZoneId == null &&
                 content?.planEditor == null &&
@@ -134,12 +144,16 @@ internal fun RoomScreen(
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
                 content?.zeroBalanceHelpNotice == null && content?.planDialogue == null &&
                 (onboarding == null || hasAllowedOnboardingObjects),
-            focusObjectId = focusObjectId,
+            previewZoneId = requestedZoneId,
+            focusObjectId = activeFocusObjectId,
+            petAnchorObjectId = petAnchorObjectId,
+            petZIndex = petZIndex,
+            petBaselineFraction = petBaselineFraction,
             highlightedObjectIds = onboarding?.highlightedObjectIds.orEmpty(),
             allowedObjectIds = onboarding?.allowedObjectIds.orEmpty(),
             onHighlightedObjectBoundsChanged = { spotlightBoundsInWindow = it },
             onPreviewReady = { id ->
-                if (focusObjectId == id) focusedObjectId = id
+                if (activeFocusObjectId == id) focusedObjectId = id
                 if (requestedZoneId == id) {
                     previewRequests.consume(id)
                     viewModel.perform(RoomViewEvent.ZonePreviewed(id))
@@ -147,7 +161,7 @@ internal fun RoomScreen(
             },
         )
         if (onboarding?.step?.let(spotlightSteps::contains) == true &&
-            focusedObjectId == focusObjectId && spotlightBounds != null
+            focusedObjectId == activeFocusObjectId && spotlightBounds != null
         ) {
             TutorialSpotlight(spotlightBounds)
         }

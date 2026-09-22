@@ -19,6 +19,11 @@ internal fun GameSessionScreen() {
                 modifier = modifier,
                 petName = petProfile.name,
                 canShowDialogs = !isPetDialogueVisible,
+                onMirrorClick = onCustomizeClick,
+                onPhoneClick = { component.phoneApi.open() },
+                onFoodClick = { component.fridgeApi.open() },
+                onFeedingClick = { component.fridgeApi.openFeeding() },
+                tableFoodContent = { tableModifier -> component.fridgeApi.TableContent(tableModifier) },
                 petContent = { petModifier ->
                     component.petApi.Content(
                         profile = petProfile,
@@ -29,8 +34,6 @@ internal fun GameSessionScreen() {
                 petPortrait = { portraitModifier ->
                     component.petApi.Portrait(petProfile, portraitModifier)
                 },
-                onMirrorClick = onCustomizeClick,
-                onPhoneClick = { component.phoneApi.open() },
             )
         }
     }

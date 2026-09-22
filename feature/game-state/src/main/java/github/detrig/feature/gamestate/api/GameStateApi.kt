@@ -4,6 +4,8 @@ import github.detrig.feature.gamestate.domain.GameState
 import kotlinx.coroutines.flow.Flow
 import github.detrig.feature.gamestate.domain.model.ZoneOffer
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
+import github.detrig.feature.gamestate.domain.model.PetFeedingCompletion
+import github.detrig.feature.gamestate.domain.model.PetFeedingResult
 
 interface GameStateApi {
 
@@ -18,4 +20,7 @@ interface GameStateApi {
 
     /** Применяет эффект игры один раз; повтор возвращает фактически записанную дельту. */
     suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int
+
+    /** Applies a concrete food portion only once, even after process restoration. */
+    suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult
 }
