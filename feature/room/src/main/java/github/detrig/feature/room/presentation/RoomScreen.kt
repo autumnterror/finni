@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -83,6 +84,17 @@ internal fun RoomScreen(
     val requestedZoneId by previewRequests.zoneId.collectAsState()
     val content = state as? RoomViewState.Content
     val onboarding = content?.onboarding
+    val showAchievementBanner = canShowDialogs && content?.achievementBanner != null &&
+        (onboarding == null || onboarding.step == FirstRunOnboardingStep.PLAN_SAVED)
+    var achievementBannerHeight by remember { mutableStateOf(0.dp) }
+    LaunchedEffect(showAchievementBanner) {
+        if (!showAchievementBanner) achievementBannerHeight = 0.dp
+    }
+    val dialogueTopInset = if (showAchievementBanner) {
+        maxOf(achievementBannerHeight, 112.dp) + AppTheme.spacing.md
+    } else {
+        0.dp
+    }
     val focusObjectId = onboarding?.focusObjectId ?: requestedZoneId
     var focusedObjectId by remember { mutableStateOf<String?>(null) }
     var spotlightBoundsInWindow by remember { mutableStateOf<Rect?>(null) }
@@ -196,6 +208,7 @@ internal fun RoomScreen(
             petPortrait = petPortrait,
             tutorialStep = content.planTutorialStep,
             feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
+            dialogueTopInset = dialogueTopInset,
             onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
             onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
             onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
@@ -221,6 +234,7 @@ internal fun RoomScreen(
             speakerName = petName,
             cards = dialogue.cards(),
             portrait = petPortrait,
+            topInset = dialogueTopInset,
             onFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
         )
     }
@@ -234,16 +248,18 @@ internal fun RoomScreen(
             state = firstRun,
             petName = petName,
             petPortrait = petPortrait,
+            topInset = dialogueTopInset,
             onContinue = { viewModel.perform(RoomViewEvent.FirstRunOnboardingContinue) },
             onDepositSelected = {
                 viewModel.perform(RoomViewEvent.FirstRunDepositSelected(it))
             },
         )
     }
-    content?.achievementBanner?.takeIf { canShowDialogs && onboarding == null }?.let { achievement ->
+    content?.achievementBanner?.takeIf { showAchievementBanner }?.let { achievement ->
         AchievementUnlockedBanner(
             achievement = achievement,
             onDismiss = { viewModel.perform(RoomViewEvent.AchievementBannerDismissed) },
+            onHeightChanged = { achievementBannerHeight = it },
         )
     }
     LaunchedEffect(zone?.access, content != null) {

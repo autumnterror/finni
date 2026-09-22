@@ -100,6 +100,17 @@ private val prototypeColors = FinPetColors(
         outline = Color(0xFF533E32),
         shadow = Color(0x33533E32),
     ),
+    dialogue = FinPetDialogueColors(
+        panel = Color(0xFFFFFAED),
+        onPanel = Color(0xFF51240E),
+        outline = Color(0xFF7D401E),
+        shadow = Color(0x66371B0E),
+        speakerContainer = Color(0xFFF3E4CB),
+        primaryAction = Color(0xFF72C64B),
+        onPrimaryAction = Color.White,
+        actionOutline = Color(0xFF164A29),
+        actionShadow = Color(0x552B5B25),
+    ),
 )
 
 private val prototypeTypography = FinPetTypography(

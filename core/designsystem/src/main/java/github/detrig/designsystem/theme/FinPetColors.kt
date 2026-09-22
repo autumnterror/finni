@@ -24,6 +24,20 @@ data class FinPetStorefrontColors(
     val shadow: Color,
 )
 
+/** Семантическая палитра игровых реплик и вариантов ответа. */
+@Immutable
+data class FinPetDialogueColors(
+    val panel: Color,
+    val onPanel: Color,
+    val outline: Color,
+    val shadow: Color,
+    val speakerContainer: Color,
+    val primaryAction: Color,
+    val onPrimaryAction: Color,
+    val actionOutline: Color,
+    val actionShadow: Color,
+)
+
 /** Семантические цвета приложения. Названия не зависят от текущей палитры. */
 @Immutable
 data class FinPetColors(
@@ -84,5 +98,16 @@ data class FinPetColors(
         onSurface = textPrimary,
         outline = borderDefault,
         shadow = sceneShadow,
+    ),
+    val dialogue: FinPetDialogueColors = FinPetDialogueColors(
+        panel = surfaceElevated,
+        onPanel = textPrimary,
+        outline = storefront.outline,
+        shadow = sceneShadow,
+        speakerContainer = surfaceInteractive,
+        primaryAction = storefront.primaryAction,
+        onPrimaryAction = storefront.onPrimaryAction,
+        actionOutline = actionPrimary,
+        actionShadow = sceneShadow,
     ),
 )

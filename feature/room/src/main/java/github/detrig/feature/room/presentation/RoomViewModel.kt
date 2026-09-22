@@ -613,7 +613,7 @@ internal class RoomViewModel(
                 val isFirstRunPlan = onboardingStep == FirstRunOnboardingStep.PLAN
                 if (isFirstRunPlan) persistOnboardingStep(FirstRunOnboardingStep.PLAN_SAVED)
                 val dialogue = regularDialogue.takeUnless { isFirstRunPlan }
-                val visibleBanner = if (!isFirstRunPlan && dialogue == null && latest.achievementBanner == null) {
+                val visibleBanner = if (dialogue == null && latest.achievementBanner == null) {
                     queuedBanners.firstOrNull()
                 } else {
                     latest.achievementBanner

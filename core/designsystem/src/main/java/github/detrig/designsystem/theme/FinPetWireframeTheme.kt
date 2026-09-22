@@ -31,5 +31,16 @@ internal fun wireframeTheme(base: FinPetThemePack): FinPetThemePack {
             outline = line,
             shadow = Color.Transparent,
         ),
+        dialogue = FinPetDialogueColors(
+            panel = paper,
+            onPanel = ink,
+            outline = line,
+            shadow = Color.Transparent,
+            speakerContainer = paper,
+            primaryAction = ink,
+            onPrimaryAction = paper,
+            actionOutline = line,
+            actionShadow = Color.Transparent,
+        ),
     ))
 }

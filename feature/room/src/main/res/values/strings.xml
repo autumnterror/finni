@@ -114,7 +114,7 @@
     <string name="achievements_close">Закрыть</string>
     <string name="achievement_unlocked">Получено</string>
     <string name="achievement_locked">Ещё впереди</string>
-    <string name="achievement_banner_title">Новое достижение!</string>
+    <string name="achievement_banner_title">ДОСТИЖЕНИЕ ОТКРЫТО!</string>
     <string name="achievement_banner_close">Закрыть сообщение о достижении</string>
 
     <string name="onboarding_intro_1">Привет! Я %1$s.</string>

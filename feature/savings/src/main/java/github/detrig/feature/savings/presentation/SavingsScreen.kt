@@ -20,6 +20,7 @@ import github.detrig.designsystem.component.FinPetAmountInput
 import github.detrig.designsystem.component.FinPetBackButton
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
@@ -225,29 +226,33 @@ private fun SavingsOnboardingDialog(
         portrait = petPortrait,
         dismissOnBackPress = false,
         advanceOnTap = !isDepositChoice,
-        additionalContent = {
-            if (isDepositChoice) {
-                FinPetButton(
-                    text = stringResource(R.string.savings_onboarding_deposit_now),
-                    onClick = {
-                        onEvent(SavingsViewEvent.OnboardingDepositSelected(depositNow = true))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                )
-                FinPetOutlinedButton(
-                    text = stringResource(R.string.savings_onboarding_deposit_later),
-                    onClick = {
-                        onEvent(SavingsViewEvent.OnboardingDepositSelected(depositNow = false))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                )
-            }
+        actions = if (isDepositChoice) {
+            listOf(
+                FinPetDialogueAction(
+                    id = ONBOARDING_DEPOSIT_NOW_ACTION_ID,
+                    label = stringResource(R.string.savings_onboarding_deposit_now),
+                ),
+                FinPetDialogueAction(
+                    id = ONBOARDING_DEPOSIT_LATER_ACTION_ID,
+                    label = stringResource(R.string.savings_onboarding_deposit_later),
+                ),
+            )
+        } else {
+            emptyList()
+        },
+        onActionSelected = { action ->
+            onEvent(
+                SavingsViewEvent.OnboardingDepositSelected(
+                    depositNow = action.id == ONBOARDING_DEPOSIT_NOW_ACTION_ID,
+                ),
+            )
         },
         onFinished = { onEvent(SavingsViewEvent.OnboardingContinue) },
     )
 }
+
+private const val ONBOARDING_DEPOSIT_NOW_ACTION_ID = "deposit_now"
+private const val ONBOARDING_DEPOSIT_LATER_ACTION_ID = "deposit_later"
 
 @Composable
 private fun SavingsHeader(balanceRub: Long?, onBack: () -> Unit) {

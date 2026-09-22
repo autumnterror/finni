@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -110,6 +111,26 @@ object FinPetButtonDefaults {
             containerColor = colors.storefront.surface,
             contentColor = colors.storefront.onSurface,
             disabledContainerColor = colors.surfaceInteractive,
+        )
+    }
+
+    /** Крупное игровое действие внутри общей карточки реплики. */
+    @Composable
+    fun dialogueActionStyle(): FinPetButtonStyle {
+        val colors = AppTheme.colors
+        return primaryStyle().copy(
+            containerColor = colors.dialogue.primaryAction,
+            contentColor = colors.dialogue.onPrimaryAction,
+            disabledContainerColor = colors.surfaceInteractive,
+            disabledContentColor = colors.textSecondary,
+            borderColor = colors.dialogue.actionOutline,
+            disabledBorderColor = colors.borderDefault,
+            borderWidth = AppTheme.sizes.borderStrong,
+            shape = CircleShape,
+            minHeight = AppTheme.sizes.preferredTouchTarget,
+            shadowElevation = AppTheme.elevation.low,
+            shadowColor = colors.dialogue.actionShadow,
+            textStyle = AppTheme.typography.sectionTitle,
         )
     }
 }
