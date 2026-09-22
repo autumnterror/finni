@@ -1,6 +1,5 @@
 package github.detrig.designsystem.component
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -42,11 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -225,7 +222,7 @@ private fun DialogueBubble(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xl),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Box(modifier = Modifier.size(portraitSize)) {
@@ -288,7 +285,7 @@ private fun DialogueBubble(
                         }
                         DialogueHeart(
                             modifier = Modifier
-                                .align(Alignment.CenterEnd)
+                                .align(Alignment.BottomEnd)
                                 .size(DIALOGUE_HEART_SIZE),
                         )
                     }
@@ -318,13 +315,9 @@ private fun DialogueActions(
     val style = FinPetButtonDefaults.dialogueActionStyle()
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DialogueRays(
-            mirror = false,
-            modifier = Modifier.size(width = DIALOGUE_RAYS_WIDTH, height = DIALOGUE_RAYS_HEIGHT),
-        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
@@ -340,10 +333,6 @@ private fun DialogueActions(
                 )
             }
         }
-        DialogueRays(
-            mirror = true,
-            modifier = Modifier.size(width = DIALOGUE_RAYS_WIDTH, height = DIALOGUE_RAYS_HEIGHT),
-        )
         DialoguePaw(modifier = Modifier.size(DIALOGUE_ACTION_PAW_SIZE))
     }
 }
@@ -395,89 +384,18 @@ private fun DialogueFooter(
                 color = AppTheme.colors.textSecondary,
             )
         }
-        DialogueRays(
-            mirror = true,
-            modifier = Modifier
-                .padding(start = AppTheme.spacing.sm)
-                .size(width = 22.dp, height = 30.dp),
-        )
         DialoguePaw(modifier = Modifier.size(34.dp))
     }
 }
 
 @Composable
 private fun DialogueHeart(modifier: Modifier = Modifier) {
-    val color = AppTheme.colors.statusCritical.accent
-    val highlight = AppTheme.colors.statusCritical.container
-    Canvas(modifier) {
-        val heart = Path().apply {
-            moveTo(size.width * 0.5f, size.height * 0.92f)
-            cubicTo(
-                size.width * 0.42f,
-                size.height * 0.78f,
-                size.width * 0.08f,
-                size.height * 0.58f,
-                size.width * 0.08f,
-                size.height * 0.3f,
-            )
-            cubicTo(
-                size.width * 0.08f,
-                size.height * 0.04f,
-                size.width * 0.4f,
-                0f,
-                size.width * 0.5f,
-                size.height * 0.22f,
-            )
-            cubicTo(
-                size.width * 0.6f,
-                0f,
-                size.width * 0.92f,
-                size.height * 0.04f,
-                size.width * 0.92f,
-                size.height * 0.3f,
-            )
-            cubicTo(
-                size.width * 0.92f,
-                size.height * 0.58f,
-                size.width * 0.58f,
-                size.height * 0.78f,
-                size.width * 0.5f,
-                size.height * 0.92f,
-            )
-            close()
-        }
-        drawPath(heart, color)
-        drawCircle(
-            color = highlight,
-            radius = size.minDimension * 0.09f,
-            center = Offset(size.width * 0.3f, size.height * 0.27f),
-        )
-    }
-}
-
-@Composable
-private fun DialogueRays(
-    mirror: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val color = AppTheme.colors.currencyAccent
-    val borderWidth = AppTheme.sizes.borderStrong
-    Canvas(modifier) {
-        val outerX = if (mirror) size.width else 0f
-        val innerX = if (mirror) 0f else size.width
-        val stroke = borderWidth.toPx() * 2.5f
-        listOf(-0.18f, 0f, 0.18f).forEachIndexed { index, offset ->
-            val outerY = size.height * (0.28f + index * 0.22f)
-            val innerY = outerY - size.height * offset
-            drawLine(
-                color = color,
-                start = Offset(outerX, outerY),
-                end = Offset(innerX, innerY),
-                strokeWidth = stroke,
-                cap = StrokeCap.Round,
-            )
-        }
-    }
+    Image(
+        painter = painterResource(R.drawable.finpet_dialogue_heart),
+        contentDescription = null,
+        modifier = modifier,
+        contentScale = ContentScale.Fit,
+    )
 }
 
 @Composable
@@ -528,10 +446,8 @@ private const val PORTRAIT_WIDTH_FRACTION = 0.22f
 private val MIN_PORTRAIT_SIZE = 72.dp
 private val MAX_PORTRAIT_SIZE = 112.dp
 private val DIALOGUE_TAIL_CONTENT_PADDING = 42.dp
-private val DIALOGUE_HEART_TEXT_INSET = 44.dp
-private val DIALOGUE_HEART_SIZE = 38.dp
-private val DIALOGUE_RAYS_WIDTH = 24.dp
-private val DIALOGUE_RAYS_HEIGHT = 44.dp
+private val DIALOGUE_HEART_TEXT_INSET = 28.dp
+private val DIALOGUE_HEART_SIZE = 24.dp
 private val DIALOGUE_ACTION_PAW_SIZE = 42.dp
 
 private data class DialoguePreviewState(
