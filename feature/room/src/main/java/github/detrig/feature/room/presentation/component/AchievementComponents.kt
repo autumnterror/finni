@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -107,7 +109,7 @@ internal fun AchievementUnlockedBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.sm),
+                .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.xs),
             contentAlignment = Alignment.TopCenter,
         ) {
             Box(
@@ -160,35 +162,42 @@ internal fun AchievementUnlockedBanner(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(
-                                    top = AppTheme.spacing.lg,
-                                    end = AppTheme.spacing.lg,
+                                    top = AppTheme.spacing.xl,
+                                    end = AppTheme.spacing.md,
                                 )
-                                .size(width = 62.dp, height = 46.dp),
+                                .size(width = 38.dp, height = 28.dp),
                         )
                         Row(
-                            modifier = Modifier.padding(
-                                start = AppTheme.spacing.lg,
-                                top = ACHIEVEMENT_CARD_TOP_PADDING,
-                                end = AppTheme.spacing.lg,
-                                bottom = AppTheme.spacing.sm,
-                            ),
+                            modifier = Modifier
+                                .padding(
+                                    start = AppTheme.spacing.lg,
+                                    top = ACHIEVEMENT_CARD_TOP_PADDING,
+                                    end = ACHIEVEMENT_CARD_END_PADDING,
+                                    bottom = ACHIEVEMENT_CARD_BOTTOM_PADDING,
+                                ),
                             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            AchievementMedal(Modifier.size(ACHIEVEMENT_MEDAL_SIZE))
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                            AchievementMedal(
+                                modifier = Modifier.size(ACHIEVEMENT_MEDAL_SIZE)
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .wrapContentHeight(),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = achievement.title,
-                                    style = AppTheme.typography.sectionTitle,
+                                    style = AppTheme.typography.sectionTitle.copy(
+                                        platformStyle = PlatformTextStyle(
+                                            includeFontPadding = false
+                                        )
+                                    ),
                                     color = AppTheme.colors.storefront.onSurface,
-                                )
-                                Text(
-                                    text = achievement.description,
-                                    style = AppTheme.typography.body,
-                                    color = AppTheme.colors.storefront.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
                                 )
                             }
                         }
@@ -215,7 +224,7 @@ internal fun AchievementUnlockedBanner(
                         )
                         .padding(
                             horizontal = AppTheme.spacing.lg,
-                            vertical = AppTheme.spacing.sm,
+                            vertical = AppTheme.spacing.xs,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -237,9 +246,10 @@ private fun AchievementBurst(modifier: Modifier = Modifier) {
     val color = AppTheme.colors.currencyAccent
     val borderWidth = AppTheme.sizes.borderStrong
     Canvas(modifier) {
-        val stroke = borderWidth.toPx() * 3f
-        val rayLength = size.width * 0.035f
-        listOf(0.35f, 0.58f, 0.79f).forEachIndexed { index, yFraction ->
+        val stroke = borderWidth.toPx() * 2f
+        val rayLength = 12.dp.toPx()
+        val outerInset = 4.dp.toPx()
+        listOf(0.4f, 0.62f, 0.82f).forEachIndexed { index, yFraction ->
             val slant = when (index) {
                 0 -> -rayLength * 0.7f
                 2 -> rayLength * 0.7f
@@ -248,15 +258,15 @@ private fun AchievementBurst(modifier: Modifier = Modifier) {
             val y = size.height * yFraction
             drawLine(
                 color = color,
-                start = Offset(2.dp.toPx(), y + slant),
-                end = Offset(2.dp.toPx() + rayLength, y),
+                start = Offset(outerInset, y + slant),
+                end = Offset(outerInset + rayLength, y),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
             drawLine(
                 color = color,
-                start = Offset(size.width - 2.dp.toPx(), y + slant),
-                end = Offset(size.width - 2.dp.toPx() - rayLength, y),
+                start = Offset(size.width - outerInset, y + slant),
+                end = Offset(size.width - outerInset - rayLength, y),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
@@ -362,12 +372,14 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSparkle(
     drawPath(path, color)
 }
 
-private val ACHIEVEMENT_BANNER_MAX_WIDTH = 520.dp
-private val ACHIEVEMENT_CARD_SIDE_INSET = 14.dp
-private val ACHIEVEMENT_RIBBON_OVERLAP = 10.dp
-private val ACHIEVEMENT_CARD_TOP_PADDING = 32.dp
-private val ACHIEVEMENT_MEDAL_SIZE = 68.dp
-private const val ACHIEVEMENT_RIBBON_WIDTH_FRACTION = 0.8f
+private val ACHIEVEMENT_BANNER_MAX_WIDTH = 460.dp
+private val ACHIEVEMENT_CARD_SIDE_INSET = 24.dp
+private val ACHIEVEMENT_RIBBON_OVERLAP = 8.dp
+private val ACHIEVEMENT_CARD_TOP_PADDING = 26.dp
+private val ACHIEVEMENT_CARD_BOTTOM_PADDING = 20.dp
+private val ACHIEVEMENT_CARD_END_PADDING = 52.dp
+private val ACHIEVEMENT_MEDAL_SIZE = 52.dp
+private const val ACHIEVEMENT_RIBBON_WIDTH_FRACTION = 0.76f
 
 @Composable
 internal fun AchievementsDialog(
@@ -488,11 +500,11 @@ private fun AchievementsPreview() {
     }
 }
 
-@Preview(name = "Открыто достижение", widthDp = 360, heightDp = 300, showBackground = true)
+@Preview(name = "Открыто достижение", widthDp = 360, heightDp = 220, showBackground = true)
 @Preview(
     name = "Открыто достижение — крупный текст",
     widthDp = 360,
-    heightDp = 340,
+    heightDp = 260,
     fontScale = 1.3f,
     showBackground = true,
 )

@@ -91,7 +91,7 @@ internal fun RoomScreen(
         if (!showAchievementBanner) achievementBannerHeight = 0.dp
     }
     val dialogueTopInset = if (showAchievementBanner) {
-        maxOf(achievementBannerHeight, 144.dp) + AppTheme.spacing.md
+        maxOf(achievementBannerHeight, 112.dp) + AppTheme.spacing.md
     } else {
         0.dp
     }
