@@ -2,28 +2,16 @@ package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,20 +29,14 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
@@ -117,181 +99,132 @@ internal fun WeeklyPlanEditorDialog(
         }
     }
 
-    Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false,
-        ),
+    FinPetModalDialog(
+        title = stringResource(R.string.plan_title),
+        onDismissRequest = null,
+        modifier = Modifier.testTag("weekly_plan_editor"),
+        actions = {
+            FinPetButton(
+                text = if (isSaving) stringResource(R.string.plan_saving) else stringResource(R.string.plan_save),
+                onClick = onSave,
+                enabled = tutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+        },
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
-            contentAlignment = Alignment.Center,
+        FinPetModalSection(
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth()
-                    .widthIn(max = AppTheme.sizes.contentMaxWidth)
-                    .testTag("weekly_plan_editor"),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.planning_notebook_frame),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.FillBounds,
+            Text(
+                text = stringResource(R.string.plan_description, availableRub),
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                style = AppTheme.typography.body,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+        }
+        FinPetModalSection(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.plan_distribution, editor.total),
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                style = AppTheme.typography.bodyStrong,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+        }
+        FinPetModalSection(
+            modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(reserveRequester)
+                .onGloballyPositioned { reserveBounds = it.boundsInWindow() },
+        ) {
+            Column(Modifier.padding(AppTheme.spacing.md)) {
+                Text(
+                    text = stringResource(
+                        R.string.plan_reserve,
+                        editor.reserve,
+                        availableRub * editor.reserve / 100,
+                    ),
+                    style = AppTheme.typography.bodyStrong,
+                    color = AppTheme.colors.storefront.onSurface,
                 )
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(
-                            start = maxWidth * 0.085f,
-                            top = maxHeight * 0.14f,
-                            end = maxWidth * 0.085f,
-                            bottom = maxHeight * 0.045f,
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-                ) {
-                    Text(
-                        text = stringResource(R.string.plan_title),
-                        modifier = Modifier.fillMaxWidth(),
-                        style = AppTheme.typography.screenTitle,
-                        color = AppTheme.colors.storefront.onSurface,
-                        textAlign = TextAlign.Center,
-                    )
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-                    ) {
-                        FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = stringResource(R.string.plan_description, availableRub),
-                                modifier = Modifier.padding(AppTheme.spacing.md),
-                                style = AppTheme.typography.body,
-                                color = AppTheme.colors.storefront.onSurface,
-                            )
-                        }
-                        FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = stringResource(R.string.plan_distribution, editor.total),
-                                modifier = Modifier.padding(AppTheme.spacing.md),
-                                style = AppTheme.typography.bodyStrong,
-                                color = AppTheme.colors.storefront.onSurface,
-                            )
-                        }
-                        FinPetModalSection(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .bringIntoViewRequester(reserveRequester)
-                                .onGloballyPositioned { reserveBounds = it.boundsInWindow() },
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    R.string.plan_reserve,
-                                    editor.reserve,
-                                    availableRub * editor.reserve / 100,
-                                ),
-                                modifier = Modifier.padding(AppTheme.spacing.md),
-                                style = AppTheme.typography.bodyStrong,
-                                color = AppTheme.colors.storefront.onSurface,
-                            )
-                        }
-                        PercentageSlider(
-                            category = PlanCategory.MANDATORY,
-                            value = editor.mandatory,
-                            enabled = tutorialStep == null && feedbackCards == null,
-                            modifier = Modifier
-                                .bringIntoViewRequester(mandatoryRequester)
-                                .onGloballyPositioned { mandatoryBounds = it.boundsInWindow() },
-                            onPercentChanged = onPercentChanged,
-                        )
-                        PercentageSlider(
-                            category = PlanCategory.WANTS,
-                            value = editor.wants,
-                            enabled = tutorialStep == null && feedbackCards == null,
-                            modifier = Modifier
-                                .bringIntoViewRequester(wantsRequester)
-                                .onGloballyPositioned { wantsBounds = it.boundsInWindow() },
-                            onPercentChanged = onPercentChanged,
-                        )
-                        PercentageSlider(
-                            category = PlanCategory.SAVINGS,
-                            value = editor.savings,
-                            enabled = tutorialStep == null && feedbackCards == null,
-                            modifier = Modifier
-                                .bringIntoViewRequester(savingsRequester)
-                                .onGloballyPositioned { savingsBounds = it.boundsInWindow() },
-                            onPercentChanged = onPercentChanged,
-                        )
-                    }
-                    FinPetButton(
-                        text = if (isSaving) {
-                            stringResource(R.string.plan_saving)
-                        } else {
-                            stringResource(R.string.plan_save)
-                        },
-                        onClick = onSave,
-                        enabled = tutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                    )
-                }
             }
         }
-    }
-    if (tutorialStep != null) {
-        FinPetDialogueDialog(
-            speakerName = petName,
-            cards = PlanTutorialStep.entries.map { it.message() },
-            portrait = petPortrait,
-            underlay = {
-                TutorialSpotlight(
-                    targetBounds = when (tutorialStep) {
-                        PlanTutorialStep.MANDATORY -> mandatoryBounds
-                        PlanTutorialStep.WANTS -> wantsBounds
-                        PlanTutorialStep.SAVINGS -> savingsBounds
-                        PlanTutorialStep.RESERVE -> reserveBounds
-                        PlanTutorialStep.INTRODUCTION,
-                        PlanTutorialStep.PRACTICE,
-                        -> null
-                    },
-                )
-            },
-            onPageChanged = { onTutorialNext() },
-            dismissOnBackPress = false,
-            topInset = dialogueTopInset,
-            onFinished = onTutorialNext,
+        PercentageSlider(
+            category = PlanCategory.MANDATORY,
+            value = editor.mandatory,
+            enabled = tutorialStep == null && feedbackCards == null,
+            modifier = Modifier
+                .bringIntoViewRequester(mandatoryRequester)
+                .onGloballyPositioned { mandatoryBounds = it.boundsInWindow() },
+            onPercentChanged = onPercentChanged,
         )
-    } else if (feedbackCards != null) {
-        FinPetDialogueDialog(
-            speakerName = petName,
-            cards = feedbackCards,
-            portrait = petPortrait,
-            dismissOnBackPress = false,
-            advanceOnTap = false,
-            topInset = dialogueTopInset,
-            actions = listOf(
-                FinPetDialogueAction(
-                    id = PLAN_EDIT_ACTION_ID,
-                    label = stringResource(R.string.plan_feedback_edit),
-                ),
-                FinPetDialogueAction(
-                    id = PLAN_SAVE_ACTION_ID,
-                    label = stringResource(R.string.plan_feedback_save_anyway),
-                ),
-            ),
-            onActionSelected = { action ->
-                if (action.id == PLAN_EDIT_ACTION_ID) onFeedbackEdit() else onFeedbackFinished()
-            },
-            onFinished = onFeedbackFinished,
+        PercentageSlider(
+            category = PlanCategory.WANTS,
+            value = editor.wants,
+            enabled = tutorialStep == null && feedbackCards == null,
+            modifier = Modifier
+                .bringIntoViewRequester(wantsRequester)
+                .onGloballyPositioned { wantsBounds = it.boundsInWindow() },
+            onPercentChanged = onPercentChanged,
         )
+        PercentageSlider(
+            category = PlanCategory.SAVINGS,
+            value = editor.savings,
+            enabled = tutorialStep == null && feedbackCards == null,
+            modifier = Modifier
+                .bringIntoViewRequester(savingsRequester)
+                .onGloballyPositioned { savingsBounds = it.boundsInWindow() },
+            onPercentChanged = onPercentChanged,
+        )
+        if (tutorialStep != null) {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = PlanTutorialStep.entries.map { it.message() },
+                portrait = petPortrait,
+                underlay = {
+                    TutorialSpotlight(
+                        targetBounds = when (tutorialStep) {
+                            PlanTutorialStep.MANDATORY -> mandatoryBounds
+                            PlanTutorialStep.WANTS -> wantsBounds
+                            PlanTutorialStep.SAVINGS -> savingsBounds
+                            PlanTutorialStep.RESERVE -> reserveBounds
+                            PlanTutorialStep.INTRODUCTION,
+                            PlanTutorialStep.PRACTICE,
+                            -> null
+                        },
+                    )
+                },
+                onPageChanged = { onTutorialNext() },
+                dismissOnBackPress = false,
+                topInset = dialogueTopInset,
+                onFinished = onTutorialNext,
+            )
+        } else if (feedbackCards != null) {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = feedbackCards,
+                portrait = petPortrait,
+                dismissOnBackPress = false,
+                advanceOnTap = false,
+                topInset = dialogueTopInset,
+                actions = listOf(
+                    FinPetDialogueAction(
+                        id = PLAN_EDIT_ACTION_ID,
+                        label = stringResource(R.string.plan_feedback_edit),
+                    ),
+                    FinPetDialogueAction(
+                        id = PLAN_SAVE_ACTION_ID,
+                        label = stringResource(R.string.plan_feedback_save_anyway),
+                    ),
+                ),
+                onActionSelected = { action ->
+                    if (action.id == PLAN_EDIT_ACTION_ID) onFeedbackEdit() else onFeedbackFinished()
+                },
+                onFinished = onFeedbackFinished,
+            )
+        }
     }
 }
 
@@ -354,49 +287,30 @@ private fun PercentageSlider(
     FinPetModalSection(
         modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
-            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
         ) {
-            Image(
-                painter = painterResource(category.artwork()),
-                contentDescription = null,
-                modifier = Modifier.size(AppTheme.sizes.iconLarge),
-                contentScale = ContentScale.Fit,
-            )
-            Spacer(Modifier.width(AppTheme.spacing.xs))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-            ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(category.title(), style = AppTheme.typography.bodyStrong)
-                    Text(
-                        stringResource(R.string.plan_percent, value),
-                        style = AppTheme.typography.metricValue,
-                        color = AppTheme.colors.actionPrimary,
-                    )
-                }
-                FinPetStorefrontSlider(
-                    value = value.toFloat(),
-                    onValueChange = { onPercentChanged(category, it.roundToInt()) },
-                    valueRange = 0f..100f,
-                    steps = 99,
-                    enabled = enabled,
-                    modifier = Modifier
-                        .heightIn(min = AppTheme.sizes.minimumTouchTarget)
-                        .testTag("weekly_plan_${category.code}"),
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(category.title(), style = AppTheme.typography.bodyStrong)
+                Text(
+                    stringResource(R.string.plan_percent, value),
+                    style = AppTheme.typography.metricValue,
+                    color = AppTheme.colors.actionPrimary,
                 )
             }
+            FinPetStorefrontSlider(
+                value = value.toFloat(),
+                onValueChange = { onPercentChanged(category, it.roundToInt()) },
+                valueRange = 0f..100f,
+                steps = 99,
+                enabled = enabled,
+                modifier = Modifier
+                    .heightIn(min = AppTheme.sizes.minimumTouchTarget)
+                    .testTag("weekly_plan_${category.code}"),
+            )
         }
     }
-}
-
-private fun PlanCategory.artwork(): Int = when (this) {
-    PlanCategory.MANDATORY -> R.drawable.planning_icon_mandatory
-    PlanCategory.WANTS -> R.drawable.planning_icon_wants
-    PlanCategory.SAVINGS -> R.drawable.planning_icon_savings
 }
 
 @Composable
