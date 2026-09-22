@@ -4,11 +4,14 @@
     <string name="savings_wallet">В кошельке: %1$d ₽</string>
     <string name="savings_total">В копилке: %1$d ₽</string>
     <string name="savings_total_label">В копилке</string>
+    <string name="savings_encouragement">Отлично! Ты откладываешь на свои цели!</string>
     <string name="savings_goal_label">Цель</string>
     <string name="savings_choose_goal">Выбери, на что копить</string>
     <string name="savings_other_goals">Можно сменить цель</string>
     <string name="savings_goal_choice">%1$s · %2$d ₽</string>
     <string name="savings_goal_choice_suggested">%1$s · %2$d ₽ · твой выбор</string>
+    <string name="savings_goal_suggested_title">%1$s ★</string>
+    <string name="savings_goal_price">%1$d ₽</string>
     <string name="savings_pet_name">Финни</string>
     <string name="savings_onboarding_intro_1">Это копилка. Здесь хранятся деньги, которые мы откладываем на цель.</string>
     <string name="savings_onboarding_intro_2">Выбери цель ниже. Я бы начал с рыбалки, но последнее слово за тобой.</string>

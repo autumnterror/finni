@@ -1,6 +1,8 @@
 package github.detrig.feature.savings.presentation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,11 +12,14 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.FinPetAmountInput
 import github.detrig.designsystem.component.FinPetBackButton
@@ -27,7 +32,6 @@ import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetMoneyAmount
 import github.detrig.designsystem.component.FinPetOutlinedButton
-import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
@@ -73,73 +77,54 @@ private fun SavingsContent(
     onEvent: (SavingsViewEvent) -> Unit,
 ) {
     Scaffold(containerColor = AppTheme.colors.storefront.background) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            SavingsHeader(
-                balanceRub = state.economy?.availableRub,
-                onBack = { onEvent(SavingsViewEvent.Back) },
-            )
-            when {
-                state.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator(color = AppTheme.colors.storefront.outline)
-                }
-
-                else -> Column(
+        Box(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentAlignment = Alignment.Center,
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+                    .widthIn(max = AppTheme.sizes.contentMaxWidth),
+            ) {
+                val horizontalContentInset = maxWidth * 0.14f
+                val topContentInset = maxHeight * 0.12f
+                val bottomContentInset = maxHeight * 0.115f
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                         .padding(
-                            horizontal = AppTheme.spacing.lg,
-                            vertical = AppTheme.spacing.sm,
+                            horizontal = 28.dp,
+                            vertical = 50.dp,
                         )
-                        .testTag("savings_screen"),
-                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.lg),
-                ) {
-                    val economy = state.economy
-                    if (economy != null) {
-                        BalanceCard(economy.availableRub, economy.savingsRub)
-                    }
-                    state.goal?.let { GoalCard(it) }
-                    Text(
-                        text = stringResource(
-                            if (state.goal == null) {
-                                R.string.savings_choose_goal
-                            } else {
-                                R.string.savings_other_goals
-                            },
+                        .background(
+                            color = AppTheme.colors.surfaceBase,
+                            shape = AppTheme.shapes.storefrontControl,
                         ),
-                        style = if (state.goal == null) {
-                            AppTheme.typography.sectionTitle
-                        } else {
-                            AppTheme.typography.label
-                        },
-                        color = AppTheme.colors.storefront.onSurface,
-                    )
-                    GoalChoices(
-                        goals = state.starterGoals,
-                        suggestedGoalId = state.suggestedGoalId,
-                        busy = state.busy,
-                    ) {
-                        onEvent(SavingsViewEvent.GoalSelected(it))
-                    }
-                    if (state.goal != null) {
-                        FinPetButton(
-                            text = stringResource(R.string.savings_deposit),
-                            onClick = {
-                                onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.DEPOSIT))
-                            },
-                            enabled = !state.busy,
-                            modifier = Modifier.fillMaxWidth().testTag("savings_deposit"),
-                            style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                        )
-                        FinPetOutlinedButton(
-                            text = stringResource(R.string.savings_withdraw),
-                            onClick = {
-                                onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.WITHDRAW))
-                            },
-                            enabled = !state.busy,
-                            modifier = Modifier.fillMaxWidth().testTag("savings_withdraw"),
-                            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                        )
+                )
+                Image(
+                    painter = painterResource(R.drawable.savings_pig_frame),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds,
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            start = horizontalContentInset,
+                            top = topContentInset,
+                            end = horizontalContentInset,
+                            bottom = bottomContentInset,
+                        ),
+                ) {
+                    SavingsHeader(onBack = { onEvent(SavingsViewEvent.Back) })
+                    when {
+                        state.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                            CircularProgressIndicator(color = AppTheme.colors.storefront.outline)
+                        }
+
+                        else -> SavingsBody(state = state, onEvent = onEvent)
                     }
                 }
             }
@@ -185,6 +170,59 @@ private fun SavingsContent(
             petPortrait = petPortrait,
             onEvent = onEvent,
         )
+    }
+}
+
+@Composable
+private fun ColumnScope.SavingsBody(
+    state: SavingsViewState,
+    onEvent: (SavingsViewEvent) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+            .verticalScroll(rememberScrollState())
+            .padding(top = AppTheme.spacing.sm, bottom = AppTheme.spacing.sm)
+            .testTag("savings_screen"),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+    ) {
+        state.economy?.let { BalanceCard(it.availableRub, it.savingsRub) }
+        state.goal?.let { GoalCard(it) }
+        Text(
+            text = stringResource(
+                if (state.goal == null) R.string.savings_choose_goal else R.string.savings_other_goals,
+            ),
+            style = AppTheme.typography.sectionTitle,
+            color = AppTheme.colors.storefront.onSurface,
+        )
+        GoalChoices(
+            goals = state.starterGoals,
+            activeGoalId = state.goal?.goal?.id,
+            suggestedGoalId = state.suggestedGoalId,
+            busy = state.busy,
+            onGoal = { onEvent(SavingsViewEvent.GoalSelected(it)) },
+        )
+        if (state.goal != null) {
+            FinPetButton(
+                text = stringResource(R.string.savings_deposit),
+                onClick = {
+                    onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.DEPOSIT))
+                },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().testTag("savings_deposit"),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+            FinPetOutlinedButton(
+                text = stringResource(R.string.savings_withdraw),
+                onClick = {
+                    onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.WITHDRAW))
+                },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().testTag("savings_withdraw"),
+                style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+            )
+        }
     }
 }
 
@@ -255,28 +293,26 @@ private const val ONBOARDING_DEPOSIT_NOW_ACTION_ID = "deposit_now"
 private const val ONBOARDING_DEPOSIT_LATER_ACTION_ID = "deposit_later"
 
 @Composable
-private fun SavingsHeader(balanceRub: Long?, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
-        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
+private fun SavingsHeader(onBack: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().height(AppTheme.sizes.preferredTouchTarget),
     ) {
         FinPetBackButton(
             onClick = onBack,
             contentDescription = stringResource(R.string.savings_back),
+            modifier = Modifier.align(Alignment.CenterStart),
         )
         Text(
             text = stringResource(R.string.savings_title),
-            modifier = Modifier.weight(1f),
-            style = AppTheme.typography.sectionTitle,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = AppTheme.sizes.preferredTouchTarget),
+            style = AppTheme.typography.screenTitle,
             color = AppTheme.colors.storefront.onSurface,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        FinPetStorefrontBalanceBadge(balanceRub)
     }
 }
 
@@ -286,20 +322,37 @@ private fun BalanceCard(availableRub: Long, savingsRub: Long) {
         modifier = Modifier.fillMaxWidth(),
         containerColor = AppTheme.colors.storefront.selectedSurface,
     ) {
-        Column(
-            Modifier.padding(AppTheme.spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+        Row(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.savings_total_label),
-                style = AppTheme.typography.sectionTitle,
-                color = AppTheme.colors.storefront.onSurface,
-            )
-            FinPetMoneyAmount(savingsRub.toString())
-            Text(
-                text = stringResource(R.string.savings_wallet, availableRub),
-                style = AppTheme.typography.caption,
-                color = AppTheme.colors.textSecondary,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            ) {
+                Text(
+                    text = stringResource(R.string.savings_total_label),
+                    style = AppTheme.typography.sectionTitle,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                FinPetMoneyAmount(savingsRub.toString())
+                Text(
+                    text = stringResource(R.string.savings_encouragement),
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.savings_wallet, availableRub),
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.textSecondary,
+                )
+            }
+            Image(
+                painter = painterResource(R.drawable.savings_coins),
+                contentDescription = null,
+                modifier = Modifier.size(82.dp),
+                contentScale = ContentScale.Fit,
             )
         }
     }
@@ -308,29 +361,60 @@ private fun BalanceCard(availableRub: Long, savingsRub: Long) {
 @Composable
 private fun GoalCard(progress: SavingsGoalProgress) {
     FinPetStorefrontCard(Modifier.fillMaxWidth().testTag("savings_goal")) {
-        Column(Modifier.padding(AppTheme.spacing.lg), verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)) {
+        Column(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
             Text(
                 text = stringResource(R.string.savings_goal_label),
-                style = AppTheme.typography.label,
-                color = AppTheme.colors.actionPrimary,
-            )
-            Text(
-                text = progress.goal.title,
                 style = AppTheme.typography.sectionTitle,
                 color = AppTheme.colors.storefront.onSurface,
             )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(savingsGoalArtwork(progress.goal.id, progress.goal.title)),
+                    contentDescription = null,
+                    modifier = Modifier.size(58.dp),
+                    contentScale = ContentScale.Fit,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                ) {
+                    Text(
+                        text = progress.goal.title,
+                        style = AppTheme.typography.bodyStrong,
+                        color = AppTheme.colors.storefront.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.savings_progress,
+                            progress.savedRub,
+                            progress.goal.targetRub,
+                        ),
+                        style = AppTheme.typography.bodyStrong,
+                    )
+                    FinPetStorefrontProgressIndicator(
+                        progress = (progress.savedRub.toFloat() / progress.goal.targetRub)
+                            .coerceIn(0f, 1f),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
             Text(
-                stringResource(R.string.savings_progress, progress.savedRub, progress.goal.targetRub),
-                style = AppTheme.typography.bodyStrong,
-            )
-            FinPetStorefrontProgressIndicator(
-                progress = (progress.savedRub.toFloat() / progress.goal.targetRub).coerceIn(0f, 1f),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                if (progress.isReached) stringResource(R.string.savings_reached)
-                else stringResource(R.string.savings_remaining, progress.remainingRub),
+                text = if (progress.isReached) {
+                    stringResource(R.string.savings_reached)
+                } else {
+                    stringResource(R.string.savings_remaining, progress.remainingRub)
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
                 style = AppTheme.typography.caption,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -339,24 +423,57 @@ private fun GoalCard(progress: SavingsGoalProgress) {
 @Composable
 private fun GoalChoices(
     goals: List<SavingsGoalDraft>,
+    activeGoalId: String?,
     suggestedGoalId: String?,
     busy: Boolean,
     onGoal: (SavingsGoalDraft) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
-        goals.forEach { goal ->
+        goals.filterNot { it.id == activeGoalId }.forEach { goal ->
             FinPetOutlinedButton(
-                text = if (goal.id == suggestedGoalId) {
-                    stringResource(R.string.savings_goal_choice_suggested, goal.title, goal.targetRub)
-                } else {
-                    stringResource(R.string.savings_goal_choice, goal.title, goal.targetRub)
-                },
                 onClick = { onGoal(goal) },
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-            )
+            ) {
+                Image(
+                    painter = painterResource(savingsGoalArtwork(goal.id, goal.title)),
+                    contentDescription = null,
+                    modifier = Modifier.size(AppTheme.sizes.iconLarge),
+                    contentScale = ContentScale.Fit,
+                )
+                Spacer(Modifier.width(AppTheme.spacing.md))
+                Text(
+                    text = if (goal.id == suggestedGoalId) {
+                        stringResource(R.string.savings_goal_suggested_title, goal.title)
+                    } else {
+                        goal.title
+                    },
+                    modifier = Modifier.weight(1f),
+                    style = AppTheme.typography.bodyStrong,
+                    color = AppTheme.colors.storefront.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(AppTheme.spacing.sm))
+                Text(
+                    text = stringResource(R.string.savings_goal_price, goal.targetRub),
+                    style = AppTheme.typography.bodyStrong,
+                    color = AppTheme.colors.storefront.onSurface,
+                    maxLines = 1,
+                )
+            }
         }
+    }
+}
+
+private fun savingsGoalArtwork(goalId: String, title: String): Int {
+    val searchable = "$goalId $title".lowercase()
+    return when {
+        "music" in searchable || "музык" in searchable -> R.drawable.savings_goal_music
+        "fish" in searchable || "рыбал" in searchable -> R.drawable.savings_goal_fishing
+        "draw" in searchable || "рисован" in searchable -> R.drawable.savings_goal_drawing
+        else -> R.drawable.savings_goal_dream
     }
 }
 
