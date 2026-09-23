@@ -106,4 +106,6 @@ internal class ShopMediator(
     override fun getApi(): ShopApi = ShopFeature.getApi()
 
     fun artworkResolver(): ShopArtworkResolver = artworkResolver
+
+    fun minimumGroceryPriceRub(): Long = groceryCatalog.storefront.items.minOf { it.priceRub }
 }

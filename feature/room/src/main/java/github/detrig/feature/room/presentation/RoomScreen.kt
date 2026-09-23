@@ -42,6 +42,7 @@ import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialo
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
+import github.detrig.designsystem.component.FinPetCard
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
@@ -192,6 +193,22 @@ internal fun RoomScreen(
                     .semantics { contentDescription = balanceDescription }
                     .testTag("house_balance"),
             )
+            FinPetCard(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(AppTheme.spacing.md)
+                    .testTag("house_day_counter"),
+            ) {
+                Text(
+                    text = stringResource(R.string.house_current_day, content.progress.dayOfWeek),
+                    modifier = Modifier.padding(
+                        horizontal = AppTheme.spacing.md,
+                        vertical = AppTheme.spacing.sm,
+                    ),
+                    style = AppTheme.typography.bodyStrong,
+                )
+            }
         }
     }
     val zone = content?.zones?.find { it.id == dialogZoneId }
@@ -235,6 +252,7 @@ internal fun RoomScreen(
     }?.let { editor ->
         WeeklyPlanEditorDialog(
             editor = editor,
+            weekNumber = content.progress.weekNumber,
             availableRub = content.progress.balanceRub.toLong(),
             isSaving = content.isSavingPlan,
             petName = petName,

@@ -13,7 +13,7 @@ import github.detrig.feature.room.domain.interactor.LoadActiveSavingsGoalInterac
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
-import github.detrig.feature.room.domain.interactor.ProvideZeroBalanceHelpInteractor
+import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
@@ -29,7 +29,7 @@ import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.week.domain.EndDayResult
-import github.detrig.feature.economy.domain.ZeroBalanceHelpResult
+import github.detrig.feature.week.domain.EarlyWeekEndResult
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 
 internal class RoomViewModel(
@@ -44,7 +44,8 @@ internal class RoomViewModel(
     private val loadActiveSavingsGoal: LoadActiveSavingsGoalInteractor,
     private val loadParentHelpInteractor: LoadParentHelpInteractor,
     private val requestParentHelpInteractor: RequestParentHelpInteractor,
-    private val provideZeroBalanceHelpInteractor: ProvideZeroBalanceHelpInteractor,
+    private val endWeekEarlyWithParentHelp: EndWeekEarlyWithParentHelpInteractor,
+    private val minimumProductPriceRub: Long,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
     private val onboardingRepository: FirstRunOnboardingRepository,
@@ -54,7 +55,7 @@ internal class RoomViewModel(
     private var sleepJob: Job? = null
     private var savePlanJob: Job? = null
     private var parentHelpJob: Job? = null
-    private var zeroBalanceHelpJob: Job? = null
+    private var lowBalanceJob: Job? = null
     private var onboardingRefreshJob: Job? = null
     private var achievementBannerJob: Job? = null
     private val reconciledPlanWeeks = mutableSetOf<Long>()
@@ -66,6 +67,10 @@ internal class RoomViewModel(
     private var onboardingStep = FirstRunOnboardingStep.COMPLETED
     private var onboardingGoal: SavingsGoalProgress? = null
     private var onboardingSuggestedGoalZoneId: String? = null
+
+    init {
+        require(minimumProductPriceRub > 0)
+    }
 
     private companion object {
         const val ACHIEVEMENT_BANNER_DURATION_MS = 5_000L
@@ -228,7 +233,7 @@ internal class RoomViewModel(
                         ),
                     )
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
-                if (roomData.progress.balanceRub == 0) provideZeroBalanceHelp()
+                handleLowBalance(roomData.progress)
             }
         }
     }
@@ -708,17 +713,48 @@ internal class RoomViewModel(
         }
     }
 
-    private fun provideZeroBalanceHelp() {
-        if (zeroBalanceHelpJob?.isActive == true) return
-        zeroBalanceHelpJob = launchCoroutine(
-            handleAction = ExceptionConsumer { true },
+    private fun handleLowBalance(progress: github.detrig.feature.room.domain.model.RoomProgress) {
+        if (progress.balanceRub >= minimumProductPriceRub || lowBalanceJob?.isActive == true) return
+        lowBalanceJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                lowBalanceJob = null
+                true
+            },
         ) {
-            when (val result = provideZeroBalanceHelpInteractor()) {
-                is ZeroBalanceHelpResult.Granted -> nullableState<RoomViewState.Content>()?.let { latest ->
-                    updateState(latest.copy(zeroBalanceHelpNotice = ZeroBalanceHelpNoticeState(result.amountRub)))
+            val activeHelp = loadParentHelpInteractor()
+            if (activeHelp == null) {
+                nullableState<RoomViewState.Content>()?.let { latest ->
+                    if (latest.progress.balanceRub < minimumProductPriceRub &&
+                        latest.parentHelpDialog == null && latest.zeroBalanceHelpNotice == null
+                    ) {
+                        updateState(latest.copy(parentHelpDialog = ParentHelpDialogState(
+                            offers = loadParentHelpInteractor.offers(),
+                            activeHelp = null,
+                        )))
+                    }
                 }
-                is ZeroBalanceHelpResult.NotNeeded -> Unit
+            } else {
+                when (val result = endWeekEarlyWithParentHelp(
+                    expectedAbsoluteDay = progress.absoluteDay,
+                    minimumProductPriceRub = minimumProductPriceRub,
+                )) {
+                    is EarlyWeekEndResult.Completed -> nullableState<RoomViewState.Content>()?.let { latest ->
+                        updateState(latest.copy(
+                            parentHelpDialog = null,
+                            zeroBalanceHelpNotice = ZeroBalanceHelpNoticeState(result.parentHelpRub),
+                            allowanceNotice = AllowanceNoticeState(
+                                grossRub = result.allowanceGrossRub,
+                                parentHelpRepaidRub = result.parentHelpRepaidRub,
+                                receivedRub = result.allowanceReceivedRub,
+                            ),
+                        ))
+                    }
+                    is EarlyWeekEndResult.AlreadyCompleted,
+                    is EarlyWeekEndResult.NotNeeded,
+                    -> Unit
+                }
             }
+            lowBalanceJob = null
         }
     }
 }

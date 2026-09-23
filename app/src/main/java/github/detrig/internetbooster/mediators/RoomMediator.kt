@@ -38,6 +38,7 @@ internal class RoomMediator(
                 }
                 override fun globalMessageController(): GlobalMessageController = coreComponent.globalMessageController
                 override fun resources(): Resources = coreComponent.resources
+                override fun minimumProductPriceRub(): Long = shopMediator.minimumGroceryPriceRub()
                 override fun gameLauncher(): RoomGameLauncher =
                     RoomGameLauncherImpl(coreComponent.globalMessageController, coreComponent.resources)
             }

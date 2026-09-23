@@ -24,4 +24,5 @@ interface RoomDependencies {
     fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher
     fun globalMessageController(): GlobalMessageController
     fun resources(): Resources
+    fun minimumProductPriceRub(): Long
 }

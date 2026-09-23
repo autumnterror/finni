@@ -165,7 +165,7 @@ internal object HouseLayout {
         asset("task_board", HouseObjectArt.TASK_BOARD, 408f, 172f, 1021f, 476f, 1091f, 505f, interactive = true, layer = 3f),
         asset("decor_pencil", HouseObjectArt.TASK_BOARD, 197f, 129f, 1095f, 482f, 1128f, 504f, layer = 4f),
         asset("fridge", HouseObjectArt.FRIDGE, 631f, 1214f, 1568f, 196f, 1695f, 502f, interactive = true, layer = 2f),
-        asset("sink", HouseObjectArt.SINK, 326f, 291f, 1700f, 334f, 1888f, 502f, interactive = true),
+        asset("sink", HouseObjectArt.SINK, 326f, 291f, 1700f, 334f, 1888f, 502f),
         asset("decor_cutting_board", HouseObjectArt.SINK, 1477f, 364f, 1720f, 331f, 1830f, 361f, layer = 2f),
         asset("decor_chair", HouseObjectArt.DINING_TABLE, 266f, 361f, 1708f, 438f, 1789f, 547f, layer = 1f),
         asset("dining_table", HouseObjectArt.DINING_TABLE, 523f, 304f, 1785f, 430f, 1970f, 551f, interactive = true, layer = 2f),

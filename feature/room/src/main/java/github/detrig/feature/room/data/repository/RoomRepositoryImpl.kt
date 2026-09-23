@@ -90,5 +90,8 @@ internal class RoomRepositoryImpl(
         )
     }
 
-    override suspend fun provideZeroBalanceHelp() = economyApi.provideZeroBalanceHelp()
+    override suspend fun endWeekEarlyWithParentHelp(
+        expectedAbsoluteDay: Long,
+        minimumProductPriceRub: Long,
+    ) = weekApi.endWeekEarlyWithParentHelp(expectedAbsoluteDay, minimumProductPriceRub)
 }

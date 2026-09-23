@@ -11,7 +11,7 @@ import github.detrig.feature.planning.domain.SavePlanResult
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.ParentHelpState
-import github.detrig.feature.economy.domain.ZeroBalanceHelpResult
+import github.detrig.feature.week.domain.EarlyWeekEndResult
 
 internal interface RoomRepository {
     fun zones(): List<RoomZoneDefinition>
@@ -24,5 +24,8 @@ internal interface RoomRepository {
     fun parentHelpOffers(): List<ParentHelpOffer>
     suspend fun parentHelp(): ParentHelpState?
     suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult
-    suspend fun provideZeroBalanceHelp(): ZeroBalanceHelpResult
+    suspend fun endWeekEarlyWithParentHelp(
+        expectedAbsoluteDay: Long,
+        minimumProductPriceRub: Long,
+    ): EarlyWeekEndResult
 }

@@ -5,6 +5,7 @@ import github.detrig.feature.phone.api.PhoneApi
 import github.detrig.feature.phone.api.PhoneApiImpl
 import github.detrig.feature.phone.navigation.PhoneRouter
 import github.detrig.feature.phone.navigation.PhoneRouterImpl
+import github.detrig.feature.phone.presentation.DebugMenuViewModel
 
 internal class PhoneModule(
     dependencies: PhoneDependencies,
@@ -12,6 +13,7 @@ internal class PhoneModule(
     override val roomApi = dependencies.roomApi()
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()
+    private val economyApi = dependencies.economyApi()
 
     override val router: PhoneRouter by lazy {
         PhoneRouterImpl(dependencies.globalNavigator())
@@ -20,4 +22,6 @@ internal class PhoneModule(
     override val api: PhoneApi by lazy {
         PhoneApiImpl(router)
     }
+
+    override fun debugMenuViewModel() = DebugMenuViewModel(economyApi)
 }

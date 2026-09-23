@@ -13,6 +13,7 @@ internal class PhoneMediator(
     private val roomMediator: RoomMediator,
     private val petMediator: PetMediator,
     private val shopMediator: ShopMediator,
+    private val economyMediator: EconomyMediator,
 ) : Mediator<PhoneApi> {
 
     @MainThread
@@ -23,6 +24,7 @@ internal class PhoneMediator(
                 override fun roomApi() = roomMediator.getApi()
                 override fun petApi() = petMediator.getApi()
                 override fun shopApi() = shopMediator.getApi()
+                override fun economyApi() = economyMediator.getApi()
             }
         }
     }

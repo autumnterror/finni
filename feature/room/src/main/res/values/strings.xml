@@ -61,7 +61,7 @@
     <string name="allowance_notice_after_help">От этой выплаты осталось: %1$d ₽.</string>
     <string name="allowance_notice_continue">Продолжить</string>
     <string name="zero_balance_help_title">Родители помогли тебе</string>
-    <string name="zero_balance_help_description">На баланс добавили %1$d ₽.</string>
+    <string name="zero_balance_help_description">На баланс добавили %1$d ₽. Эта неделя завершена досрочно, и началась новая.</string>
     <string name="zero_balance_help_continue">Спасибо</string>
     <string name="house_piggy_bank">Копилка · накопления</string>
     <string name="room_save_as_goal">Копить на это · %1$d ₽</string>
@@ -73,11 +73,12 @@
     <string name="house_hunger">Голод</string>
     <string name="house_happiness">Счастье</string>
     <string name="house_day_counter">Неделя %1$d · день %2$d/7</string>
+    <string name="house_current_day">День %1$d/7</string>
     <string name="house_money_in_days">Деньги через %1$d игровых дн.</string>
     <string name="house_balance_accessibility">Баланс: %1$d рублей</string>
     <string name="plan_not_ready">Сначала сохрани план на эту неделю.</string>
     <string name="plan_save_error">Не получилось сохранить план. Попробуй ещё раз.</string>
-    <string name="plan_title">План на неделю</string>
+    <string name="plan_title">План на неделю %1$d</string>
     <string name="plan_description">На эту неделю есть %1$d ₽. Распредели деньги, а часть оставь в запасе.</string>
     <string name="plan_distribution">Распределено: %1$d%%</string>
     <string name="plan_reserve">Финансовый запас: %1$d%% · %2$d ₽</string>

@@ -12,9 +12,12 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
@@ -26,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -49,6 +53,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
+import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.phone.PhoneFeature
@@ -75,10 +84,9 @@ private const val PHONE_STRETCH_BOTTOM = 1320f
 private const val GROCERY_APP = "grocery"
 private const val CLOTHING_APP = "clothing"
 private const val INTERIOR_APP = "interior"
+private const val DEBUG_APP = "debug"
 private const val HOME_CLOSE_BUTTON_SIZE = 74f
 private const val HOME_CLOSE_GLYPH_SIZE = 54f
-private const val HOME_APP_ICON_Y = 310f
-private const val HOME_APP_LABEL_Y = 499f
 
 @Composable
 internal fun PhoneScreen(route: PhoneRoute) {
@@ -295,9 +303,10 @@ private fun PhoneHomeContent(
     )
     PhoneStatusIcons(scale)
     val apps = listOf(
-        PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, GROCERY_APP),
-        PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, CLOTHING_APP),
-        PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, INTERIOR_APP),
+        PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP),
+        PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP),
+        PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP),
+        PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 129f, 620f, DEBUG_APP),
     )
     apps.forEach { app ->
         Image(
@@ -306,7 +315,7 @@ private fun PhoneHomeContent(
             modifier = Modifier
                 .offset(
                     x = (app.x * scale).dp,
-                    y = (HOME_APP_ICON_Y * scale).dp,
+                    y = (app.y * scale).dp,
                 )
                 .size((178f * scale).dp)
                 .clickable(role = Role.Button, onClick = { onOpenApp(app.id) })
@@ -316,7 +325,7 @@ private fun PhoneHomeContent(
         PhoneText(
             text = app.label,
             x = app.x + 89f,
-            y = HOME_APP_LABEL_Y,
+            y = app.y + 189f,
             width = 220f,
             scale = scale,
             fontSize = 28f,
@@ -330,6 +339,7 @@ private data class PhoneAppVisual(
     val iconRes: Int,
     val label: String,
     val x: Float,
+    val y: Float,
     val id: String,
 )
 
@@ -384,6 +394,7 @@ private fun PhoneAppContent(
                 scale = scale,
                 onBack = onBack,
             )
+            DEBUG_APP -> DebugMenuApp(onBack = onBack)
             else -> PhonePlaceholderApp(
                 title = "Приложение",
                 iconRes = R.drawable.phone_icon_tile_hd,
@@ -392,6 +403,106 @@ private fun PhoneAppContent(
             )
         }
     }
+}
+
+@Composable
+private fun DebugMenuApp(onBack: () -> Unit) {
+    val viewModel: DebugMenuViewModel = viewModel {
+        PhoneFeature.component().debugMenuViewModel()
+    }
+    val state by viewModel.state().observeAsState(DebugMenuViewState())
+    LaunchedEffect(viewModel) { viewModel.perform(DebugMenuViewEvent.Load) }
+
+    DebugMenuContent(
+        state = state,
+        onBack = onBack,
+        onChangeBalance = { viewModel.perform(DebugMenuViewEvent.ChangeBalance(it)) },
+        onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
+    )
+}
+
+@Composable
+private fun DebugMenuContent(
+    state: DebugMenuViewState,
+    onBack: () -> Unit,
+    onChangeBalance: (Long) -> Unit,
+    onResetBalance: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(AppTheme.spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+    ) {
+        FinPetOutlinedButton(
+            text = "Назад",
+            onClick = onBack,
+            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
+        Text(
+            text = "Дебаг меню",
+            style = AppTheme.typography.screenTitle,
+            color = AppTheme.colors.storefront.onSurface,
+        )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            ) {
+                Text("Текущий баланс", style = AppTheme.typography.body)
+                Text(
+                    text = "${state.balanceRub} ₽",
+                    style = AppTheme.typography.currency,
+                    color = AppTheme.colors.currencyAccent,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            DebugBalanceButton("−100 ₽", -100, state, onChangeBalance, Modifier.weight(1f))
+            DebugBalanceButton("+100 ₽", 100, state, onChangeBalance, Modifier.weight(1f))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            DebugBalanceButton("−10 ₽", -10, state, onChangeBalance, Modifier.weight(1f))
+            DebugBalanceButton("+10 ₽", 10, state, onChangeBalance, Modifier.weight(1f))
+        }
+        FinPetOutlinedButton(
+            text = "Обнулить баланс",
+            onClick = onResetBalance,
+            enabled = !state.isChanging && state.balanceRub > 0,
+            modifier = Modifier.fillMaxWidth(),
+            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
+        state.errorMessage?.let { message ->
+            Text(
+                text = message,
+                style = AppTheme.typography.caption,
+                color = AppTheme.colors.statusCritical.accent,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DebugBalanceButton(
+    label: String,
+    deltaRub: Long,
+    state: DebugMenuViewState,
+    onChangeBalance: (Long) -> Unit,
+    modifier: Modifier,
+) {
+    FinPetButton(
+        text = label,
+        onClick = { onChangeBalance(deltaRub) },
+        enabled = !state.isChanging && (deltaRub > 0 || state.balanceRub >= -deltaRub),
+        modifier = modifier,
+        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+    )
 }
 
 @Composable
@@ -572,6 +683,21 @@ private fun PhonePreview() {
                     onOpenApp = {},
                 )
             }
+        }
+    }
+}
+
+@Preview(name = "Дебаг меню", widthDp = 360, heightDp = 640, showBackground = true)
+@Composable
+private fun DebugMenuPreview() {
+    FinPetTheme {
+        Box(Modifier.background(AppTheme.colors.storefront.background)) {
+            DebugMenuContent(
+                state = DebugMenuViewState(balanceRub = 350),
+                onBack = {},
+                onChangeBalance = {},
+                onResetBalance = {},
+            )
         }
     }
 }

@@ -85,6 +85,7 @@ import kotlin.math.roundToInt
 @Composable
 internal fun WeeklyPlanEditorDialog(
     editor: PlanEditorState,
+    weekNumber: Long,
     availableRub: Long,
     isSaving: Boolean,
     petName: String,
@@ -125,7 +126,7 @@ internal fun WeeklyPlanEditorDialog(
     }
 
     WeeklyPlanNotebookDialog(
-        title = stringResource(R.string.plan_title),
+        title = stringResource(R.string.plan_title, weekNumber),
         onDismissRequest = null,
         modifier = Modifier.testTag("weekly_plan_editor"),
         actions = {
@@ -608,6 +609,7 @@ private fun WeeklyPlanDialogPreview() {
     FinPetTheme {
         WeeklyPlanEditorDialog(
             editor = PlanEditorState(mandatory = 50, wants = 30, savings = 20),
+            weekNumber = 2,
             availableRub = 500,
             isSaving = false,
             petName = "Барсик",
