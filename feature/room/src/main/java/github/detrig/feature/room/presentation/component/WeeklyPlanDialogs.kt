@@ -3,19 +3,30 @@ package github.detrig.feature.room.presentation.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,23 +44,30 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
-import github.detrig.designsystem.component.FinPetModalDialog
-import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.component.FinPetStorefrontSlider
@@ -106,7 +124,7 @@ internal fun WeeklyPlanEditorDialog(
         }
     }
 
-    FinPetModalDialog(
+    WeeklyPlanNotebookDialog(
         title = stringResource(R.string.plan_title),
         onDismissRequest = null,
         modifier = Modifier.testTag("weekly_plan_editor"),
@@ -120,9 +138,7 @@ internal fun WeeklyPlanEditorDialog(
             )
         },
     ) {
-        FinPetModalSection(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+        NotebookSection(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(R.string.plan_description, availableRub),
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -130,9 +146,7 @@ internal fun WeeklyPlanEditorDialog(
                 color = AppTheme.colors.storefront.onSurface,
             )
         }
-        FinPetModalSection(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+        NotebookSection(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(R.string.plan_distribution, editor.total),
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -140,7 +154,7 @@ internal fun WeeklyPlanEditorDialog(
                 color = AppTheme.colors.storefront.onSurface,
             )
         }
-        FinPetModalSection(
+        NotebookSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .bringIntoViewRequester(reserveRequester)
@@ -239,6 +253,141 @@ private const val PLAN_EDIT_ACTION_ID = "edit_plan"
 private const val PLAN_SAVE_ACTION_ID = "save_plan"
 
 @Composable
+private fun WeeklyPlanNotebookDialog(
+    title: String,
+    onDismissRequest: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val canDismiss = onDismissRequest != null
+    Dialog(
+        onDismissRequest = { if (canDismiss) onDismissRequest() },
+        properties = DialogProperties(
+            dismissOnBackPress = canDismiss,
+            dismissOnClickOutside = canDismiss,
+            usePlatformDefaultWidth = false,
+        ),
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
+            contentAlignment = Alignment.Center,
+        ) {
+            BoxWithConstraints(
+                modifier = modifier
+                    .width(maxWidth.coerceAtMost(430.dp))
+                    .fillMaxHeight(),
+            ) {
+                val horizontalPadding = maxWidth * 0.085f
+                val topPadding = maxHeight * 0.12f
+                val bottomPadding = maxHeight * 0.055f
+
+                NotebookFrame(Modifier.fillMaxSize())
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            start = horizontalPadding,
+                            top = topPadding,
+                            end = horizontalPadding,
+                            bottom = bottomPadding,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                ) {
+                    Text(
+                        text = title,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = AppTheme.typography.screenTitle,
+                        color = AppTheme.colors.storefront.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                        content = content,
+                    )
+                    actions()
+                }
+            }
+        }
+    }
+}
+
+/** Keeps the rings and page edge in proportion while the paper grows with the screen. */
+@Composable
+private fun NotebookFrame(modifier: Modifier = Modifier) {
+    val frame = ImageBitmap.imageResource(R.drawable.planning_notebook_frame)
+    Canvas(modifier) {
+        val targetWidth = size.width.roundToInt()
+        val targetHeight = size.height.roundToInt()
+        val sourceLeft = (frame.width * 0.078f).roundToInt()
+        val sourceWidth = frame.width - sourceLeft * 2
+        val topEnd = (frame.height * 0.14f).roundToInt()
+        val bottomStart = (frame.height * 0.84f).roundToInt()
+        val topHeight = (topEnd * targetWidth.toFloat() / sourceWidth).roundToInt()
+        val bottomHeight = ((frame.height - bottomStart) * targetWidth.toFloat() / sourceWidth).roundToInt()
+        val middleHeight = (targetHeight - topHeight - bottomHeight).coerceAtLeast(1)
+
+        drawNotebookSlice(frame, sourceLeft, 0, sourceWidth, topEnd, 0, topHeight, targetWidth)
+        drawNotebookSlice(
+            frame, sourceLeft, topEnd, sourceWidth, bottomStart - topEnd,
+            topHeight, middleHeight, targetWidth,
+        )
+        drawNotebookSlice(
+            frame, sourceLeft, bottomStart, sourceWidth, frame.height - bottomStart,
+            topHeight + middleHeight, bottomHeight, targetWidth,
+        )
+    }
+}
+
+private fun DrawScope.drawNotebookSlice(
+    frame: ImageBitmap,
+    sourceLeft: Int,
+    sourceTop: Int,
+    sourceWidth: Int,
+    sourceHeight: Int,
+    targetTop: Int,
+    targetHeight: Int,
+    targetWidth: Int,
+) {
+    drawImage(
+        image = frame,
+        srcOffset = IntOffset(sourceLeft, sourceTop),
+        srcSize = IntSize(sourceWidth, sourceHeight),
+        dstOffset = IntOffset(0, targetTop),
+        dstSize = IntSize(targetWidth, targetHeight),
+        filterQuality = FilterQuality.Medium,
+    )
+}
+
+@Composable
+private fun NotebookSection(
+    modifier: Modifier = Modifier,
+    tone: FinPetModalSectionTone = FinPetModalSectionTone.Neutral,
+    content: @Composable () -> Unit,
+) {
+    val container = when (tone) {
+        FinPetModalSectionTone.Neutral -> AppTheme.colors.surfaceElevated.copy(alpha = 0.9f)
+        FinPetModalSectionTone.Highlighted -> AppTheme.colors.currencyContainer.copy(alpha = 0.88f)
+        FinPetModalSectionTone.Warning -> AppTheme.colors.statusWarning.container.copy(alpha = 0.9f)
+    }
+    Surface(
+        modifier = modifier,
+        shape = AppTheme.shapes.storefrontControl,
+        color = container,
+        contentColor = AppTheme.colors.storefront.onSurface,
+        border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
+        shadowElevation = AppTheme.elevation.low,
+        content = content,
+    )
+}
+
+@Composable
 private fun PlanTutorialStep.message(): String = stringResource(when (this) {
     PlanTutorialStep.INTRODUCTION -> R.string.plan_tutorial_intro
     PlanTutorialStep.MANDATORY -> R.string.plan_tutorial_mandatory
@@ -291,20 +440,41 @@ private fun PercentageSlider(
     modifier: Modifier = Modifier,
     onPercentChanged: (PlanCategory, Int) -> Unit,
 ) {
-    FinPetModalSection(
+    NotebookSection(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.sm),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(category.title(), style = AppTheme.typography.bodyStrong)
-                Text(
-                    stringResource(R.string.plan_percent, value),
-                    style = AppTheme.typography.metricValue,
-                    color = AppTheme.colors.actionPrimary,
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(category.artwork()),
+                    contentDescription = null,
+                    modifier = Modifier.size(AppTheme.sizes.iconLarge),
+                    contentScale = ContentScale.Fit,
                 )
+                Text(
+                    category.title(),
+                    modifier = Modifier.weight(1f),
+                    style = AppTheme.typography.bodyStrong,
+                )
+                Surface(
+                    shape = CircleShape,
+                    color = AppTheme.colors.statusPositive.container,
+                    contentColor = AppTheme.colors.statusPositive.onContainer,
+                    border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
+                ) {
+                    Text(
+                        text = stringResource(R.string.plan_percent, value),
+                        modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
+                        style = AppTheme.typography.bodyStrong,
+                    )
+                }
             }
             FinPetStorefrontSlider(
                 value = value.toFloat(),
@@ -313,6 +483,7 @@ private fun PercentageSlider(
                 steps = 99,
                 enabled = enabled,
                 modifier = Modifier
+                    .fillMaxWidth()
                     .heightIn(min = AppTheme.sizes.minimumTouchTarget)
                     .testTag("weekly_plan_${category.code}"),
             )
@@ -325,7 +496,7 @@ internal fun WeeklyPlanProgressDialog(
     progress: WeeklyPlanProgress,
     onDismiss: () -> Unit,
 ) {
-    FinPetModalDialog(
+    WeeklyPlanNotebookDialog(
         title = stringResource(R.string.plan_progress_title, progress.plan.weekNumber),
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("weekly_plan_progress"),
@@ -338,7 +509,7 @@ internal fun WeeklyPlanProgressDialog(
             )
         },
     ) {
-        FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
+        NotebookSection(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(R.string.plan_progress_description),
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -347,7 +518,7 @@ internal fun WeeklyPlanProgressDialog(
             )
         }
         progress.categories.forEach { CategoryProgressRow(it) }
-        FinPetModalSection(
+        NotebookSection(
             modifier = Modifier.fillMaxWidth(),
             tone = FinPetModalSectionTone.Highlighted,
         ) {
@@ -363,7 +534,7 @@ internal fun WeeklyPlanProgressDialog(
 @Composable
 private fun CategoryProgressRow(progress: CategoryPlanProgress) {
     val color = progress.tone.color()
-    FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
+    NotebookSection(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(AppTheme.spacing.md),
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
@@ -380,7 +551,7 @@ private fun CategoryProgressRow(progress: CategoryPlanProgress) {
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             ) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
                     Text(progress.category.title(), style = AppTheme.typography.bodyStrong)
                     Text(
                         stringResource(
@@ -443,7 +614,7 @@ private fun WeeklyPlanDialogPreview() {
             petPortrait = { modifier ->
                 Box(modifier.background(AppTheme.colors.actionSecondary))
             },
-            tutorialStep = PlanTutorialStep.MANDATORY,
+            tutorialStep = null,
             feedbackCards = null,
             onTutorialNext = {},
             onFeedbackEdit = {},
