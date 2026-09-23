@@ -60,6 +60,7 @@ internal class AppModuleImpl(
             coreComponent = coreComponent,
             economyMediator = economyMediator,
             weekMediator = weekMediator,
+            planningMediator = planningMediator,
             inventoryApi = inventoryMediator.getApi(),
         )
     }

@@ -27,7 +27,7 @@ class PlanningRepositoryTest {
         val database = Room.inMemoryDatabaseBuilder(context, PlanningTestDatabase::class.java).build()
         try {
             val repository = PlanningRepository(
-                database.planningDao(), RoomTransactionRunner(database), PlanningConfig(seedDemoProgress = false),
+                database.planningDao(), RoomTransactionRunner(database), PlanningConfig(),
             )
             assertTrue(repository.savePlan(1, 500, PlanPercentages.DEFAULT) is SavePlanResult.Saved)
             val saved = repository.savePlan(2, 1_000, PlanPercentages.DEFAULT)

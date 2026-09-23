@@ -8,6 +8,8 @@ import github.detrig.feature.planning.data.local.WeeklyPlanEntity
 import github.detrig.feature.planning.domain.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 
 internal class PlanningRepository(
     private val dao: PlanningDao,
@@ -18,13 +20,17 @@ internal class PlanningRepository(
         PlanningCalculator.assess(percentages, config)
 
     override suspend fun getPlanProgress(weekNumber: Long): WeeklyPlanProgress? = transactionRunner.runInTransaction {
+        dao.deleteLegacyDemoActualOperations()
         dao.getPlan(weekNumber)?.toProgress(dao.getActualOperations(weekNumber))
     }
 
-    override fun observePlanProgress(weekNumber: Long): Flow<WeeklyPlanProgress?> = combine(
-        dao.observePlan(weekNumber),
-        dao.observeActualOperations(weekNumber),
-    ) { plan, actuals -> plan?.toProgress(actuals) }
+    override fun observePlanProgress(weekNumber: Long): Flow<WeeklyPlanProgress?> = flow {
+        transactionRunner.runInTransaction { dao.deleteLegacyDemoActualOperations() }
+        emitAll(combine(
+            dao.observePlan(weekNumber),
+            dao.observeActualOperations(weekNumber),
+        ) { plan, actuals -> plan?.toProgress(actuals) })
+    }
 
     override suspend fun savePlan(
         weekNumber: Long,
@@ -33,10 +39,10 @@ internal class PlanningRepository(
     ): SavePlanResult = transactionRunner.runInTransaction {
         require(weekNumber >= 1) { "The game week must be positive" }
         require(availableRub >= 0)
+        dao.deleteLegacyDemoActualOperations()
         dao.getPlan(weekNumber)?.let { return@runInTransaction SavePlanResult.AlreadySaved(it.toProgress(dao.getActualOperations(weekNumber))) }
         val entity = WeeklyPlanEntity(weekNumber, availableRub, percentages.mandatory, percentages.wants, percentages.savings)
         dao.insertPlan(entity)
-        if (config.seedDemoProgress) seedDemoActuals(entity)
         SavePlanResult.Saved(entity.toProgress(dao.getActualOperations(weekNumber)))
     }
 
@@ -54,19 +60,6 @@ internal class PlanningRepository(
         requireNotNull(dao.getPlan(weekNumber)) { "A plan must be saved before recording its result" }
         dao.insertActualOperation(incoming)
         RecordActualResult.Recorded
-    }
-
-    private suspend fun seedDemoActuals(plan: WeeklyPlanEntity) {
-        val progress = plan.toProgress(emptyList())
-        val green = progress.category(PlanCategory.MANDATORY).plannedRub * 60 / 100
-        val yellowBase = progress.category(PlanCategory.WANTS).plannedRub
-        val redBase = progress.category(PlanCategory.SAVINGS).plannedRub
-        val demoOperations = listOf(
-            PlanActualOperationEntity("demo-plan:${plan.weekNumber}:mandatory", plan.weekNumber, PlanCategory.MANDATORY.code, green),
-            PlanActualOperationEntity("demo-plan:${plan.weekNumber}:wants", plan.weekNumber, PlanCategory.WANTS.code, yellowBase + maxOf(1, yellowBase / 10)),
-            PlanActualOperationEntity("demo-plan:${plan.weekNumber}:savings", plan.weekNumber, PlanCategory.SAVINGS.code, redBase + maxOf(2, redBase / 2)),
-        )
-        demoOperations.forEach { dao.insertActualOperation(it) }
     }
 
     private fun WeeklyPlanEntity.toProgress(actuals: List<PlanActualOperationEntity>): WeeklyPlanProgress {

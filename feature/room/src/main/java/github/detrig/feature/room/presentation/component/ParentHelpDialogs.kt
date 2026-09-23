@@ -1,19 +1,45 @@
 package github.detrig.feature.room.presentation.component
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetModalDialog
@@ -37,39 +63,155 @@ internal fun ParentHelpDialog(
     onOfferSelected: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    FinPetModalDialog(
-        title = stringResource(R.string.parent_help_title),
-        onDismissRequest = onDismiss,
-        dismissEnabled = !isRequesting,
-        modifier = Modifier.testTag("parent_help_dialog"),
-        actions = {
-            FinPetOutlinedButton(
-                text = stringResource(R.string.parent_help_close),
-                onClick = onDismiss,
-                enabled = !isRequesting,
-                modifier = Modifier.fillMaxWidth(),
-                style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-            )
-        },
+    val canDismiss = !isRequesting
+    Dialog(
+        onDismissRequest = { if (canDismiss) onDismiss() },
+        properties = DialogProperties(
+            dismissOnBackPress = canDismiss,
+            dismissOnClickOutside = canDismiss,
+            usePlatformDefaultWidth = false,
+        ),
     ) {
-        val active = state.activeHelp
-        if (active == null) {
-            FinPetModalSection(
-                modifier = Modifier.fillMaxWidth(),
-                tone = FinPetModalSectionTone.Highlighted,
+        val maxDialogHeight = LocalConfiguration.current.screenHeightDp.dp * 0.94f
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.xs),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 430.dp)
+                    .heightIn(max = maxDialogHeight)
+                    .testTag("parent_help_dialog"),
             ) {
-                Text(
-                    text = stringResource(R.string.parent_help_description),
-                    modifier = Modifier.padding(AppTheme.spacing.md),
-                    style = AppTheme.typography.body,
-                    color = AppTheme.colors.storefront.onSurface,
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 44.dp)
+                        .heightIn(max = maxDialogHeight - 44.dp)
+                        .shadow(
+                            elevation = AppTheme.elevation.medium,
+                            shape = AppTheme.shapes.storefrontControl,
+                            ambientColor = AppTheme.colors.storefront.shadow,
+                            spotColor = AppTheme.colors.storefront.shadow,
+                        ),
+                    shape = AppTheme.shapes.storefrontControl,
+                    color = AppTheme.colors.storefront.surface,
+                    contentColor = AppTheme.colors.storefront.onSurface,
+                    border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(AppTheme.spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+                    ) {
+                        ParentHelpHeader(
+                            dismissEnabled = canDismiss,
+                            onDismiss = onDismiss,
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+                        ) {
+                            val active = state.activeHelp
+                            if (active == null) {
+                                ParentHelpDescription()
+                                state.offers.forEach { offer ->
+                                    ParentHelpOfferCard(offer, isRequesting, onOfferSelected)
+                                }
+                            } else {
+                                ActiveParentHelpCard(active)
+                            }
+                        }
+                        FinPetOutlinedButton(
+                            text = stringResource(R.string.parent_help_close),
+                            onClick = onDismiss,
+                            enabled = canDismiss,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                        )
+                    }
+                }
+                Image(
+                    painter = painterResource(R.drawable.parent_help_hamster),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = AppTheme.spacing.lg)
+                        .size(width = 126.dp, height = 92.dp)
+                        .zIndex(1f),
+                    contentScale = ContentScale.Fit,
                 )
             }
-            state.offers.forEach { offer ->
-                ParentHelpOfferCard(offer, isRequesting, onOfferSelected)
-            }
-        } else {
-            ActiveParentHelpCard(active)
+        }
+    }
+}
+
+@Composable
+private fun ParentHelpHeader(
+    dismissEnabled: Boolean,
+    onDismiss: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 34.dp),
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.parent_help_title),
+            modifier = Modifier.weight(1f),
+            style = AppTheme.typography.screenTitle,
+            color = AppTheme.colors.storefront.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
+        val closeLabel = stringResource(R.string.parent_help_close)
+        FinPetButton(
+            text = "×",
+            onClick = onDismiss,
+            enabled = dismissEnabled,
+            modifier = Modifier
+                .size(AppTheme.sizes.minimumTouchTarget)
+                .semantics { contentDescription = closeLabel },
+            style = FinPetButtonDefaults.storefrontOutlinedStyle().copy(
+                minHeight = AppTheme.sizes.minimumTouchTarget,
+                contentPadding = PaddingValues(AppTheme.spacing.none),
+                textStyle = AppTheme.typography.screenTitle,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun ParentHelpDescription() {
+    FinPetModalSection(
+        modifier = Modifier.fillMaxWidth(),
+        tone = FinPetModalSectionTone.Highlighted,
+    ) {
+        Row(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.parent_help_heart_hands),
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                contentScale = ContentScale.Fit,
+            )
+            Text(
+                text = stringResource(R.string.parent_help_description),
+                modifier = Modifier.weight(1f),
+                style = AppTheme.typography.body,
+                color = AppTheme.colors.storefront.onSurface,
+            )
         }
     }
 }
@@ -87,11 +229,24 @@ private fun ParentHelpOfferCard(
             modifier = Modifier.padding(AppTheme.spacing.md),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
         ) {
-            Text(
-                stringResource(R.string.parent_help_offer_weeks, offer.repaymentWeeks),
-                style = AppTheme.typography.sectionTitle,
-                color = AppTheme.colors.storefront.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.parent_help_offer_weeks, offer.repaymentWeeks),
+                    modifier = Modifier.weight(1f),
+                    style = AppTheme.typography.sectionTitle,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                Image(
+                    painter = painterResource(R.drawable.parent_help_calendar),
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            }
             ParentHelpMoneyRow(R.string.parent_help_get_now, offer.receivedRub)
             ParentHelpMoneyRow(R.string.parent_help_return_total, offer.totalRepaymentRub)
             Text(stringResource(R.string.parent_help_extra, offer.extraRub), style = AppTheme.typography.caption)
@@ -117,7 +272,23 @@ private fun ActiveParentHelpCard(help: ParentHelpState) {
             modifier = Modifier.padding(AppTheme.spacing.md),
             verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
         ) {
-            Text(stringResource(R.string.parent_help_active), style = AppTheme.typography.body)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.parent_help_coins),
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp),
+                    contentScale = ContentScale.Fit,
+                )
+                Text(
+                    text = stringResource(R.string.parent_help_active),
+                    modifier = Modifier.weight(1f),
+                    style = AppTheme.typography.sectionTitle,
+                )
+            }
             ParentHelpMoneyRow(R.string.parent_help_remaining, help.remainingRub)
             Text(
                 stringResource(R.string.parent_help_active_schedule, help.nextPaymentRub, help.paymentsRemaining),

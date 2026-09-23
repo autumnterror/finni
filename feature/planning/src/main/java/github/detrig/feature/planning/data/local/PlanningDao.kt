@@ -28,4 +28,7 @@ interface PlanningDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertActualOperation(operation: PlanActualOperationEntity)
+
+    @Query("DELETE FROM plan_actual_operations WHERE operationId LIKE 'demo-plan:%'")
+    suspend fun deleteLegacyDemoActualOperations()
 }

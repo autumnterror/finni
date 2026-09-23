@@ -1,8 +1,7 @@
 package github.detrig.feature.planning.domain
 
-/** Балансировочные правила плана и временный сценарий демонстрационного прогресса. */
+/** Балансировочные правила недельного плана. */
 data class PlanningConfig(
-    val seedDemoProgress: Boolean = true,
     val minimumMandatoryPercent: Int = 40,
     val minimumSavingsPercent: Int = 10,
     val minimumReservePercent: Int = 10,

@@ -18,7 +18,9 @@ import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.ProductQuantity
 import github.detrig.feature.inventory.api.InventoryApi
+import github.detrig.feature.planning.domain.PlanCategory
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /** Wires the reusable product catalog screen to application state. */
@@ -26,6 +28,7 @@ internal class ShopMediator(
     private val coreComponent: CoreComponent,
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
+    private val planningMediator: PlanningMediator,
     private val inventoryApi: InventoryApi,
 ) : Mediator<ShopApi> {
     private val groceryCatalog = GroceryCatalog()
@@ -45,6 +48,19 @@ internal class ShopMediator(
                 inventoryApi.deliver(
                     operationId = operationId,
                     items = lines.map { ProductQuantity(it.itemId, it.quantity) },
+                )
+            }
+        },
+        recordPlanningActual = { operationId, amountRub ->
+            weekMediator.getApi().initialize()
+            val currentWeek = weekMediator.getApi().observeState().first()
+            val planning = planningMediator.getApi()
+            if (planning.getPlanProgress(currentWeek.weekNumber) != null) {
+                planning.recordActual(
+                    operationId = operationId,
+                    weekNumber = currentWeek.weekNumber,
+                    category = PlanCategory.MANDATORY,
+                    amountRub = amountRub,
                 )
             }
         },

@@ -29,7 +29,7 @@ class PlanningCalculatorTest {
     }
 
     @Test fun assessmentExplainsTheFirstUnsafePartOfThePlan() {
-        val config = PlanningConfig(seedDemoProgress = false)
+        val config = PlanningConfig()
 
         assertEquals(
             PlanAssessment.NeedsChanges(PlanAdjustmentReason.MANDATORY_TOO_LOW, 40),

@@ -41,12 +41,16 @@ import github.detrig.feature.room.presentation.component.AchievementsDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
 import github.detrig.feature.room.R
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 @Composable
 internal fun RoomScreen(
@@ -172,6 +176,21 @@ internal fun RoomScreen(
                     .align(Alignment.TopStart)
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(AppTheme.spacing.md),
+            )
+        }
+        if (externalActive && content != null) {
+            val balanceDescription = stringResource(
+                R.string.house_balance_accessibility,
+                content.progress.balanceRub,
+            )
+            FinPetStorefrontBalanceBadge(
+                balanceRub = content.progress.balanceRub.toLong(),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(AppTheme.spacing.md)
+                    .semantics { contentDescription = balanceDescription }
+                    .testTag("house_balance"),
             )
         }
     }

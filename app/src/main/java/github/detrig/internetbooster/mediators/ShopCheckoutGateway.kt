@@ -32,6 +32,10 @@ internal class ShopCheckoutGateway(
         storeId: StoreId,
         lines: List<StoreCartLine>,
     ) -> Unit = { _, _, _ -> },
+    private val recordPlanningActual: suspend (
+        operationId: String,
+        amountRub: Long,
+    ) -> Unit = { _, _ -> },
 ) {
     private val checkoutMutex = Mutex()
 
@@ -63,6 +67,7 @@ internal class ShopCheckoutGateway(
         return when (val result = debit(request.operationId, quote.totalRub, context)) {
             is FinancialOperationResult.Applied -> {
                 deliverFood(request.operationId, request.storeId, request.lines)
+                recordPlanningActual(request.operationId, quote.totalRub)
                 ShopCheckoutResult.Completed(
                     balanceRub = result.state.availableRub,
                     alreadyApplied = false,
@@ -71,6 +76,7 @@ internal class ShopCheckoutGateway(
             }
             is FinancialOperationResult.AlreadyApplied -> {
                 deliverFood(request.operationId, request.storeId, request.lines)
+                recordPlanningActual(request.operationId, quote.totalRub)
                 ShopCheckoutResult.Completed(
                     balanceRub = result.state.availableRub,
                     alreadyApplied = true,
