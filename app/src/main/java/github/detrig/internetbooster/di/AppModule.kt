@@ -46,7 +46,14 @@ internal class AppModuleImpl(
     private val learningMediator: LearningMediator by lazy { LearningMediator(databaseModule) }
     private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
     private val savingsMediator: SavingsMediator by lazy {
-        SavingsMediator(coreComponent, economyMediator, planningMediator, weekMediator, petMediator)
+        SavingsMediator(
+            core = coreComponent,
+            economy = economyMediator,
+            planning = planningMediator,
+            week = weekMediator,
+            pet = petMediator,
+            roomApiProvider = { roomMediator.getApi() },
+        )
     }
     private val shopMediator: ShopMediator by lazy {
         ShopMediator(

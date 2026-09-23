@@ -25,6 +25,7 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
             transferTo,
             transferFrom,
             dependencies.petApi(),
+            dependencies.roomBackdrop(),
         )
     }
     override fun viewModel(firstRunOnboarding: Boolean, suggestedGoalId: String?) = SavingsViewModel(

@@ -11,6 +11,7 @@ import github.detrig.feature.savings.domain.TransferToSavingsInteractor
 import github.detrig.feature.savings.navigation.SavingsRoute
 import github.detrig.feature.savings.navigation.SavingsRouter
 import github.detrig.feature.savings.presentation.SavingsScreen
+import github.detrig.feature.savings.SavingsRoomBackdrop
 import github.detrig.feature.pet.api.PetApi
 
 internal class SavingsApiImpl(
@@ -20,6 +21,7 @@ internal class SavingsApiImpl(
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
     private val petApi: PetApi,
+    private val roomBackdrop: SavingsRoomBackdrop,
 ) : SavingsApi {
     override fun open(firstRunOnboarding: Boolean, suggestedGoalId: String?) =
         router.open(firstRunOnboarding, suggestedGoalId)
@@ -30,6 +32,7 @@ internal class SavingsApiImpl(
                 firstRunOnboarding = route.firstRunOnboarding,
                 suggestedGoalId = route.suggestedGoalId,
                 petApi = petApi,
+                roomBackdrop = roomBackdrop,
             )
         }
     }

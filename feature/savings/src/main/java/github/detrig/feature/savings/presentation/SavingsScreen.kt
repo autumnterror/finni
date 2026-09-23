@@ -1,6 +1,8 @@
 package github.detrig.feature.savings.presentation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,8 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -43,30 +47,38 @@ import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.savings.R
 import github.detrig.feature.savings.SavingsFeature
+import github.detrig.feature.savings.SavingsRoomBackdrop
 import github.detrig.feature.savings.api.SavingsGoalDraft
 import github.detrig.feature.pet.api.PetApi
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun SavingsScreen(
     firstRunOnboarding: Boolean,
     suggestedGoalId: String?,
     petApi: PetApi,
+    roomBackdrop: SavingsRoomBackdrop,
 ) {
     val viewModel: SavingsViewModel = viewModel {
         SavingsFeature.component().viewModel(firstRunOnboarding, suggestedGoalId)
     }
     val state by viewModel.state().observeAsState(SavingsViewState())
-    val petProfile by petApi.observeProfile().collectAsState(initial = null)
     LaunchedEffect(viewModel) { viewModel.perform(SavingsViewEvent.Load) }
     BackHandler { viewModel.perform(SavingsViewEvent.Back) }
-    SavingsContent(
-        state = state,
-        petName = petProfile?.name ?: stringResource(R.string.savings_pet_name),
-        petPortrait = { modifier ->
-            petProfile?.let { profile -> petApi.Portrait(profile, modifier) }
-        },
-        onEvent = viewModel::perform,
-    )
+    petApi.RequirePet(modifier = Modifier.fillMaxSize()) { profile, _, _, _ ->
+        Box(Modifier.fillMaxSize()) {
+            roomBackdrop.Content(
+                modifier = Modifier.fillMaxSize(),
+                petContent = { modifier -> petApi.Content(profile, modifier) },
+            )
+            SavingsContent(
+                state = state,
+                petName = profile.name,
+                petPortrait = { modifier -> petApi.Portrait(profile, modifier) },
+                onEvent = viewModel::perform,
+            )
+        }
+    }
 }
 
 @Composable
@@ -76,16 +88,46 @@ private fun SavingsContent(
     petPortrait: @Composable (Modifier) -> Unit,
     onEvent: (SavingsViewEvent) -> Unit,
 ) {
-    Scaffold(containerColor = AppTheme.colors.storefront.background) { padding ->
+    val entranceOffset = remember { Animatable(0.9f) }
+    val entranceRotation = remember { Animatable(8f) }
+    LaunchedEffect(Unit) {
+        launch {
+            entranceOffset.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 760
+                    0.9f at 0
+                    0.34f at 230
+                    -0.04f at 505
+                    0f at 760
+                },
+            )
+        }
+        entranceRotation.animateTo(
+            targetValue = 0f,
+            animationSpec = keyframes {
+                durationMillis = 760
+                8f at 0
+                3f at 230
+                -2f at 505
+                0f at 760
+            },
+        )
+    }
+    Scaffold(containerColor = Color.Transparent) { padding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.BottomCenter,
         ) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth()
-                    .widthIn(max = AppTheme.sizes.contentMaxWidth),
+                    .widthIn(max = AppTheme.sizes.contentMaxWidth)
+                    .graphicsLayer {
+                        translationY = size.height * entranceOffset.value
+                        rotationZ = entranceRotation.value
+                    },
             ) {
                 val horizontalContentInset = maxWidth * 0.14f
                 val topContentInset = maxHeight * 0.12f
