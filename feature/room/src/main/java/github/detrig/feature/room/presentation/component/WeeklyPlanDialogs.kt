@@ -2,14 +2,18 @@ package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Text
@@ -21,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -29,10 +34,12 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -331,7 +338,14 @@ internal fun WeeklyPlanProgressDialog(
             )
         },
     ) {
-        Text(stringResource(R.string.plan_progress_description), style = AppTheme.typography.body)
+        FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.plan_progress_description),
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                style = AppTheme.typography.body,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+        }
         progress.categories.forEach { CategoryProgressRow(it) }
         FinPetModalSection(
             modifier = Modifier.fillMaxWidth(),
@@ -350,25 +364,50 @@ internal fun WeeklyPlanProgressDialog(
 private fun CategoryProgressRow(progress: CategoryPlanProgress) {
     val color = progress.tone.color()
     FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
-        Column(
+        Row(
             modifier = Modifier.padding(AppTheme.spacing.md),
-            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(progress.category.title(), style = AppTheme.typography.bodyStrong)
-                Text(
-                    stringResource(R.string.plan_actual_of_planned, progress.actualRub, progress.plannedRub),
-                    style = AppTheme.typography.caption,
-                )
-            }
-            FinPetProgressIndicator(
-                progress = progress.progress,
-                color = color,
-                modifier = Modifier.fillMaxWidth().testTag("plan_progress_${progress.category.code}"),
+            Image(
+                painter = painterResource(progress.category.artwork()),
+                contentDescription = null,
+                modifier = Modifier.size(AppTheme.sizes.iconLarge),
+                contentScale = ContentScale.Fit,
             )
-            Text(progress.tone.label(), style = AppTheme.typography.caption, color = color)
+            Spacer(Modifier.width(AppTheme.spacing.xs))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(progress.category.title(), style = AppTheme.typography.bodyStrong)
+                    Text(
+                        stringResource(
+                            R.string.plan_actual_of_planned,
+                            progress.actualRub,
+                            progress.plannedRub,
+                        ),
+                        style = AppTheme.typography.caption,
+                    )
+                }
+                FinPetProgressIndicator(
+                    progress = progress.progress,
+                    color = color,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("plan_progress_${progress.category.code}"),
+                )
+                Text(progress.tone.label(), style = AppTheme.typography.caption, color = color)
+            }
         }
     }
+}
+
+private fun PlanCategory.artwork(): Int = when (this) {
+    PlanCategory.MANDATORY -> R.drawable.planning_icon_mandatory
+    PlanCategory.WANTS -> R.drawable.planning_icon_wants
+    PlanCategory.SAVINGS -> R.drawable.planning_icon_savings
 }
 
 @Composable
