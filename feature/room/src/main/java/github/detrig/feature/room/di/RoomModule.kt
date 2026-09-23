@@ -14,6 +14,7 @@ import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.interactor.ResolveRoomZoneAccessInteractor
 import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
 import github.detrig.feature.room.domain.interactor.LoadActiveSavingsGoalInteractor
+import github.detrig.feature.room.domain.interactor.ReconcileSavingsLearningInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
@@ -49,6 +50,7 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     private val saveWeeklyPlan by lazy { SaveWeeklyPlanInteractor(repository, weeklyPlanLearning) }
     private val openSavings by lazy { OpenSavingsInteractor(dependencies.savingsApi()) }
     private val loadActiveSavingsGoal by lazy { LoadActiveSavingsGoalInteractor(dependencies.savingsApi()) }
+    private val reconcileSavingsLearning by lazy { ReconcileSavingsLearningInteractor(dependencies.savingsApi()) }
     private val saveZoneAsGoal by lazy { SaveZoneAsSavingsGoalInteractor(repository, dependencies.savingsApi()) }
     private val loadParentHelp by lazy { LoadParentHelpInteractor(repository) }
     private val requestParentHelp by lazy { RequestParentHelpInteractor(repository) }
@@ -56,7 +58,7 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
 
     override fun getRoomViewModel() = RoomViewModel(
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
-        loadActiveSavingsGoal, loadParentHelp, requestParentHelp, endWeekEarlyWithParentHelp,
-        minimumProductPriceRub, router, positions, onboarding,
+        loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
+        endWeekEarlyWithParentHelp, minimumProductPriceRub, router, positions, onboarding,
     )
 }

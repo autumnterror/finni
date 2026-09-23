@@ -8,6 +8,7 @@ import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.savings.domain.CreateSavingsGoalInteractor
 import github.detrig.feature.savings.domain.TransferFromSavingsInteractor
 import github.detrig.feature.savings.domain.TransferToSavingsInteractor
+import github.detrig.feature.savings.domain.SavingsLearningInteractor
 import github.detrig.feature.savings.navigation.SavingsRoute
 import github.detrig.feature.savings.navigation.SavingsRouter
 import github.detrig.feature.savings.presentation.SavingsScreen
@@ -20,6 +21,7 @@ internal class SavingsApiImpl(
     private val economy: EconomyApi,
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
+    private val learning: SavingsLearningInteractor,
     private val petApi: PetApi,
     private val roomBackdrop: SavingsRoomBackdrop,
 ) : SavingsApi {
@@ -39,6 +41,7 @@ internal class SavingsApiImpl(
     override suspend fun createGoal(draft: SavingsGoalDraft): SavingsGoal = createGoal(draft)
     override suspend fun getActiveGoalProgress(): SavingsGoalProgress? =
         economy.getActiveGoal()?.let { economy.getGoalProgress(it.id) }
+    override suspend fun reconcileLearning() = learning.reconcile()
 
     override suspend fun transferToActiveGoal(operationId: String, amountRub: Long): SavingsTransferResult {
         val goal = economy.getActiveGoal() ?: return SavingsTransferResult.NoActiveGoal

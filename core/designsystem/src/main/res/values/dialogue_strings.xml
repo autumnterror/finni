@@ -4,4 +4,6 @@
     <string name="dialogue_tap_next">Коснись экрана, чтобы продолжить</string>
     <string name="dialogue_tap_finish">Коснись экрана, чтобы закрыть</string>
     <string name="dialogue_progress">%1$d/%2$d</string>
+    <string name="achievement_banner_title">ДОСТИЖЕНИЕ ОТКРЫТО!</string>
+    <string name="achievement_banner_close">Закрыть сообщение о достижении</string>
 </resources>

@@ -73,6 +73,7 @@ internal fun HouseScene(
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier) -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
+    petLookingAround: Boolean = false,
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
     val appMotion = AppTheme.motion
@@ -278,7 +279,7 @@ internal fun HouseScene(
                         petContent(
                             petModifier(
                                 unitDp, unitPx, heightPx, petAnchorX, petBaselineFraction ?: 0.742f,
-                                petZIndex, motion, active,
+                                petZIndex, motion, active, petLookingAround,
                             ),
                         )
 
@@ -328,7 +329,7 @@ internal fun HouseScene(
                         petContent(
                             petModifier(
                                 unitDp, unitPx, heightPx, null, HouseLayout.PET_FLOOR_BASELINE,
-                                petZIndex, motion, active,
+                                petZIndex, motion, active, petLookingAround,
                             ),
                         )
                         // The groceries rest on the tabletop behind a pet walking
@@ -368,6 +369,7 @@ private fun petModifier(
     zIndex: Float,
     motion: HouseMotionState,
     active: Boolean,
+    petLookingAround: Boolean,
 ): Modifier = Modifier.offset {
     val petX = anchorX ?: motion.petX
     IntOffset(
@@ -375,7 +377,7 @@ private fun petModifier(
         (baseline * heightPx - HouseLayout.PET_WIDTH * unitPx).roundToInt(),
     )
 }.size(unitDp * HouseLayout.PET_WIDTH).zIndex(zIndex).graphicsLayer {
-    scaleX = if (motion.facingRight) 1f else -1f
+    scaleX = if (motion.facingRight == petLookingAround) -1f else 1f
     val step = if (active && motion.isWalking) sin(motion.walkPhase * PI * 2).toFloat() else 0f
     translationY = -kotlin.math.abs(step) * size.height * 0.035f
     rotationZ = step * 2f

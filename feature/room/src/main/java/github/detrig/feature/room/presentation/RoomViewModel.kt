@@ -10,6 +10,7 @@ import github.detrig.feature.room.domain.interactor.AssessWeeklyPlanInteractor
 import github.detrig.feature.room.domain.interactor.WeeklyPlanLearningInteractor
 import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
 import github.detrig.feature.room.domain.interactor.LoadActiveSavingsGoalInteractor
+import github.detrig.feature.room.domain.interactor.ReconcileSavingsLearningInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
@@ -42,6 +43,7 @@ internal class RoomViewModel(
     private val openSavings: OpenSavingsInteractor,
     private val saveZoneGoal: SaveZoneAsSavingsGoalInteractor,
     private val loadActiveSavingsGoal: LoadActiveSavingsGoalInteractor,
+    private val reconcileSavingsLearning: ReconcileSavingsLearningInteractor,
     private val loadParentHelpInteractor: LoadParentHelpInteractor,
     private val requestParentHelpInteractor: RequestParentHelpInteractor,
     private val endWeekEarlyWithParentHelp: EndWeekEarlyWithParentHelpInteractor,
@@ -57,7 +59,6 @@ internal class RoomViewModel(
     private var parentHelpJob: Job? = null
     private var lowBalanceJob: Job? = null
     private var onboardingRefreshJob: Job? = null
-    private var achievementBannerJob: Job? = null
     private val reconciledPlanWeeks = mutableSetOf<Long>()
     private var reconcilingPlanWeek: Long? = null
     // Read this small preference before the first composition of HouseScene. Loading it
@@ -73,7 +74,6 @@ internal class RoomViewModel(
     }
 
     private companion object {
-        const val ACHIEVEMENT_BANNER_DURATION_MS = 5_000L
         const val DEFAULT_SUGGESTED_GOAL_ZONE_ID = "fishing"
         const val ROOM_GOAL_ID_PREFIX = "room-zone:"
     }
@@ -106,7 +106,10 @@ internal class RoomViewModel(
                 FirstRunOnboardingStep.MONEY_EXPLANATION,
             )
             is RoomViewEvent.FirstRunDepositSelected -> selectFirstDeposit(viewEvent.depositNow)
-            RoomViewEvent.Resumed -> refreshFirstRunOnboarding()
+            RoomViewEvent.Resumed -> {
+                refreshFirstRunOnboarding()
+            }
+            RoomViewEvent.Paused -> Unit
             RoomViewEvent.SavePlanClicked -> savePlan()
             RoomViewEvent.PlanTutorialNext -> advancePlanTutorial()
             RoomViewEvent.PlanDialogueFinished -> closePlanDialogue()
@@ -119,7 +122,6 @@ internal class RoomViewModel(
             RoomViewEvent.CloseAchievements -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(isAchievementsVisible = false))
             }
-            RoomViewEvent.AchievementBannerDismissed -> dismissAchievementBanner()
             RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(isPlanSummaryVisible = false))
             }
@@ -175,6 +177,7 @@ internal class RoomViewModel(
             ) {
                 persistOnboardingStep(FirstRunOnboardingStep.COMPLETED)
             }
+            reconcileSavingsLearning()
             combine(
                 observeZones(),
                 weeklyPlanLearning.observeAchievements(),
@@ -228,8 +231,6 @@ internal class RoomViewModel(
                                 )
                             },
                             isAchievementsVisible = current?.isAchievementsVisible ?: false,
-                            achievementBanner = current?.achievementBanner,
-                            pendingAchievementBanners = current?.pendingAchievementBanners.orEmpty(),
                             parentHelpDialog = current?.parentHelpDialog,
                             isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
                             allowanceNotice = current?.allowanceNotice,
@@ -268,9 +269,6 @@ internal class RoomViewModel(
         nullableState<RoomViewState.Content>()?.let { content ->
             updateState(content.copy(onboarding = onboardingUiState()))
         }
-        if (step == FirstRunOnboardingStep.COMPLETED) {
-            promoteNextAchievementBanner()
-        }
     }
 
     private fun continueFirstRunOnboarding() {
@@ -282,8 +280,12 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.PLAN_TRANSITION -> startFirstPlan()
             FirstRunOnboardingStep.PLAN_SAVED -> transitionOnboarding(FirstRunOnboardingStep.GAME_DISCOVERY)
             FirstRunOnboardingStep.GAME_DISCOVERY ->
+                transitionOnboarding(FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS)
+            FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS ->
                 transitionOnboarding(FirstRunOnboardingStep.GAME_SELECTION)
+            FirstRunOnboardingStep.GAME_SELECTED -> transitionOnboarding(FirstRunOnboardingStep.PIGGY_BANK)
             FirstRunOnboardingStep.PIGGY_BANK -> transitionOnboarding(FirstRunOnboardingStep.PIGGY_TAP)
+            FirstRunOnboardingStep.PIGGY_TAP -> transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_PIGGY)
             FirstRunOnboardingStep.GOAL_CREATED -> transitionOnboarding(
                 if ((onboardingGoal?.savedRub ?: 0) > 0) {
                     FirstRunOnboardingStep.DEPOSIT_DONE
@@ -299,7 +301,7 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.FIRST_MONEY,
             FirstRunOnboardingStep.PLAN,
             FirstRunOnboardingStep.GAME_SELECTION,
-            FirstRunOnboardingStep.PIGGY_TAP,
+            FirstRunOnboardingStep.WAITING_FOR_PIGGY,
             FirstRunOnboardingStep.WAITING_FOR_GOAL,
             FirstRunOnboardingStep.FIRST_DEPOSIT,
             FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
@@ -324,7 +326,7 @@ internal class RoomViewModel(
     }
 
     private fun openPiggyBank() {
-        if (onboardingStep == FirstRunOnboardingStep.PIGGY_TAP) {
+        if (onboardingStep == FirstRunOnboardingStep.WAITING_FOR_PIGGY) {
             transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_GOAL)
             val suggestedZoneId = onboardingSuggestedGoalZoneId ?: DEFAULT_SUGGESTED_GOAL_ZONE_ID
             openSavings(
@@ -362,7 +364,7 @@ internal class RoomViewModel(
             onboardingGoal = goal
             when (onboardingStep) {
                 FirstRunOnboardingStep.WAITING_FOR_GOAL -> transitionOnboarding(
-                    if (goal == null) FirstRunOnboardingStep.PIGGY_TAP
+                    if (goal == null) FirstRunOnboardingStep.WAITING_FOR_PIGGY
                     else FirstRunOnboardingStep.COMPLETED,
                 )
                 FirstRunOnboardingStep.WAITING_FOR_DEPOSIT -> transitionOnboarding(
@@ -405,7 +407,7 @@ internal class RoomViewModel(
             if (zoneId !in FIRST_SAVINGS_GOAL_ZONE_IDS || zone.access !is RoomZoneAccess.Buyable) return
             onboardingSuggestedGoalZoneId = zoneId
             onboardingRepository.saveSuggestedGoalZoneId(zoneId)
-            transitionOnboarding(FirstRunOnboardingStep.PIGGY_BANK)
+            transitionOnboarding(FirstRunOnboardingStep.GAME_SELECTED)
             return
         }
         if (onboardingStep != FirstRunOnboardingStep.COMPLETED) return
@@ -558,58 +560,17 @@ internal class RoomViewModel(
     private fun advancePlanTutorial() {
         val content = nullableState<RoomViewState.Content>() ?: return
         val step = content.planTutorialStep ?: return
-        updateState(content.copy(planTutorialStep = step.nextOrNull()))
+        updateState(content.copy(planTutorialStep =
+            if (step == PlanTutorialStep.RESERVE) null else step.nextOrNull()))
     }
 
     private fun closePlanDialogue() {
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.planDialogue is PlanDialogueState.NeedsChanges) {
             updateState(content.copy(planDialogue = null))
-            persistPlan(content.copy(planDialogue = null))
             return
         }
         updateState(content.copy(planDialogue = null))
-        promoteNextAchievementBanner()
-    }
-
-    private fun promoteNextAchievementBanner() {
-        val content = nullableState<RoomViewState.Content>() ?: return
-        val nextBanner = content.achievementBanner ?: content.pendingAchievementBanners.firstOrNull()
-        val promotedBanner = content.achievementBanner == null && nextBanner != null
-        val pending = if (promotedBanner) {
-            content.pendingAchievementBanners.drop(1)
-        } else {
-            content.pendingAchievementBanners
-        }
-        updateState(content.copy(
-            achievementBanner = nextBanner,
-            pendingAchievementBanners = pending,
-        ))
-        if (promotedBanner) scheduleAchievementBannerDismissal(nextBanner.id)
-    }
-
-    private fun dismissAchievementBanner() {
-        val content = nullableState<RoomViewState.Content>() ?: return
-        achievementBannerJob?.cancel()
-        achievementBannerJob = null
-        val nextBanner = content.pendingAchievementBanners.firstOrNull()
-        updateState(content.copy(
-            achievementBanner = nextBanner,
-            pendingAchievementBanners = content.pendingAchievementBanners.drop(1),
-        ))
-        nextBanner?.let { scheduleAchievementBannerDismissal(it.id) }
-    }
-
-    private fun scheduleAchievementBannerDismissal(achievementId: String) {
-        achievementBannerJob?.cancel()
-        achievementBannerJob = launchCoroutine {
-            delay(ACHIEVEMENT_BANNER_DURATION_MS)
-            val content = nullableState<RoomViewState.Content>()
-            if (content?.achievementBanner?.id == achievementId) {
-                achievementBannerJob = null
-                dismissAchievementBanner()
-            }
-        }
     }
 
     private fun savePlan() {
@@ -654,40 +615,20 @@ internal class RoomViewModel(
             val feedback = outcome.learningFeedback
             val regularDialogue = PlanDialogueState.Saved(
                 showSuccessExplanation = feedback.showSuccessExplanation,
+                hasSavings = plan.plan.plannedRub(github.detrig.feature.planning.domain.PlanCategory.SAVINGS) > 0,
             ).takeIf { it.showSuccessExplanation }
-            val unlocked = feedback.newlyUnlocked.map { unlock ->
-                PlanAchievementFeedback(
-                    id = unlock.definition.achievementId,
-                    title = unlock.definition.childTitle,
-                    description = unlock.definition.childDescription,
-                )
-            }
             nullableState<RoomViewState.Content>()?.let { latest ->
-                val queuedBanners = latest.pendingAchievementBanners + unlocked
                 val isFirstRunPlan = onboardingStep == FirstRunOnboardingStep.PLAN
                 if (isFirstRunPlan) persistOnboardingStep(FirstRunOnboardingStep.PLAN_SAVED)
                 val dialogue = regularDialogue.takeUnless { isFirstRunPlan }
-                val visibleBanner = if (dialogue == null && latest.achievementBanner == null) {
-                    queuedBanners.firstOrNull()
-                } else {
-                    latest.achievementBanner
-                }
-                val promotedBanner = latest.achievementBanner == null && visibleBanner != null
                 updateState(latest.copy(
                     progress = latest.progress.copy(planProgress = plan, requiresPlan = false),
                     planEditor = null,
                     planTutorialStep = null,
                     planDialogue = dialogue,
                     onboarding = onboardingUiState(),
-                    achievementBanner = visibleBanner,
-                    pendingAchievementBanners = if (promotedBanner) {
-                        queuedBanners.drop(1)
-                    } else {
-                        queuedBanners
-                    },
                     isSavingPlan = false,
                 ))
-                if (promotedBanner) scheduleAchievementBannerDismissal(visibleBanner.id)
             }
         }
     }

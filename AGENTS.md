@@ -249,6 +249,7 @@ Financial reserve / free remainder  50
 
 Rules:
 - planned total must not exceed available money;
+- zero planned savings is allowed; a small or absent savings share may receive a neutral hint but does not block confirmation;
 - the plan can be edited before confirmation;
 - after confirmation it is fixed for that week;
 - the plan does **not** hard-block later actions;
@@ -461,6 +462,16 @@ MVP rules:
 The game may show an estimated time to goal if calculation is simple and transparent.
 
 Meaningful savings actions can advance achievement progress.
+
+The first-day guided path introduces the room and pocket money, then the weekly
+plan, a player-chosen locked mini-game, and finally the piggy bank. The chosen
+game is recommended as a goal, while other goals remain available. The
+piggy-bank explanation ends in the room; only the player's tap on the piggy-bank
+object opens the savings screen. The first goal requires explicit confirmation;
+the first contribution may be made now or later. Goal creation, contributions
+in separate game weeks, and reaching a goal
+are distinct learning facts. Replaying a persisted goal or financial operation
+must not duplicate achievement progress.
 
 Opening the savings screen does not advance achievement progress.
 
@@ -787,6 +798,13 @@ The public API must at minimum support idempotent action recording, observing
 unlocked achievements, observing parent progress rows, and checking/marking
 first-time explanations. A generic application-wide event bus is not required for
 MVP; direct feature contracts and coordinators are sufficient.
+
+Achievement-unlock notifications are presented by one app-level host above
+navigation, using the shared design-system banner on every screen. The banner
+appears at the top, dismisses automatically after a short delay, and can be
+closed immediately; individual features must not render competing unlock banners.
+Shared pet dialogues move below the visible banner, including when its title
+requires extra height.
 
 A committed qualifying game action must not lose its learning action after process
 death. Use the same shared Room transaction when practical, or persist a small

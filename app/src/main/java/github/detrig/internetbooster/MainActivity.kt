@@ -18,7 +18,9 @@ class MainActivity : Nav3Activity(
     @Composable
     override fun ProvideAppContent(content: @Composable () -> Unit) {
         FinPetTheme {
-            AppStartupGate(content)
+            AppStartupGate {
+                AchievementNotificationHost(content)
+            }
         }
     }
 

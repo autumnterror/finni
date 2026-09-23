@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":feature:planning"))
     implementation(project(":feature:week"))
     implementation(project(":feature:pet"))
+    implementation(project(":feature:learning"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.material3)

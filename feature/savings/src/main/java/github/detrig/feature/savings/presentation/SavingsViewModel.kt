@@ -10,6 +10,7 @@ import github.detrig.feature.savings.domain.CreateSavingsGoalInteractor
 import github.detrig.feature.savings.domain.SavingsConfiguration
 import github.detrig.feature.savings.domain.TransferFromSavingsInteractor
 import github.detrig.feature.savings.domain.TransferToSavingsInteractor
+import github.detrig.feature.savings.domain.SavingsLearningInteractor
 import github.detrig.feature.savings.navigation.SavingsRouter
 import kotlinx.coroutines.Job
 import java.util.UUID
@@ -20,6 +21,7 @@ internal class SavingsViewModel(
     private val createGoal: CreateSavingsGoalInteractor,
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
+    private val learning: SavingsLearningInteractor,
     private val router: SavingsRouter,
     firstRunOnboarding: Boolean,
     suggestedGoalId: String?,
@@ -27,7 +29,7 @@ internal class SavingsViewModel(
     SavingsViewState(
         starterGoals = configuration.starterGoals.prioritize(suggestedGoalId),
         suggestedGoalId = suggestedGoalId,
-        onboardingStep = SavingsOnboardingStep.SELECT_GOAL.takeIf { firstRunOnboarding },
+        onboardingStep = SavingsOnboardingStep.INTRODUCTION.takeIf { firstRunOnboarding },
     ),
 ) {
     private var loadingJob: Job? = null
@@ -36,8 +38,16 @@ internal class SavingsViewModel(
     override fun perform(viewEvent: SavingsViewEvent) {
         when (viewEvent) {
             SavingsViewEvent.Load -> load()
-            SavingsViewEvent.Back -> router.back()
-            is SavingsViewEvent.GoalSelected -> selectGoal(viewEvent.goal)
+            SavingsViewEvent.Back -> if (stateData.onboardingStep == null) router.back()
+            is SavingsViewEvent.GoalSelected -> {
+                if (stateData.onboardingStep == SavingsOnboardingStep.SELECT_GOAL) {
+                    updateState { copy(pendingGoal = viewEvent.goal, onboardingStep = SavingsOnboardingStep.CONFIRM_GOAL) }
+                } else if (stateData.onboardingStep == null) selectGoal(viewEvent.goal)
+            }
+            SavingsViewEvent.GoalConfirmed -> stateData.pendingGoal?.let(::selectGoal)
+            SavingsViewEvent.GoalChangeRequested -> updateState {
+                copy(pendingGoal = null, onboardingStep = SavingsOnboardingStep.SELECT_GOAL)
+            }
             is SavingsViewEvent.TransferOpened -> updateState { copy(transferDirection = viewEvent.direction, notice = null) }
             SavingsViewEvent.TransferDismissed -> if (!stateData.busy) updateState {
                 copy(
@@ -64,6 +74,7 @@ internal class SavingsViewModel(
             true
         }) {
             economy.initialize()
+            learning.reconcile()
             refreshGoal()
             economy.observeState().collect { state ->
                 updateState { copy(economy = state, loading = false) }
@@ -89,6 +100,7 @@ internal class SavingsViewModel(
                     busy = false,
                     notice = SavingsNotice.GoalSaved.takeUnless { isOnboarding },
                     onboardingStep = SavingsOnboardingStep.GOAL_CREATED.takeIf { isOnboarding },
+                    pendingGoal = null,
                 )
             }
         }
@@ -107,19 +119,30 @@ internal class SavingsViewModel(
             }
             when (result) {
                 is FinancialOperationResult.Applied,
-                is FinancialOperationResult.AlreadyApplied -> updateState {
-                    val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT
-                    copy(
-                        busy = false,
-                        transferDirection = null,
-                        notice = SavingsNotice.TransferCompleted(direction, amountRub)
-                            .takeUnless { isOnboardingDeposit },
-                        onboardingStep = if (isOnboardingDeposit) {
-                            SavingsOnboardingStep.DEPOSIT_DONE
-                        } else {
-                            onboardingStep
-                        },
-                    )
+                is FinancialOperationResult.AlreadyApplied -> {
+                    refreshGoal()
+                    val operation = when (result) {
+                        is FinancialOperationResult.Applied -> result.operation
+                        is FinancialOperationResult.AlreadyApplied -> result.operation
+                    }
+                    val reachedNow = direction == SavingsTransferDirection.DEPOSIT &&
+                        operation.before.savingsRub < goal.targetRub &&
+                        operation.after.savingsRub >= goal.targetRub
+                    updateState {
+                        val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT
+                        copy(
+                            busy = false,
+                            transferDirection = null,
+                            notice = (if (reachedNow) SavingsNotice.GoalReached(goal.title)
+                                else SavingsNotice.TransferCompleted(direction, amountRub))
+                                .takeUnless { isOnboardingDeposit },
+                            onboardingStep = if (isOnboardingDeposit) {
+                                SavingsOnboardingStep.DEPOSIT_DONE
+                            } else {
+                                onboardingStep
+                            },
+                        )
+                    }
                 }
                 is FinancialOperationResult.Rejected -> updateState {
                     val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT
@@ -170,11 +193,18 @@ internal class SavingsViewModel(
                     },
                 )
             }
-            SavingsOnboardingStep.GOAL_CREATED -> router.back()
+            SavingsOnboardingStep.GOAL_CREATED -> updateState {
+                copy(onboardingStep = if ((goal?.savedRub ?: 0) > 0) {
+                    SavingsOnboardingStep.DEPOSIT_DONE
+                } else {
+                    SavingsOnboardingStep.FIRST_DEPOSIT
+                })
+            }
             SavingsOnboardingStep.DEPOSIT_DONE,
             SavingsOnboardingStep.DEPOSIT_SKIPPED,
             -> router.back()
             SavingsOnboardingStep.SELECT_GOAL,
+            SavingsOnboardingStep.CONFIRM_GOAL,
             SavingsOnboardingStep.FIRST_DEPOSIT,
             SavingsOnboardingStep.WAITING_FOR_DEPOSIT,
             null,

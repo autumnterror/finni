@@ -1,12 +1,14 @@
 package github.detrig.designsystem.component
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -36,14 +38,17 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -72,6 +77,9 @@ data class FinPetDialogueAction(
     val label: String,
     val enabled: Boolean = true,
 )
+
+/** Отступ для диалогов, когда поверх навигации показано верхнее уведомление. */
+val LocalFinPetDialogueTopInset = compositionLocalOf { 0.dp }
 
 /** Общая карточка реплик. Источник текста, портрета и действий задаёт вызывающая фича. */
 @Composable
@@ -106,6 +114,7 @@ fun FinPetDialogueDialog(
     val tapHint = stringResource(
         if (pageIndex < lastIndex) R.string.dialogue_tap_next else R.string.dialogue_tap_finish,
     )
+    val overlayTopInset = LocalFinPetDialogueTopInset.current
 
     Popup(
         alignment = Alignment.TopCenter,
@@ -143,7 +152,7 @@ fun FinPetDialogueDialog(
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(
                         start = AppTheme.spacing.md,
-                        top = AppTheme.spacing.xl + topInset,
+                        top = maxOf(AppTheme.spacing.xl, overlayTopInset) + topInset,
                         end = AppTheme.spacing.md,
                         bottom = AppTheme.spacing.xl,
                     )
@@ -218,7 +227,7 @@ private fun DialogueBubble(
                         end = AppTheme.spacing.lg,
                         bottom = DIALOGUE_TAIL_CONTENT_PADDING,
                     ),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -312,15 +321,24 @@ private fun DialogueActions(
     actions: List<FinPetDialogueAction>,
     onActionSelected: (FinPetDialogueAction) -> Unit,
 ) {
-    val style = FinPetButtonDefaults.dialogueActionStyle()
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val style = FinPetButtonDefaults.dialogueActionStyle().copy(
+        minHeight = AppTheme.sizes.minimumTouchTarget,
+        textStyle = AppTheme.typography.bodyStrong,
+        contentPadding = PaddingValues(
+            horizontal = AppTheme.spacing.sm,
+            vertical = AppTheme.spacing.xs,
+        ),
+    )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val decorationSize = maxWidth * DIALOGUE_ACTION_DECORATION_FRACTION
+        DialogueActionRays(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(decorationSize),
+        )
         Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            modifier = Modifier.fillMaxWidth(DIALOGUE_ACTION_WIDTH_FRACTION),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
         ) {
             actions.forEach { action ->
                 DialogueActionButton(
@@ -333,7 +351,23 @@ private fun DialogueActions(
                 )
             }
         }
-        DialoguePaw(modifier = Modifier.size(DIALOGUE_ACTION_PAW_SIZE))
+        DialoguePaw(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(decorationSize),
+        )
+    }
+}
+
+@Composable
+private fun DialogueActionRays(modifier: Modifier = Modifier) {
+    val color = AppTheme.colors.currencyAccent
+    Canvas(modifier) {
+        val stroke = 5.dp.toPx()
+        drawLine(color, Offset(size.width * 0.12f, size.height * 0.16f),
+            Offset(size.width * 0.60f, size.height * 0.45f), stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.06f, size.height * 0.78f),
+            Offset(size.width * 0.58f, size.height * 0.66f), stroke, cap = StrokeCap.Round)
     }
 }
 
@@ -448,7 +482,8 @@ private val MAX_PORTRAIT_SIZE = 112.dp
 private val DIALOGUE_TAIL_CONTENT_PADDING = 42.dp
 private val DIALOGUE_HEART_TEXT_INSET = 28.dp
 private val DIALOGUE_HEART_SIZE = 24.dp
-private val DIALOGUE_ACTION_PAW_SIZE = 42.dp
+private const val DIALOGUE_ACTION_WIDTH_FRACTION = 0.62f
+private const val DIALOGUE_ACTION_DECORATION_FRACTION = 0.15f
 
 private data class DialoguePreviewState(
     val text: String,

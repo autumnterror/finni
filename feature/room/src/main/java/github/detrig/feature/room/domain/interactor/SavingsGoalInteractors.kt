@@ -15,6 +15,10 @@ internal class LoadActiveSavingsGoalInteractor(private val savings: SavingsApi) 
     suspend operator fun invoke() = savings.getActiveGoalProgress()
 }
 
+internal class ReconcileSavingsLearningInteractor(private val savings: SavingsApi) {
+    suspend operator fun invoke() = savings.reconcileLearning()
+}
+
 internal class SaveZoneAsSavingsGoalInteractor(
     private val repository: RoomRepository,
     private val savings: SavingsApi,
