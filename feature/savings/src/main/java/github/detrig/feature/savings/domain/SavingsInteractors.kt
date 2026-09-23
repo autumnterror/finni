@@ -5,7 +5,7 @@ import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.planning.api.PlanningApi
-import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PlanActualOperation
 import github.detrig.feature.savings.api.SavingsGoalDraft
 import github.detrig.feature.week.api.WeekApi
 import kotlinx.coroutines.flow.first
@@ -31,7 +31,13 @@ internal class TransferToSavingsInteractor(
             week.initialize()
             val currentWeek = week.observeState().first()
             if (planning.getPlanProgress(currentWeek.weekNumber) != null) {
-                planning.recordActual(operationId, currentWeek.weekNumber, PlanCategory.SAVINGS, amountRub)
+                planning.recordActual(
+                    PlanActualOperation.SavingsContribution(
+                        operationId = operationId,
+                        weekNumber = currentWeek.weekNumber,
+                        amountRub = amountRub,
+                    ),
+                )
             }
         }
         return result

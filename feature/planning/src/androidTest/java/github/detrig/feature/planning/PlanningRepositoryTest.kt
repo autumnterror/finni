@@ -34,12 +34,43 @@ class PlanningRepositoryTest {
             assertTrue(saved is SavePlanResult.Saved)
             assertTrue(repository.savePlan(2, 1_200, PlanPercentages(20, 40, 40)) is SavePlanResult.AlreadySaved)
             assertEquals(RecordActualResult.Recorded,
-                repository.recordActual("purchase:food:1", 2, PlanCategory.MANDATORY, 100))
+                repository.recordActual(PlanActualOperation.Payment(
+                    operationId = "purchase:food:1",
+                    weekNumber = 2,
+                    amountRub = 100,
+                    classification = PaymentClassification.MANDATORY,
+                )))
             assertEquals(RecordActualResult.AlreadyRecorded,
-                repository.recordActual("purchase:food:1", 2, PlanCategory.MANDATORY, 100))
+                repository.recordActual(PlanActualOperation.Payment(
+                    operationId = "purchase:food:1",
+                    weekNumber = 2,
+                    amountRub = 100,
+                    classification = PaymentClassification.MANDATORY,
+                )))
             assertEquals(RecordActualResult.OperationIdConflict,
-                repository.recordActual("purchase:food:1", 2, PlanCategory.WANTS, 100))
-            assertEquals(100L, repository.getPlanProgress(2)!!.category(PlanCategory.MANDATORY).actualRub)
+                repository.recordActual(PlanActualOperation.Payment(
+                    operationId = "purchase:food:1",
+                    weekNumber = 2,
+                    amountRub = 100,
+                    classification = PaymentClassification.OPTIONAL,
+                )))
+            assertEquals(RecordActualResult.Recorded,
+                repository.recordActual(PlanActualOperation.Payment(
+                    operationId = "purchase:minigame:1",
+                    weekNumber = 2,
+                    amountRub = 75,
+                    classification = PaymentClassification.OPTIONAL,
+                )))
+            assertEquals(RecordActualResult.Recorded,
+                repository.recordActual(PlanActualOperation.SavingsContribution(
+                    operationId = "savings:deposit:1",
+                    weekNumber = 2,
+                    amountRub = 50,
+                )))
+            val progress = requireNotNull(repository.getPlanProgress(2))
+            assertEquals(100L, progress.category(PlanCategory.MANDATORY).actualRub)
+            assertEquals(75L, progress.category(PlanCategory.WANTS).actualRub)
+            assertEquals(50L, progress.category(PlanCategory.SAVINGS).actualRub)
         } finally {
             database.close()
         }

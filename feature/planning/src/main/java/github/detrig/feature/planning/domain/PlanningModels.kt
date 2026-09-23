@@ -6,6 +6,45 @@ enum class PlanCategory(val code: String) {
     SAVINGS("savings"),
 }
 
+/** Classification of a payment before it is included in the weekly plan actuals. */
+enum class PaymentClassification {
+    MANDATORY,
+    OPTIONAL,
+}
+
+/**
+ * A committed financial operation that changes the actual result of a weekly plan.
+ * Payments and savings contributions are intentionally separate: putting money into
+ * the piggy bank is not an expense, but it still fulfils the savings part of the plan.
+ */
+sealed interface PlanActualOperation {
+    val operationId: String
+    val weekNumber: Long
+    val amountRub: Long
+
+    data class Payment(
+        override val operationId: String,
+        override val weekNumber: Long,
+        override val amountRub: Long,
+        val classification: PaymentClassification,
+    ) : PlanActualOperation
+
+    data class SavingsContribution(
+        override val operationId: String,
+        override val weekNumber: Long,
+        override val amountRub: Long,
+    ) : PlanActualOperation
+
+    val planCategory: PlanCategory
+        get() = when (this) {
+            is Payment -> when (classification) {
+                PaymentClassification.MANDATORY -> PlanCategory.MANDATORY
+                PaymentClassification.OPTIONAL -> PlanCategory.WANTS
+            }
+            is SavingsContribution -> PlanCategory.SAVINGS
+        }
+}
+
 data class PlanPercentages(
     val mandatory: Int,
     val wants: Int,

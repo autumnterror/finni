@@ -18,7 +18,8 @@ import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.ProductQuantity
 import github.detrig.feature.inventory.api.InventoryApi
-import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PaymentClassification
+import github.detrig.feature.planning.domain.PlanActualOperation
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -57,10 +58,12 @@ internal class ShopMediator(
             val planning = planningMediator.getApi()
             if (planning.getPlanProgress(currentWeek.weekNumber) != null) {
                 planning.recordActual(
-                    operationId = operationId,
-                    weekNumber = currentWeek.weekNumber,
-                    category = PlanCategory.MANDATORY,
-                    amountRub = amountRub,
+                    PlanActualOperation.Payment(
+                        operationId = operationId,
+                        weekNumber = currentWeek.weekNumber,
+                        amountRub = amountRub,
+                        classification = PaymentClassification.MANDATORY,
+                    ),
                 )
             }
         },
