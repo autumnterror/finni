@@ -2,18 +2,13 @@ package github.detrig.feature.room.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.res.stringResource
 import github.detrig.designsystem.theme.AppTheme
-import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.component.HouseScene
 import github.detrig.feature.room.presentation.model.HouseLayout
-import github.detrig.designsystem.component.FinPetCard
-import androidx.compose.ui.platform.testTag
 import github.detrig.feature.room.presentation.component.RoomErrorState
 
 @Composable
@@ -75,6 +70,7 @@ internal fun RoomContent(
             is RoomViewState.Content -> {
                 HouseScene(
                     state.zones, state.initialPosition, active && !state.sleeping, state.buyingZoneId,
+                    nightMode = state.sleeping,
                     onZoneClick = { onEvent(RoomViewEvent.ZoneClicked(it)) },
                     onPhoneClick = onPhoneClick,
                     onFoodClick = onFoodClick,
@@ -101,11 +97,11 @@ internal fun RoomContent(
                     petContent = petContent,
                 )
                 if (state.sleeping) {
-                    FinPetCard(Modifier.align(Alignment.Center).testTag("room_sleeping")) {
-                        Text(stringResource(R.string.room_sleeping),
-                            modifier = Modifier.padding(AppTheme.spacing.lg),
-                            style = AppTheme.typography.bodyStrong)
-                    }
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(AppTheme.colors.roomBackground.copy(alpha = 0.55f)),
+                    )
                 }
             }
         }

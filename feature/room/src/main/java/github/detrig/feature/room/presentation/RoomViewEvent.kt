@@ -9,6 +9,8 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data class ZonePreviewed(val zoneId: String) : RoomViewEvent
     data object MarketClicked : RoomViewEvent
     data object BedClicked : RoomViewEvent
+    data object SleepConfirmed : RoomViewEvent
+    data object SleepPostponed : RoomViewEvent
     data object CalendarClicked : RoomViewEvent
     data object PiggyBankClicked : RoomViewEvent
     data object TestsClicked : RoomViewEvent

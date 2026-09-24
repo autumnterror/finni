@@ -74,6 +74,7 @@ internal fun RoomObjectLayers(
     drawObjectIds: Set<String>? = null,
     exposeInteractions: Boolean = true,
     rotationByObjectId: Map<String, Float> = emptyMap(),
+    nightMode: Boolean = false,
 ) {
     val resources = LocalContext.current.resources
     val density = LocalDensity.current
@@ -165,7 +166,7 @@ internal fun RoomObjectLayers(
         fun hitObject(position: Offset): String? {
             // A foreground decoration blocks objects behind it, but transparent gaps pass through.
             for (placement in orderedPlacements.asReversed()) {
-                val sprite = sprites[placement.id] ?: continue
+                val sprite = sprites[placement.spriteId(nightMode)] ?: continue
                 val base = destinations.getValue(placement.id)
                 val destination = if (pressedId == placement.id) base.scaledFromBottom(pressScale.value) else base
                 if (sprite.contains(position, destination)) {
@@ -201,7 +202,7 @@ internal fun RoomObjectLayers(
         ) {
             orderedPlacements.forEach { placement ->
                 if (drawObjectIds != null && placement.id !in drawObjectIds) return@forEach
-                val sprite = sprites[placement.id] ?: return@forEach
+                val sprite = sprites[placement.spriteId(nightMode)] ?: return@forEach
                 val destination = destinations.getValue(placement.id)
                 val factor = if (pressedId == placement.id) pressScale.value else 1f
                 scale(factor, pivot = Offset(destination.center.x, destination.bottom)) {
@@ -355,6 +356,9 @@ internal fun RoomObjectLayers(
         }
     }
 }
+
+private fun HouseObjectPlacement.spriteId(nightMode: Boolean): String =
+    if (nightMode && id == "decor_window") "decor_window_night" else id
 
 private fun Rect.scaledFromBottom(scale: Float) = Rect(
     center.x - width * scale / 2f,

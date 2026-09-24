@@ -98,6 +98,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val progress: RoomProgress,
         val buyingZoneId: String? = null,
         val savingGoalZoneId: String? = null,
+        val sleepConfirmationVisible: Boolean = false,
         val sleeping: Boolean = false,
         val planEditor: PlanEditorState? = null,
         val planTutorialStep: PlanTutorialStep? = null,

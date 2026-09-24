@@ -40,6 +40,7 @@ import github.detrig.feature.room.presentation.component.AchievementUnlockedBann
 import github.detrig.feature.room.presentation.component.AchievementsDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
+import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.designsystem.component.FinPetCard
@@ -148,6 +149,7 @@ internal fun RoomScreen(
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
+                content?.sleepConfirmationVisible != true &&
                 (onboarding == null || hasAllowedOnboardingObjects),
             previewZoneId = requestedZoneId,
             focusObjectId = activeFocusObjectId,
@@ -170,7 +172,9 @@ internal fun RoomScreen(
         ) {
             TutorialSpotlight(spotlightBounds)
         }
-        if (externalActive && content != null && content.achievementBanner == null && onboarding == null) {
+        if (externalActive && content != null && !content.sleeping &&
+            content.achievementBanner == null && onboarding == null
+        ) {
             AchievementMenuButton(
                 onClick = { viewModel.perform(RoomViewEvent.AchievementsClicked) },
                 modifier = Modifier
@@ -212,6 +216,12 @@ internal fun RoomScreen(
         }
     }
     val zone = content?.zones?.find { it.id == dialogZoneId }
+    if (content?.sleepConfirmationVisible == true && canShowDialogs) {
+        SleepConfirmationDialog(
+            onConfirm = { viewModel.perform(RoomViewEvent.SleepConfirmed) },
+            onPostpone = { viewModel.perform(RoomViewEvent.SleepPostponed) },
+        )
+    }
     if (zone?.access is RoomZoneAccess.Buyable) {
         RoomBuyDialog(zone, content.progress, content.buyingZoneId != null,
             onConfirm = { viewModel.perform(RoomViewEvent.BuyConfirmed(zone.id)) },

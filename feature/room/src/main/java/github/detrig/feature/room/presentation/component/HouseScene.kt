@@ -48,6 +48,7 @@ internal fun HouseScene(
     initialPosition: HousePosition,
     active: Boolean,
     buyingZoneId: String?,
+    nightMode: Boolean = false,
     onZoneClick: (String) -> Unit,
     onPhoneClick: () -> Unit,
     onBedClick: () -> Unit,
@@ -270,6 +271,7 @@ internal fun HouseScene(
                             placements = feedingRoomObjects,
                             drawObjectIds = ROOM_OBJECTS_BEHIND_PET,
                             exposeInteractions = false,
+                            nightMode = nightMode,
                             rotationByObjectId = mapOf("decor_chair" to FEEDING_CHAIR_ROTATION),
                         )
 
@@ -289,6 +291,7 @@ internal fun HouseScene(
                             placements = feedingRoomObjects,
                             drawObjectIds = DINING_TABLE_OBJECT,
                             exposeInteractions = false,
+                            nightMode = nightMode,
                         )
 
                         tableFoodContent(tableFoodModifier)
@@ -319,6 +322,7 @@ internal fun HouseScene(
                                     else -> onZoneClick(id)
                                 }
                             },
+                            nightMode = nightMode,
                             modifier = Modifier.fillMaxSize(),
                         )
                         petContent(

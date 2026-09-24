@@ -81,7 +81,9 @@ internal class RoomViewModel(
     override fun perform(viewEvent: RoomViewEvent) {
         when (viewEvent) {
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
-            RoomViewEvent.BedClicked -> sleep()
+            RoomViewEvent.BedClicked -> showSleepConfirmation()
+            RoomViewEvent.SleepConfirmed -> sleep()
+            RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openPiggyBank()
             RoomViewEvent.TestsClicked,
@@ -208,6 +210,7 @@ internal class RoomViewModel(
                             progress = roomData.progress,
                             buyingZoneId = current?.buyingZoneId,
                             savingGoalZoneId = current?.savingGoalZoneId,
+                            sleepConfirmationVisible = current?.sleepConfirmationVisible ?: false,
                             sleeping = current?.sleeping ?: false,
                             planEditor = editor,
                             planTutorialStep = tutorialStep,
@@ -468,12 +471,24 @@ internal class RoomViewModel(
         }
     }
 
+    private fun showSleepConfirmation() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.sleeping || content.buyingZoneId != null) return
+        updateState(content.copy(sleepConfirmationVisible = true))
+    }
+
+    private fun hideSleepConfirmation() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.sleeping) return
+        updateState(content.copy(sleepConfirmationVisible = false))
+    }
+
     private fun sleep() {
         if (sleepJob?.isActive == true) return
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping || content.buyingZoneId != null) return
         val expectedDay = content.progress.absoluteDay
-        updateState(content.copy(sleeping = true))
+        updateState(content.copy(sleepConfirmationVisible = false, sleeping = true))
         sleepJob = launchCoroutine(
             handleAction = ExceptionConsumer {
                 router.showSleepError()
