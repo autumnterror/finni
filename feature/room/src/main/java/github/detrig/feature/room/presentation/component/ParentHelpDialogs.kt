@@ -54,7 +54,6 @@ import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.AllowanceNoticeState
 import github.detrig.feature.room.presentation.ParentHelpDialogState
-import github.detrig.feature.room.presentation.ZeroBalanceHelpNoticeState
 
 @Composable
 internal fun ParentHelpDialog(
@@ -361,7 +360,7 @@ internal fun AllowanceReceiptDialog(
 }
 
 @Composable
-internal fun ZeroBalanceHelpDialog(notice: ZeroBalanceHelpNoticeState, onDismiss: () -> Unit) {
+internal fun EarlyWeekParentHelpDialog(onDismiss: () -> Unit) {
     FinPetModalDialog(
         title = stringResource(R.string.zero_balance_help_title),
         onDismissRequest = onDismiss,
@@ -383,9 +382,8 @@ internal fun ZeroBalanceHelpDialog(notice: ZeroBalanceHelpNoticeState, onDismiss
                 modifier = Modifier.padding(AppTheme.spacing.md),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             ) {
-                FinPetMoneyAmount(notice.amountRub.toString())
                 Text(
-                    stringResource(R.string.zero_balance_help_description, notice.amountRub),
+                    stringResource(R.string.zero_balance_help_description),
                     style = AppTheme.typography.body,
                 )
             }

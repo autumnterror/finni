@@ -12,6 +12,7 @@ import github.detrig.feature.week.data.WeekRepository
 import github.detrig.feature.week.data.local.WeekDao
 import github.detrig.feature.week.data.local.WeekStateEntity
 import github.detrig.feature.week.domain.EndDayResult
+import github.detrig.feature.week.domain.EarlyWeekEndResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -65,16 +66,65 @@ class WeekRepositoryTest {
         }
     }
 
-    private class FakeEconomy : EconomyApi {
+    @Test fun earlyFinishGrantsOnlyNetWeeklyAllowance() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val db = Room.inMemoryDatabaseBuilder(context, WeekTestDatabase::class.java).build()
+        try {
+            val economy = FakeEconomy(initialAvailableRub = 0).apply {
+                allowanceRepaymentRub = 120
+                activeParentHelp = ParentHelpState(
+                    offerId = "quick",
+                    receivedRub = 600,
+                    totalRepaymentRub = 720,
+                    remainingRub = 720,
+                    paymentsRemaining = 2,
+                )
+            }
+            val repository = WeekRepository(db.weekDao(), economy, RoomTransactionRunner(db))
+
+            val result = repository.endWeekEarlyWithParentHelp(
+                expectedAbsoluteDay = 1,
+                minimumRequiredBalanceRub = 25,
+            ) as EarlyWeekEndResult.Completed
+
+            assertEquals(2L, result.state.weekNumber)
+            assertEquals(1, result.state.dayOfWeek)
+            assertEquals(6, result.skippedDays)
+            assertEquals(500L, result.allowanceGrossRub)
+            assertEquals(120L, result.parentHelpRepaidRub)
+            assertEquals(380L, result.allowanceReceivedRub)
+            assertEquals(1, economy.grants)
+            assertEquals(0, economy.zeroBalanceHelpCalls)
+        } finally {
+            db.close()
+        }
+    }
+
+    private class FakeEconomy(initialAvailableRub: Long = 500) : EconomyApi {
         var grants = 0
         var fail = false
-        private val state = EconomyConfig().initialState(0)
+        var allowanceRepaymentRub = 0L
+        var zeroBalanceHelpCalls = 0
+        var activeParentHelp: ParentHelpState? = null
+        private val state = EconomyConfig().initialState(0).copy(availableRub = initialAvailableRub)
 
         override suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult {
             if (fail) error("Storage failed")
             grants++
-            return WeeklyAllowanceResult(weekNumber, 500, 0, state, false)
+            return WeeklyAllowanceResult(
+                weekNumber = weekNumber,
+                grossRub = 500,
+                debtRepaidRub = allowanceRepaymentRub,
+                state = state,
+                alreadyApplied = false,
+                parentHelpRepaidRub = allowanceRepaymentRub,
+            )
         }
+        override suspend fun provideZeroBalanceHelp(minimumRequiredBalanceRub: Long): ZeroBalanceHelpResult {
+            zeroBalanceHelpCalls++
+            return ZeroBalanceHelpResult.Granted(500, state)
+        }
+        override suspend fun getParentHelp(): ParentHelpState? = activeParentHelp
         override suspend fun initialize() = state
         override suspend fun getState() = state
         override fun observeState(): Flow<EconomyState> = flowOf(state)

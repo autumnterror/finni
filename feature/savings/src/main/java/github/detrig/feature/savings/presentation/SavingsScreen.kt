@@ -132,12 +132,17 @@ private fun SavingsContent(
                 val horizontalContentInset = maxWidth * 0.14f
                 val topContentInset = maxHeight * 0.12f
                 val bottomContentInset = maxHeight * 0.115f
+                val frameBackgroundHorizontalInset = maxWidth * 0.12f
+                val frameBackgroundTopInset = maxHeight * 0.105f
+                val frameBackgroundBottomInset = maxHeight * 0.10f
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(
-                            horizontal = 28.dp,
-                            vertical = 50.dp,
+                            start = frameBackgroundHorizontalInset,
+                            top = frameBackgroundTopInset,
+                            end = frameBackgroundHorizontalInset,
+                            bottom = frameBackgroundBottomInset,
                         )
                         .background(
                             color = AppTheme.colors.surfaceBase,

@@ -96,8 +96,8 @@ internal class RoomViewModel(
             RoomViewEvent.CloseAllowanceNotice -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(allowanceNotice = null))
             }
-            RoomViewEvent.CloseZeroBalanceHelpNotice -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(zeroBalanceHelpNotice = null))
+            RoomViewEvent.CloseEarlyWeekParentHelpNotice -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(earlyWeekParentHelpNotice = null))
             }
             RoomViewEvent.FirstRunOnboardingContinue -> continueFirstRunOnboarding()
             RoomViewEvent.FirstRunMoneyNoticeClosed -> transitionOnboarding(
@@ -228,7 +228,7 @@ internal class RoomViewModel(
                             parentHelpDialog = current?.parentHelpDialog,
                             isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
                             allowanceNotice = current?.allowanceNotice,
-                            zeroBalanceHelpNotice = current?.zeroBalanceHelpNotice,
+                            earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
                             onboarding = onboardingUiState(),
                         ),
                     )
@@ -725,7 +725,7 @@ internal class RoomViewModel(
             if (activeHelp == null) {
                 nullableState<RoomViewState.Content>()?.let { latest ->
                     if (latest.progress.balanceRub < minimumProductPriceRub &&
-                        latest.parentHelpDialog == null && latest.zeroBalanceHelpNotice == null
+                        latest.parentHelpDialog == null && latest.earlyWeekParentHelpNotice == null
                     ) {
                         updateState(latest.copy(parentHelpDialog = ParentHelpDialogState(
                             offers = loadParentHelpInteractor.offers(),
@@ -741,7 +741,7 @@ internal class RoomViewModel(
                     is EarlyWeekEndResult.Completed -> nullableState<RoomViewState.Content>()?.let { latest ->
                         updateState(latest.copy(
                             parentHelpDialog = null,
-                            zeroBalanceHelpNotice = ZeroBalanceHelpNoticeState(result.parentHelpRub),
+                            earlyWeekParentHelpNotice = EarlyWeekParentHelpNoticeState,
                             allowanceNotice = AllowanceNoticeState(
                                 grossRub = result.allowanceGrossRub,
                                 parentHelpRepaidRub = result.parentHelpRepaidRub,

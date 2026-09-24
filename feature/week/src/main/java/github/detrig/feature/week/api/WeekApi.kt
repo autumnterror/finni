@@ -12,7 +12,7 @@ interface WeekApi {
     /** expectedAbsoluteDay защищает от повтора одного и того же нажатия/запроса. */
     suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult
 
-    /** Досрочно завершает кризисную неделю и выдаёт помощь в одной общей транзакции. */
+    /** Досрочно завершает кризисную неделю и начисляет карманные деньги новой недели. */
     suspend fun endWeekEarlyWithParentHelp(
         expectedAbsoluteDay: Long,
         minimumRequiredBalanceRub: Long,

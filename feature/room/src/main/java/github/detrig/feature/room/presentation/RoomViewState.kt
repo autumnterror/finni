@@ -21,7 +21,7 @@ internal data class AllowanceNoticeState(
     val receivedRub: Long,
 )
 
-internal data class ZeroBalanceHelpNoticeState(val amountRub: Long)
+internal data object EarlyWeekParentHelpNoticeState
 
 internal data class FirstRunOnboardingState(
     val step: FirstRunOnboardingStep,
@@ -111,7 +111,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val parentHelpDialog: ParentHelpDialogState? = null,
         val isRequestingParentHelp: Boolean = false,
         val allowanceNotice: AllowanceNoticeState? = null,
-        val zeroBalanceHelpNotice: ZeroBalanceHelpNoticeState? = null,
+        val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
     ) : RoomViewState

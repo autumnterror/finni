@@ -34,7 +34,7 @@ import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
 import github.detrig.feature.room.presentation.component.ParentHelpDialog
 import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
-import github.detrig.feature.room.presentation.component.ZeroBalanceHelpDialog
+import github.detrig.feature.room.presentation.component.EarlyWeekParentHelpDialog
 import github.detrig.feature.room.presentation.component.AchievementMenuButton
 import github.detrig.feature.room.presentation.component.AchievementUnlockedBanner
 import github.detrig.feature.room.presentation.component.AchievementsDialog
@@ -147,7 +147,7 @@ internal fun RoomScreen(
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
-                content?.zeroBalanceHelpNotice == null && content?.planDialogue == null &&
+                content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 (onboarding == null || hasAllowedOnboardingObjects),
             previewZoneId = requestedZoneId,
             focusObjectId = activeFocusObjectId,
@@ -235,10 +235,10 @@ internal fun RoomScreen(
             onDismiss = { viewModel.perform(RoomViewEvent.FirstRunMoneyNoticeClosed) },
         )
     }
-    content?.zeroBalanceHelpNotice?.let { notice ->
-        ZeroBalanceHelpDialog(notice) { viewModel.perform(RoomViewEvent.CloseZeroBalanceHelpNotice) }
+    if (content?.earlyWeekParentHelpNotice != null) {
+        EarlyWeekParentHelpDialog { viewModel.perform(RoomViewEvent.CloseEarlyWeekParentHelpNotice) }
     }
-    content?.parentHelpDialog?.takeIf { content.zeroBalanceHelpNotice == null }?.let { dialog ->
+    content?.parentHelpDialog?.takeIf { content.earlyWeekParentHelpNotice == null }?.let { dialog ->
         ParentHelpDialog(
             state = dialog,
             isRequesting = content.isRequestingParentHelp,
@@ -248,7 +248,7 @@ internal fun RoomScreen(
     }
     content?.planEditor?.takeIf {
         canShowDialogs &&
-        content.allowanceNotice == null && content.zeroBalanceHelpNotice == null
+        content.allowanceNotice == null && content.earlyWeekParentHelpNotice == null
     }?.let { editor ->
         WeeklyPlanEditorDialog(
             editor = editor,

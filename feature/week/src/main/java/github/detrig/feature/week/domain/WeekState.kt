@@ -29,7 +29,6 @@ sealed interface EarlyWeekEndResult {
     data class Completed(
         override val state: WeekState,
         val skippedDays: Int,
-        val parentHelpRub: Long,
         val allowanceReceivedRub: Long,
         val allowanceGrossRub: Long,
         val parentHelpRepaidRub: Long,
