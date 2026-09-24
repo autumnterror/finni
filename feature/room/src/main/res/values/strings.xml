@@ -91,8 +91,17 @@
     <string name="plan_save">Сохранить план</string>
     <string name="plan_saving">Сохраняем…</string>
     <string name="plan_progress_title">План · неделя %1$d</string>
+    <string name="plan_result_title">Итоги недели %1$d</string>
     <string name="plan_progress_description">Серый фон — запланированная сумма. Цветная часть — уже потрачено или отложено.</string>
     <string name="plan_progress_reserve">Оставлено в запасе: %1$d ₽</string>
+    <string name="plan_result_reserve">Финансовый запас: %1$d ₽ из %2$d ₽</string>
+    <string name="plan_result_all_matched">Ты отлично справился! Получилось придерживаться плана во всех пунктах. Продолжай так же на следующей неделе.</string>
+    <string name="plan_result_partially_matched">Многое получилось! На следующей неделе обрати внимание на: %1$s.</string>
+    <string name="plan_result_try_again">Эта неделя помогла лучше понять расходы. Попробуй составить план ещё раз — в следующий раз будет легче.</string>
+    <string name="plan_result_matched">Получилось по плану</string>
+    <string name="plan_result_needs_attention">Можно учесть в следующем плане</string>
+    <string name="plan_result_reserve_name">финансовый запас</string>
+    <string name="plan_result_continue">Продолжить</string>
     <string name="plan_actual_of_planned">%1$d ₽ из %2$d ₽</string>
     <string name="plan_progress_on_track">Идём по плану</string>
     <string name="plan_progress_warning">Чуть больше плана</string>

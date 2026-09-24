@@ -123,6 +123,7 @@ internal class RoomViewModel(
             RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(isPlanSummaryVisible = false))
             }
+            RoomViewEvent.CloseWeekResult -> closeWeekResult()
             is RoomViewEvent.PlanPercentChanged -> updatePlanPercent(viewEvent.category, viewEvent.percent)
             is RoomViewEvent.SavePosition -> {
                 savedPosition = viewEvent.position
@@ -217,6 +218,7 @@ internal class RoomViewModel(
                             planDialogue = current?.planDialogue,
                             isSavingPlan = current?.isSavingPlan ?: false,
                             isPlanSummaryVisible = current?.isPlanSummaryVisible ?: false,
+                            weekResult = current?.weekResult,
                             achievements = achievements.map { achievement ->
                                 PlanAchievementFeedback(
                                     id = achievement.id,
@@ -497,18 +499,51 @@ internal class RoomViewModel(
         ) {
             try {
                 delay(800)
-                val result = endDay(expectedDay)
-                if (result is EndDayResult.Advanced && result.allowanceGrossRub > 0) {
+                if (content.progress.dayOfWeek == 7 && content.progress.planProgress != null) {
                     nullableState<RoomViewState.Content>()?.let { latest ->
-                        updateState(latest.copy(allowanceNotice = AllowanceNoticeState(
-                            grossRub = result.allowanceGrossRub,
-                            parentHelpRepaidRub = result.parentHelpRepaidRub,
-                            receivedRub = result.allowanceReceivedRub,
-                        )))
+                        updateState(latest.copy(
+                            sleeping = false,
+                            weekResult = content.progress.planProgress,
+                        ))
                     }
+                    return@launchCoroutine
                 }
+                advanceDay(expectedDay)
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
+            }
+        }
+    }
+
+    private fun closeWeekResult() {
+        if (sleepJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.weekResult == null) return
+        val expectedDay = content.progress.absoluteDay
+        updateState(content.copy(weekResult = null, sleeping = true))
+        sleepJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                router.showSleepError()
+                true
+            },
+        ) {
+            try {
+                advanceDay(expectedDay)
+            } finally {
+                nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
+            }
+        }
+    }
+
+    private suspend fun advanceDay(expectedDay: Long) {
+        val result = endDay(expectedDay)
+        if (result is EndDayResult.Advanced && result.allowanceGrossRub > 0) {
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(allowanceNotice = AllowanceNoticeState(
+                    grossRub = result.allowanceGrossRub,
+                    parentHelpRepaidRub = result.parentHelpRepaidRub,
+                    receivedRub = result.allowanceReceivedRub,
+                )))
             }
         }
     }

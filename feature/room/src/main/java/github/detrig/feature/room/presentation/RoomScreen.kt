@@ -147,6 +147,7 @@ internal fun RoomScreen(
                 (focused || hasAllowedOnboardingObjects) && dialogZoneId == null &&
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
+                content?.weekResult == null &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 content?.sleepConfirmationVisible != true &&
@@ -229,7 +230,7 @@ internal fun RoomScreen(
             onSaveAsGoal = { title -> viewModel.perform(RoomViewEvent.SaveZoneAsGoal(zone.id, title)) },
             onDismiss = { dialogZoneId = null })
     }
-    content?.allowanceNotice?.let { notice ->
+    content?.allowanceNotice?.takeIf { content.weekResult == null }?.let { notice ->
         AllowanceReceiptDialog(notice) { viewModel.perform(RoomViewEvent.CloseAllowanceNotice) }
     }
     onboarding?.takeIf {
@@ -257,8 +258,9 @@ internal fun RoomScreen(
         )
     }
     content?.planEditor?.takeIf {
-        canShowDialogs &&
-        content.allowanceNotice == null && content.earlyWeekParentHelpNotice == null
+        canShowDialogs && !content.sleeping &&
+        content.allowanceNotice == null && content.earlyWeekParentHelpNotice == null &&
+            content.weekResult == null
     }?.let { editor ->
         WeeklyPlanEditorDialog(
             editor = editor,
@@ -281,6 +283,13 @@ internal fun RoomScreen(
     }
     content?.progress?.planProgress?.takeIf { content.isPlanSummaryVisible }?.let { plan ->
         WeeklyPlanProgressDialog(plan) { viewModel.perform(RoomViewEvent.ClosePlanSummary) }
+    }
+    content?.weekResult?.takeIf { canShowDialogs }?.let { result ->
+        WeeklyPlanProgressDialog(
+            progress = result,
+            isWeekResult = true,
+            onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
+        )
     }
     content?.takeIf { it.isAchievementsVisible && canShowDialogs }?.let {
         AchievementsDialog(

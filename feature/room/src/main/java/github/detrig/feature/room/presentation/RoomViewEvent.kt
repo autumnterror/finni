@@ -34,6 +34,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object CloseAchievements : RoomViewEvent
     data object AchievementBannerDismissed : RoomViewEvent
     data object ClosePlanSummary : RoomViewEvent
+    data object CloseWeekResult : RoomViewEvent
     data class PlanPercentChanged(val category: PlanCategory, val percent: Int) : RoomViewEvent
     data object Load : RoomViewEvent
     data object RetryClicked : RoomViewEvent

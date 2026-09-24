@@ -8,6 +8,7 @@ import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
+import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 
 internal data class ParentHelpDialogState(
@@ -105,6 +106,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val planDialogue: PlanDialogueState? = null,
         val isSavingPlan: Boolean = false,
         val isPlanSummaryVisible: Boolean = false,
+        val weekResult: WeeklyPlanProgress? = null,
         val achievements: List<PlanAchievementFeedback> = emptyList(),
         val isAchievementsVisible: Boolean = false,
         val achievementBanner: PlanAchievementFeedback? = null,
