@@ -215,7 +215,7 @@ internal class ShopMediator(
         // Independent knobs kept here so every random learning event can be forced during debugging.
         const val PROMOTION_EVENT_PROBABILITY = 0.25
         const val IMPULSE_WISH_EVENT_PROBABILITY = 0.25
-        const val FIRST_PROMOTION_DELAY_DAYS = 0L
+        const val FIRST_PROMOTION_DELAY_DAYS = 4L
         const val RECEIPT_CHECK_EVENT_PROBABILITY = 0.0
         const val PROMOTION_DISCOUNT_PERCENT = 30
         const val BUY_TWO_GET_ONE_PROMOTION_PROBABILITY = 0.5
