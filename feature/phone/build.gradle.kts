@@ -28,6 +28,8 @@ dependencies {
     implementation(project(":feature:pet"))
     implementation(project(":feature:shop"))
     implementation(project(":feature:economy"))
+    implementation(project(":feature:week"))
+    implementation(project(":feature:learning"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.compose.foundation)
@@ -40,5 +42,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.kotlinx.serialization.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.core)
     debugImplementation(libs.androidx.ui.tooling)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

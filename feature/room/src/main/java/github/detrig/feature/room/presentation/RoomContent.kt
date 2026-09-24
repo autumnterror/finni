@@ -20,6 +20,7 @@ internal fun RoomContent(
     petLookingAround: Boolean = false,
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
+    phoneUnreadCount: Int = 0,
     onFoodClick: () -> Unit = {},
     onFeedingClick: () -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
@@ -66,6 +67,7 @@ internal fun RoomContent(
                 petContent = petContent,
                 tableFoodContent = tableFoodContent,
                 petLookingAround = petLookingAround,
+                phoneUnreadCount = phoneUnreadCount,
             )
             RoomViewState.Error -> RoomErrorState(
                 onRetry = { onEvent(RoomViewEvent.RetryClicked) }, modifier = Modifier.fillMaxSize())
@@ -98,6 +100,7 @@ internal fun RoomContent(
                     modifier = Modifier.fillMaxSize(),
                     petContent = petContent,
                     petLookingAround = petLookingAround,
+                    phoneUnreadCount = phoneUnreadCount,
                 )
                 if (state.sleeping) {
                     Box(

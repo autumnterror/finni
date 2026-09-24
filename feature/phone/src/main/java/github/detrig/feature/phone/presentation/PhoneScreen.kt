@@ -33,6 +33,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -61,6 +62,7 @@ import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.phone.PhoneFeature
+import github.detrig.feature.phone.api.MESSAGES_APP_ID
 import github.detrig.feature.phone.navigation.PhoneRoute
 import github.detrig.feature.phone.R
 import github.detrig.feature.shop.api.ShopApi
@@ -91,8 +93,16 @@ private const val HOME_CLOSE_GLYPH_SIZE = 54f
 @Composable
 internal fun PhoneScreen(route: PhoneRoute) {
     val component = PhoneFeature.component()
+    val messagesViewModel: MessagesViewModel = viewModel { component.messagesViewModel() }
+    val messagesState by messagesViewModel.state().observeAsState(MessagesViewState())
     var activeAppId by rememberSaveable(route) {
         mutableStateOf((route as? PhoneRoute.App)?.appId)
+    }
+    LaunchedEffect(messagesViewModel) { messagesViewModel.perform(MessagesViewEvent.Load) }
+    LaunchedEffect(activeAppId) {
+        if (activeAppId == MESSAGES_APP_ID) {
+            messagesViewModel.perform(MessagesViewEvent.AppOpened)
+        }
     }
     BackHandler(enabled = activeAppId != null) {
         activeAppId = null
@@ -111,10 +121,26 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 route = route,
                 activeAppId = activeAppId,
                 shopApi = component.shopApi,
+                messagesState = messagesState,
+                onMessagesEvent = messagesViewModel::perform,
                 onClose = { component.router.close() },
                 onBack = { activeAppId = null },
                 onOpenApp = { activeAppId = it },
             )
+            if (activeAppId == MESSAGES_APP_ID) {
+                MessagesPetDialogue(
+                    state = messagesState,
+                    portrait = { modifier ->
+                        component.petApi.Portrait(profile = petProfile, modifier = modifier)
+                    },
+                    onGuidanceDismissed = { eventId ->
+                        messagesViewModel.perform(MessagesViewEvent.GuidanceDismissed(eventId))
+                    },
+                    onFeedbackDismissed = { eventId ->
+                        messagesViewModel.perform(MessagesViewEvent.FeedbackDismissed(eventId))
+                    },
+                )
+            }
         }
     }
 }
@@ -124,6 +150,8 @@ private fun PhoneDevice(
     route: PhoneRoute,
     activeAppId: String?,
     shopApi: ShopApi,
+    messagesState: MessagesViewState,
+    onMessagesEvent: (MessagesViewEvent) -> Unit,
     onClose: () -> Unit,
     onBack: () -> Unit,
     onOpenApp: (String) -> Unit,
@@ -186,6 +214,7 @@ private fun PhoneDevice(
                 if (openAppId == null) {
                     PhoneHomeContent(
                         scale = scale,
+                        unreadMessages = messagesState.inbox.unreadCount,
                         onClose = onClose,
                         onOpenApp = onOpenApp,
                     )
@@ -194,6 +223,8 @@ private fun PhoneDevice(
                         appId = openAppId,
                         scale = scale,
                         shopApi = shopApi,
+                        messagesState = messagesState,
+                        onMessagesEvent = onMessagesEvent,
                         onBack = onBack,
                     )
                 }
@@ -288,6 +319,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStretchablePhon
 @Composable
 private fun PhoneHomeContent(
     scale: Float,
+    unreadMessages: Int,
     onClose: () -> Unit,
     onOpenApp: (String) -> Unit,
 ) {
@@ -306,12 +338,11 @@ private fun PhoneHomeContent(
         PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP),
         PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP),
         PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP),
-        PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 129f, 620f, DEBUG_APP),
+        PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 129f, 620f, MESSAGES_APP_ID),
+        PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 382f, 620f, DEBUG_APP),
     )
     apps.forEach { app ->
-        Image(
-            painter = painterResource(app.iconRes),
-            contentDescription = app.label,
+        Box(
             modifier = Modifier
                 .offset(
                     x = (app.x * scale).dp,
@@ -320,8 +351,33 @@ private fun PhoneHomeContent(
                 .size((178f * scale).dp)
                 .clickable(role = Role.Button, onClick = { onOpenApp(app.id) })
                 .semantics { this.role = Role.Button },
-            contentScale = ContentScale.Fit,
-        )
+        ) {
+            Image(
+                painter = painterResource(app.iconRes),
+                contentDescription = app.label,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+            )
+            if (app.id == MESSAGES_APP_ID && unreadMessages > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size((44f * scale).dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(AppTheme.colors.statusCritical.accent)
+                        .semantics {
+                            contentDescription = "Непрочитанных сообщений: $unreadMessages"
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = unreadMessages.coerceAtMost(9).toString(),
+                        color = AppTheme.colors.statusCritical.onContainer,
+                        style = AppTheme.typography.label,
+                    )
+                }
+            }
+        }
         PhoneText(
             text = app.label,
             x = app.x + 89f,
@@ -369,6 +425,8 @@ private fun PhoneAppContent(
     appId: String,
     scale: Float,
     shopApi: ShopApi,
+    messagesState: MessagesViewState,
+    onMessagesEvent: (MessagesViewEvent) -> Unit,
     onBack: () -> Unit,
 ) {
     val screenTop = stretchedPhoneY(SCREEN_TOP)
@@ -393,6 +451,15 @@ private fun PhoneAppContent(
                 iconRes = R.drawable.phone_icon_interior_hd,
                 scale = scale,
                 onBack = onBack,
+            )
+            MESSAGES_APP_ID -> MessagesApp(
+                state = messagesState,
+                onBack = onBack,
+                onThreadOpened = { onMessagesEvent(MessagesViewEvent.ThreadOpened(it)) },
+                onThreadClosed = { onMessagesEvent(MessagesViewEvent.ThreadClosed) },
+                onSuspiciousInteraction = { eventId, choice ->
+                    onMessagesEvent(MessagesViewEvent.SuspiciousInteraction(eventId, choice))
+                },
             )
             DEBUG_APP -> DebugMenuApp(onBack = onBack)
             else -> PhonePlaceholderApp(
@@ -679,6 +746,7 @@ private fun PhonePreview() {
             ) {
                 PhoneHomeContent(
                     scale = 360f / CANVAS_WIDTH,
+                    unreadMessages = 2,
                     onClose = {},
                     onOpenApp = {},
                 )

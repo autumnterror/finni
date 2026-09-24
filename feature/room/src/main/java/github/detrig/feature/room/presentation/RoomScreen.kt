@@ -46,6 +46,7 @@ import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetStorefrontCard
@@ -71,6 +72,10 @@ internal fun RoomScreen(
     petPortrait: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
+    phoneUnreadCount: Int = 0,
+    phoneNotificationPrompt: String? = null,
+    onPhonePromptOpen: () -> Unit = {},
+    onPhonePromptDismiss: () -> Unit = {},
     onFoodClick: () -> Unit = {},
     onFeedingClick: () -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
@@ -132,6 +137,8 @@ internal fun RoomScreen(
         viewModel.perform(if (resumed && externalActive) RoomViewEvent.Resumed else RoomViewEvent.Paused)
     }
     val hasAllowedOnboardingObjects = onboarding?.allowedObjectIds?.isNotEmpty() == true
+    val showPhoneNotificationPrompt = phoneNotificationPrompt != null && onboarding == null &&
+        content != null && !content.sleeping && canShowDialogs
     Box(
         modifier = modifier.onGloballyPositioned { coordinates ->
             roomOriginInWindow = coordinates.positionInWindow()
@@ -145,6 +152,7 @@ internal fun RoomScreen(
             petLookingAround = petLookingAround,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,
+            phoneUnreadCount = phoneUnreadCount,
             onFoodClick = onFoodClick,
             onFeedingClick = onFeedingClick,
             tableFoodContent = tableFoodContent,
@@ -156,6 +164,7 @@ internal fun RoomScreen(
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
+                !showPhoneNotificationPrompt &&
                 (onboarding == null || hasAllowedOnboardingObjects),
             previewZoneId = requestedZoneId,
             focusObjectId = activeFocusObjectId,
@@ -351,6 +360,23 @@ internal fun RoomScreen(
                 onDepositSelected = {
                     viewModel.perform(RoomViewEvent.FirstRunDepositSelected(it))
                 },
+            )
+        }
+        showPhoneNotificationPrompt -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(checkNotNull(phoneNotificationPrompt)),
+                portrait = petPortrait,
+                advanceOnTap = false,
+                actions = listOf(
+                    FinPetDialogueAction(id = "open", label = "Посмотреть"),
+                    FinPetDialogueAction(id = "later", label = "Позже"),
+                ),
+                onActionSelected = { action ->
+                    onPhonePromptDismiss()
+                    if (action.id == "open") onPhonePromptOpen()
+                },
+                onFinished = onPhonePromptDismiss,
             )
         }
     }
