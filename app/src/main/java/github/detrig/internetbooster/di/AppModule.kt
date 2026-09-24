@@ -63,6 +63,8 @@ internal class AppModuleImpl(
             weekMediator = weekMediator,
             planningMediator = planningMediator,
             inventoryApi = inventoryMediator.getApi(),
+            learningMediator = learningMediator,
+            petMediator = petMediator,
         )
     }
 

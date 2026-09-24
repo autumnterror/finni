@@ -12,6 +12,7 @@ import github.detrig.feature.learning.data.local.LearningDao
 import github.detrig.feature.learning.domain.LearningConfig
 import github.detrig.feature.learning.domain.BudgetPlanningLearning
 import github.detrig.feature.learning.domain.SavingsLearning
+import github.detrig.feature.learning.domain.PurchaseLearning
 import github.detrig.internetbooster.database.AppDatabaseModule
 
 internal class LearningMediator(
@@ -24,7 +25,9 @@ internal class LearningMediator(
                 override fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
 
                 override fun config(): LearningConfig = LearningConfig(
-                    metricRules = listOf(BudgetPlanningLearning.reasonablePlanRule()) + SavingsLearning.rules(),
+                    metricRules = listOf(BudgetPlanningLearning.reasonablePlanRule()) +
+                        SavingsLearning.rules() +
+                        PurchaseLearning.rules(),
                 )
 
                 // XP остаётся в outbox до появления ProgressionApi.

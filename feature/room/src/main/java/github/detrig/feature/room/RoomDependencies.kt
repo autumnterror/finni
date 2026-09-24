@@ -11,6 +11,7 @@ import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.savings.api.SavingsApi
 import github.detrig.feature.room.api.RoomGameLauncher
+import github.detrig.feature.room.domain.model.RoomImpulseWishSource
 
 interface RoomDependencies {
     fun housePreferences(): SharedPreferences
@@ -22,6 +23,7 @@ interface RoomDependencies {
     fun savingsApi(): SavingsApi
     fun gameLauncher(): RoomGameLauncher
     fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher
+    fun impulseWishSource(): RoomImpulseWishSource
     fun globalMessageController(): GlobalMessageController
     fun resources(): Resources
     fun minimumProductPriceRub(): Long

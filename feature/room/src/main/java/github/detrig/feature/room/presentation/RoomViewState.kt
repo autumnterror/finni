@@ -10,6 +10,7 @@ import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.domain.model.RoomImpulseWish
 
 internal data class ParentHelpDialogState(
     val offers: List<ParentHelpOffer>,
@@ -120,6 +121,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val isRequestingParentHelp: Boolean = false,
         val allowanceNotice: AllowanceNoticeState? = null,
         val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
+        val impulseWish: RoomImpulseWish? = null,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
     ) : RoomViewState

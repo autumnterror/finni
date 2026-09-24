@@ -34,6 +34,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetIconButton
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.R
@@ -48,6 +49,7 @@ internal fun ShopReceiptDialog(
     receipt: ShopReceipt,
     onDismiss: () -> Unit,
 ) {
+    FinPetModalVisibilityEffect()
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(

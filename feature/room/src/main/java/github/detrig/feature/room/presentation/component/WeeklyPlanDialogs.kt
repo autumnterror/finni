@@ -69,6 +69,7 @@ import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.component.FinPetStorefrontSlider
 import github.detrig.designsystem.theme.AppTheme
@@ -270,6 +271,7 @@ private fun WeeklyPlanNotebookDialog(
     actions: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    FinPetModalVisibilityEffect()
     val canDismiss = onDismissRequest != null
     Dialog(
         onDismissRequest = { if (canDismiss) onDismissRequest() },

@@ -7,9 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import github.detrig.core.mvvm.command.CommandsQueueEffect
+import github.detrig.core.mvvm.command.ImmutableCommandsQueue
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.ShopFeature
@@ -29,17 +32,23 @@ internal fun ShopScreen(
     val viewModel: ShopViewModel = viewModel(key = "${storeId.value}:${onBack != null}") {
         component.viewModel(
             storeId = storeId,
-            onOpenCart = onOpenCart,
-            closeAfterReceipt = closeAfterReceipt,
+            useHostBack = onBack != null,
+            useHostCart = onOpenCart != null,
+            useHostCloseAfterReceipt = closeAfterReceipt != null,
         )
     }
     val state by viewModel.state().observeAsState(ShopViewState())
+    val commands = remember(viewModel) { ImmutableCommandsQueue(viewModel.commands<ShopCommand>()) }
+    CommandsQueueEffect(commands) { command ->
+        when (command) {
+            ShopCommand.Back -> onBack?.invoke()
+            ShopCommand.OpenCart -> onOpenCart?.invoke()
+            ShopCommand.CloseAfterReceipt -> closeAfterReceipt?.invoke()
+        }
+    }
 
     LaunchedEffect(viewModel) { viewModel.perform(ShopViewEvent.Load) }
-    val handleBack = {
-        if (state.receipt == null) onBack?.invoke() ?: viewModel.perform(ShopViewEvent.Back)
-        else viewModel.perform(ShopViewEvent.Back)
-    }
+    val handleBack = { viewModel.perform(ShopViewEvent.Back) }
     BackHandler { handleBack() }
 
     Scaffold(
@@ -50,6 +59,7 @@ internal fun ShopScreen(
             state = state,
             artworkResolver = component.artworkResolver,
             itemDetailsResolver = component.itemDetailsResolver,
+            petPortrait = component.petPortrait,
             onEvent = viewModel::perform,
             onBack = handleBack,
             modifier = if (onBack == null) Modifier.shopSafeDrawingPadding() else Modifier,

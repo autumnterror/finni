@@ -5,6 +5,8 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.shop.api.ShopHost
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
 import github.detrig.feature.shop.domain.ShopCartStore
+import github.detrig.feature.shop.domain.ShopDecisionEventStore
+import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.feature.shop.navigation.ShopRouter
 import github.detrig.products.ProductId
 import github.detrig.products.SellableCatalog
@@ -19,31 +21,43 @@ internal class ShopViewModel(
     catalogRegistry: ShopCatalogRegistry,
     private val host: ShopHost,
     private val cartStore: ShopCartStore,
+    private val decisionEventStore: ShopDecisionEventStore,
     private val receiptStore: ShopReceiptStore,
     private val router: ShopRouter,
-    private val onOpenCart: (() -> Unit)? = null,
-    private val closeAfterReceipt: (() -> Unit)? = null,
+    private val useHostBack: Boolean = false,
+    private val useHostCart: Boolean = false,
+    private val useHostCloseAfterReceipt: Boolean = false,
 ) : CoreViewModel<ShopViewState, ShopViewEvent>(ShopViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
+    private var eventRefreshJob: Job? = null
 
     override fun perform(viewEvent: ShopViewEvent) {
         when (viewEvent) {
             ShopViewEvent.Load,
             ShopViewEvent.Retry -> load()
-            ShopViewEvent.Back -> if (stateData.receipt == null) router.back() else dismissReceipt()
-            ShopViewEvent.OpenCart -> onOpenCart?.invoke() ?: router.openCart(storeId)
+            ShopViewEvent.Back -> when {
+                stateData.receipt != null -> dismissReceipt()
+                stateData.purchaseFeedback != null -> finishPurchaseFeedback()
+                else -> leaveShop()
+            }
+            ShopViewEvent.OpenCart -> openCart()
             ShopViewEvent.ReceiptDismissed -> dismissReceipt()
+            ShopViewEvent.EventDialogueFinished -> updateState { copy(eventDialogueVisible = false) }
+            ShopViewEvent.PurchaseFeedbackFinished -> finishPurchaseFeedback()
             is ShopViewEvent.CategorySelected -> selectCategory(viewEvent.categoryId)
             is ShopViewEvent.ProductClicked -> addProductToCart(viewEvent.productId)
         }
     }
 
     private fun load() {
-        if (observationJob?.isActive == true) return
         val resolvedCatalog = catalog
         if (resolvedCatalog == null) {
             updateState { copy(loading = false, error = ShopError.LOAD) }
+            return
+        }
+        if (observationJob?.isActive == true) {
+            refreshDecisionEvent()
             return
         }
         updateState {
@@ -66,17 +80,24 @@ internal class ShopViewModel(
             },
         ) {
             host.preparePlayer()
+            refreshDecisionEventNow()
             combine(
                 host.observeBalanceRub(),
+                host.observePetName(),
                 cartStore.observe(storeId),
                 receiptStore.observe(storeId),
-            ) { balance, cart, receipt -> Triple(balance, cart, receipt) }.collect { (balance, cart, receipt) ->
+                decisionEventStore.observe(storeId),
+            ) { balance, petName, cart, receipt, currentEvent ->
+                ShopObservation(balance, petName, cart, receipt, currentEvent)
+            }.collect { observation ->
                 updateState {
                     copy(
                         storefront = resolvedCatalog.storefront,
-                        balanceRub = balance,
-                        cart = cart,
-                        receipt = receipt,
+                        balanceRub = observation.balanceRub,
+                        cart = observation.cart,
+                        receipt = observation.receipt,
+                        decisionEvent = observation.decisionEvent,
+                        petName = observation.petName,
                         loading = false,
                         error = null,
                     )
@@ -97,9 +118,102 @@ internal class ShopViewModel(
         cartStore.add(storeId, productId)
     }
 
-    private fun dismissReceipt() {
-        if (stateData.receipt == null) return
-        receiptStore.clear(storeId)
-        closeAfterReceipt?.invoke() ?: router.closeToRoom()
+    private fun declineDecisionEvent(navigateAfter: Boolean = false) {
+        val event = stateData.decisionEvent
+        if (event == null) {
+            if (navigateAfter) navigateBack()
+            return
+        }
+        launchCoroutine(
+            handleAction = ExceptionConsumer {
+                finishDecliningEvent(navigateAfter)
+                true
+            },
+        ) {
+            host.recordEventDeclined(event)
+            finishDecliningEvent(navigateAfter)
+        }
     }
+
+    private fun refreshDecisionEvent() {
+        if (eventRefreshJob?.isActive == true) return
+        eventRefreshJob = launchCoroutine(
+            handleAction = ExceptionConsumer { true },
+        ) {
+            host.preparePlayer()
+            refreshDecisionEventNow()
+        }
+    }
+
+    private suspend fun refreshDecisionEventNow() {
+        val currentEvent = decisionEventStore.current(storeId)
+        val refreshedEvent = host.currentDecisionEvent(storeId)
+        val showPromotionIntroduction = refreshedEvent?.type == ShopDecisionEventType.PROMOTION &&
+            refreshedEvent.eventId != currentEvent?.eventId &&
+            host.claimPromotionIntroduction()
+        decisionEventStore.replace(storeId, refreshedEvent)
+        updateState { copy(eventDialogueVisible = showPromotionIntroduction) }
+    }
+
+    private fun finishDecliningEvent(navigateAfter: Boolean) {
+        decisionEventStore.clear(storeId)
+        if (navigateAfter) navigateBack()
+    }
+
+    private fun leaveShop() {
+        when (stateData.decisionEvent?.type) {
+            ShopDecisionEventType.IMPULSE_WISH -> declineDecisionEvent(navigateAfter = true)
+            ShopDecisionEventType.PROMOTION,
+            null,
+            -> navigateBack()
+        }
+    }
+
+    private fun dismissReceipt() {
+        val receipt = stateData.receipt ?: return
+        receiptStore.clear(storeId)
+        if (receipt.feedback != null) {
+            updateState { copy(purchaseFeedback = receipt.feedback) }
+        } else {
+            closeShopAfterReceipt()
+        }
+    }
+
+    private fun finishPurchaseFeedback() {
+        if (stateData.purchaseFeedback == null) return
+        updateState { copy(purchaseFeedback = null) }
+        closeShopAfterReceipt()
+    }
+
+    private fun navigateBack() {
+        if (useHostBack) {
+            commands.onNext(ShopCommand.Back)
+        } else {
+            router.back()
+        }
+    }
+
+    private fun openCart() {
+        if (useHostCart) {
+            commands.onNext(ShopCommand.OpenCart)
+        } else {
+            router.openCart(storeId)
+        }
+    }
+
+    private fun closeShopAfterReceipt() {
+        if (useHostCloseAfterReceipt) {
+            commands.onNext(ShopCommand.CloseAfterReceipt)
+        } else {
+            router.closeToRoom()
+        }
+    }
+
+    private data class ShopObservation(
+        val balanceRub: Long,
+        val petName: String,
+        val cart: github.detrig.products.StoreCart,
+        val receipt: ShopReceipt?,
+        val decisionEvent: github.detrig.feature.shop.domain.ShopDecisionEvent?,
+    )
 }

@@ -62,16 +62,16 @@ fun FinPetAchievementBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.xs),
+                .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.xs)
+                .onSizeChanged { size ->
+                    onHeightChanged(with(density) { size.height.toDp() })
+                },
             contentAlignment = Alignment.TopCenter,
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .widthIn(max = ACHIEVEMENT_BANNER_MAX_WIDTH)
-                    .onSizeChanged { size ->
-                        onHeightChanged(with(density) { size.height.toDp() })
-                    },
+                    .widthIn(max = ACHIEVEMENT_BANNER_MAX_WIDTH),
             ) {
                 AchievementBurst(Modifier.matchParentSize())
                 FinPetCard(

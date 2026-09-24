@@ -734,6 +734,36 @@ rule must consider mandatory needs, basket contents, current and planned money,
 remaining days, and the consequence of the choice. Receipt checking is a deferred
 metric and must not be added to the active catalog until a receipt mechanic exists.
 
+For `reasonable_purchase`, the Introduction achievement requires two qualifying
+shopping trips. The Learned achievement requires qualifying shopping trips in
+three consecutive game weeks. A poor purchase remains allowed, but the pet then
+gives one short neutral explanation of the concrete problem, such as missing
+required food, risking mandatory money, or exceeding the available wants budget.
+
+Promotions are displayed directly on shop items rather than as a forced choice.
+The first promotion is scheduled after a configurable number of game days and
+includes one introductory pet remark; later promotions stay visually prominent
+without repeating that remark. Active promotion variants are a percentage
+discount and `2+1`: every complete set of three target items is charged as two,
+while incomplete sets keep the regular unit price. The catalog card, cart total,
+economy debit, and receipt must use the same promotion calculation. A selected
+promotion remains stable for the whole game day, including after leaving and
+reopening the shop or completing a purchase; the next game day recalculates the
+event. Buying substantially more promotion items than the quantity needed to
+receive the offer remains allowed, but it does not count as a reasonable purchase
+or a good promotion decision. The threshold is the promotion's minimum useful
+quantity plus a small configured allowance; when it is exceeded, the pet gives
+one short neutral reminder to consider how many items are actually needed.
+
+After a successful payment, the receipt must be shown immediately, without
+requiring the player to leave an already emptied cart. Any purchase feedback is
+shown after the receipt is dismissed.
+
+Impulse wishes may appear in both the room and the
+shop. They are informational prompts without action buttons: the player responds
+through ordinary shopping behavior or by leaving the item unpurchased. The first
+wish may include a short explanation, while later wishes use varied concise copy.
+
 #### Financial security
 
 | Metric | Introduction row | Learned row |

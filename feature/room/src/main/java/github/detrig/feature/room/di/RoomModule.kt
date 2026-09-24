@@ -19,6 +19,7 @@ import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInterac
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
 import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
 
@@ -55,10 +56,11 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     private val loadParentHelp by lazy { LoadParentHelpInteractor(repository) }
     private val requestParentHelp by lazy { RequestParentHelpInteractor(repository) }
     private val endWeekEarlyWithParentHelp by lazy { EndWeekEarlyWithParentHelpInteractor(repository) }
+    private val loadImpulseWish by lazy { LoadRoomImpulseWishInteractor(dependencies.impulseWishSource()) }
 
     override fun getRoomViewModel() = RoomViewModel(
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
         loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
-        endWeekEarlyWithParentHelp, minimumProductPriceRub, router, positions, onboarding,
+        endWeekEarlyWithParentHelp, minimumProductPriceRub, loadImpulseWish, router, positions, onboarding,
     )
 }

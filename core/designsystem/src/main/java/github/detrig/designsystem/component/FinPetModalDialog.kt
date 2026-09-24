@@ -62,6 +62,7 @@ fun FinPetModalDialog(
     actions: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    FinPetModalVisibilityEffect()
     val canDismiss = onDismissRequest != null && dismissEnabled
     Dialog(
         onDismissRequest = { if (canDismiss) onDismissRequest() },

@@ -184,4 +184,10 @@
     <string name="onboarding_finish_1">Ну вот. Теперь у нас есть деньги на неделю, первый план и цель.</string>
     <string name="onboarding_finish_2">А дальше будем разбираться по ходу дела.</string>
     <string name="onboarding_finish_3">Пойдём? Я хочу посмотреть, что ещё есть в нашем доме!</string>
+    <string name="impulse_wish_intro_feeling">Иногда очень хочется купить что-нибудь сразу, как только увидишь.</string>
+    <string name="impulse_wish_intro_check">Перед покупкой полезно проверить план: хватит ли денег на важное и можем ли мы позволить себе это желание.</string>
+    <string name="impulse_wish_variant_enough_money">У нас вроде достаточно денег. Может, купим «%1$s»?</string>
+    <string name="impulse_wish_variant_afford">Мне так хочется «%1$s»! Мы можем себе это позволить?</string>
+    <string name="impulse_wish_variant_check_plan">Как тебе «%1$s»? Давай сначала проверим наш план.</string>
+    <string name="impulse_wish_variant_money_after">Я увидел «%1$s» и сразу захотел! Хватит ли у нас денег после покупки?</string>
 </resources>

@@ -15,11 +15,14 @@ import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInterac
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomRouter
 import github.detrig.feature.room.presentation.mapper.toRoomZones
 import github.detrig.feature.room.domain.model.HousePositionRepository
+import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
+import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.room.presentation.model.HouseLayout
@@ -48,6 +51,7 @@ internal class RoomViewModel(
     private val requestParentHelpInteractor: RequestParentHelpInteractor,
     private val endWeekEarlyWithParentHelp: EndWeekEarlyWithParentHelpInteractor,
     private val minimumProductPriceRub: Long,
+    private val loadRoomImpulseWish: LoadRoomImpulseWishInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
     private val onboardingRepository: FirstRunOnboardingRepository,
@@ -59,12 +63,17 @@ internal class RoomViewModel(
     private var parentHelpJob: Job? = null
     private var lowBalanceJob: Job? = null
     private var onboardingRefreshJob: Job? = null
+    private var impulseWishJob: Job? = null
+    private val checkedImpulseWishDays = mutableSetOf<Long>()
     private val reconciledPlanWeeks = mutableSetOf<Long>()
     private var reconcilingPlanWeek: Long? = null
     // Read this small preference before the first composition of HouseScene. Loading it
     // from Dispatchers.IO after rendering caused one frame at the default center position.
     private var savedPosition = HouseLayout.restored(positions.load())
     private var lastLaunchNanos = 0L
+    private var onboardingProgress = FirstRunOnboardingProgress(
+        FirstRunOnboardingChapter.entries.toSet(),
+    )
     private var onboardingStep = FirstRunOnboardingStep.COMPLETED
     private var onboardingGoal: SavingsGoalProgress? = null
     private var onboardingSuggestedGoalZoneId: String? = null
@@ -101,10 +110,15 @@ internal class RoomViewModel(
             RoomViewEvent.CloseEarlyWeekParentHelpNotice -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(earlyWeekParentHelpNotice = null))
             }
+            RoomViewEvent.CloseImpulseWish -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(impulseWish = null))
+            }
             RoomViewEvent.FirstRunOnboardingContinue -> continueFirstRunOnboarding()
-            RoomViewEvent.FirstRunMoneyNoticeClosed -> transitionOnboarding(
-                FirstRunOnboardingStep.MONEY_EXPLANATION,
-            )
+            RoomViewEvent.FirstRunMoneyNoticeClosed -> {
+                if (onboardingStep == FirstRunOnboardingStep.FIRST_MONEY) {
+                    transitionOnboarding(FirstRunOnboardingStep.MONEY_EXPLANATION)
+                }
+            }
             is RoomViewEvent.FirstRunDepositSelected -> selectFirstDeposit(viewEvent.depositNow)
             RoomViewEvent.Resumed -> {
                 refreshFirstRunOnboarding()
@@ -154,29 +168,10 @@ internal class RoomViewModel(
                 true
             },
         ) {
-            onboardingStep = onboardingRepository.load()
+            onboardingProgress = onboardingRepository.load()
+            onboardingStep = onboardingProgress.firstStep
             onboardingSuggestedGoalZoneId = onboardingRepository.loadSuggestedGoalZoneId()
                 ?.takeIf(FIRST_SAVINGS_GOAL_ZONE_IDS::contains)
-            if (onboardingStep.needsGoalProgress()) {
-                onboardingGoal = loadActiveSavingsGoal()
-            }
-            if (onboardingStep == FirstRunOnboardingStep.WISH) {
-                persistOnboardingStep(FirstRunOnboardingStep.FIRST_MONEY)
-            }
-            if (onboardingStep.isLegacyRoomSavingsDialogue()) {
-                persistOnboardingStep(
-                    if (onboardingGoal == null) {
-                        FirstRunOnboardingStep.PIGGY_TAP
-                    } else {
-                        FirstRunOnboardingStep.COMPLETED
-                    },
-                )
-            }
-            if (onboardingStep == FirstRunOnboardingStep.GAMES ||
-                onboardingStep == FirstRunOnboardingStep.FINISH
-            ) {
-                persistOnboardingStep(FirstRunOnboardingStep.COMPLETED)
-            }
             reconcileSavingsLearning()
             combine(
                 observeZones(),
@@ -184,8 +179,11 @@ internal class RoomViewModel(
             ) { roomData, achievements -> roomData to achievements }
                 .collect { (roomData, achievements) ->
                     val current = nullableState<RoomViewState.Content>()
-                    if (onboardingStep == FirstRunOnboardingStep.PLAN && roomData.progress.planProgress != null) {
-                        persistOnboardingStep(FirstRunOnboardingStep.PLAN_SAVED)
+                    if (onboardingProgress.currentChapter == FirstRunOnboardingChapter.BUDGET_PLANNING &&
+                        onboardingStep == FirstRunOnboardingStep.PLAN &&
+                        roomData.progress.planProgress != null
+                    ) {
+                        completeOnboardingChapter(FirstRunOnboardingChapter.BUDGET_PLANNING)
                     }
                     val editor = when {
                         roomData.progress.planProgress != null -> null
@@ -235,12 +233,36 @@ internal class RoomViewModel(
                             isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
+                            impulseWish = current?.impulseWish,
                             onboarding = onboardingUiState(),
                         ),
                     )
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 handleLowBalance(roomData.progress)
+                if (onboardingStep == FirstRunOnboardingStep.COMPLETED) {
+                    loadImpulseWishForDay(roomData.progress.absoluteDay)
+                }
             }
+        }
+    }
+
+    private fun loadImpulseWishForDay(absoluteDay: Long) {
+        if (absoluteDay in checkedImpulseWishDays || impulseWishJob?.isActive == true) return
+        checkedImpulseWishDays += absoluteDay
+        impulseWishJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                checkedImpulseWishDays -= absoluteDay
+                impulseWishJob = null
+                true
+            },
+        ) {
+            val wish = loadRoomImpulseWish()
+            nullableState<RoomViewState.Content>()?.let { content ->
+                if (content.progress.absoluteDay == absoluteDay && content.onboarding == null) {
+                    updateState(content.copy(impulseWish = wish))
+                }
+            }
+            impulseWishJob = null
         }
     }
 
@@ -255,19 +277,25 @@ internal class RoomViewModel(
         )
     }
 
-    private fun persistOnboardingStep(step: FirstRunOnboardingStep) {
-        onboardingStep = step
-        onboardingRepository.save(step)
-        if (step == FirstRunOnboardingStep.COMPLETED) {
+    private fun completeOnboardingChapter(
+        chapter: FirstRunOnboardingChapter,
+        nextStep: FirstRunOnboardingStep? = null,
+    ) {
+        onboardingProgress = onboardingRepository.markChapterCompleted(chapter)
+        onboardingStep = nextStep ?: onboardingProgress.firstStep
+        if (onboardingProgress.isCompleted) {
             onboardingSuggestedGoalZoneId = null
             onboardingRepository.saveSuggestedGoalZoneId(null)
         }
     }
 
     private fun transitionOnboarding(step: FirstRunOnboardingStep) {
-        persistOnboardingStep(step)
+        onboardingStep = step
         nullableState<RoomViewState.Content>()?.let { content ->
             updateState(content.copy(onboarding = onboardingUiState()))
+            if (step == FirstRunOnboardingStep.COMPLETED) {
+                loadImpulseWishForDay(content.progress.absoluteDay)
+            }
         }
     }
 
@@ -278,14 +306,20 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.MONEY_EXPLANATION ->
                 transitionOnboarding(FirstRunOnboardingStep.PLAN_TRANSITION)
             FirstRunOnboardingStep.PLAN_TRANSITION -> startFirstPlan()
-            FirstRunOnboardingStep.PLAN_SAVED -> transitionOnboarding(FirstRunOnboardingStep.GAME_DISCOVERY)
+            FirstRunOnboardingStep.PLAN_SAVED -> transitionOnboarding(onboardingProgress.firstStep)
             FirstRunOnboardingStep.GAME_DISCOVERY ->
                 transitionOnboarding(FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS)
             FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS ->
                 transitionOnboarding(FirstRunOnboardingStep.GAME_SELECTION)
-            FirstRunOnboardingStep.GAME_SELECTED -> transitionOnboarding(FirstRunOnboardingStep.PIGGY_BANK)
+            FirstRunOnboardingStep.GAME_SELECTED -> {
+                completeOnboardingChapter(FirstRunOnboardingChapter.MINI_GAMES_DISCOVERY)
+                transitionOnboarding(onboardingProgress.firstStep)
+            }
             FirstRunOnboardingStep.PIGGY_BANK -> transitionOnboarding(FirstRunOnboardingStep.PIGGY_TAP)
-            FirstRunOnboardingStep.PIGGY_TAP -> transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_PIGGY)
+            FirstRunOnboardingStep.PIGGY_TAP -> {
+                completeOnboardingChapter(FirstRunOnboardingChapter.PIGGY_BANK_DISCOVERY)
+                transitionOnboarding(onboardingProgress.firstStep)
+            }
             FirstRunOnboardingStep.GOAL_CREATED -> transitionOnboarding(
                 if ((onboardingGoal?.savedRub ?: 0) > 0) {
                     FirstRunOnboardingStep.DEPOSIT_DONE
@@ -295,9 +329,13 @@ internal class RoomViewModel(
             )
             FirstRunOnboardingStep.DEPOSIT_DONE,
             FirstRunOnboardingStep.DEPOSIT_SKIPPED,
+            -> {
+                completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_GOAL_SELECTION)
+                transitionOnboarding(onboardingProgress.firstStep)
+            }
             FirstRunOnboardingStep.GAMES,
-            -> transitionOnboarding(FirstRunOnboardingStep.COMPLETED)
-            FirstRunOnboardingStep.FINISH -> transitionOnboarding(FirstRunOnboardingStep.COMPLETED)
+            FirstRunOnboardingStep.FINISH,
+            -> transitionOnboarding(onboardingProgress.firstStep)
             FirstRunOnboardingStep.FIRST_MONEY,
             FirstRunOnboardingStep.PLAN,
             FirstRunOnboardingStep.GAME_SELECTION,
@@ -312,11 +350,18 @@ internal class RoomViewModel(
 
     private fun startFirstPlan() {
         val content = nullableState<RoomViewState.Content>() ?: return
+        completeOnboardingChapter(
+            chapter = FirstRunOnboardingChapter.INTRODUCTION_AND_FIRST_MONEY,
+            nextStep = FirstRunOnboardingStep.PLAN,
+        )
         if (content.progress.planProgress != null) {
+            completeOnboardingChapter(
+                chapter = FirstRunOnboardingChapter.BUDGET_PLANNING,
+                nextStep = FirstRunOnboardingStep.PLAN_SAVED,
+            )
             transitionOnboarding(FirstRunOnboardingStep.PLAN_SAVED)
             return
         }
-        persistOnboardingStep(FirstRunOnboardingStep.PLAN)
         updateState(content.copy(
             onboarding = onboardingUiState(),
             planEditor = content.planEditor ?: PlanEditorState(),
@@ -363,40 +408,22 @@ internal class RoomViewModel(
             val goal = loadActiveSavingsGoal()
             onboardingGoal = goal
             when (onboardingStep) {
-                FirstRunOnboardingStep.WAITING_FOR_GOAL -> transitionOnboarding(
-                    if (goal == null) FirstRunOnboardingStep.WAITING_FOR_PIGGY
-                    else FirstRunOnboardingStep.COMPLETED,
-                )
-                FirstRunOnboardingStep.WAITING_FOR_DEPOSIT -> transitionOnboarding(
-                    if (goal != null && goal.savedRub > 0) FirstRunOnboardingStep.DEPOSIT_DONE
-                    else FirstRunOnboardingStep.DEPOSIT_SKIPPED,
-                )
+                FirstRunOnboardingStep.WAITING_FOR_GOAL -> if (goal == null) {
+                    transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_PIGGY)
+                } else {
+                    completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_GOAL_SELECTION)
+                    transitionOnboarding(onboardingProgress.firstStep)
+                }
+                FirstRunOnboardingStep.WAITING_FOR_DEPOSIT -> if (goal == null) {
+                    transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_PIGGY)
+                } else {
+                    completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_GOAL_SELECTION)
+                    transitionOnboarding(onboardingProgress.firstStep)
+                }
                 else -> Unit
             }
             onboardingRefreshJob = null
         }
-    }
-
-    private fun FirstRunOnboardingStep.needsGoalProgress(): Boolean = when (this) {
-        FirstRunOnboardingStep.GOAL_CREATED,
-        FirstRunOnboardingStep.FIRST_DEPOSIT,
-        FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
-        FirstRunOnboardingStep.DEPOSIT_DONE,
-        FirstRunOnboardingStep.DEPOSIT_SKIPPED,
-        FirstRunOnboardingStep.GAMES,
-        FirstRunOnboardingStep.FINISH,
-        -> true
-        else -> false
-    }
-
-    private fun FirstRunOnboardingStep.isLegacyRoomSavingsDialogue(): Boolean = when (this) {
-        FirstRunOnboardingStep.GOAL_CREATED,
-        FirstRunOnboardingStep.FIRST_DEPOSIT,
-        FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
-        FirstRunOnboardingStep.DEPOSIT_DONE,
-        FirstRunOnboardingStep.DEPOSIT_SKIPPED,
-        -> true
-        else -> false
     }
 
     private fun onZoneClicked(zoneId: String) {
@@ -619,7 +646,12 @@ internal class RoomViewModel(
             ).takeIf { it.showSuccessExplanation }
             nullableState<RoomViewState.Content>()?.let { latest ->
                 val isFirstRunPlan = onboardingStep == FirstRunOnboardingStep.PLAN
-                if (isFirstRunPlan) persistOnboardingStep(FirstRunOnboardingStep.PLAN_SAVED)
+                if (isFirstRunPlan) {
+                    completeOnboardingChapter(
+                        chapter = FirstRunOnboardingChapter.BUDGET_PLANNING,
+                        nextStep = FirstRunOnboardingStep.PLAN_SAVED,
+                    )
+                }
                 val dialogue = regularDialogue.takeUnless { isFirstRunPlan }
                 updateState(latest.copy(
                     progress = latest.progress.copy(planProgress = plan, requiresPlan = false),
