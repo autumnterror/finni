@@ -4,6 +4,7 @@ import github.detrig.feature.shop.ShopDependencies
 import github.detrig.feature.shop.api.ShopApi
 import github.detrig.feature.shop.api.ShopApiImpl
 import github.detrig.feature.shop.domain.ShopCartStore
+import github.detrig.feature.shop.domain.ShopDecisionEventStore
 import github.detrig.feature.shop.navigation.ShopRouterImpl
 import github.detrig.feature.shop.presentation.ShopCartViewModel
 import github.detrig.feature.shop.presentation.ShopReceiptStore
@@ -16,39 +17,45 @@ internal class ShopModule(
     private val router by lazy { ShopRouterImpl(dependencies.globalNavigator()) }
     private val cartStore = ShopCartStore()
     private val receiptStore = ShopReceiptStore()
+    private val decisionEventStore = ShopDecisionEventStore()
 
     override val artworkResolver by lazy { dependencies.artworkResolver() }
     override val itemDetailsResolver by lazy { dependencies.itemDetailsResolver() }
+    override val petPortrait by lazy { dependencies.petPortrait() }
 
     override val api: ShopApi by lazy { ShopApiImpl(router) }
 
     override fun viewModel(
         storeId: StoreId,
-        onOpenCart: (() -> Unit)?,
-        closeAfterReceipt: (() -> Unit)?,
+        useHostBack: Boolean,
+        useHostCart: Boolean,
+        useHostCloseAfterReceipt: Boolean,
     ) = ShopViewModel(
         storeId = storeId,
         catalogRegistry = dependencies.catalogRegistry(),
         host = dependencies.host(),
         cartStore = cartStore,
+        decisionEventStore = decisionEventStore,
         receiptStore = receiptStore,
         router = router,
-        onOpenCart = onOpenCart,
-        closeAfterReceipt = closeAfterReceipt,
+        useHostBack = useHostBack,
+        useHostCart = useHostCart,
+        useHostCloseAfterReceipt = useHostCloseAfterReceipt,
     )
 
     override fun cartViewModel(
         storeId: StoreId,
-        onBack: (() -> Unit)?,
-        onCheckoutCompleted: (() -> Unit)?,
+        useHostBack: Boolean,
+        useHostCheckoutCompleted: Boolean,
     ) = ShopCartViewModel(
         storeId = storeId,
         catalogRegistry = dependencies.catalogRegistry(),
         host = dependencies.host(),
         cartStore = cartStore,
+        decisionEventStore = decisionEventStore,
         receiptStore = receiptStore,
         router = router,
-        onBack = onBack,
-        onCheckoutCompleted = onCheckoutCompleted,
+        useHostBack = useHostBack,
+        useHostCheckoutCompleted = useHostCheckoutCompleted,
     )
 }

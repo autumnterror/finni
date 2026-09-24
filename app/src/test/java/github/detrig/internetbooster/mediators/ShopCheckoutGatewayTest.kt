@@ -91,4 +91,35 @@ class ShopCheckoutGatewayTest {
         assertEquals(ShopCheckoutRejection.EMPTY_CART, (result as ShopCheckoutResult.Rejected).reason)
         assertEquals(50L, result.balanceRub)
     }
+
+    @Test
+    fun validatedPromotionLineTotalIsChargedAndLearningPayloadIsStored() = runBlocking {
+        var chargedAmount = 0L
+        var chargedContext: OperationContext? = null
+        val gateway = ShopCheckoutGateway(
+            catalogRegistry = registry,
+            currentBalanceRub = { economyState.availableRub },
+            debit = { _, amount, context ->
+                chargedAmount = amount
+                chargedContext = context
+                FinancialOperationResult.Rejected(
+                    RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS,
+                    economyState,
+                )
+            },
+        )
+
+        gateway.checkout(
+            request = ShopCheckoutRequest(
+                operationId = "shop-checkout-promotion",
+                storeId = GroceryStoreIds.Store,
+                lines = listOf(StoreCartLine(GroceryItemIds.Apple, 3)),
+            ),
+            lineTotalOverrides = mapOf(GroceryItemIds.Apple to 30L),
+            additionalMetadata = "encoded-learning-payload",
+        )
+
+        assertEquals(30L, chargedAmount)
+        assertTrue(chargedContext?.metadata.orEmpty().contains("learning=encoded-learning-payload"))
+    }
 }

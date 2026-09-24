@@ -9,6 +9,10 @@ import github.detrig.feature.shop.api.ShopCheckoutRequest
 import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
 import github.detrig.feature.shop.domain.ShopCartStore
+import github.detrig.feature.shop.domain.ShopDecisionEventStore
+import github.detrig.feature.shop.domain.ShopLearningEventConfig
+import github.detrig.feature.shop.domain.ShopLearningEventGenerator
+import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.feature.shop.navigation.ShopRouter
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryCategoryIds
@@ -126,6 +130,89 @@ class ShopViewModelTest {
     }
 
     @Test
+    fun hostBackIsDeliveredAsScreenCommand() {
+        viewModel = createViewModel(
+            storeId = GroceryStoreIds.Store,
+            useHostBack = true,
+        )
+        start()
+
+        viewModel.perform(ShopViewEvent.Back)
+
+        assertEquals(
+            listOf(ShopCommand.Back),
+            viewModel.commands<ShopCommand>().value?.toList(),
+        )
+        assertEquals(0, router.backCount)
+    }
+
+    @Test
+    fun trackingFailureDoesNotBlockHostBack() {
+        viewModel = createViewModel(
+            storeId = GroceryStoreIds.Store,
+            eventConfig = ShopLearningEventConfig(
+                forcedEventType = ShopDecisionEventType.IMPULSE_WISH,
+            ),
+            useHostBack = true,
+        )
+        host.declineFailure = IllegalStateException("tracking failed")
+        start()
+
+        viewModel.perform(ShopViewEvent.Back)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(
+            listOf(ShopCommand.Back),
+            viewModel.commands<ShopCommand>().value?.toList(),
+        )
+        assertEquals(null, state().decisionEvent)
+        assertEquals(0, router.backCount)
+    }
+
+    @Test
+    fun promotionPersistsAcrossReentryAndRefreshesWithGameDay() {
+        viewModel = createViewModel(
+            storeId = GroceryStoreIds.Store,
+            eventConfig = ShopLearningEventConfig(
+                forcedEventType = ShopDecisionEventType.PROMOTION,
+                firstPromotionDelayDays = 0,
+                randomSeed = 31,
+            ),
+            useHostBack = true,
+        )
+        start()
+        val firstDayPromotion = requireNotNull(state().decisionEvent)
+
+        viewModel.perform(ShopViewEvent.EventDialogueFinished)
+        viewModel.perform(ShopViewEvent.Back)
+
+        assertEquals(firstDayPromotion, state().decisionEvent)
+        assertEquals(0, host.recordDeclinedCalls)
+
+        viewModel.perform(ShopViewEvent.Load)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(firstDayPromotion, state().decisionEvent)
+        assertEquals(1, host.promotionIntroductionClaims)
+
+        val nextDayPromotion = firstDayPromotion.copy(
+            eventId = "${firstDayPromotion.eventId}:next-day",
+            eventPeriod = firstDayPromotion.eventPeriod + 1,
+        )
+        host.event = nextDayPromotion
+        viewModel.perform(ShopViewEvent.Load)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(nextDayPromotion, state().decisionEvent)
+
+        host.event = null
+        viewModel.perform(ShopViewEvent.Load)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(null, state().decisionEvent)
+    }
+
+    @Test
     fun openCartDelegatesToFeatureRouter() {
         start()
 
@@ -144,16 +231,98 @@ class ShopViewModelTest {
         assertEquals(ShopError.LOAD, state().error)
     }
 
-    private fun createViewModel(storeId: StoreId) = ShopViewModel(
-        storeId = storeId,
-        catalogRegistry = ShopCatalogRegistry { requestedId ->
-            catalog.takeIf { it.storefront.storeId == requestedId }
-        },
-        host = host,
-        cartStore = cartStore,
-        receiptStore = receiptStore,
-        router = router,
-    )
+    @Test
+    fun forcedImpulseWishHighlightsTargetWithoutActionDialog() {
+        viewModel = createViewModel(
+            storeId = GroceryStoreIds.Store,
+            eventConfig = ShopLearningEventConfig(
+                forcedEventType = ShopDecisionEventType.IMPULSE_WISH,
+                randomSeed = 17,
+            ),
+        )
+        start()
+        val event = requireNotNull(state().decisionEvent)
+        assertFalse(state().eventDialogueVisible)
+
+        viewModel.perform(ShopViewEvent.ProductClicked(event.productId))
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(1, state().quantityInCart(event.productId))
+    }
+
+    @Test
+    fun firstPromotionUsesInformationalDialogueWithoutDecisionButtons() {
+        viewModel = createViewModel(
+            storeId = GroceryStoreIds.Store,
+            eventConfig = ShopLearningEventConfig(
+                forcedEventType = ShopDecisionEventType.PROMOTION,
+                firstPromotionDelayDays = 0,
+                randomSeed = 21,
+            ),
+        )
+
+        start()
+
+        assertEquals(ShopDecisionEventType.PROMOTION, state().decisionEvent?.type)
+        assertTrue(state().eventDialogueVisible)
+        viewModel.perform(ShopViewEvent.EventDialogueFinished)
+        assertFalse(state().eventDialogueVisible)
+    }
+
+    @Test
+    fun badPurchaseFeedbackAppearsAfterReceiptAndBeforeClosingShop() {
+        start()
+        val item = catalog.storefront.items.first()
+        receiptStore.show(
+            GroceryStoreIds.Store,
+            ShopReceipt(
+                number = "123456",
+                storeTitle = catalog.storefront.title,
+                lines = listOf(ShopReceiptLine(item.title, item.priceRub, 1)),
+                feedback = github.detrig.feature.shop.api.ShopPurchaseFeedback.REQUIRED_FOOD_MISSING,
+            ),
+        )
+        dispatcher.scheduler.runCurrent()
+
+        viewModel.perform(ShopViewEvent.ReceiptDismissed)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(
+            github.detrig.feature.shop.api.ShopPurchaseFeedback.REQUIRED_FOOD_MISSING,
+            state().purchaseFeedback,
+        )
+        assertEquals(0, router.closeToRoomCount)
+
+        viewModel.perform(ShopViewEvent.PurchaseFeedbackFinished)
+        assertEquals(1, router.closeToRoomCount)
+    }
+
+    private fun createViewModel(
+        storeId: StoreId,
+        eventConfig: ShopLearningEventConfig = ShopLearningEventConfig(
+            promotionEventProbability = 0.0,
+            impulseWishEventProbability = 0.0,
+        ),
+        useHostBack: Boolean = false,
+    ): ShopViewModel {
+        host.event = ShopLearningEventGenerator(eventConfig).eventFor(
+            storefront = catalog.storefront,
+            gamePeriod = 1,
+            eventPeriod = 1,
+        )
+        return ShopViewModel(
+            storeId = storeId,
+            catalogRegistry = ShopCatalogRegistry { requestedId ->
+                catalog.takeIf { it.storefront.storeId == requestedId }
+            },
+            host = host,
+            cartStore = cartStore,
+            decisionEventStore = ShopDecisionEventStore(),
+            receiptStore = receiptStore,
+            router = router,
+            useHostBack = useHostBack,
+        )
+    }
 
     private fun start() {
         viewModel.perform(ShopViewEvent.Load)
@@ -164,10 +333,30 @@ class ShopViewModelTest {
 
     private class FakeHost : ShopHost {
         val balance = MutableStateFlow(480L)
+        var event: github.detrig.feature.shop.domain.ShopDecisionEvent? = null
+        var declineFailure: Throwable? = null
+        var promotionIntroductionClaims = 0
+        var recordDeclinedCalls = 0
 
         override suspend fun preparePlayer() = Unit
 
         override fun observeBalanceRub(): Flow<Long> = balance
+
+        override fun observePetName(): Flow<String> = MutableStateFlow("Пончик")
+
+        override suspend fun currentDecisionEvent(storeId: StoreId) = event
+
+        override suspend fun claimPromotionIntroduction(): Boolean {
+            promotionIntroductionClaims++
+            return true
+        }
+
+        override suspend fun recordEventDeclined(
+            event: github.detrig.feature.shop.domain.ShopDecisionEvent,
+        ) {
+            recordDeclinedCalls++
+            declineFailure?.let { throw it }
+        }
 
         override suspend fun checkout(request: ShopCheckoutRequest): ShopCheckoutResult =
             error("Checkout is not used by the catalog screen")
@@ -175,6 +364,7 @@ class ShopViewModelTest {
 
     private class FakeRouter : ShopRouter {
         var backCount = 0
+        var closeToRoomCount = 0
         var openedCartStoreId: StoreId? = null
 
         override fun open(storeId: StoreId) = Unit
@@ -187,6 +377,8 @@ class ShopViewModelTest {
             backCount++
         }
 
-        override fun closeToRoom() = Unit
+        override fun closeToRoom() {
+            closeToRoomCount++
+        }
     }
 }

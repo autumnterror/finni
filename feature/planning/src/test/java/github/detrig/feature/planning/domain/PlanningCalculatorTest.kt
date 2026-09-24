@@ -40,8 +40,8 @@ class PlanningCalculatorTest {
             PlanningCalculator.assess(PlanPercentages(50, 30, 20), config),
         )
         assertEquals(
-            PlanAssessment.NeedsChanges(PlanAdjustmentReason.SAVINGS_TOO_LOW, 10),
-            PlanningCalculator.assess(PlanPercentages(50, 20, 5), config),
+            PlanAssessment.Adequate,
+            PlanningCalculator.assess(PlanPercentages(50, 20, 0), config),
         )
         assertEquals(
             PlanAssessment.Adequate,

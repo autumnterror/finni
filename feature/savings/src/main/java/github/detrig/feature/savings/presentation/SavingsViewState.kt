@@ -11,6 +11,7 @@ internal enum class SavingsTransferDirection { DEPOSIT, WITHDRAW }
 internal enum class SavingsOnboardingStep {
     INTRODUCTION,
     SELECT_GOAL,
+    CONFIRM_GOAL,
     GOAL_CREATED,
     FIRST_DEPOSIT,
     WAITING_FOR_DEPOSIT,
@@ -22,6 +23,7 @@ internal sealed interface SavingsNotice {
     data class TransferCompleted(val direction: SavingsTransferDirection, val amountRub: Long) : SavingsNotice
     data class Rejected(val reason: RejectionReason, val missingRub: Long = 0) : SavingsNotice
     data object GoalSaved : SavingsNotice
+    data class GoalReached(val title: String) : SavingsNotice
 }
 
 internal data class SavingsViewState(
@@ -34,4 +36,5 @@ internal data class SavingsViewState(
     val transferDirection: SavingsTransferDirection? = null,
     val notice: SavingsNotice? = null,
     val onboardingStep: SavingsOnboardingStep? = null,
+    val pendingGoal: SavingsGoalDraft? = null,
 ) : CoreViewState

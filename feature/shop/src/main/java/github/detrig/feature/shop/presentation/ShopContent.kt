@@ -27,6 +27,7 @@ import github.detrig.feature.shop.api.ShopArtworkResolver
 import github.detrig.feature.shop.api.ShopItemDetail
 import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
+import github.detrig.feature.shop.api.ShopPetPortrait
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 
@@ -35,6 +36,7 @@ internal fun ShopContent(
     state: ShopViewState,
     artworkResolver: ShopArtworkResolver,
     itemDetailsResolver: ShopItemDetailsResolver,
+    petPortrait: ShopPetPortrait = ShopPetPortrait.Empty,
     onEvent: (ShopViewEvent) -> Unit,
     onBack: () -> Unit = { onEvent(ShopViewEvent.Back) },
     modifier: Modifier = Modifier,
@@ -78,6 +80,8 @@ internal fun ShopContent(
                     onItemClick = { onEvent(ShopViewEvent.ProductClicked(it)) },
                     artworkResolver = artworkResolver,
                     itemDetailsResolver = itemDetailsResolver,
+                    unitPriceRub = state::effectiveUnitPrice,
+                    decisionEvent = state.decisionEvent,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -153,6 +157,27 @@ internal fun ShopContent(
             onDismiss = { onEvent(ShopViewEvent.ReceiptDismissed) },
         )
     }
+
+    if (state.receipt == null && state.purchaseFeedback != null) {
+        ShopPurchaseFeedbackDialog(
+            feedback = state.purchaseFeedback,
+            speakerName = state.petName,
+            portrait = petPortrait,
+            onFinished = { onEvent(ShopViewEvent.PurchaseFeedbackFinished) },
+        )
+    }
+
+    if (state.receipt == null && state.purchaseFeedback == null && state.eventDialogueVisible) {
+        val event = state.decisionEvent
+        if (event != null) {
+            ShopDecisionEventDialog(
+                event = event,
+                speakerName = state.petName,
+                portrait = petPortrait,
+                onFinished = { onEvent(ShopViewEvent.EventDialogueFinished) },
+            )
+        }
+    }
 }
 
 private val shopContentPreviewDetails = ShopItemDetailsResolver { item ->
@@ -174,6 +199,7 @@ private fun ShopContentPreview() {
             ),
             artworkResolver = ShopArtworkResolver.Empty,
             itemDetailsResolver = shopContentPreviewDetails,
+            petPortrait = ShopPetPortrait.Empty,
             onEvent = {},
         )
     }

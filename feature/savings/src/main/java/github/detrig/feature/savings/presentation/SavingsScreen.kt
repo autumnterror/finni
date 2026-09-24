@@ -64,7 +64,10 @@ internal fun SavingsScreen(
     }
     val state by viewModel.state().observeAsState(SavingsViewState())
     LaunchedEffect(viewModel) { viewModel.perform(SavingsViewEvent.Load) }
-    BackHandler { viewModel.perform(SavingsViewEvent.Back) }
+    BackHandler {
+        if (state.transferDirection != null) viewModel.perform(SavingsViewEvent.TransferDismissed)
+        else viewModel.perform(SavingsViewEvent.Back)
+    }
     petApi.RequirePet(modifier = Modifier.fillMaxSize()) { profile, _, _, _ ->
         Box(Modifier.fillMaxSize()) {
             roomBackdrop.Content(
@@ -210,7 +213,7 @@ private fun SavingsContent(
             }
         }
     }
-    if (state.notice == null && state.transferDirection == null) {
+    if (!state.loading && state.notice == null && state.transferDirection == null) {
         SavingsOnboardingDialog(
             state = state,
             petName = petName,
@@ -240,14 +243,29 @@ private fun ColumnScope.SavingsBody(
             text = stringResource(
                 if (state.goal == null) R.string.savings_choose_goal else R.string.savings_other_goals,
             ),
-            style = AppTheme.typography.sectionTitle,
+            style = if (state.goal == null) {
+                AppTheme.typography.sectionTitle
+            } else {
+                AppTheme.typography.label
+            },
             color = AppTheme.colors.storefront.onSurface,
         )
+        if (state.onboardingStep == SavingsOnboardingStep.SELECT_GOAL) {
+            FinPetStorefrontCard(Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.savings_onboarding_select_prompt),
+                    modifier = Modifier.padding(AppTheme.spacing.md),
+                    style = AppTheme.typography.bodyStrong,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
+        }
         GoalChoices(
             goals = state.starterGoals,
             activeGoalId = state.goal?.goal?.id,
             suggestedGoalId = state.suggestedGoalId,
-            busy = state.busy,
+            busy = state.busy || (state.onboardingStep != null &&
+                state.onboardingStep != SavingsOnboardingStep.SELECT_GOAL),
             onGoal = { onEvent(SavingsViewEvent.GoalSelected(it)) },
         )
         if (state.goal != null) {
@@ -282,20 +300,20 @@ private fun SavingsOnboardingDialog(
 ) {
     val step = state.onboardingStep ?: return
     val cards = when (step) {
-        SavingsOnboardingStep.INTRODUCTION -> listOf(
-            stringResource(R.string.savings_onboarding_intro_1),
-            stringResource(R.string.savings_onboarding_intro_2),
-            stringResource(R.string.savings_onboarding_intro_3),
+        SavingsOnboardingStep.INTRODUCTION -> listOf(stringResource(R.string.savings_onboarding_intro_1))
+        SavingsOnboardingStep.CONFIRM_GOAL -> listOf(
+            stringResource(R.string.savings_onboarding_confirm_goal, state.pendingGoal?.title.orEmpty()),
         )
-        SavingsOnboardingStep.GOAL_CREATED -> listOf(
-            stringResource(R.string.savings_onboarding_goal_created),
-            stringResource(R.string.savings_onboarding_goal_hint),
-        )
+        SavingsOnboardingStep.GOAL_CREATED -> listOf(stringResource(R.string.savings_onboarding_goal_created))
         SavingsOnboardingStep.FIRST_DEPOSIT -> listOf(
             stringResource(R.string.savings_onboarding_deposit_question),
         )
         SavingsOnboardingStep.DEPOSIT_DONE -> listOf(
-            stringResource(R.string.savings_onboarding_deposit_done),
+            stringResource(if (state.goal?.isReached == true) {
+                R.string.savings_onboarding_reached
+            } else {
+                R.string.savings_onboarding_deposit_done
+            }),
         )
         SavingsOnboardingStep.DEPOSIT_SKIPPED -> listOf(
             stringResource(R.string.savings_onboarding_deposit_skipped),
@@ -304,15 +322,23 @@ private fun SavingsOnboardingDialog(
         SavingsOnboardingStep.WAITING_FOR_DEPOSIT,
         -> return
     }
-    val isDepositChoice = step == SavingsOnboardingStep.FIRST_DEPOSIT
+    val hasActions = step == SavingsOnboardingStep.FIRST_DEPOSIT ||
+        step == SavingsOnboardingStep.CONFIRM_GOAL || step == SavingsOnboardingStep.INTRODUCTION
     FinPetDialogueDialog(
         speakerName = petName,
         cards = cards,
         portrait = petPortrait,
         dismissOnBackPress = false,
-        advanceOnTap = !isDepositChoice,
-        actions = if (isDepositChoice) {
-            listOf(
+        advanceOnTap = !hasActions,
+        actions = when (step) {
+            SavingsOnboardingStep.INTRODUCTION -> listOf(
+                FinPetDialogueAction("choose_goal", stringResource(R.string.savings_onboarding_choose_goal)),
+            )
+            SavingsOnboardingStep.CONFIRM_GOAL -> listOf(
+                FinPetDialogueAction("confirm_goal", stringResource(R.string.savings_onboarding_yes)),
+                FinPetDialogueAction("change_goal", stringResource(R.string.savings_onboarding_change_goal)),
+            )
+            SavingsOnboardingStep.FIRST_DEPOSIT -> listOf(
                 FinPetDialogueAction(
                     id = ONBOARDING_DEPOSIT_NOW_ACTION_ID,
                     label = stringResource(R.string.savings_onboarding_deposit_now),
@@ -322,15 +348,38 @@ private fun SavingsOnboardingDialog(
                     label = stringResource(R.string.savings_onboarding_deposit_later),
                 ),
             )
-        } else {
-            emptyList()
+            else -> emptyList()
         },
         onActionSelected = { action ->
-            onEvent(
-                SavingsViewEvent.OnboardingDepositSelected(
+            when (action.id) {
+                "choose_goal" -> onEvent(SavingsViewEvent.OnboardingContinue)
+                "confirm_goal" -> onEvent(SavingsViewEvent.GoalConfirmed)
+                "change_goal" -> onEvent(SavingsViewEvent.GoalChangeRequested)
+                else -> onEvent(SavingsViewEvent.OnboardingDepositSelected(
                     depositNow = action.id == ONBOARDING_DEPOSIT_NOW_ACTION_ID,
-                ),
-            )
+                ))
+            }
+        },
+        additionalContent = {
+            if (step == SavingsOnboardingStep.GOAL_CREATED) {
+                state.goal?.let { progress ->
+                    FinPetModalSection(Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
+                        Column(
+                            modifier = Modifier.padding(AppTheme.spacing.md),
+                            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                        ) {
+                            Text(
+                                stringResource(R.string.savings_progress, progress.savedRub, progress.goal.targetRub),
+                                style = AppTheme.typography.bodyStrong,
+                            )
+                            FinPetStorefrontProgressIndicator(
+                                progress = (progress.savedRub.toFloat() / progress.goal.targetRub).coerceIn(0f, 1f),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
         },
         onFinished = { onEvent(SavingsViewEvent.OnboardingContinue) },
     )
@@ -595,6 +644,7 @@ private fun TransferDialog(
 private fun SavingsNotice.sectionTone(): FinPetModalSectionTone = when (this) {
     is SavingsNotice.Rejected -> FinPetModalSectionTone.Warning
     SavingsNotice.GoalSaved,
+    is SavingsNotice.GoalReached,
     is SavingsNotice.TransferCompleted -> FinPetModalSectionTone.Highlighted
 }
 
@@ -605,6 +655,7 @@ private fun SavingsNotice.message(): String = when (this) {
         amountRub,
     )
     SavingsNotice.GoalSaved -> stringResource(R.string.savings_goal_saved)
+    is SavingsNotice.GoalReached -> stringResource(R.string.savings_goal_reached_feedback, title)
     is SavingsNotice.Rejected -> when (reason) {
         RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS -> stringResource(R.string.savings_not_enough_wallet, missingRub)
         RejectionReason.INSUFFICIENT_SAVINGS -> stringResource(R.string.savings_not_enough_savings, missingRub)

@@ -53,6 +53,7 @@ internal class AppModuleImpl(
             week = weekMediator,
             pet = petMediator,
             roomApiProvider = { roomMediator.getApi() },
+            learning = learningMediator,
         )
     }
     private val shopMediator: ShopMediator by lazy {
@@ -62,6 +63,8 @@ internal class AppModuleImpl(
             weekMediator = weekMediator,
             planningMediator = planningMediator,
             inventoryApi = inventoryMediator.getApi(),
+            learningMediator = learningMediator,
+            petMediator = petMediator,
         )
     }
 

@@ -249,6 +249,7 @@ Financial reserve / free remainder  50
 
 Rules:
 - planned total must not exceed available money;
+- zero planned savings is allowed; a small or absent savings share may receive a neutral hint but does not block confirmation;
 - the plan can be edited before confirmation;
 - after confirmation it is fixed for that week;
 - the plan does **not** hard-block later actions;
@@ -461,6 +462,16 @@ MVP rules:
 The game may show an estimated time to goal if calculation is simple and transparent.
 
 Meaningful savings actions can advance achievement progress.
+
+The first-day guided path introduces the room and pocket money, then the weekly
+plan, a player-chosen locked mini-game, and finally the piggy bank. The chosen
+game is recommended as a goal, while other goals remain available. The
+piggy-bank explanation ends in the room; only the player's tap on the piggy-bank
+object opens the savings screen. The first goal requires explicit confirmation;
+the first contribution may be made now or later. Goal creation, contributions
+in separate game weeks, and reaching a goal
+are distinct learning facts. Replaying a persisted goal or financial operation
+must not duplicate achievement progress.
 
 Opening the savings screen does not advance achievement progress.
 
@@ -723,6 +734,36 @@ rule must consider mandatory needs, basket contents, current and planned money,
 remaining days, and the consequence of the choice. Receipt checking is a deferred
 metric and must not be added to the active catalog until a receipt mechanic exists.
 
+For `reasonable_purchase`, the Introduction achievement requires two qualifying
+shopping trips. The Learned achievement requires qualifying shopping trips in
+three consecutive game weeks. A poor purchase remains allowed, but the pet then
+gives one short neutral explanation of the concrete problem, such as missing
+required food, risking mandatory money, or exceeding the available wants budget.
+
+Promotions are displayed directly on shop items rather than as a forced choice.
+The first promotion is scheduled after a configurable number of game days and
+includes one introductory pet remark; later promotions stay visually prominent
+without repeating that remark. Active promotion variants are a percentage
+discount and `2+1`: every complete set of three target items is charged as two,
+while incomplete sets keep the regular unit price. The catalog card, cart total,
+economy debit, and receipt must use the same promotion calculation. A selected
+promotion remains stable for the whole game day, including after leaving and
+reopening the shop or completing a purchase; the next game day recalculates the
+event. Buying substantially more promotion items than the quantity needed to
+receive the offer remains allowed, but it does not count as a reasonable purchase
+or a good promotion decision. The threshold is the promotion's minimum useful
+quantity plus a small configured allowance; when it is exceeded, the pet gives
+one short neutral reminder to consider how many items are actually needed.
+
+After a successful payment, the receipt must be shown immediately, without
+requiring the player to leave an already emptied cart. Any purchase feedback is
+shown after the receipt is dismissed.
+
+Impulse wishes may appear in both the room and the
+shop. They are informational prompts without action buttons: the player responds
+through ordinary shopping behavior or by leaving the item unpurchased. The first
+wish may include a short explanation, while later wishes use varied concise copy.
+
 #### Financial security
 
 | Metric | Introduction row | Learned row |
@@ -787,6 +828,13 @@ The public API must at minimum support idempotent action recording, observing
 unlocked achievements, observing parent progress rows, and checking/marking
 first-time explanations. A generic application-wide event bus is not required for
 MVP; direct feature contracts and coordinators are sufficient.
+
+Achievement-unlock notifications are presented by one app-level host above
+navigation, using the shared design-system banner on every screen. The banner
+appears at the top, dismisses automatically after a short delay, and can be
+closed immediately; individual features must not render competing unlock banners.
+Shared pet dialogues move below the visible banner, including when its title
+requires extra height.
 
 A committed qualifying game action must not lose its learning action after process
 death. Use the same shared Room transaction when practical, or persist a small

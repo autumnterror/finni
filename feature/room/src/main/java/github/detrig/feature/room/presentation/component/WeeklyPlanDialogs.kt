@@ -69,6 +69,7 @@ import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.component.FinPetStorefrontSlider
 import github.detrig.designsystem.theme.AppTheme
@@ -113,6 +114,7 @@ internal fun WeeklyPlanEditorDialog(
     var wantsBounds by remember { mutableStateOf<Rect?>(null) }
     var savingsBounds by remember { mutableStateOf<Rect?>(null) }
     var reserveBounds by remember { mutableStateOf<Rect?>(null) }
+    var totalBounds by remember { mutableStateOf<Rect?>(null) }
 
     LaunchedEffect(tutorialStep) {
         val requester = when (tutorialStep) {
@@ -145,7 +147,10 @@ internal fun WeeklyPlanEditorDialog(
             )
         },
     ) {
-        NotebookSection(modifier = Modifier.fillMaxWidth()) {
+        NotebookSection(
+            modifier = Modifier.fillMaxWidth()
+                .onGloballyPositioned { totalBounds = it.boundsInWindow() },
+        ) {
             Text(
                 text = stringResource(R.string.plan_description, availableRub),
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -209,7 +214,7 @@ internal fun WeeklyPlanEditorDialog(
         if (tutorialStep != null) {
             FinPetDialogueDialog(
                 speakerName = petName,
-                cards = PlanTutorialStep.entries.map { it.message() },
+                cards = listOf(tutorialStep.message()),
                 portrait = petPortrait,
                 underlay = {
                     TutorialSpotlight(
@@ -218,15 +223,23 @@ internal fun WeeklyPlanEditorDialog(
                             PlanTutorialStep.WANTS -> wantsBounds
                             PlanTutorialStep.SAVINGS -> savingsBounds
                             PlanTutorialStep.RESERVE -> reserveBounds
-                            PlanTutorialStep.INTRODUCTION,
-                            PlanTutorialStep.PRACTICE,
-                            -> null
+                            PlanTutorialStep.INTRODUCTION -> totalBounds
+                            PlanTutorialStep.PRACTICE -> null
                         },
                     )
                 },
-                onPageChanged = { onTutorialNext() },
+                advanceOnTap = false,
                 dismissOnBackPress = false,
                 topInset = dialogueTopInset,
+                actions = listOf(FinPetDialogueAction(
+                    id = "next",
+                    label = stringResource(if (tutorialStep == PlanTutorialStep.RESERVE) {
+                        R.string.plan_tutorial_practice
+                    } else {
+                        R.string.plan_tutorial_next
+                    }),
+                )),
+                onActionSelected = { onTutorialNext() },
                 onFinished = onTutorialNext,
             )
         } else if (feedbackCards != null) {
@@ -237,27 +250,18 @@ internal fun WeeklyPlanEditorDialog(
                 dismissOnBackPress = false,
                 advanceOnTap = false,
                 topInset = dialogueTopInset,
-                actions = listOf(
-                    FinPetDialogueAction(
-                        id = PLAN_EDIT_ACTION_ID,
-                        label = stringResource(R.string.plan_feedback_edit),
-                    ),
-                    FinPetDialogueAction(
-                        id = PLAN_SAVE_ACTION_ID,
-                        label = stringResource(R.string.plan_feedback_save_anyway),
-                    ),
-                ),
-                onActionSelected = { action ->
-                    if (action.id == PLAN_EDIT_ACTION_ID) onFeedbackEdit() else onFeedbackFinished()
-                },
-                onFinished = onFeedbackFinished,
+                actions = listOf(FinPetDialogueAction(
+                    id = PLAN_EDIT_ACTION_ID,
+                    label = stringResource(R.string.plan_feedback_edit),
+                )),
+                onActionSelected = { onFeedbackEdit() },
+                onFinished = onFeedbackEdit,
             )
         }
     }
 }
 
 private const val PLAN_EDIT_ACTION_ID = "edit_plan"
-private const val PLAN_SAVE_ACTION_ID = "save_plan"
 
 @Composable
 private fun WeeklyPlanNotebookDialog(
@@ -267,6 +271,7 @@ private fun WeeklyPlanNotebookDialog(
     actions: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    FinPetModalVisibilityEffect()
     val canDismiss = onDismissRequest != null
     Dialog(
         onDismissRequest = { if (canDismiss) onDismissRequest() },

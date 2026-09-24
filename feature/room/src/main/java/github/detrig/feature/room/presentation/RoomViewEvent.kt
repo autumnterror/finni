@@ -22,17 +22,18 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object CloseParentHelpDialog : RoomViewEvent
     data object CloseAllowanceNotice : RoomViewEvent
     data object CloseEarlyWeekParentHelpNotice : RoomViewEvent
+    data object CloseImpulseWish : RoomViewEvent
     data object FirstRunOnboardingContinue : RoomViewEvent
     data object FirstRunMoneyNoticeClosed : RoomViewEvent
     data class FirstRunDepositSelected(val depositNow: Boolean) : RoomViewEvent
     data object Resumed : RoomViewEvent
+    data object Paused : RoomViewEvent
     data object SavePlanClicked : RoomViewEvent
     data object PlanTutorialNext : RoomViewEvent
     data object PlanDialogueFinished : RoomViewEvent
     data object PlanDialogueEditRequested : RoomViewEvent
     data object AchievementsClicked : RoomViewEvent
     data object CloseAchievements : RoomViewEvent
-    data object AchievementBannerDismissed : RoomViewEvent
     data object ClosePlanSummary : RoomViewEvent
     data object CloseWeekResult : RoomViewEvent
     data class PlanPercentChanged(val category: PlanCategory, val percent: Int) : RoomViewEvent

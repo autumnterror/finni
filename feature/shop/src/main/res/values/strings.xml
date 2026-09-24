@@ -23,6 +23,9 @@
     <string name="shop_increase_quantity">Увеличить количество: %1$s</string>
     <string name="shop_not_enough_money">Не хватает %1$d ₽</string>
     <string name="shop_total_accessibility">Итого: %1$d рублей</string>
+    <string name="shop_cart_discount">Скидка: %1$d ₽</string>
+    <string name="shop_cart_free_items">Бесплатно: %1$d шт.</string>
+    <string name="shop_cart_items_until_free">До подарка: %1$d шт.</string>
     <string name="shop_confirm_payment_title">Оплатить товары?</string>
     <string name="shop_confirm_payment_body">Итого: %1$d ₽</string>
     <string name="shop_confirm_payment">Оплатить</string>
@@ -30,4 +33,14 @@
     <string name="shop_payment_error">Не удалось оплатить товары. Попробуйте ещё раз.</string>
     <string name="shop_payment_insufficient_funds">Недостаточно монет для оплаты.</string>
     <string name="shop_product_image_placeholder">Изображение товара появится здесь</string>
+    <string name="shop_pet_name">Финни</string>
+    <string name="shop_promotion_prompt">Смотри, на «%1$s» акция: было %2$d ₽, теперь %3$d ₽! Цена стала ниже, но всё равно важно проверить, нужна ли нам эта покупка.</string>
+    <string name="shop_promotion_two_plus_one_prompt">Смотри, на «%1$s» акция 2+1: если взять три, заплатим только за два! Но сначала проверим, нужны ли нам три штуки.</string>
+    <string name="shop_impulse_prompt">Мне очень хочется «%1$s» за %2$d ₽! Посмотрим, подходит ли это нашему бюджету?</string>
+    <string name="shop_promotion_badge">АКЦИЯ −%1$d%%</string>
+    <string name="shop_promotion_badge_two_plus_one">Акция: два товара покупаешь, третий бесплатно</string>
+    <string name="shop_feedback_food_missing">Мы купили много интересного, но забыли про корм. В следующий раз сначала положим в корзину необходимое.</string>
+    <string name="shop_feedback_mandatory_money">После этой покупки осталось слишком мало денег на обязательные расходы. Давай в следующий раз сначала проверим остаток.</string>
+    <string name="shop_feedback_promotion_overbuy">Акция может быть выгодной, но покупать слишком много только из-за неё не стоит. В следующий раз сначала подумаем, сколько нам действительно нужно.</string>
+    <string name="shop_feedback_too_many_extras">В корзине оказалось больше лишних покупок, чем позволяет наш бюджет желаний. Можно выбрать самое важное, а остальное оставить на потом.</string>
 </resources>

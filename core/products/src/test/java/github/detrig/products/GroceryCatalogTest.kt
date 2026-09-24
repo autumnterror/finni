@@ -39,6 +39,7 @@ class GroceryCatalogTest {
         assertEquals(10, catalog.storefront.itemsIn(GroceryCategoryIds.Meals).size)
         assertEquals(9, catalog.storefront.itemsIn(GroceryCategoryIds.Drinks).size)
         assertEquals(items, catalog.storefront.itemsIn(categoryId = null))
+        assertEquals(2, catalog.storefront.gridLayout.columns)
     }
 
     @Test
