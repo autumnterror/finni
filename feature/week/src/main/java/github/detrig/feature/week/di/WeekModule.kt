@@ -9,6 +9,7 @@ internal class WeekModule(private val dependencies: WeekDependencies) : WeekComp
         WeekRepository(
             dependencies.weekDao(), dependencies.economyApi(),
             dependencies.transactionRunner(), dependencies.petDayEffects(),
+            dependencies.progressionApi(), dependencies.planningApi(),
         )
     }
 }

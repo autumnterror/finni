@@ -33,33 +33,14 @@ internal fun FirstRunOnboardingDialog(
     topInset: Dp = 0.dp,
     onContinue: () -> Unit,
     onDepositSelected: (Boolean) -> Unit,
-    onOpenPhone: () -> Unit = {},
-    onOpenFridge: () -> Unit = {},
-    onOpenTable: () -> Unit = {},
-    onGoToBed: () -> Unit = {},
     onShowWeekSummary: () -> Unit = {},
     onStartNewWeekPlan: () -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
 ) {
     val cards = state.cards(petName) ?: return
     val isDepositChoice = state.step == FirstRunOnboardingStep.FIRST_DEPOSIT
+    val isTapTableInstruction = state.step == FirstRunOnboardingStep.TABLE_GUIDANCE
     val destinationAction = when (state.step) {
-        FirstRunOnboardingStep.PHONE_GUIDANCE -> FinPetDialogueAction(
-            id = OPEN_PHONE_ACTION_ID,
-            label = stringResource(R.string.onboarding_open_phone),
-        )
-        FirstRunOnboardingStep.FRIDGE_GUIDANCE -> FinPetDialogueAction(
-            id = OPEN_FRIDGE_ACTION_ID,
-            label = stringResource(R.string.onboarding_open_fridge),
-        )
-        FirstRunOnboardingStep.TABLE_GUIDANCE -> FinPetDialogueAction(
-            id = OPEN_TABLE_ACTION_ID,
-            label = stringResource(R.string.onboarding_open_table),
-        )
-        FirstRunOnboardingStep.BEDTIME_GUIDANCE -> FinPetDialogueAction(
-            id = GO_TO_BED_ACTION_ID,
-            label = stringResource(R.string.onboarding_go_to_bed),
-        )
         FirstRunOnboardingStep.WEEK_END_INTRO -> FinPetDialogueAction(
             id = SHOW_WEEK_SUMMARY_ACTION_ID,
             label = stringResource(R.string.onboarding_show_week_summary),
@@ -77,7 +58,9 @@ internal fun FirstRunOnboardingDialog(
         topInset = topInset,
         onPageChanged = onPageChanged,
         dismissOnBackPress = false,
-        advanceOnTap = !isDepositChoice && destinationAction == null,
+        focusable = !isTapTableInstruction,
+        advanceOnTap = !isDepositChoice && destinationAction == null && !isTapTableInstruction,
+        alignment = Alignment.TopCenter.takeIf { isTapTableInstruction },
         actions = when {
             isDepositChoice -> listOf(
                 FinPetDialogueAction(
@@ -96,10 +79,6 @@ internal fun FirstRunOnboardingDialog(
             when (action.id) {
                 DEPOSIT_NOW_ACTION_ID -> onDepositSelected(true)
                 DEPOSIT_LATER_ACTION_ID -> onDepositSelected(false)
-                OPEN_PHONE_ACTION_ID -> onOpenPhone()
-                OPEN_FRIDGE_ACTION_ID -> onOpenFridge()
-                OPEN_TABLE_ACTION_ID -> onOpenTable()
-                GO_TO_BED_ACTION_ID -> onGoToBed()
                 SHOW_WEEK_SUMMARY_ACTION_ID -> onShowWeekSummary()
                 START_NEW_WEEK_PLAN_ACTION_ID -> onStartNewWeekPlan()
             }
@@ -115,10 +94,6 @@ internal fun FirstRunOnboardingDialog(
 
 private const val DEPOSIT_NOW_ACTION_ID = "deposit_now"
 private const val DEPOSIT_LATER_ACTION_ID = "deposit_later"
-private const val OPEN_PHONE_ACTION_ID = "open_phone"
-private const val OPEN_FRIDGE_ACTION_ID = "open_fridge"
-private const val OPEN_TABLE_ACTION_ID = "open_table"
-private const val GO_TO_BED_ACTION_ID = "go_to_bed"
 private const val SHOW_WEEK_SUMMARY_ACTION_ID = "show_week_summary"
 private const val START_NEW_WEEK_PLAN_ACTION_ID = "start_new_week_plan"
 
@@ -175,8 +150,6 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.HUNGER_FIND_FOOD -> listOf(stringResource(R.string.onboarding_hunger_find_food))
     FirstRunOnboardingStep.PHONE_GUIDANCE -> listOf(stringResource(R.string.onboarding_phone_guidance))
     FirstRunOnboardingStep.PURCHASE_READY -> listOf(stringResource(R.string.onboarding_purchase_ready))
-    FirstRunOnboardingStep.PURCHASE_STORAGE_HINT ->
-        listOf(stringResource(R.string.onboarding_purchase_storage_hint))
     FirstRunOnboardingStep.FRIDGE_GUIDANCE -> listOf(stringResource(R.string.onboarding_fridge_guidance))
     FirstRunOnboardingStep.TABLE_PROMPT -> listOf(stringResource(R.string.onboarding_table_prompt))
     FirstRunOnboardingStep.TABLE_GUIDANCE -> listOf(stringResource(R.string.onboarding_table_guidance))
@@ -205,11 +178,17 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.GAMES,
     FirstRunOnboardingStep.FINISH,
     FirstRunOnboardingStep.WAITING_FOR_HUNGER,
+    FirstRunOnboardingStep.PURCHASE_STORAGE_HINT,
+    FirstRunOnboardingStep.WAITING_FOR_PHONE,
     FirstRunOnboardingStep.PHONE_STORE_GUIDANCE,
+    FirstRunOnboardingStep.WAITING_FOR_STORE,
     FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE,
     FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE,
+    FirstRunOnboardingStep.SHOP_FOOD_SELECTED,
+    FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
     FirstRunOnboardingStep.FRIDGE_FOUND,
     FirstRunOnboardingStep.FRIDGE_EXPLANATION,
+    FirstRunOnboardingStep.FRIDGE_PICK_FOOD,
     FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE,
     FirstRunOnboardingStep.FEEDING,
     FirstRunOnboardingStep.FEEDING_DONE,

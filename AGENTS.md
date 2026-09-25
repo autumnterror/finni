@@ -714,9 +714,9 @@ summary must not hide or replace these rows.
 
 | Metric | Introduction row | Learned row |
 |---|---|---|
-| `reasonable_plan` | Ребёнок ознакомился с распределением денег между обязательными расходами, желаниями, сбережениями и финансовой подушкой. | Ребёнок научился составлять недельный план, в котором хватает денег на обязательные расходы. |
-| `follow_plan` | Ребёнок ознакомился со сравнением недельного плана с фактическими расходами. | Ребёнок научился следовать недельному плану на протяжении нескольких игровых периодов. |
-| `adapt_to_change` | Ребёнок ознакомился с тем, как неожиданный расход, дополнительный доход или изменение цены влияет на бюджет. | Ребёнок научился адаптировать оставшиеся расходы к изменившейся финансовой ситуации. |
+| `reasonable_plan` | Ребёнок познакомился с распределением денег между обязательными расходами, желаниями, сбережениями и финансовой подушкой. | Ребёнок умеет составлять недельный план, в котором хватает денег на обязательные расходы. |
+| `follow_plan` | Ребёнок познакомился со сравнением недельного плана с фактическими расходами. | Ребёнок умеет следовать недельному плану на протяжении нескольких игровых периодов. |
+| `adapt_to_change` | Ребёнок познакомился с тем, как неожиданный расход, дополнительный доход или изменение цены влияет на бюджет. | Ребёнок умеет адаптировать оставшиеся расходы к изменившейся финансовой ситуации. |
 
 The Introduction achievement for `reasonable_plan` may be granted after the first
 completed planning attempt and explanation, even when the plan is weak. The
@@ -740,10 +740,10 @@ are approved.
 
 | Metric | Introduction row | Learned row |
 |---|---|---|
-| `create_goal` | Ребёнок ознакомился с созданием финансовой цели. | Ребёнок научился самостоятельно выбирать и создавать достижимую финансовую цель. |
-| `plan_saving` | Ребёнок ознакомился с включением сбережений в недельный план. | Ребёнок научился планировать регулярные пополнения финансовой цели. |
-| `regular_contribution` | Ребёнок ознакомился с откладыванием денег на финансовую цель. | Ребёнок научился пополнять финансовую цель на протяжении нескольких игровых периодов. |
-| `reach_goal` | Ребёнок ознакомился с завершением накопления на выбранную цель. | Ребёнок научился доводить план накопления до достижения цели. |
+| `create_goal` | Ребёнок познакомился с созданием финансовой цели. | Ребёнок умеет самостоятельно выбирать и создавать достижимую финансовую цель. |
+| `plan_saving` | Ребёнок познакомился с включением сбережений в недельный план. | Ребёнок умеет планировать регулярные пополнения финансовой цели. |
+| `regular_contribution` | Ребёнок познакомился с откладыванием денег на финансовую цель. | Ребёнок умеет пополнять финансовую цель на протяжении нескольких игровых периодов. |
+| `reach_goal` | Ребёнок познакомился с завершением накопления на выбранную цель. | Ребёнок умеет доводить план накопления до достижения цели. |
 
 The piggy-bank introduction explains its purpose but does not itself advance a
 metric. Creating a goal, confirming a plan with savings, a successful transfer,
@@ -755,9 +755,9 @@ buying the desired item.
 
 | Metric | Introduction row | Learned row |
 |---|---|---|
-| `reasonable_purchase` | Ребёнок ознакомился с проверкой того, подходит ли покупка текущему бюджету и обязательным потребностям. | Ребёнок научился оценивать покупку с учётом доступных денег и предстоящих обязательных расходов. |
-| `promotion_decision` | Ребёнок ознакомился с проверкой реальной пользы акции. | Ребёнок научился оценивать акции с учётом цены, необходимости покупки и доступных денег. |
-| `impulse_decision` | Ребёнок ознакомился с паузой перед импульсивной покупкой. | Ребёнок научился оценивать импульсивное желание, не ставя под угрозу обязательные расходы. |
+| `reasonable_purchase` | Ребёнок познакомился с проверкой того, подходит ли покупка текущему бюджету и обязательным потребностям. | Ребёнок умеет оценивать покупку с учётом доступных денег и предстоящих обязательных расходов. |
+| `promotion_decision` | Ребёнок познакомился с проверкой реальной пользы акции. | Ребёнок умеет оценивать акции с учётом цены, необходимости покупки и доступных денег. |
+| `impulse_decision` | Ребёнок познакомился с паузой перед импульсивной покупкой. | Ребёнок умеет оценивать импульсивное желание, не ставя под угрозу обязательные расходы. |
 
 A choice is not judged only by whether the child bought or refused an item. The
 rule must consider mandatory needs, basket contents, current and planned money,
@@ -798,8 +798,8 @@ wish may include a short explanation, while later wishes use varied concise copy
 
 | Metric | Introduction row | Learned row |
 |---|---|---|
-| `confirmation_code_request` | Ребёнок ознакомился с тем, почему просьба сообщить код подтверждения подозрительна. | Ребёнок научился не сообщать коды подтверждения и обращаться за помощью к взрослому. |
-| `unknown_link` | Ребёнок ознакомился с тем, почему неизвестная ссылка может быть опасна. | Ребёнок научился не переходить по неизвестным ссылкам и самостоятельно выбирать безопасную реакцию. |
+| `confirmation_code_request` | Ребёнок познакомился с тем, почему просьба сообщить код подтверждения подозрительна. | Ребёнок умеет хранить коды подтверждения в тайне и обращаться за помощью к взрослому. |
+| `unknown_link` | Ребёнок познакомился с тем, почему неизвестная ссылка может быть опасна. | Ребёнок умеет распознавать неизвестные ссылки и самостоятельно выбирать безопасную реакцию. |
 
 On the first occurrence, the pet points out that something looks suspicious and
 explains the nature of the risk. The second occurrence checks an independent
@@ -898,6 +898,13 @@ Primary XP sources may include:
 
 Mini-games may award a small amount of XP.
 
+Current level thresholds are 0, 100, 250, 450 and 700 total XP. Levels 1-2
+use the baby stage, levels 3-4 use explorer, and level 5 uses companion. The
+room HUD shows the XP bar at its top and the amount remaining to the next
+level; at level 5 it shows that the maximum level is reached. The first unlock
+of an introductory achievement grants 50 XP, and the first unlock of a learned
+achievement grants 20 XP. Replaying the same unlock never grants XP again.
+
 MVP pet progression needs at least 3 visible stages:
 - baby;
 - explorer;
@@ -934,6 +941,13 @@ Rules:
 
 The adult section is mandatory.
 
+The apartment burger menu first shows the current level, remaining XP and a
+prominent pet-stage name. It then shows the four most recently unlocked
+achievements, with an expandable list of all unlocked achievements and a
+separate button for the complete achievement catalog. The parent-section
+button stays at the bottom of the menu. Opening it requires a small arithmetic
+challenge and then shows a separate summary dialog.
+
 Protect it with a simple child barrier such as:
 - hold action;
 - simple arithmetic prompt.
@@ -952,8 +966,8 @@ Preferred:
 
 ```text
 Budget planning
-Ребёнок ознакомился с составлением недельного плана.
-Ребёнок научился оставлять достаточно денег на обязательные расходы.
+Ребёнок познакомился с составлением недельного плана.
+Ребёнок умеет оставлять достаточно денег на обязательные расходы.
 ```
 
 Avoid:
@@ -1330,8 +1344,8 @@ The UI must make important consequences visible before confirmation.
 The child should be able to quickly understand:
 
 1. current spendable balance;
-2. the new day and week in a short notice immediately after sleep (not as a
-   permanent HUD counter);
+2. the current day and week in a compact HUD badge, with a short notice
+   immediately after sleep;
 3. savings / current goal;
 4. pet hunger;
 5. pet happiness if enabled;

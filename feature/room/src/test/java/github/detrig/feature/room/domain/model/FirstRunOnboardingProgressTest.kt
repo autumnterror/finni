@@ -51,7 +51,7 @@ class FirstRunOnboardingProgressTest {
         )
 
         assertFalse(migrated.isCompleted)
-        assertEquals(FirstRunOnboardingStep.WAITING_FOR_HUNGER, migrated.firstStep)
+        assertEquals(FirstRunOnboardingStep.HUNGER_INTRO, migrated.firstStep)
     }
 
     @Test fun legacyMiddleStepRestartsItsChapter() {

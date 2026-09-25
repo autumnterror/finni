@@ -3,6 +3,7 @@ package github.detrig.feature.gamestate
 import github.detrig.core.di.ModuleDependenciesProvider
 import github.detrig.core.di.diDemand
 import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.gamestate.di.GameStateComponent
 import github.detrig.feature.gamestate.di.GameStateModule
 
@@ -17,6 +18,8 @@ object GameStateFeature {
     }
 
     fun getApi(): GameStateApi = requireNotNull(component).api
+
+    fun getProgressionApi(): ProgressionApi = requireNotNull(component).progressionApi
 
     internal fun destroyComponent() {
         component = null

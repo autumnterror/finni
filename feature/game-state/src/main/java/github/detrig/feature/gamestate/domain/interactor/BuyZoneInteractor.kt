@@ -7,5 +7,6 @@ import github.detrig.feature.gamestate.domain.model.ZoneOffer
 internal class BuyZoneInteractor(
     private val repository: GameStateRepository,
 ) {
-    suspend operator fun invoke(offer: ZoneOffer): ZoneBuyResult = repository.buyZone(offer)
+    suspend operator fun invoke(offer: ZoneOffer, useSavings: Boolean = false): ZoneBuyResult =
+        repository.buyZone(offer, useSavings)
 }

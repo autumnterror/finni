@@ -12,9 +12,12 @@ import kotlinx.coroutines.flow.map
 
 internal data class WeeklyPlanAchievement(
     val id: String,
+    val topicId: String,
     val title: String,
     val description: String,
     val isUnlocked: Boolean,
+    val xpReward: Int,
+    val unlockOrder: Long?,
 )
 
 internal data class WeeklyPlanLearningFeedback(
@@ -30,12 +33,17 @@ internal class WeeklyPlanLearningInteractor(
             achievements.map { achievement ->
                 WeeklyPlanAchievement(
                     id = achievement.definition.achievementId,
+                    topicId = achievement.definition.topicId,
                     title = achievement.definition.childTitle,
                     description = achievement.definition.childDescription,
                     isUnlocked = achievement.isUnlocked,
+                    xpReward = achievement.definition.xpReward,
+                    unlockOrder = achievement.unlock?.unlockOrder,
                 )
             }
         }
+
+    fun observeParentRows() = learningApi.observeParentRows(CURRENT_PROFILE_ID)
 
     suspend fun claimIntroduction(): Boolean = learningApi.claimFirstExplanation(
         profileId = CURRENT_PROFILE_ID,

@@ -17,6 +17,8 @@ interface ShopApi {
         onOpenCart: () -> Unit,
         closeAfterReceipt: () -> Unit,
         highlightedProductId: ProductId? = null,
+        onProductSelected: (ProductId) -> Unit = {},
+        tutorialMessage: String? = null,
     )
 
     /** Renders the cart without taking over the host navigation stack. */

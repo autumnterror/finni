@@ -32,6 +32,7 @@ internal class PhoneModule(
             repository = messagesRepository,
             weekApi = weekApi,
             learningApi = dependencies.learningApi(),
+            progressionApi = dependencies.progressionApi(),
             economyApi = dependencies.economyApi(),
             minimumHelpBalanceRub = dependencies.minimumHelpBalanceRub(),
             eventConfig = SecurityEventConfig(

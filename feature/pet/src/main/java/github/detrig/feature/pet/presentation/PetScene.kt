@@ -17,7 +17,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -51,13 +53,16 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.graphics.createBitmap
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.R
 import github.detrig.feature.pet.domain.model.HamsterAppearance
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.model.PetSpecies
+import github.detrig.feature.gamestate.domain.progression.PetGrowthStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -69,6 +74,7 @@ fun PetScene(
     animateIdle: Boolean = true,
     mouthOpen: Boolean = false,
     lookAt: Offset? = null,
+    growthStage: PetGrowthStage = PetGrowthStage.COMPANION,
     onClick: (() -> Unit)? = null,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
@@ -91,40 +97,55 @@ fun PetScene(
             onClick = onClick,
         )
     }
+    val growthScale = when (growthStage) {
+        PetGrowthStage.BABY -> .78f
+        PetGrowthStage.EXPLORER -> .9f
+        PetGrowthStage.COMPANION -> 1f
+    }
     Box(clickModifier) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawOval(
-                color = shadowColor,
-                topLeft = Offset(size.width * 0.24f, size.height * 0.88f),
-                size = Size(size.width * 0.52f, size.height * 0.08f),
-            )
-        }
-        Box(Modifier.fillMaxSize().petCalmIdleAnimation(animateIdle)) {
-            if (profile.species == PetSpecies.Hamster && hamsterAssets != null) {
-                HamsterPreview(
-                    assets = hamsterAssets,
-                    appearance = profile.hamsterAppearance,
-                    modifier = Modifier.fillMaxSize(),
-                    blink = hamsterBlink,
-                    mouthOpen = mouthOpen,
-                    lookAt = lookAt,
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = growthScale
+                    scaleY = growthScale
+                    transformOrigin = TransformOrigin(.5f, 1f)
+                },
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawOval(
+                    color = shadowColor,
+                    topLeft = Offset(size.width * 0.24f, size.height * 0.88f),
+                    size = Size(size.width * 0.52f, size.height * 0.08f),
                 )
-            } else if (profile.species != PetSpecies.Hamster) {
-                Image(
-                    bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
-                    contentDescription = description,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                    filterQuality = FilterQuality.None,
-                )
-                Image(
-                    bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = profile.color.colorFilter(),
-                    filterQuality = FilterQuality.None,
-                )
+            }
+            Box(Modifier.fillMaxSize().petCalmIdleAnimation(animateIdle)) {
+                if (profile.species == PetSpecies.Hamster && hamsterAssets != null) {
+                    HamsterPreview(
+                        assets = hamsterAssets,
+                        appearance = profile.hamsterAppearance,
+                        modifier = Modifier.fillMaxSize(),
+                        blink = hamsterBlink,
+                        mouthOpen = mouthOpen,
+                        lookAt = lookAt,
+                    )
+                } else if (profile.species != PetSpecies.Hamster) {
+                    Image(
+                        bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
+                        contentDescription = description,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                        filterQuality = FilterQuality.None,
+                    )
+                    Image(
+                        bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                        colorFilter = profile.color.colorFilter(),
+                        filterQuality = FilterQuality.None,
+                    )
+                }
             }
         }
     }
@@ -382,5 +403,22 @@ private fun Modifier.petCalmIdleAnimation(enabled: Boolean): Modifier {
         scaleX = 1f + 0.006f * progress
         scaleY = 1f + 0.018f * progress
         this.translationY = translationY * progress
+    }
+}
+
+@Preview(name = "Стадии питомца", widthDp = 330, heightDp = 130, showBackground = true)
+@Composable
+private fun PetGrowthStagesPreview() {
+    FinPetTheme {
+        Row {
+            PetGrowthStage.entries.forEach { stage ->
+                PetScene(
+                    profile = PetProfile(name = "Финни", color = PetColor.Sunny),
+                    modifier = Modifier.size(110.dp),
+                    animateIdle = false,
+                    growthStage = stage,
+                )
+            }
+        }
     }
 }

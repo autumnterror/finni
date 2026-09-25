@@ -117,14 +117,27 @@ internal fun FeedingScreen() {
         },
     )
     val profile = petProfile
-    if (profile != null && firstRunStep == FirstRunOnboardingStep.FEEDING_DONE) {
-        FinPetDialogueDialog(
-            speakerName = profile.name,
-            cards = listOf(LocalContext.current.getString(R.string.first_run_fed_thanks)),
-            portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
-            dismissOnBackPress = false,
-            onFinished = { viewModel.perform(FeedingViewEvent.FirstRunThanksDismissed) },
-        )
+    if (profile != null) {
+        when (firstRunStep) {
+            FirstRunOnboardingStep.FEEDING -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_feeding_drag)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                focusable = false,
+                advanceOnTap = false,
+                dismissOnBackPress = false,
+                alignment = Alignment.TopCenter,
+                onFinished = {},
+            )
+            FirstRunOnboardingStep.FEEDING_DONE -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_fed_thanks)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                dismissOnBackPress = false,
+                onFinished = { viewModel.perform(FeedingViewEvent.FirstRunThanksDismissed) },
+            )
+            else -> Unit
+        }
     }
 }
 

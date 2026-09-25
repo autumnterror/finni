@@ -28,6 +28,8 @@ internal fun ShopScreen(
     onOpenCart: (() -> Unit)? = null,
     closeAfterReceipt: (() -> Unit)? = null,
     highlightedProductId: github.detrig.products.ProductId? = null,
+    onProductSelected: (github.detrig.products.ProductId) -> Unit = {},
+    tutorialMessage: String? = null,
 ) {
     val component = ShopFeature.component()
     val viewModel: ShopViewModel = viewModel(key = "${storeId.value}:${onBack != null}") {
@@ -66,6 +68,8 @@ internal fun ShopScreen(
             modifier = if (onBack == null) Modifier.shopSafeDrawingPadding() else Modifier,
             contentPadding = padding,
             highlightedProductId = highlightedProductId,
+            onProductSelected = onProductSelected,
+            tutorialMessage = tutorialMessage,
         )
     }
 }

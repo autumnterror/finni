@@ -15,6 +15,7 @@ internal class WeekMediator(
     private val databaseModule: AppDatabaseModule,
     private val economyMediator: EconomyMediator,
     private val gameStateMediator: GameStateMediator,
+    private val planningMediator: PlanningMediator,
 ) : Mediator<WeekApi> {
     fun init() {
         WeekFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -25,6 +26,8 @@ internal class WeekMediator(
                     gameStateMediator.getApi().consumeHungerForSleep()
                 }
                 override fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
+                override fun progressionApi() = gameStateMediator.getProgressionApi()
+                override fun planningApi() = planningMediator.getApi()
             }
         }
     }

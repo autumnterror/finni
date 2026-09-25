@@ -14,7 +14,12 @@ import github.detrig.feature.savings.presentation.SavingsViewModel
 internal class SavingsModule(private val dependencies: SavingsDependencies) : SavingsComponent {
     private val router by lazy { SavingsRouterImpl(dependencies.globalNavigator()) }
     private val learning by lazy {
-        SavingsLearningInteractor(dependencies.economyApi(), dependencies.weekApi(), dependencies.learningApi())
+        SavingsLearningInteractor(
+            dependencies.economyApi(),
+            dependencies.weekApi(),
+            dependencies.learningApi(),
+            dependencies.progressionApi(),
+        )
     }
     private val createGoal by lazy { CreateSavingsGoalInteractor(dependencies.economyApi(), learning) }
     private val transferTo by lazy {

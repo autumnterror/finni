@@ -7,6 +7,7 @@ import github.detrig.core.di.ModuleDependenciesProvider
 import github.detrig.feature.gamestate.GameStateDependencies
 import github.detrig.feature.gamestate.GameStateFeature
 import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.gamestate.data.local.GameStateDao
 import github.detrig.feature.gamestate.data.local.RoomZoneDao
 import github.detrig.feature.economy.api.EconomyApi
@@ -27,6 +28,8 @@ internal class GameStateMediator(
 
     @MainThread
     override fun getApi(): GameStateApi = GameStateFeature.getApi()
+
+    fun getProgressionApi(): ProgressionApi = GameStateFeature.getProgressionApi()
 }
 
 private class GameStateDependenciesImpl(

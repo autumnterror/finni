@@ -16,7 +16,7 @@ interface GameStateApi {
     fun observeState(): Flow<GameState?>
 
     /** Проверяет условия, списывает валюту и сохраняет зону в одной транзакции. */
-    suspend fun buyZone(offer: ZoneOffer): ZoneBuyResult
+    suspend fun buyZone(offer: ZoneOffer, useSavings: Boolean = false): ZoneBuyResult
 
     /** Применяет эффект игры один раз; повтор возвращает фактически записанную дельту. */
     suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int
@@ -26,9 +26,6 @@ interface GameStateApi {
 
     /** Вызывается при успешном End day внутри общей транзакции Week. */
     suspend fun consumeHungerForSleep(): Int
-
-    /** Applies the one-time hunger drop that starts the first care lesson. */
-    suspend fun startFirstNeed(): Int
 
     /** Safe to call repeatedly from foreground or background; does not create a pet. */
     suspend fun reconcileTimedNeeds(nowMillis: Long)

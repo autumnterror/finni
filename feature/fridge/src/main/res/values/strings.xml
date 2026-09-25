@@ -1,6 +1,7 @@
 <resources>
-    <string name="first_run_fridge_found">Вот он!</string>
     <string name="first_run_fridge_explanation">Всё, что мы покупаем из еды, появляется здесь.</string>
+    <string name="first_run_fridge_pick_food">Нажми на еду, чтобы переместить её на стол.</string>
     <string name="first_run_next">Дальше</string>
-    <string name="first_run_fed_thanks">Спасибо! Теперь намного лучше.</string>
+    <string name="first_run_feeding_drag">Перетащи еду со стола ко мне, чтобы покормить.</string>
+    <string name="first_run_fed_thanks">Вкуснятина!</string>
 </resources>

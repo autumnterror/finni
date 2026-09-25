@@ -70,14 +70,20 @@ class FirstRunOnboardingStateTest {
     }
 
     @Test fun firstCareLessonFocusesOnlyTheCurrentRoomObject() {
-        val phone = FirstRunOnboardingState(FirstRunOnboardingStep.PHONE_GUIDANCE)
+        val phoneExplanation = FirstRunOnboardingState(FirstRunOnboardingStep.PHONE_GUIDANCE)
+        val phoneWaiting = FirstRunOnboardingState(FirstRunOnboardingStep.WAITING_FOR_PHONE)
         val fridge = FirstRunOnboardingState(FirstRunOnboardingStep.FRIDGE_GUIDANCE)
+        val fridgeWaiting = FirstRunOnboardingState(FirstRunOnboardingStep.WAITING_FOR_FRIDGE)
         val table = FirstRunOnboardingState(FirstRunOnboardingStep.TABLE_GUIDANCE)
 
-        assertEquals("phone", phone.focusObjectId)
-        assertEquals(setOf("phone"), phone.allowedObjectIds)
+        assertEquals("phone", phoneExplanation.focusObjectId)
+        assertEquals(emptySet<String>(), phoneExplanation.allowedObjectIds)
+        assertEquals("phone", phoneWaiting.focusObjectId)
+        assertEquals(setOf("phone"), phoneWaiting.allowedObjectIds)
         assertEquals("fridge", fridge.focusObjectId)
-        assertEquals(setOf("fridge"), fridge.allowedObjectIds)
+        assertEquals(emptySet<String>(), fridge.allowedObjectIds)
+        assertEquals("fridge", fridgeWaiting.focusObjectId)
+        assertEquals(setOf("fridge"), fridgeWaiting.allowedObjectIds)
         assertEquals("dining_table", table.focusObjectId)
         assertEquals(setOf("dining_table"), table.allowedObjectIds)
     }

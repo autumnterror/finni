@@ -101,8 +101,8 @@ class LearningRepositoryTest {
 
             val parentRows = repository.observeParentRows("current").first()
             assertEquals(2, parentRows.size)
-            assertTrue(parentRows[0].text.startsWith("Ребёнок ознакомился"))
-            assertTrue(parentRows[1].text.startsWith("Ребёнок научился"))
+            assertTrue(parentRows[0].text.startsWith("Ребёнок познакомился"))
+            assertTrue(parentRows[1].text.startsWith("Ребёнок умеет"))
             assertEquals(2, repository.pendingXpRewards("current").size)
 
             assertTrue(repository.claimFirstExplanation("current", "savings.goal"))

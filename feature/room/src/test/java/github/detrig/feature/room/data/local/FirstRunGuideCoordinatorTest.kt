@@ -20,7 +20,7 @@ class FirstRunGuideCoordinatorTest {
         FirstRunGuideCoordinator(repository).moveTo(FirstRunOnboardingStep.FEEDING)
 
         assertEquals(
-            FirstRunOnboardingStep.WAITING_FOR_HUNGER,
+            FirstRunOnboardingStep.HUNGER_INTRO,
             FirstRunGuideCoordinator(repository).step.value,
         )
     }

@@ -21,12 +21,16 @@ internal class ShopApiImpl(
         onOpenCart: () -> Unit,
         closeAfterReceipt: () -> Unit,
         highlightedProductId: github.detrig.products.ProductId?,
+        onProductSelected: (github.detrig.products.ProductId) -> Unit,
+        tutorialMessage: String?,
     ) = ShopScreen(
         storeId = storeId,
         onBack = onBack,
         onOpenCart = onOpenCart,
         closeAfterReceipt = closeAfterReceipt,
         highlightedProductId = highlightedProductId,
+        onProductSelected = onProductSelected,
+        tutorialMessage = tutorialMessage,
     )
 
     @Composable

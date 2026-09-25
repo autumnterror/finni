@@ -9,6 +9,7 @@ import github.detrig.feature.economy.domain.FinancialSnapshot
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.PeriodicIncome
 import github.detrig.feature.learning.api.LearningApi
+import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.CategoryPlanProgress
 import github.detrig.feature.planning.domain.PlanActualOperation
@@ -96,7 +97,9 @@ class TransferWithoutGoalTest {
             ): EarlyWeekEndResult = error("Unused")
         }
 
-        val learning = SavingsLearningInteractor(economy, weekApi, learningApi)
+        val learning = SavingsLearningInteractor(
+            economy, weekApi, learningApi, unusedProxy(ProgressionApi::class.java),
+        )
         val result = TransferToSavingsInteractor(
             economy = economy,
             planning = planning,

@@ -32,11 +32,11 @@ import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.PlanAchievementFeedback
 
 @Composable
-internal fun AchievementMenuButton(
+internal fun RoomMenuButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val label = stringResource(R.string.achievements_open)
+    val label = stringResource(R.string.room_menu_open)
     FinPetButton(
         onClick = onClick,
         modifier = modifier.size(AppTheme.sizes.preferredTouchTarget)
@@ -105,7 +105,7 @@ internal fun AchievementsDialog(
 }
 
 @Composable
-private fun AchievementRow(achievement: PlanAchievementFeedback) {
+internal fun AchievementRow(achievement: PlanAchievementFeedback) {
     FinPetModalSection(
         modifier = Modifier.fillMaxWidth(),
         tone = if (achievement.isUnlocked) {
@@ -143,13 +143,13 @@ private fun AchievementRow(achievement: PlanAchievementFeedback) {
                     color = AppTheme.colors.textSecondary,
                 )
                 Text(
-                    text = stringResource(
-                        if (achievement.isUnlocked) {
-                            R.string.achievement_unlocked
-                        } else {
-                            R.string.achievement_locked
-                        },
-                    ),
+                    text = if (achievement.isUnlocked && achievement.xpReward > 0) {
+                        stringResource(R.string.achievement_unlocked_xp, achievement.xpReward)
+                    } else {
+                        stringResource(
+                            if (achievement.isUnlocked) R.string.achievement_unlocked else R.string.achievement_locked,
+                        )
+                    },
                     style = AppTheme.typography.label,
                     color = if (achievement.isUnlocked) {
                         AppTheme.colors.statusPositive.accent
@@ -164,10 +164,10 @@ private fun AchievementRow(achievement: PlanAchievementFeedback) {
 
 @Preview(name = "Светлая кнопка меню", widthDp = 88, heightDp = 88, showBackground = true)
 @Composable
-private fun AchievementMenuButtonPreview() {
+private fun RoomMenuButtonPreview() {
     FinPetTheme {
         Box(Modifier.padding(AppTheme.spacing.md)) {
-            AchievementMenuButton(onClick = {})
+            RoomMenuButton(onClick = {})
         }
     }
 }

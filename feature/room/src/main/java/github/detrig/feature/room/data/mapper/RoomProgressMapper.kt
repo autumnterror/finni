@@ -24,4 +24,9 @@ internal fun GameState.toRoomProgress(
     petHunger = pet.hunger,
     petHappiness = pet.happiness,
     debtRub = economy.debtRub,
+    totalXp = progress.totalXp,
+    currentLevelXp = progress.currentLevelXp,
+    nextLevelXp = progress.nextLevelXp,
+    experienceProgress = progress.levelProgress,
+    petGrowthStage = progress.petStage,
 )

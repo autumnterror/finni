@@ -15,6 +15,7 @@ internal fun GameStateEntity.toDomain(): GameState = GameState(
         health = health,
     ),
     playerLevel = playerLevel,
+    totalXp = totalXp,
 )
 
 internal fun GameState.toEntity(nowMillis: Long = 0): GameStateEntity = GameStateEntity(
@@ -24,6 +25,7 @@ internal fun GameState.toEntity(nowMillis: Long = 0): GameStateEntity = GameStat
     happiness = pet.happiness,
     health = pet.health,
     playerLevel = playerLevel,
+    totalXp = totalXp,
     hungerCheckpointMillis = nowMillis,
     happinessCheckpointMillis = nowMillis,
     hungerAlertEpisode = if (pet.hunger == 0) 1 else 0,

@@ -23,7 +23,6 @@ internal class FridgeViewModel(
             FridgeViewEvent.Back -> close()
             is FridgeViewEvent.ProductClicked -> startFlight(viewEvent.productId)
             is FridgeViewEvent.FlightAnimationFinished -> finishFlight(viewEvent.productId)
-            FridgeViewEvent.FirstRunContinue -> prepareFirstRunFood()
         }
     }
 
@@ -53,8 +52,14 @@ internal class FridgeViewModel(
     }
 
     private fun close() {
-        if (firstRunGuide.step.value == FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE) {
-            firstRunGuide.moveTo(FirstRunOnboardingStep.TABLE_PROMPT)
+        when (firstRunGuide.step.value) {
+            FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE ->
+                firstRunGuide.moveTo(FirstRunOnboardingStep.TABLE_GUIDANCE)
+            FirstRunOnboardingStep.FRIDGE_FOUND,
+            FirstRunOnboardingStep.FRIDGE_EXPLANATION,
+            FirstRunOnboardingStep.FRIDGE_PICK_FOOD,
+            -> firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE)
+            else -> Unit
         }
         observationJob?.cancel()
         observationJob = null
@@ -67,19 +72,6 @@ internal class FridgeViewModel(
             )
         }
         router.back()
-    }
-
-    private fun prepareFirstRunFood() {
-        if (firstRunGuide.step.value != FirstRunOnboardingStep.FRIDGE_EXPLANATION) return
-        val productId = stateData.stock.firstOrNull { it.quantity > 0 }?.productId ?: return
-        launchCoroutine {
-            when (inventoryApi.stageForTable(productId)) {
-                InventoryStageResult.Staged ->
-                    firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE)
-                InventoryStageResult.InsufficientStock ->
-                    updateState { copy(message = "Этот продукт уже закончился") }
-            }
-        }
     }
 
     private fun startFlight(productId: ProductId) {
@@ -107,7 +99,11 @@ internal class FridgeViewModel(
             },
         ) {
             when (inventoryApi.stageForTable(productId)) {
-                InventoryStageResult.Staged -> Unit
+                InventoryStageResult.Staged -> {
+                    if (firstRunGuide.step.value == FirstRunOnboardingStep.FRIDGE_PICK_FOOD) {
+                        firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE)
+                    }
+                }
                 InventoryStageResult.InsufficientStock -> {
                     updateState { copy(message = "Этот продукт уже закончился") }
                 }

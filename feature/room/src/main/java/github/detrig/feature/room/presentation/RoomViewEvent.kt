@@ -32,7 +32,6 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object FirstRunOpenPhone : RoomViewEvent
     data object FirstRunOpenFridge : RoomViewEvent
     data object FirstRunOpenTable : RoomViewEvent
-    data object FirstRunGoToBed : RoomViewEvent
     data object FirstRunShowWeekSummary : RoomViewEvent
     data object FirstRunStartNewWeekPlan : RoomViewEvent
     data object FirstRunMoneyNoticeClosed : RoomViewEvent
@@ -43,8 +42,16 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object PlanTutorialNext : RoomViewEvent
     data object PlanDialogueFinished : RoomViewEvent
     data object PlanDialogueEditRequested : RoomViewEvent
-    data object AchievementsClicked : RoomViewEvent
+    data object MenuClicked : RoomViewEvent
+    data object CloseMenu : RoomViewEvent
+    data object ToggleMenuAchievements : RoomViewEvent
+    data object ShowAllAchievements : RoomViewEvent
     data object CloseAchievements : RoomViewEvent
+    data object ParentCabinetClicked : RoomViewEvent
+    data class ParentAnswerChanged(val answer: String) : RoomViewEvent
+    data object ParentAnswerSubmitted : RoomViewEvent
+    data object CloseParentGate : RoomViewEvent
+    data object CloseParentCabinet : RoomViewEvent
     data object ClosePlanSummary : RoomViewEvent
     data object CloseWeekResult : RoomViewEvent
     data object WeekSummaryTutorialNext : RoomViewEvent
@@ -57,6 +64,6 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object Load : RoomViewEvent
     data object RetryClicked : RoomViewEvent
     data class ZoneClicked(val zoneId: String) : RoomViewEvent
-    data class BuyConfirmed(val zoneId: String) : RoomViewEvent
+    data class BuyConfirmed(val zoneId: String, val useSavings: Boolean = false) : RoomViewEvent
     data class SaveZoneAsGoal(val zoneId: String, val title: String) : RoomViewEvent
 }

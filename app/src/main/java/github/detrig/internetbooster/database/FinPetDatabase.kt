@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import github.detrig.feature.gamestate.data.local.GameStateDao
 import github.detrig.feature.gamestate.data.local.GameStateEntity
+import github.detrig.feature.gamestate.data.local.ExperienceGrantEntity
 import github.detrig.feature.economy.data.local.EconomyDao
 import github.detrig.feature.economy.data.local.EconomyStateEntity
 import github.detrig.feature.economy.data.local.FinancialOperationEntity
@@ -25,7 +26,7 @@ import github.detrig.feature.learning.data.local.LearningMetricOccurrenceEntity
 import github.detrig.feature.learning.data.local.LearningMetricProgressEntity
 
 @Database(
-    entities = [GameStateEntity::class, RoomZoneEntity::class,
+    entities = [GameStateEntity::class, ExperienceGrantEntity::class, RoomZoneEntity::class,
         github.detrig.feature.gamestate.data.local.PetPlayEffectEntity::class,
         github.detrig.minigames.fishing.data.FishingProgressEntity::class,
         EconomyStateEntity::class, FinancialOperationEntity::class, SavingsGoalEntity::class, ParentHelpStateEntity::class,
@@ -33,7 +34,7 @@ import github.detrig.feature.learning.data.local.LearningMetricProgressEntity
         LearningActionEntity::class, LearningMetricOccurrenceEntity::class,
         LearningMetricProgressEntity::class, AchievementUnlockEntity::class,
         LearningExplanationEntity::class, AchievementXpOutboxEntity::class],
-    version = 15,
+    version = 16,
     exportSchema = false,
 )
 abstract class FinPetDatabase : RoomDatabase() {

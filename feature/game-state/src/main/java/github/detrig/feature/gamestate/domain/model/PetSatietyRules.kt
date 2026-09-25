@@ -2,7 +2,7 @@ package github.detrig.feature.gamestate.domain.model
 
 /** Сон меняет сытость в игровом времени, независимо от часов устройства. */
 object PetSatietyRules {
-    const val INITIAL = 100
+    const val INITIAL = 70
     const val SLEEP_COST = 30
 
     fun afterCost(current: Int, cost: Int): Int {

@@ -37,14 +37,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -113,8 +121,12 @@ internal fun PhoneScreen(route: PhoneRoute) {
             messagesViewModel.perform(MessagesViewEvent.AppOpened)
         }
     }
-    BackHandler(enabled = activeAppId != null) {
-        if (firstRunStep != FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) activeAppId = null
+    BackHandler(
+        enabled = activeAppId != null || firstRunStep in firstRunPhoneHomeSteps,
+    ) {
+        if (activeAppId != null && firstRunStep !in firstRunShopLockedSteps) {
+            activeAppId = null
+        }
     }
     component.petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _, _ ->
         Box(Modifier.fillMaxSize()) {
@@ -132,14 +144,32 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 shopApi = component.shopApi,
                 messagesState = messagesState,
                 onMessagesEvent = messagesViewModel::perform,
-                onClose = { component.router.close() },
-                onBack = {
-                    if (firstRunStep != FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) activeAppId = null
+                onClose = {
+                    if (firstRunStep !in firstRunPhoneHomeSteps) component.router.close()
                 },
-                onOpenApp = { activeAppId = it },
+                onBack = {
+                    if (firstRunStep !in firstRunShopLockedSteps) activeAppId = null
+                },
+                onOpenApp = { appId ->
+                    if (firstRunStep == FirstRunOnboardingStep.WAITING_FOR_STORE) {
+                        if (appId == GROCERY_APP) {
+                            component.roomApi.firstRunGuide.moveTo(
+                                FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE,
+                            )
+                            activeAppId = appId
+                        }
+                    } else {
+                        activeAppId = appId
+                    }
+                },
                 firstRunStep = firstRunStep,
+                onFirstRunProductSelected = {
+                    component.roomApi.firstRunGuide.moveTo(
+                        FirstRunOnboardingStep.SHOP_FOOD_SELECTED,
+                    )
+                },
                 onFirstRunCheckout = { spentRub ->
-                    if (component.roomApi.firstRunGuide.step.value == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) {
+                    if (component.roomApi.firstRunGuide.step.value in firstRunShopPurchaseSteps) {
                         component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.PURCHASE_READY)
                         component.globalMessageController.showMessage(
                             componentContext.getString(R.string.first_run_spent, spentRub),
@@ -167,14 +197,12 @@ internal fun PhoneScreen(route: PhoneRoute) {
                         speakerName = petProfile.name,
                         cards = listOf(componentContext.getString(R.string.first_run_store_intro)),
                         portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
-                        advanceOnTap = false,
                         dismissOnBackPress = false,
-                        actions = listOf(FinPetDialogueAction("open_store", componentContext.getString(R.string.first_run_open_store))),
-                        onActionSelected = {
-                            component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE)
-                            activeAppId = GROCERY_APP
+                        onFinished = {
+                            component.roomApi.firstRunGuide.moveTo(
+                                FirstRunOnboardingStep.WAITING_FOR_STORE,
+                            )
                         },
-                        onFinished = {},
                     )
                 }
                 firstRunStep == FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE && activeAppId == GROCERY_APP -> {
@@ -188,17 +216,6 @@ internal fun PhoneScreen(route: PhoneRoute) {
                         onActionSelected = {
                             component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE)
                         },
-                        onFinished = {},
-                    )
-                }
-                firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE && activeAppId == GROCERY_APP -> {
-                    FinPetDialogueDialog(
-                        speakerName = petProfile.name,
-                        cards = listOf(componentContext.getString(R.string.first_run_buy_food)),
-                        portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
-                        focusable = false,
-                        advanceOnTap = false,
-                        dismissOnBackPress = false,
                         onFinished = {},
                     )
                 }
@@ -218,6 +235,7 @@ private fun PhoneDevice(
     onBack: () -> Unit,
     onOpenApp: (String) -> Unit,
     firstRunStep: FirstRunOnboardingStep,
+    onFirstRunProductSelected: () -> Unit,
     onFirstRunCheckout: (Long) -> Unit,
 ) {
     BoxWithConstraints(
@@ -282,7 +300,8 @@ private fun PhoneDevice(
                         onClose = onClose,
                         onOpenApp = onOpenApp,
                         highlightedAppId = GROCERY_APP.takeIf {
-                            firstRunStep == FirstRunOnboardingStep.PHONE_STORE_GUIDANCE
+                            firstRunStep == FirstRunOnboardingStep.PHONE_STORE_GUIDANCE ||
+                                firstRunStep == FirstRunOnboardingStep.WAITING_FOR_STORE
                         },
                     )
                 } else {
@@ -294,6 +313,7 @@ private fun PhoneDevice(
                         onMessagesEvent = onMessagesEvent,
                         onBack = onBack,
                         firstRunStep = firstRunStep,
+                        onFirstRunProductSelected = onFirstRunProductSelected,
                         onFirstRunCheckout = onFirstRunCheckout,
                     )
                 }
@@ -393,6 +413,8 @@ private fun PhoneHomeContent(
     onOpenApp: (String) -> Unit,
     highlightedAppId: String? = null,
 ) {
+    var highlightedAppBounds by remember { mutableStateOf<Rect?>(null) }
+    LaunchedEffect(highlightedAppId) { highlightedAppBounds = null }
     PhoneAssetButton(
         x = CLOSE_X + (BUTTON_SIZE - HOME_CLOSE_BUTTON_SIZE),
         y = CLOSE_Y,
@@ -425,6 +447,18 @@ private fun PhoneHomeContent(
                         .padding(4.dp)
                     else Modifier,
                 )
+                .onGloballyPositioned { coordinates ->
+                    if (app.id == highlightedAppId) {
+                        val position = coordinates.positionInParent()
+                        val bounds = Rect(
+                            left = position.x,
+                            top = position.y,
+                            right = position.x + coordinates.size.width,
+                            bottom = position.y + coordinates.size.height,
+                        )
+                        if (highlightedAppBounds != bounds) highlightedAppBounds = bounds
+                    }
+                }
                 .clickable(role = Role.Button, onClick = { onOpenApp(app.id) })
                 .semantics { this.role = Role.Button },
         ) {
@@ -463,6 +497,49 @@ private fun PhoneHomeContent(
             fontSize = 28f,
             lineHeight = 34f,
             style = AppTheme.typography.bodyStrong,
+        )
+    }
+    highlightedAppBounds?.let { bounds ->
+        PhoneAppTutorialMask(bounds = bounds)
+    }
+}
+
+@Composable
+private fun PhoneAppTutorialMask(
+    bounds: Rect,
+) {
+    val scrimColor = AppTheme.colors.sceneShadow.copy(alpha = 0.76f)
+    val outlineColor = AppTheme.colors.actionPrimary
+    val density = LocalDensity.current
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen),
+    ) {
+        val padding = with(density) { 16.dp.toPx() }
+        val topLeft = Offset(
+            x = bounds.left - padding,
+            y = bounds.top - padding,
+        )
+        val spotlightSize = Size(
+            width = bounds.width + padding * 2,
+            height = bounds.height + padding * 2,
+        )
+        val cornerRadius = CornerRadius(with(density) { 28.dp.toPx() })
+        drawRect(scrimColor)
+        drawRoundRect(
+            color = outlineColor,
+            topLeft = topLeft,
+            size = spotlightSize,
+            cornerRadius = cornerRadius,
+            blendMode = BlendMode.Clear,
+        )
+        drawRoundRect(
+            color = outlineColor,
+            topLeft = topLeft,
+            size = spotlightSize,
+            cornerRadius = cornerRadius,
+            style = Stroke(width = with(density) { 4.dp.toPx() }),
         )
     }
 }
@@ -505,6 +582,7 @@ private fun PhoneAppContent(
     onMessagesEvent: (MessagesViewEvent) -> Unit,
     onBack: () -> Unit,
     firstRunStep: FirstRunOnboardingStep,
+    onFirstRunProductSelected: () -> Unit,
     onFirstRunCheckout: (Long) -> Unit,
 ) {
     val screenTop = stretchedPhoneY(SCREEN_TOP)
@@ -521,6 +599,7 @@ private fun PhoneAppContent(
                 shopApi = shopApi,
                 onBack = onBack,
                 firstRunStep = firstRunStep,
+                onFirstRunProductSelected = onFirstRunProductSelected,
                 onFirstRunCheckout = onFirstRunCheckout,
             )
             CLOTHING_APP -> PhonePlaceholderApp(
@@ -681,18 +760,33 @@ private fun GroceryAppContent(
     shopApi: ShopApi,
     onBack: () -> Unit,
     firstRunStep: FirstRunOnboardingStep,
+    onFirstRunProductSelected: () -> Unit,
     onFirstRunCheckout: (Long) -> Unit,
 ) {
+    val context = LocalContext.current
     var page by rememberSaveable { mutableStateOf(PhoneShopPage.Catalog) }
+    val highlightedProductId = remember {
+        GroceryCatalog().storefront.items.minByOrNull { it.priceRub }?.id
+    }
     when (page) {
         PhoneShopPage.Catalog -> shopApi.Content(
             storeId = GroceryStoreIds.Store,
             onBack = onBack,
             onOpenCart = { page = PhoneShopPage.Cart },
             closeAfterReceipt = onBack,
-            highlightedProductId = remember {
-                GroceryCatalog().storefront.items.minByOrNull { it.priceRub }?.id
-            }.takeIf { firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE },
+            highlightedProductId = highlightedProductId.takeIf {
+                firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE
+            },
+            onProductSelected = { productId ->
+                if (firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE &&
+                    productId == highlightedProductId
+                ) {
+                    onFirstRunProductSelected()
+                }
+            },
+            tutorialMessage = if (firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) {
+                context.getString(R.string.first_run_buy_food)
+            } else null,
         )
         PhoneShopPage.Cart -> shopApi.CartContent(
             storeId = GroceryStoreIds.Store,
@@ -706,6 +800,22 @@ private fun GroceryAppContent(
 }
 
 private enum class PhoneShopPage { Catalog, Cart }
+
+private val firstRunPhoneHomeSteps = setOf(
+    FirstRunOnboardingStep.PHONE_STORE_GUIDANCE,
+    FirstRunOnboardingStep.WAITING_FOR_STORE,
+)
+
+private val firstRunShopLockedSteps = setOf(
+    FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE,
+    FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE,
+    FirstRunOnboardingStep.SHOP_FOOD_SELECTED,
+)
+
+private val firstRunShopPurchaseSteps = setOf(
+    FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE,
+    FirstRunOnboardingStep.SHOP_FOOD_SELECTED,
+)
 
 @Composable
 private fun PhonePlaceholderApp(

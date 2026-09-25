@@ -215,6 +215,7 @@ internal fun ShopCategoryRow(
 internal fun ShopProductGrid(
     items: List<SellableItem>,
     columns: Int,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     quantityInCart: (ProductId) -> Int,
     onItemClick: (ProductId) -> Unit,
     artworkResolver: ShopArtworkResolver,
@@ -228,6 +229,7 @@ internal fun ShopProductGrid(
 ) {
     FinPetLazyGrid(
         items = items,
+        state = gridState,
         modifier = modifier.fillMaxWidth(),
         columns = FinPetGridColumns.Fixed(columns),
         contentPadding = PaddingValues(AppTheme.spacing.lg),

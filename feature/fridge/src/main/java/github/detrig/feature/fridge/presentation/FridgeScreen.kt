@@ -108,15 +108,6 @@ internal fun FridgeScreen() {
     val profile = petProfile
     if (profile != null) {
         when (firstRunStep) {
-            FirstRunOnboardingStep.FRIDGE_FOUND -> FinPetDialogueDialog(
-                speakerName = profile.name,
-                cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_found)),
-                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
-                dismissOnBackPress = false,
-                onFinished = {
-                    component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.FRIDGE_EXPLANATION)
-                },
-            )
             FirstRunOnboardingStep.FRIDGE_EXPLANATION -> FinPetDialogueDialog(
                 speakerName = profile.name,
                 cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_explanation)),
@@ -124,7 +115,21 @@ internal fun FridgeScreen() {
                 advanceOnTap = false,
                 dismissOnBackPress = false,
                 actions = listOf(FinPetDialogueAction("next", LocalContext.current.getString(R.string.first_run_next))),
-                onActionSelected = { viewModel.perform(FridgeViewEvent.FirstRunContinue) },
+                onActionSelected = {
+                    component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.FRIDGE_PICK_FOOD)
+                },
+                onFinished = {
+                    component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.FRIDGE_PICK_FOOD)
+                },
+            )
+            FirstRunOnboardingStep.FRIDGE_PICK_FOOD -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_pick_food)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                focusable = false,
+                advanceOnTap = false,
+                dismissOnBackPress = false,
+                alignment = Alignment.TopCenter,
                 onFinished = {},
             )
             else -> Unit

@@ -12,7 +12,7 @@ class GameStateInitialConfigTest {
     @Test
     fun newPetStartsWithEnoughSatietyForTheFirstDay() {
         val session = GameStateInitialConfig().createState()
-        assertEquals(100, session.pet.hunger)
+        assertEquals(70, session.pet.hunger)
         assertEquals(80, session.pet.thirst)
         assertEquals(70, session.pet.happiness)
         assertEquals(100, session.pet.health)

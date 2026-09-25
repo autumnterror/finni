@@ -7,7 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
@@ -47,6 +49,7 @@ fun <T> FinPetLazyGrid(
     horizontalSpacing: Dp = AppTheme.spacing.md,
     verticalSpacing: Dp = AppTheme.spacing.md,
     userScrollEnabled: Boolean = true,
+    state: LazyGridState = rememberLazyGridState(),
     key: ((item: T) -> Any)? = null,
     contentType: ((item: T) -> Any?)? = null,
     itemContent: @Composable (item: T) -> Unit,
@@ -58,6 +61,7 @@ fun <T> FinPetLazyGrid(
         horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
         verticalArrangement = Arrangement.spacedBy(verticalSpacing),
         userScrollEnabled = userScrollEnabled,
+        state = state,
     ) {
         items(
             items = items,

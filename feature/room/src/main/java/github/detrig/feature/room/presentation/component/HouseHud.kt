@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
+import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
@@ -61,47 +64,89 @@ internal fun HouseHud(
             maxWidth < 390.dp -> 68.dp
             else -> 74.dp
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            if (showDetails || showMenu) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (showMenu) AchievementMenuButton(onClick = onMenuClick)
+        Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
+            if (showDetails) {
+                val xpDescription = progress.nextLevelXp?.let { nextXp ->
+                    stringResource(R.string.hud_experience_description, progress.currentLevelXp, nextXp)
+                } ?: stringResource(R.string.hud_experience_max_description, progress.totalXp)
+                FinPetProgressIndicator(
+                    progress = progress.experienceProgress,
+                    color = AppTheme.colors.currencyAccent,
+                    modifier = Modifier.fillMaxWidth()
+                        .semantics { contentDescription = xpDescription }
+                        .testTag("hud_experience"),
+                )
+                Text(
+                    text = progress.xpUntilNextLevel?.let { remaining ->
+                        stringResource(R.string.hud_experience_remaining, remaining)
+                    } ?: stringResource(R.string.hud_experience_max_level),
+                    modifier = Modifier.align(Alignment.End),
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.onRoomBackground,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                if (showDetails || showMenu) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (showMenu) RoomMenuButton(onClick = onMenuClick)
+                        if (showDetails) {
+                            HouseNeedRing(
+                                value = progress.petHappiness,
+                                label = stringResource(R.string.house_happiness),
+                                color = AppTheme.colors.house.sunnyAccent,
+                                size = ringSize,
+                                icon = HouseNeedIcon.SUN,
+                                modifier = Modifier.testTag("hud_happiness"),
+                            )
+                            HouseNeedRing(
+                                value = progress.petHunger,
+                                label = stringResource(R.string.hud_satiety),
+                                color = AppTheme.colors.house.leafShade,
+                                size = ringSize,
+                                icon = HouseNeedIcon.APPLE,
+                                modifier = Modifier.testTag("hud_satiety"),
+                            )
+                        }
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    val balanceDescription = stringResource(R.string.house_balance_accessibility, progress.balanceRub)
+                    FinPetStorefrontBalanceBadge(
+                        balanceRub = progress.balanceRub.toLong(),
+                        transparent = true,
+                        modifier = Modifier.semantics { contentDescription = balanceDescription }.testTag("house_balance"),
+                    )
                     if (showDetails) {
-                        HouseNeedRing(
-                            value = progress.petHappiness,
-                            label = stringResource(R.string.house_happiness),
-                            color = AppTheme.colors.house.sunnyAccent,
-                            size = ringSize,
-                            icon = HouseNeedIcon.SUN,
-                            modifier = Modifier.testTag("hud_happiness"),
-                        )
-                        HouseNeedRing(
-                            value = progress.petHunger,
-                            label = stringResource(R.string.hud_satiety),
-                            color = AppTheme.colors.house.leafShade,
-                            size = ringSize,
-                            icon = HouseNeedIcon.APPLE,
-                            modifier = Modifier.testTag("hud_satiety"),
-                        )
+                        Spacer(Modifier.height(AppTheme.spacing.sm))
+                        HouseDayBadge(progress.weekNumber, progress.dayOfWeek, Modifier.testTag("hud_day"))
                     }
                 }
             }
-
-            Column(horizontalAlignment = Alignment.End) {
-                val balanceDescription = stringResource(R.string.house_balance_accessibility, progress.balanceRub)
-                FinPetStorefrontBalanceBadge(
-                    balanceRub = progress.balanceRub.toLong(),
-                    transparent = true,
-                    modifier = Modifier.semantics { contentDescription = balanceDescription }.testTag("house_balance"),
-                )
-            }
         }
+    }
+}
+
+@Composable
+private fun HouseDayBadge(weekNumber: Long, dayOfWeek: Int, modifier: Modifier = Modifier) {
+    FinPetCard(
+        modifier = modifier,
+        containerColor = AppTheme.colors.roomBackground.copy(alpha = .62f),
+        contentColor = AppTheme.colors.onRoomBackground,
+        borderColor = AppTheme.colors.onRoomBackground.copy(alpha = .75f),
+    ) {
+        Text(
+            text = stringResource(R.string.house_day_counter, weekNumber, dayOfWeek),
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
+            style = AppTheme.typography.caption,
+        )
     }
 }
 
@@ -218,6 +263,8 @@ private fun HouseHudPreview() {
                     balanceRub = 1399, playerLevel = 1, ownedZoneIds = emptySet(),
                     absoluteDay = 3, weekNumber = 1, dayOfWeek = 3, daysUntilAllowance = 5,
                     petHunger = 54, petHappiness = 68,
+                    totalXp = 180, currentLevelXp = 80, nextLevelXp = 150,
+                    experienceProgress = 80f / 150f,
                 ),
                 showMenu = true, showDetails = true,
                 onMenuClick = {},

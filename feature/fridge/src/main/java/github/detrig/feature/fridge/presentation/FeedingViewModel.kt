@@ -177,6 +177,12 @@ internal class FeedingViewModel(
     }
 
     private fun close() {
+        when (firstRunGuide.step.value) {
+            FirstRunOnboardingStep.FEEDING ->
+                firstRunGuide.moveTo(FirstRunOnboardingStep.TABLE_GUIDANCE)
+            FirstRunOnboardingStep.FEEDING_DONE -> firstRunGuide.completeFirstNeed()
+            else -> Unit
+        }
         consumptionJob?.cancel()
         tableObservation?.cancel()
         petObservation?.cancel()

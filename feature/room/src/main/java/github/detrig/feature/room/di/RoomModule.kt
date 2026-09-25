@@ -73,7 +73,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
         endWeekEarlyWithParentHelp, parentHelpPrompt, minimumProductPriceRub, loadImpulseWish, router, positions, onboarding,
         firstRunGuide,
-        dependencies.gameStateApi(), dependencies.inventoryApi(),
+        dependencies.inventoryApi(),
         dependencies.gameAudio(),
     )
 }

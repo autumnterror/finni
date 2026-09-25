@@ -7,6 +7,7 @@ import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.PeriodicIncome
 import github.detrig.feature.learning.api.LearningApi
+import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.learning.domain.LearningAction
 import github.detrig.feature.learning.domain.ParentProgressRow
 import github.detrig.feature.learning.domain.AchievementProgress
@@ -41,6 +42,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -69,6 +71,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -89,6 +92,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -109,6 +113,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -129,6 +134,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -164,6 +170,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState, acceptedHelp = acceptedHelp),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -187,6 +194,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState, acceptedHelp = activeHelp),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -210,6 +218,7 @@ class MessagesCoordinatorParentHelpTest {
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
             economyApi = economyApi(economyState, activeHelp = activeHelp),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
@@ -283,6 +292,11 @@ class MessagesCoordinatorParentHelpTest {
         override suspend fun deliverPendingXpRewards(profileId: String): XpDeliveryResult = error("Unused")
         override suspend fun resetProfile(profileId: String) = error("Unused")
     }
+
+    private fun unusedProgressionApi(): ProgressionApi = Proxy.newProxyInstance(
+        ProgressionApi::class.java.classLoader,
+        arrayOf(ProgressionApi::class.java),
+    ) { _, method, _ -> error("Unexpected ProgressionApi call: ${method.name}") } as ProgressionApi
 
     private fun economyState(availableRub: Long, savingsRub: Long, debtRub: Long = 0) = EconomyState(
         availableRub = availableRub,

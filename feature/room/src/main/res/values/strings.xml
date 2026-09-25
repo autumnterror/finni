@@ -1,4 +1,8 @@
 <resources>
+    <string name="hud_experience_description">Опыт: %1$d из %2$d до следующего уровня</string>
+    <string name="hud_experience_max_description">Опыт: %1$d, максимальный уровень</string>
+    <string name="hud_experience_remaining">До следующего уровня: %1$d XP</string>
+    <string name="hud_experience_max_level">Максимальный уровень</string>
     <string name="zone_flight">Полёт</string>
     <string name="room_error">Не получилось открыть комнату</string>
     <string name="room_retry">Попробовать ещё</string>
@@ -18,6 +22,7 @@
     <string name="room_price">Цена</string>
     <string name="room_next_allowance">Следующие карманные деньги через %1$d игровых дн.</string>
     <string name="room_confirm">Купить сейчас</string>
+    <string name="room_buy_from_savings">Купить за накопления</string>
     <string name="room_buying">Открываем…</string>
     <string name="room_cancel">Пока не покупать</string>
     <string name="zone_ball">Мяч</string>
@@ -83,7 +88,6 @@
     <string name="room_sleep_postpone">Ещё не сейчас</string>
     <string name="room_sleep_error">Не получилось завершить день. Попробуй ещё раз.</string>
     <string name="house_swipe_hint">Проведи в сторону</string>
-    <string name="house_level">Уровень %1$d</string>
     <string name="house_hunger">Голод</string>
     <string name="house_happiness">Счастье</string>
     <string name="house_day_counter">Неделя %1$d · день %2$d/7</string>
@@ -147,11 +151,37 @@
     <string name="plan_feedback_success">Хороший план! На важное хватит, часть денег пойдёт в накопления, а запас поможет при неожиданной трате.</string>
     <string name="plan_feedback_success_no_savings">На нужные вещи хватит, а запас поможет при неожиданной трате. Пока ничего не откладываем — позже это можно изменить.</string>
     <string name="plan_achievement_unlocked">Новое достижение — «%1$s»! %2$s</string>
-    <string name="achievements_open">Открыть достижения</string>
+    <string name="room_menu_open">Открыть меню</string>
+    <string name="room_menu_title">Меню</string>
+    <string name="pet_stage_baby">Малыш</string>
+    <string name="pet_stage_explorer">Исследователь</string>
+    <string name="pet_stage_companion">Напарник</string>
+    <string name="menu_unlocked_achievements">Полученные достижения · %1$d</string>
+    <string name="menu_no_achievements">Первое достижение появится после важного игрового решения.</string>
+    <string name="menu_expand_achievements">Показать все полученные (%1$d)</string>
+    <string name="menu_collapse_achievements">Свернуть список</string>
+    <string name="menu_all_achievements">Показать все достижения</string>
+    <string name="parent_cabinet_title">Родительский кабинет</string>
+    <string name="parent_gate_title">Проверка для взрослого</string>
+    <string name="parent_gate_hint">Решите пример, чтобы открыть родительский кабинет.</string>
+    <string name="parent_gate_expression">%1$d + %2$d = ?</string>
+    <string name="parent_gate_answer">Ответ на пример</string>
+    <string name="parent_gate_error">Ответ пока не подходит. Попробуйте ещё раз.</string>
+    <string name="parent_gate_open">Открыть кабинет</string>
+    <string name="parent_cabinet_goal">Игра помогает ребёнку планировать деньги, откладывать на цели, обдумывать покупки и узнавать правила финансовой безопасности.</string>
+    <string name="parent_cabinet_overall">Открыто достижений: %1$d из %2$d</string>
+    <string name="parent_cabinet_empty">Пока достижений нет. Здесь появятся навыки после игровых решений.</string>
+    <string name="parent_cabinet_topic_progress">Открыто: %1$d из %2$d</string>
+    <string name="parent_cabinet_topic_empty">Достижений по теме пока нет.</string>
+    <string name="parent_topic_budget">Планирование бюджета</string>
+    <string name="parent_topic_savings">Накопления</string>
+    <string name="parent_topic_purchases">Платежи и покупки</string>
+    <string name="parent_topic_security">Финансовая безопасность</string>
     <string name="achievements_title">Достижения</string>
     <string name="achievements_progress">Получено: %1$d из %2$d</string>
     <string name="achievements_close">Закрыть</string>
     <string name="achievement_unlocked">Получено</string>
+    <string name="achievement_unlocked_xp">Получено · +%1$d XP</string>
     <string name="achievement_locked">Ещё впереди</string>
 
     <string name="onboarding_intro_1">Привет! Я %1$s.</string>
@@ -207,18 +237,13 @@
     <string name="onboarding_finish_3">Пойдём? Я хочу посмотреть, что ещё есть в нашем доме!</string>
     <string name="onboarding_hunger_intro">Кажется, я проголодался.</string>
     <string name="onboarding_hunger_find_food">Интересно, есть ли у нас что-нибудь поесть?</string>
-    <string name="onboarding_phone_guidance">Еду можно купить в магазине.\n\nМагазин находится в телефоне.</string>
-    <string name="onboarding_open_phone">Открыть телефон</string>
+    <string name="onboarding_phone_guidance">Еду можно купить в магазине.\nНажми на телефон.</string>
     <string name="onboarding_purchase_ready">Покупка готова.</string>
-    <string name="onboarding_purchase_storage_hint">Наверное, еда теперь где-то хранится.</string>
     <string name="onboarding_fridge_guidance">В холодильнике можно посмотреть продукты, которые мы уже купили.</string>
-    <string name="onboarding_open_fridge">Открыть холодильник</string>
     <string name="onboarding_table_prompt">Ну что, поедим?</string>
-    <string name="onboarding_table_guidance">За столом можно выбрать продукт из холодильника и покормить меня.</string>
-    <string name="onboarding_open_table">Сесть за стол</string>
+    <string name="onboarding_table_guidance">Здесь можно поесть. Нажми на стол.</string>
     <string name="onboarding_bedtime_late">Уже поздно.</string>
     <string name="onboarding_bedtime_guidance">Когда закончишь дела на сегодня, можно лечь спать. После сна начнётся новый день.</string>
-    <string name="onboarding_go_to_bed">К кровати</string>
     <string name="onboarding_second_day_morning">Доброе утро!</string>
     <string name="onboarding_second_day_free">Сегодня решай сам, чем займёмся.</string>
     <string name="onboarding_week_end_wait">Подожди.</string>
@@ -237,6 +262,7 @@
     <string name="onboarding_first_game_ready">Смотри! Кажется, мы наконец накопили достаточно.</string>
     <string name="onboarding_first_game_can_open">Теперь эту игру можно открыть.</string>
     <string name="onboarding_first_game_view">Посмотреть</string>
+    <string name="onboarding_first_game_play_offer">Получилось! Мы накопили на игру и открыли её. Хочешь сыграть?</string>
     <string name="onboarding_first_week_hungry_hint">Я немного проголодался. Может, посмотрим, что осталось в холодильнике?</string>
     <string name="onboarding_first_week_empty_fridge_hint">Кажется, еда закончилась. Придётся заглянуть в магазин.</string>
     <string name="onboarding_first_week_goal_almost_reached">Смотри! До нашей цели осталось совсем немного — %1$d ₽.</string>
