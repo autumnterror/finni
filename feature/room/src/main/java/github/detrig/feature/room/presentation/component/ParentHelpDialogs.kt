@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -27,6 +29,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -45,6 +49,7 @@ import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetMoneyAmount
 import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.theme.AppTheme
@@ -124,10 +129,11 @@ fun ParentHelpDialog(
                                 if (state.offers.isEmpty()) {
                                     val unavailableMessage = when {
                                         state.debtRub > 0 -> R.string.parent_help_unavailable_payments
-                                        state.savingsRub > 0 -> R.string.parent_help_unavailable_savings
                                         state.minimumRequiredBalanceRub > 0 &&
                                             state.availableRub >= state.minimumRequiredBalanceRub ->
                                             R.string.parent_help_unavailable_wallet
+                                        state.savingsRub >= state.minimumRequiredBalanceRub ->
+                                            R.string.parent_help_unavailable_savings
                                         else -> R.string.parent_help_unavailable_other
                                     }
                                     FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
@@ -353,48 +359,168 @@ internal fun AllowanceReceiptDialog(
     firstRun: Boolean = false,
     onDismiss: () -> Unit,
 ) {
-    FinPetModalDialog(
-        title = stringResource(R.string.allowance_notice_title),
+    FinPetModalVisibilityEffect()
+    Dialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.testTag("weekly_allowance_notice"),
-        actions = {
-            FinPetButton(
-                text = stringResource(R.string.allowance_notice_continue),
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth(),
-                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-            )
-        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false,
+        ),
     ) {
-        FinPetMoneyAmount(notice.grossRub.toString())
-        Text(
-            stringResource(
-                if (firstRun) R.string.allowance_notice_first_received else R.string.allowance_notice_received,
-                notice.grossRub,
-            ),
-            style = AppTheme.typography.body,
-        )
-        if (notice.parentHelpRepaidRub > 0) {
-            FinPetModalSection(
-                modifier = Modifier.fillMaxWidth(),
-                tone = FinPetModalSectionTone.Warning,
+        val maxPanelHeight = LocalConfiguration.current.screenHeightDp.dp * 0.88f
+        val hasRepayment = notice.parentHelpRepaidRub > 0
+        val panelHeight = minOf(if (hasRepayment) 420.dp else 300.dp, maxPanelHeight)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.sm),
+            contentAlignment = Alignment.Center,
+        ) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .widthIn(max = 440.dp)
+                    .fillMaxWidth()
+                    .height(panelHeight)
+                    .offset(y = AppTheme.spacing.lg)
+                    .testTag("weekly_allowance_notice"),
             ) {
-                Column(
-                    modifier = Modifier.padding(AppTheme.spacing.md),
-                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                // The supplied PNG has transparent margins; these factors align its visible frame with the Box.
+                Image(
+                    painter = painterResource(R.drawable.allowance_panel),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer(scaleX = 1.106f, scaleY = 1.25f),
+                    contentScale = ContentScale.FillBounds,
+                )
+                Image(
+                    painter = painterResource(R.drawable.allowance_title),
+                    contentDescription = stringResource(R.string.allowance_notice_title),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 22.dp)
+                        .fillMaxWidth(0.7f)
+                        .height(48.dp),
+                    contentScale = ContentScale.Crop,
+                )
+                FinPetButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-6).dp, y = 10.dp)
+                        .size(54.dp),
+                    style = allowanceArtworkButtonStyle(),
                 ) {
-                    Text(
-                        stringResource(R.string.allowance_notice_parent_help, notice.parentHelpRepaidRub),
+                    Image(
+                        painter = painterResource(R.drawable.allowance_close),
+                        contentDescription = stringResource(R.string.parent_help_close),
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 20.dp, y = 76.dp)
+                        .width(maxWidth * 0.45f),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xl),
+                ) {
+                    FinPetMoneyAmount(
+                        amount = notice.grossRub.toString(),
+                        modifier = Modifier.fillMaxWidth().height(60.dp),
                     )
                     Text(
-                        stringResource(R.string.allowance_notice_after_help, notice.receivedRub),
+                        text = stringResource(
+                            if (firstRun) R.string.allowance_notice_first_received
+                            else R.string.allowance_notice_received,
+                            notice.grossRub,
+                        ),
                         style = AppTheme.typography.bodyStrong,
                     )
                 }
+                Image(
+                    painter = painterResource(R.drawable.allowance_wallet),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-14).dp, y = 50.dp)
+                        .size(if (hasRepayment) 126.dp else 144.dp),
+                    contentScale = ContentScale.Fit,
+                )
+                if (hasRepayment) {
+                    FinPetModalSection(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = 206.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp),
+                        tone = FinPetModalSectionTone.Warning,
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(AppTheme.spacing.sm),
+                            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                        ) {
+                            Text(
+                                stringResource(
+                                    R.string.allowance_notice_parent_help,
+                                    notice.parentHelpRepaidRub,
+                                ),
+                                style = AppTheme.typography.caption,
+                            )
+                            Text(
+                                stringResource(R.string.allowance_notice_after_help, notice.receivedRub),
+                                style = AppTheme.typography.bodyStrong,
+                            )
+                        }
+                    }
+                }
+                FinPetButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(y = (-12).dp)
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    style = allowanceArtworkButtonStyle(),
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.allowance_continue),
+                        contentDescription = stringResource(R.string.allowance_notice_continue),
+                        modifier = Modifier.weight(1f).fillMaxSize().graphicsLayer(scaleX = 1.25f),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+                Image(
+                    painter = painterResource(R.drawable.allowance_hamster),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 50.dp, y = (-84).dp)
+                        .size(120.dp)
+                        .zIndex(1f),
+                    contentScale = ContentScale.Fit,
+                )
             }
         }
     }
 }
+
+@Composable
+private fun allowanceArtworkButtonStyle() = FinPetButtonDefaults.storefrontPrimaryStyle().copy(
+    containerColor = Color.Transparent,
+    contentColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
+    disabledContentColor = Color.Transparent,
+    borderColor = null,
+    disabledBorderColor = null,
+    borderWidth = 0.dp,
+    minHeight = 48.dp,
+    contentPadding = PaddingValues(0.dp),
+    shadowElevation = 0.dp,
+    disabledShadowElevation = 0.dp,
+)
 
 @Composable
 internal fun EarlyWeekParentHelpDialog(onDismiss: () -> Unit) {
@@ -442,6 +568,18 @@ private fun ParentHelpDialogPreview() {
             ),
             isRequesting = false,
             onOfferSelected = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(name = "Карманные деньги", widthDp = 360, heightDp = 740, showBackground = true)
+@Composable
+private fun AllowanceReceiptDialogPreview() {
+    FinPetTheme {
+        AllowanceReceiptDialog(
+            notice = AllowanceNoticeState(grossRub = 500, parentHelpRepaidRub = 0, receivedRub = 500),
+            firstRun = true,
             onDismiss = {},
         )
     }

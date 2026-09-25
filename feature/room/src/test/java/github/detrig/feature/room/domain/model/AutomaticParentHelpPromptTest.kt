@@ -18,8 +18,8 @@ class AutomaticParentHelpPromptTest {
     }
 
     @Test
-    fun offerRequiresAnEmptyPiggyBankLowWalletAndNoExistingPayments() {
-        assertFalse(canShow(savingsRub = 1))
+    fun offerAllowsInsufficientSavingsButRequiresLowWalletAndNoExistingPayments() {
+        assertTrue(canShow(savingsRub = 1))
         assertFalse(canShow(savingsRub = 100))
         assertFalse(canShow(availableRub = 100))
         assertFalse(canShow(debtRub = 1))

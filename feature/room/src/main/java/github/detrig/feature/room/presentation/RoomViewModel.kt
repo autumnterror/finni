@@ -118,6 +118,7 @@ internal class RoomViewModel(
             }
             RoomViewEvent.DismissSavingsRecoveryPrompt -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(savingsRecoveryPrompt = null))
+                handleLowBalance(it.progress)
             }
             is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
             RoomViewEvent.ParentHelpDialogShown -> nullableState<RoomViewState.Content>()?.let {
@@ -826,18 +827,25 @@ internal class RoomViewModel(
                 true
             },
         ) {
-            if (recoveryAction == LowBalanceRecoveryAction.USE_SAVINGS) {
-                nullableState<RoomViewState.Content>()?.let { latest ->
-                    if (progress.weekNumber !in promptedSavingsRecoveryWeeks &&
-                        latest.savingsRecoveryPrompt == null &&
-                        latest.earlyWeekParentHelpNotice == null
-                    ) {
-                        promptedSavingsRecoveryWeeks += progress.weekNumber
-                        updateState(latest.copy(
-                            savingsRecoveryPrompt = SavingsRecoveryPromptState,
-                        ))
-                    }
+            if (progress.savingsRub > 0) {
+                val current = nullableState<RoomViewState.Content>()
+                if (current?.savingsRecoveryPrompt != null) {
+                    lowBalanceJob = null
+                    return@launchCoroutine
                 }
+                if (progress.weekNumber !in promptedSavingsRecoveryWeeks &&
+                    current != null &&
+                    current.earlyWeekParentHelpNotice == null
+                ) {
+                    promptedSavingsRecoveryWeeks += progress.weekNumber
+                    updateState(current.copy(
+                        savingsRecoveryPrompt = SavingsRecoveryPromptState,
+                    ))
+                    lowBalanceJob = null
+                    return@launchCoroutine
+                }
+            }
+            if (recoveryAction == LowBalanceRecoveryAction.USE_SAVINGS) {
                 lowBalanceJob = null
                 return@launchCoroutine
             }

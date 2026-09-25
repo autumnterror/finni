@@ -52,7 +52,7 @@ fun canOfferParentHelp(
     require(minimumRequiredBalanceRub > 0)
 
     return availableRub < minimumRequiredBalanceRub &&
-        savingsRub == 0L &&
+        savingsRub < minimumRequiredBalanceRub &&
         debtRub == 0L &&
         !hasActiveParentHelp
 }

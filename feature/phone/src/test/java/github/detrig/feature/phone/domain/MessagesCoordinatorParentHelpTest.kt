@@ -82,7 +82,7 @@ class MessagesCoordinatorParentHelpTest {
     }
 
     @Test
-    fun `mom message stays visible when savings are nonzero but below minimum`() = runTest {
+    fun `mom message stays visible and offers help when savings are below minimum`() = runTest {
         val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 1))
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
         val coordinator = MessagesCoordinator(
@@ -98,7 +98,7 @@ class MessagesCoordinatorParentHelpTest {
         runCurrent()
 
         assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
-        assertTrue(coordinator.parentHelpOffers().isEmpty())
+        assertEquals(1, coordinator.parentHelpOffers().size)
     }
 
     @Test
@@ -150,19 +150,26 @@ class MessagesCoordinatorParentHelpTest {
     }
 
     @Test
-    fun `help request is rejected when savings remain in the piggy bank`() = runTest {
+    fun `help request is allowed when savings cannot cover the important purchase`() = runTest {
         val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 1))
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        val acceptedHelp = ParentHelpState(
+            offerId = "offer",
+            receivedRub = 100,
+            totalRepaymentRub = 110,
+            remainingRub = 110,
+            paymentsRemaining = 2,
+        )
         val coordinator = MessagesCoordinator(
             repository = repository,
             weekApi = weekApi(absoluteDay = 3),
             learningApi = learningApi(),
-            economyApi = economyApi(economyState),
+            economyApi = economyApi(economyState, acceptedHelp = acceptedHelp),
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
         )
 
-        assertTrue(coordinator.requestParentHelp("offer") is ParentHelpRequestResult.Rejected)
+        assertTrue(coordinator.requestParentHelp("offer") is ParentHelpRequestResult.Accepted)
     }
 
     @Test

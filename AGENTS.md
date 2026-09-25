@@ -472,9 +472,11 @@ MVP rules:
 - allow transfer to savings;
 - withdrawal requires explicit confirmation.
 - when spendable balance falls below the configured minimum for an important
-  necessary purchase and savings alone cover that amount, first invite the child
-  to review the piggy bank and transfer money; do not offer parent help while
-  those savings are sufficient.
+  necessary purchase and the piggy bank contains money, first invite the child
+  to review the savings and transfer any amount they choose to the wallet. If
+  the remaining savings are below the configured minimum, parent help may be
+  offered after this review; savings at or above that minimum block parent
+  help until the wallet reaches the minimum or savings drop below it.
 - when an active goal represents a purchasable game unlock and the target amount
   has been reached, the player may buy it directly from the piggy bank; a
   successful purchase removes that goal while leaving any excess savings intact.
@@ -523,10 +525,12 @@ Preferred wording:
 
 Parent help is **contextual**. The conversation with Mom always contains one
 message. It opens the same help window as the automatic offer. The message
-shows available help when the wallet is below the configured minimum, the piggy
-bank is empty, and no repayment is active; otherwise it explains why help is
-currently unavailable. After help is accepted, the same message shows the
-remaining payments and allows early settlement when affordable.
+shows available help when the wallet is below the configured minimum, savings
+are below that minimum, and no repayment is active; otherwise it explains why
+help is currently unavailable. When savings are present, the room first invites
+the child to review them and transfer money to the wallet. After help is
+accepted, the same message shows the remaining payments and allows early
+settlement when affordable.
 
 Rules:
 - at most one active debt;
