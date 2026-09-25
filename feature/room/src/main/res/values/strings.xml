@@ -2,7 +2,7 @@
     <string name="zone_flight">Полёт</string>
     <string name="room_error">Не получилось открыть комнату</string>
     <string name="room_retry">Попробовать ещё</string>
-    <string name="room_buy_price">Купить · %1$d ₽</string>
+    <string name="room_buy_price">Купить · %1$d монет</string>
     <string name="room_from_level">С уровня %1$d</string>
     <string name="room_level_required">Эта зона станет доступна на уровне %1$d</string>
     <string name="room_missing_money">Не хватает %1$d ₽</string>
@@ -74,7 +74,14 @@
     <string name="house_happiness">Счастье</string>
     <string name="house_day_counter">Неделя %1$d · день %2$d/7</string>
     <string name="house_money_in_days">Деньги через %1$d игровых дн.</string>
-    <string name="house_balance_accessibility">Баланс: %1$d рублей</string>
+    <string name="house_balance_accessibility">Баланс: %1$d монет</string>
+    <string name="hud_satiety">Сытость</string>
+    <string name="hud_metric_description">%1$s: %2$d из 100</string>
+    <string name="hud_day">День %1$d/7</string>
+    <string name="hud_week">Неделя %1$d</string>
+    <string-array name="house_weekdays_short">
+        <item>Пн</item><item>Вт</item><item>Ср</item><item>Чт</item><item>Пт</item><item>Сб</item><item>Вс</item>
+    </string-array>
     <string name="plan_not_ready">Сначала сохрани план на эту неделю.</string>
     <string name="plan_save_error">Не получилось сохранить план. Попробуй ещё раз.</string>
     <string name="plan_title">План на неделю</string>
@@ -102,7 +109,7 @@
     <string name="plan_tutorial_reserve">И ещё я бы оставил немного просто так. Вдруг неожиданно понадобится что-нибудь купить?</string>
     <string name="plan_tutorial_try">Теперь попробуй сам. Распредели деньги так, как тебе кажется правильным.</string>
     <string name="plan_feedback_mandatory">Кажется, на нужные вещи здесь может не хватить. Может, оставим на них хотя бы %1$d%%?</string>
-    <string name="plan_feedback_reserve">Мы распределили всё до последнего рубля. Может, оставим хотя бы %1$d%% на случай неожиданностей?</string>
+    <string name="plan_feedback_reserve">Мы распределили всё до последней монеты. Может, оставим хотя бы %1$d%% на случай неожиданностей?</string>
     <string name="plan_feedback_savings">На рыбалку пока ничего не откладываем? Можно оставить так, а можно начать даже с небольшой суммы — например, с %1$d%%.</string>
     <string name="plan_feedback_edit">Изменить план</string>
     <string name="plan_feedback_save_anyway">Сохранить так</string>

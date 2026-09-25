@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,9 +17,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.productmarket.R
 import github.detrig.feature.productmarket.domain.MarketPhase
 import github.detrig.feature.productmarket.domain.MarketTrip
@@ -28,6 +31,8 @@ import github.detrig.products.ProductCatalog
 import github.detrig.products.ProductId
 import github.detrig.products.ProductQuantity
 import github.detrig.products.ProductQuote
+import github.detrig.products.DefaultProductCatalog
+import github.detrig.products.ProductIds
 
 @Composable
 internal fun MarketCartDialog(
@@ -106,6 +111,28 @@ private fun CartTotal(quote: ProductQuote) {
     Text(stringResource(R.string.market_cart_total, quote.totalRub),
         Modifier.fillMaxWidth().testTag("market_cart_total"),
         style = AppTheme.typography.bodyStrong, textAlign = TextAlign.End)
+}
+
+@Preview(name = "Корзина магазина", widthDp = 360, heightDp = 450, showBackground = true)
+@Composable
+private fun MarketCartPreview() {
+    FinPetTheme {
+        MarketCheckout(
+            state = MarketViewState(
+                trip = MarketTrip(
+                    id = "preview", routeVersion = 3,
+                    requested = listOf(ProductQuantity(ProductIds.Carrot, 2)),
+                    phase = MarketPhase.CHECKOUT,
+                    cart = mapOf(ProductIds.Carrot to 2),
+                ),
+                balanceRub = 500,
+                loading = false,
+            ),
+            catalog = DefaultProductCatalog(),
+            onEvent = {},
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable

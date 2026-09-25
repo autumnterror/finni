@@ -158,7 +158,7 @@ fun FinPetButton(
             leadingIcon()
             Spacer(modifier = Modifier.width(style.iconSpacing))
         }
-        Text(
+        FinPetCoinText(
             text = text,
             style = style.textStyle,
             textAlign = TextAlign.Center,
@@ -208,7 +208,7 @@ fun FinPetOutlinedButton(
             leadingIcon()
             Spacer(modifier = Modifier.width(style.iconSpacing))
         }
-        Text(
+        FinPetCoinText(
             text = text,
             style = style.textStyle,
             textAlign = TextAlign.Center,

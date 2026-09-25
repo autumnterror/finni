@@ -2,6 +2,7 @@ package github.detrig.designsystem.component
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import github.detrig.designsystem.R
@@ -213,6 +217,20 @@ fun FinPetModalSection(
 
 /** Денежный бейдж, повторяющий баланс и ценники магазина. */
 @Composable
+fun FinPetCoinIcon(
+    modifier: Modifier = Modifier,
+    size: Dp = AppTheme.sizes.iconMedium,
+) {
+    Image(
+        painter = painterResource(R.drawable.ic_game_coin),
+        contentDescription = null,
+        modifier = modifier.size(size),
+        contentScale = ContentScale.Fit,
+    )
+}
+
+/** Денежный бейдж, повторяющий баланс и ценники магазина. */
+@Composable
 fun FinPetMoneyAmount(
     amount: String,
     modifier: Modifier = Modifier,
@@ -236,18 +254,8 @@ fun FinPetMoneyAmount(
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(
-                modifier = Modifier.size(AppTheme.sizes.iconMedium),
-                shape = CircleShape,
-                color = AppTheme.colors.currencyContainer,
-                contentColor = AppTheme.colors.storefront.onSurface,
-                border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.currencyAccent),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(text = "₽", style = AppTheme.typography.label)
-                }
-            }
             Text(text = amount, style = AppTheme.typography.currency, maxLines = 1)
+            FinPetCoinIcon()
         }
     }
 }
@@ -257,34 +265,37 @@ fun FinPetMoneyAmount(
 fun FinPetStorefrontBalanceBadge(
     balanceRub: Long?,
     modifier: Modifier = Modifier,
+    transparent: Boolean = false,
 ) {
     val value = balanceRub?.toString() ?: "—"
     val valueStyle: TextStyle = when {
         value.length >= 7 -> AppTheme.typography.caption
         value.length >= 5 -> AppTheme.typography.bodyStrong
         else -> AppTheme.typography.currency
-    }
-    Surface(
-        modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget),
-        shape = AppTheme.shapes.storefrontControl,
-        color = AppTheme.colors.storefront.surface,
-        contentColor = AppTheme.colors.storefront.onSurface,
-        border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
-        shadowElevation = AppTheme.elevation.low,
-    ) {
+    }.let { if (transparent) it.copy(fontSize = it.fontSize * 1.08f) else it }
+    val content: @Composable () -> Unit = {
         Row(
             modifier = Modifier.padding(horizontal = AppTheme.spacing.sm),
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "₽",
-                color = AppTheme.colors.currencyAccent,
-                style = valueStyle,
-                maxLines = 1,
-            )
             Text(text = value, style = valueStyle, maxLines = 1)
+            FinPetCoinIcon(size = if (transparent) 30.dp else AppTheme.sizes.iconMedium)
         }
+    }
+    if (transparent) {
+        Box(modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget), contentAlignment = Alignment.Center) {
+            content()
+        }
+    } else {
+        Surface(
+            modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget),
+            shape = AppTheme.shapes.storefrontControl,
+            color = AppTheme.colors.storefront.surface,
+            contentColor = AppTheme.colors.storefront.onSurface,
+            border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
+            shadowElevation = AppTheme.elevation.low,
+        ) { content() }
     }
 }
 
@@ -335,7 +346,7 @@ fun FinPetAmountInput(
                     }
                 },
             )
-            Text(suffix, style = AppTheme.typography.currency)
+            if (suffix == "₽") FinPetCoinIcon() else Text(suffix, style = AppTheme.typography.currency)
         }
     }
 }

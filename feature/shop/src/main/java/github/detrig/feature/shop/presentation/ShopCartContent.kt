@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.component.FinPetLazyColumn
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetQuantityStepper
@@ -315,26 +316,13 @@ internal fun ShopCurrencyAmount(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.semantics { contentDescription = description },
     ) {
-        Surface(
-            modifier = Modifier.size(coinSize),
-            shape = CircleShape,
-            color = AppTheme.colors.currencyContainer,
-            contentColor = AppTheme.colors.currencyAccent,
-            border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.currencyAccent),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "₽",
-                    style = if (coinSize <= 24.dp) AppTheme.typography.label else AppTheme.typography.metricValue,
-                )
-            }
-        }
         Text(
             text = amountRub.toString(),
             style = style,
             color = AppTheme.colors.storefront.onSurface,
             maxLines = 1,
         )
+        FinPetCoinIcon(size = coinSize)
     }
 }
 

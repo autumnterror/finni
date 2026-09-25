@@ -34,7 +34,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +52,7 @@ import github.detrig.feature.fridge.R
 import github.detrig.feature.shop.api.ShopArtworkResolver
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
+import github.detrig.products.GroceryCategoryIds
 import github.detrig.products.ProductId
 import kotlin.math.roundToInt
 
@@ -62,19 +62,21 @@ internal fun FeedingScreen() {
     val viewModel: FeedingViewModel = viewModel { component.feedingViewModel() }
     val state by viewModel.state().observeAsState(FeedingViewState())
     val petProfile by component.petApi.observeProfile().collectAsState(initial = null)
-    val appContext = LocalContext.current.applicationContext
-    val soundPlayer = remember(appContext) { FeedingSoundPlayer(appContext) }
+    val soundPlayer = component.gameAudio
+    val catalog = remember { GroceryCatalog() }
+    val isDrink = state.activePortion?.productId?.let { catalog.find(it)?.categoryId == GroceryCategoryIds.Drinks } == true
 
     DisposableEffect(soundPlayer) {
-        onDispose(soundPlayer::release)
+        soundPlayer.preload(FeedingSound.entries.map { it.cue })
+        onDispose { soundPlayer.stop("feeding") }
     }
 
     LaunchedEffect(viewModel) { viewModel.perform(FeedingViewEvent.Load) }
     BackHandler { viewModel.perform(FeedingViewEvent.Back) }
-    LaunchedEffect(soundPlayer, state.animation) {
+    LaunchedEffect(soundPlayer, state.animation, isDrink) {
         when (state.animation) {
-            FeedingAnimation.MouthOpen -> soundPlayer.play(FeedingSound.Bite)
-            FeedingAnimation.ChewA -> soundPlayer.play(FeedingSound.Chew)
+            FeedingAnimation.MouthOpen -> soundPlayer.play(if (isDrink) FeedingSound.Drink.cue else FeedingSound.Bite.cue)
+            FeedingAnimation.ChewA -> if (!isDrink) soundPlayer.play(FeedingSound.Chew.cue)
             FeedingAnimation.Idle,
             FeedingAnimation.ChewB -> Unit
         }
@@ -84,11 +86,12 @@ internal fun FeedingScreen() {
         state = state,
         artworkResolver = component.artworkResolver,
         onEvent = viewModel::perform,
-        onPlaySound = soundPlayer::play,
+        onPlaySound = { soundPlayer.play(it.cue) },
         roomContent = { roomModifier, roomPetContent, roomTableContent ->
             component.roomApi.Content(
                 modifier = roomModifier,
                 active = false,
+                showHud = true,
                 focusObjectId = "dining_table",
                 petAnchorObjectId = "decor_chair",
                 petZIndex = 1.5f,
@@ -201,8 +204,8 @@ private fun FeedingContent(
 
                     visibleStacks.forEachIndexed { index, stack ->
                         val food = catalog.find(stack.productId) ?: return@forEachIndexed
-                        val activeForStack = state.activePortion?.takeIf { it.productId == stack.productId }
-                        val visibleQuantity = stack.quantity - if (activeForStack == null) 0 else 1
+                        val reservedIds = state.pendingPortions.mapTo(mutableSetOf()) { it.id }
+                        val visibleQuantity = stack.portionIds.count { it !in reservedIds }
                         if (visibleQuantity > 0) {
                             FeedingFoodSlot(
                                 food = food,
@@ -213,8 +216,7 @@ private fun FeedingContent(
                                 rootFoodSizePx = foodSizePx,
                                 // Keep the pointer handler of the item being dragged alive.
                                 // Disabling it as soon as dragState changes cancels the gesture.
-                                enabled = state.activePortion == null &&
-                                    (dragState?.productId == null || dragState?.productId == stack.productId),
+                                enabled = dragState?.productId == null || dragState?.productId == stack.productId,
                                 // Keep a multi-portion stack and its count on the table.
                                 // Only the one-portion stack leaves its source slot.
                                 hidden = visibleQuantity == 1 && dragState?.productId == stack.productId,
@@ -253,7 +255,7 @@ private fun FeedingContent(
                         FeedingArrow(
                             drawable = R.drawable.feeding_arrow_left,
                             description = "Предыдущие продукты",
-                            enabled = state.page > 0 && state.activePortion == null,
+                            enabled = state.page > 0,
                             onClick = { onEvent(FeedingViewEvent.PreviousPage) },
                             modifier = Modifier
                                 .size(arrowSize)
@@ -267,8 +269,7 @@ private fun FeedingContent(
                         FeedingArrow(
                             drawable = R.drawable.feeding_arrow_right,
                             description = "Следующие продукты",
-                            enabled = state.page < state.foodStacks.lastFeedingPageIndex() &&
-                                state.activePortion == null,
+                            enabled = state.page < state.foodStacks.lastFeedingPageIndex(),
                             onClick = { onEvent(FeedingViewEvent.NextPage) },
                             modifier = Modifier
                                 .size(arrowSize)
@@ -305,23 +306,11 @@ private fun FeedingContent(
             contentDescription = "Закрыть кормление",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = maxWidth * 0.045f, top = maxHeight * 0.035f)
+                .padding(start = maxWidth * 0.045f, top = maxHeight * 0.18f)
                 .size((maxWidth * 0.14f).coerceAtLeast(AppTheme.sizes.preferredTouchTarget))
                 .clickable(role = Role.Button) { onEvent(FeedingViewEvent.Back) },
             contentScale = ContentScale.Fit,
         )
-
-        if (!state.loading && state.foodStacks.isEmpty()) {
-            androidx.compose.material3.Text(
-                text = "На столе пока нет еды",
-                style = AppTheme.typography.bodyStrong,
-                color = AppTheme.colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = AppTheme.spacing.xl),
-            )
-        }
 
         activeProduct?.let { food ->
             FeedingFoodAtMouth(

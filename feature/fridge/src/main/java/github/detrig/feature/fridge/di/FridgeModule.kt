@@ -15,6 +15,7 @@ internal class FridgeModule(
     override val inventoryApi = dependencies.inventoryApi()
     override val gameStateApi = dependencies.gameStateApi()
     override val artworkResolver = dependencies.artworkResolver()
+    override val gameAudio = dependencies.gameAudio()
 
     override val router: FridgeRouter by lazy {
         FridgeRouterImpl(dependencies.globalNavigator())

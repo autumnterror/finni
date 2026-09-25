@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.component.FinPetIconButton
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
@@ -200,14 +201,15 @@ private fun ShopReceiptLineItem(line: ShopReceiptLine) {
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
-        Text(
-            text = line.totalRub.toString(),
+        Row(
             modifier = Modifier.width(ReceiptAmountColumnWidth),
-            style = AppTheme.typography.screenTitle,
-            color = AppTheme.colors.storefront.onSurface,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-        )
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(line.totalRub.toString(), style = AppTheme.typography.screenTitle,
+                color = AppTheme.colors.storefront.onSurface, maxLines = 1)
+            FinPetCoinIcon(size = AppTheme.sizes.iconSmall)
+        }
     }
 }
 

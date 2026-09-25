@@ -24,6 +24,7 @@ internal class FeedingViewModel(
     private var tableObservation: Job? = null
     private var petObservation: Job? = null
     private var consumptionJob: Job? = null
+    private val tableProductOrder = mutableListOf<ProductId>()
     private var tableReady = false
     private var petReady = false
 
@@ -76,7 +77,8 @@ internal class FeedingViewModel(
     }
 
     private fun updateTable(items: List<StagedFoodItem>) {
-        val stacks = items.toFoodStacks()
+        items.forEach { if (it.productId !in tableProductOrder) tableProductOrder += it.productId }
+        val stacks = items.toFoodStacks().sortedBy { tableProductOrder.indexOf(it.productId) }
         updateState {
             val maxPage = stacks.lastFeedingPageIndex()
             copy(
@@ -88,36 +90,44 @@ internal class FeedingViewModel(
     }
 
     private fun changePage(delta: Int) {
-        if (stateData.activePortion != null) return
         updateState {
             copy(page = (page + delta).coerceIn(0, foodStacks.lastFeedingPageIndex()))
         }
     }
 
     private fun startConsumption(productId: ProductId) {
-        if (consumptionJob?.isActive == true || stateData.activePortion != null || stateData.loading) return
+        if (stateData.loading) return
         val stack = stateData.foodStacks.firstOrNull { it.productId == productId } ?: return
-        val portion = FeedingFoodPortion(id = stack.portionIds.first(), productId = productId)
-        val food = GroceryCatalog().find(productId) ?: return
+        val pendingIds = stateData.pendingPortions.mapTo(mutableSetOf()) { it.id }
+        val portionId = stack.portionIds.firstOrNull { it !in pendingIds } ?: return
+        val portion = FeedingFoodPortion(id = portionId, productId = productId)
+        updateState { copy(pendingPortions = pendingPortions + portion, message = null) }
+        if (consumptionJob?.isActive == true) return
+        consumptionJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState {
+                    copy(activePortion = null, pendingPortions = emptyList(),
+                        animation = FeedingAnimation.Idle, message = "Не удалось покормить питомца")
+                }
+                true
+            },
+        ) { consumePendingPortions() }
+    }
+
+    private suspend fun consumePendingPortions() {
+        while (stateData.pendingPortions.isNotEmpty()) {
+            val portion = stateData.pendingPortions.first()
+            val food = GroceryCatalog().find(portion.productId)
+            if (food == null) {
+                updateState { copy(pendingPortions = pendingPortions.drop(1)) }
+                continue
+            }
         updateState {
             copy(
                 activePortion = portion,
                 animation = FeedingAnimation.MouthOpen,
-                message = null,
             )
         }
-        consumptionJob = launchCoroutine(
-            handleAction = ExceptionConsumer {
-                updateState {
-                    copy(
-                        activePortion = null,
-                        animation = FeedingAnimation.Idle,
-                        message = "Не удалось покормить питомца",
-                    )
-                }
-                true
-            },
-        ) {
             delay(MOUTH_OPEN_MILLIS)
             updateState { copy(animation = FeedingAnimation.ChewA) }
             delay(CHEW_A_MILLIS)
@@ -142,6 +152,11 @@ internal class FeedingViewModel(
                 copy(
                     hunger = result.hunger,
                     activePortion = null,
+                    pendingPortions = pendingPortions.filterNot { it.id == portion.id },
+                    foodStacks = foodStacks.mapNotNull { stack ->
+                        val ids = stack.portionIds.filterNot { it == portion.id }
+                        if (ids.isEmpty()) null else stack.copy(portionIds = ids)
+                    },
                     animation = FeedingAnimation.Idle,
                 )
             }

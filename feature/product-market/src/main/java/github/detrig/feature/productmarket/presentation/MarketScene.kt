@@ -6,7 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
+import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,11 +21,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.productmarket.R
 import github.detrig.feature.productmarket.domain.*
 import github.detrig.feature.productmarket.presentation.art.*
 import github.detrig.products.ProductCatalog
+import github.detrig.products.DefaultProductCatalog
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -197,5 +200,26 @@ private fun PickupAnimation(
         val y = startY + (cartY - startY) * p - sin(p * Math.PI).toFloat() * 48 - 25
         MarketVector(productArtwork(requireNotNull(catalog.find(pickup.slot.productId)).kind),
             Modifier.offset(x = x.dp, y = y.dp).size(40.dp, 50.dp).clearAndSetSemantics {})
+    }
+}
+
+@Preview(name = "Полки магазина", widthDp = 360, heightDp = 480)
+@Composable
+private fun MarketScenePreview() {
+    val config = MarketConfiguration()
+    FinPetTheme {
+        MarketScene(
+            state = MarketViewState(
+                trip = MarketTrip(id = "preview", routeVersion = config.routeVersion, requested = config.requested),
+                balanceRub = 500,
+                loading = false,
+                foreground = true,
+            ),
+            configuration = config,
+            catalog = DefaultProductCatalog(),
+            pickup = null,
+            onEvent = {},
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }

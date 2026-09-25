@@ -277,7 +277,7 @@ private fun DialogueBubble(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(
+                            FinPetCoinText(
                                 text = text,
                                 style = AppTheme.typography.sectionTitle,
                                 color = colors.onPanel,

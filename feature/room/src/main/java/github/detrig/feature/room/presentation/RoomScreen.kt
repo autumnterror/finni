@@ -6,11 +6,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
@@ -35,22 +32,18 @@ import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialo
 import github.detrig.feature.room.presentation.component.ParentHelpDialog
 import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
 import github.detrig.feature.room.presentation.component.ZeroBalanceHelpDialog
-import github.detrig.feature.room.presentation.component.AchievementMenuButton
+import github.detrig.feature.room.presentation.component.HouseHud
 import github.detrig.feature.room.presentation.component.AchievementUnlockedBanner
 import github.detrig.feature.room.presentation.component.AchievementsDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.designsystem.component.FinPetDialogueDialog
-import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
 import github.detrig.feature.room.R
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 
 @Composable
 internal fun RoomScreen(
@@ -65,6 +58,7 @@ internal fun RoomScreen(
     onFeedingClick: () -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
     externalActive: Boolean = true,
+    showHud: Boolean = false,
     previewRequests: RoomPreviewRequests,
     focusObjectId: String? = null,
     petAnchorObjectId: String? = null,
@@ -169,28 +163,13 @@ internal fun RoomScreen(
         ) {
             TutorialSpotlight(spotlightBounds)
         }
-        if (externalActive && content != null && content.achievementBanner == null && onboarding == null) {
-            AchievementMenuButton(
-                onClick = { viewModel.perform(RoomViewEvent.AchievementsClicked) },
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(AppTheme.spacing.md),
-            )
-        }
-        if (externalActive && content != null) {
-            val balanceDescription = stringResource(
-                R.string.house_balance_accessibility,
-                content.progress.balanceRub,
-            )
-            FinPetStorefrontBalanceBadge(
-                balanceRub = content.progress.balanceRub.toLong(),
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(AppTheme.spacing.md)
-                    .semantics { contentDescription = balanceDescription }
-                    .testTag("house_balance"),
+        if ((externalActive || showHud) && content != null) {
+            HouseHud(
+                progress = content.progress,
+                showMenu = externalActive && content.achievementBanner == null && onboarding == null,
+                showDetails = showHud || (content.achievementBanner == null && onboarding == null),
+                onMenuClick = { viewModel.perform(RoomViewEvent.AchievementsClicked) },
+                modifier = Modifier.align(Alignment.TopCenter),
             )
         }
     }

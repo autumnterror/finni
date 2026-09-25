@@ -24,6 +24,7 @@ interface RoomApi {
         onFeedingClick: () -> Unit = {},
         tableFoodContent: @Composable (Modifier) -> Unit = {},
         active: Boolean = true,
+        showHud: Boolean = false,
         /** Optional object id to bring into view without changing room state. */
         focusObjectId: String? = null,
         /** Optional object id to anchor the injected pet to while this scene is shown. */

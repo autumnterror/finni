@@ -4,7 +4,7 @@ import java.text.NumberFormat
 import java.util.Locale
 
 internal fun Long.toRubText(): String {
-    return "${rubFormatter.format(this)} ₽"
+    return rubFormatter.format(this)
 }
 
 internal fun Long.toAllowanceCountdownText(nowMillis: Long): String {

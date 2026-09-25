@@ -10,6 +10,7 @@ internal data class FeedingViewState(
     val page: Int = 0,
     val hunger: Int = 0,
     val activePortion: FeedingFoodPortion? = null,
+    val pendingPortions: List<FeedingFoodPortion> = emptyList(),
     val animation: FeedingAnimation = FeedingAnimation.Idle,
     val loading: Boolean = true,
     val message: String? = null,

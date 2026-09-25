@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +46,7 @@ import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetMoneyAmount
+import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
@@ -277,12 +278,7 @@ private fun ActiveParentHelpCard(help: ParentHelpState) {
                 horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Image(
-                    painter = painterResource(R.drawable.parent_help_coins),
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp),
-                    contentScale = ContentScale.Fit,
-                )
+                FinPetCoinIcon(size = 72.dp)
                 Text(
                     text = stringResource(R.string.parent_help_active),
                     modifier = Modifier.weight(1f),

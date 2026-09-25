@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,7 +44,6 @@ import androidx.compose.ui.window.PopupProperties
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
-import github.detrig.designsystem.component.FinPetIconButton
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
@@ -61,33 +61,29 @@ internal fun AchievementMenuButton(
     modifier: Modifier = Modifier,
 ) {
     val label = stringResource(R.string.achievements_open)
-    FinPetCard(
-        modifier = modifier,
-        shape = AppTheme.shapes.button,
-        borderColor = AppTheme.colors.actionPrimary,
-        borderWidth = AppTheme.sizes.borderStrong,
-        elevation = AppTheme.elevation.medium,
+    FinPetButton(
+        onClick = onClick,
+        modifier = modifier.size(AppTheme.sizes.preferredTouchTarget)
+            .semantics { contentDescription = label },
+        style = FinPetButtonDefaults.storefrontOutlinedStyle().copy(
+            contentPadding = PaddingValues(0.dp),
+        ),
     ) {
-        FinPetIconButton(
-            onClick = onClick,
-            modifier = Modifier.semantics { contentDescription = label },
-        ) {
-            val color = AppTheme.colors.actionPrimary
-            val strokeWidth = AppTheme.sizes.borderStrong
-            Canvas(Modifier.size(AppTheme.sizes.iconMedium)) {
-                val stroke = strokeWidth.toPx()
-                val left = size.width * 0.12f
-                val right = size.width * 0.88f
-                listOf(0.22f, 0.5f, 0.78f).forEach { fraction ->
-                    val y = size.height * fraction
-                    drawLine(
-                        color = color,
-                        start = Offset(left, y),
-                        end = Offset(right, y),
-                        strokeWidth = stroke,
-                        cap = StrokeCap.Round,
-                    )
-                }
+        val color = AppTheme.colors.actionPrimary
+        val strokeWidth = AppTheme.sizes.borderStrong
+        Canvas(Modifier.size(AppTheme.sizes.iconMedium)) {
+            val stroke = strokeWidth.toPx()
+            val left = size.width * 0.12f
+            val right = size.width * 0.88f
+            listOf(0.22f, 0.5f, 0.78f).forEach { fraction ->
+                val y = size.height * fraction
+                drawLine(
+                    color = color,
+                    start = Offset(left, y),
+                    end = Offset(right, y),
+                    strokeWidth = stroke,
+                    cap = StrokeCap.Round,
+                )
             }
         }
     }
@@ -473,6 +469,16 @@ private fun AchievementRow(achievement: PlanAchievementFeedback) {
                     },
                 )
             }
+        }
+    }
+}
+
+@Preview(name = "Светлая кнопка меню", widthDp = 88, heightDp = 88, showBackground = true)
+@Composable
+private fun AchievementMenuButtonPreview() {
+    FinPetTheme {
+        Box(Modifier.padding(AppTheme.spacing.md)) {
+            AchievementMenuButton(onClick = {})
         }
     }
 }

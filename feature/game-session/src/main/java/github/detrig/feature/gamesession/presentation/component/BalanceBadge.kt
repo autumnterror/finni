@@ -7,9 +7,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.theme.AppTheme
-import github.detrig.feature.gamesession.R
+import github.detrig.designsystem.theme.FinPetTheme
 
 @Composable
 internal fun BalanceBadge(
@@ -30,16 +32,18 @@ internal fun BalanceBadge(
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PixelImage(
-                drawableRes = R.drawable.ic_finpet_coin,
-                contentDescription = "Баланс",
-                size = AppTheme.sizes.iconLarge,
-            )
             Text(
                 text = balanceText,
                 style = AppTheme.typography.currency,
                 color = AppTheme.colors.textPrimary,
             )
+            FinPetCoinIcon(size = AppTheme.sizes.iconLarge)
         }
     }
+}
+
+@Preview(name = "Баланс", showBackground = true)
+@Composable
+private fun BalanceBadgePreview() {
+    FinPetTheme { BalanceBadge("1 399") }
 }

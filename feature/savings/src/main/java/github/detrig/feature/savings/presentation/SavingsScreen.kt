@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,6 +36,7 @@ import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetMoneyAmount
+import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
@@ -390,12 +392,7 @@ private fun BalanceCard(availableRub: Long, savingsRub: Long) {
                     color = AppTheme.colors.textSecondary,
                 )
             }
-            Image(
-                painter = painterResource(R.drawable.savings_coins),
-                contentDescription = null,
-                modifier = Modifier.size(82.dp),
-                contentScale = ContentScale.Fit,
-            )
+            FinPetCoinIcon(size = 82.dp)
         }
     }
 }

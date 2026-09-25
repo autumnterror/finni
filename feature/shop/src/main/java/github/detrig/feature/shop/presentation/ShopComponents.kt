@@ -54,6 +54,7 @@ import github.detrig.designsystem.component.FinPetBackButton
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.component.FinPetFilterChip
 import github.detrig.designsystem.component.FinPetFilterChipDefaults
 import github.detrig.designsystem.component.FinPetGridColumns
@@ -143,16 +144,11 @@ private fun ShopBalanceBadge(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "₽",
-                color = AppTheme.colors.currencyAccent,
-                style = valueStyle,
-                maxLines = 1,
-            )
-            Text(
                 text = value,
                 style = valueStyle,
                 maxLines = 1,
             )
+            FinPetCoinIcon()
         }
     }
 }
@@ -338,12 +334,11 @@ private fun ShopProductCard(
                     contentColor = AppTheme.colors.storefront.onSurface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "₽ ${item.priceRub}",
-                            style = AppTheme.typography.metricValue,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
+                            Text(item.priceRub.toString(), style = AppTheme.typography.metricValue, maxLines = 1)
+                            FinPetCoinIcon(size = AppTheme.sizes.iconSmall)
+                        }
                     }
                 }
             }
