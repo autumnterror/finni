@@ -26,6 +26,7 @@ internal class FridgeModule(
     override fun viewModel(): FridgeViewModel = FridgeViewModel(
         inventoryApi = inventoryApi,
         router = router,
+        firstRunGuide = roomApi.firstRunGuide,
     )
 
     override fun feedingViewModel(): github.detrig.feature.fridge.presentation.FeedingViewModel =
@@ -33,5 +34,6 @@ internal class FridgeModule(
             inventoryApi = inventoryApi,
             gameStateApi = gameStateApi,
             router = router,
+            firstRunGuide = roomApi.firstRunGuide,
         )
 }

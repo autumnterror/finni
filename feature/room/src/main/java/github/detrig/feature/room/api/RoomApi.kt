@@ -6,6 +6,8 @@ import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 
 interface RoomApi {
+    val firstRunGuide: FirstRunGuideApi
+
     /** Blocks until the process-wide room sprites are ready for the first frame. */
     suspend fun preloadAssets()
 

@@ -7,10 +7,13 @@ import github.detrig.feature.inventory.api.InventoryApi
 import github.detrig.feature.inventory.domain.InventoryStageResult
 import github.detrig.products.ProductId
 import kotlinx.coroutines.Job
+import github.detrig.feature.room.api.FirstRunGuideApi
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 internal class FridgeViewModel(
     private val inventoryApi: InventoryApi,
     private val router: FridgeRouter,
+    private val firstRunGuide: FirstRunGuideApi,
 ) : CoreViewModel<FridgeViewState, FridgeViewEvent>(FridgeViewState()) {
     private var observationJob: Job? = null
 
@@ -49,6 +52,15 @@ internal class FridgeViewModel(
     }
 
     private fun close() {
+        when (firstRunGuide.step.value) {
+            FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE ->
+                firstRunGuide.moveTo(FirstRunOnboardingStep.TABLE_GUIDANCE)
+            FirstRunOnboardingStep.FRIDGE_FOUND,
+            FirstRunOnboardingStep.FRIDGE_EXPLANATION,
+            FirstRunOnboardingStep.FRIDGE_PICK_FOOD,
+            -> firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE)
+            else -> Unit
+        }
         observationJob?.cancel()
         observationJob = null
         updateState {
@@ -87,7 +99,11 @@ internal class FridgeViewModel(
             },
         ) {
             when (inventoryApi.stageForTable(productId)) {
-                InventoryStageResult.Staged -> Unit
+                InventoryStageResult.Staged -> {
+                    if (firstRunGuide.step.value == FirstRunOnboardingStep.FRIDGE_PICK_FOOD) {
+                        firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE)
+                    }
+                }
                 InventoryStageResult.InsufficientStock -> {
                     updateState { copy(message = "Этот продукт уже закончился") }
                 }

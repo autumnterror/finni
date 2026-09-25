@@ -22,7 +22,7 @@ import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
-import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.room.presentation.FirstRunOnboardingState
 
 @Composable
@@ -33,10 +33,24 @@ internal fun FirstRunOnboardingDialog(
     topInset: Dp = 0.dp,
     onContinue: () -> Unit,
     onDepositSelected: (Boolean) -> Unit,
+    onShowWeekSummary: () -> Unit = {},
+    onStartNewWeekPlan: () -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
 ) {
     val cards = state.cards(petName) ?: return
     val isDepositChoice = state.step == FirstRunOnboardingStep.FIRST_DEPOSIT
+    val isTapTableInstruction = state.step == FirstRunOnboardingStep.TABLE_GUIDANCE
+    val destinationAction = when (state.step) {
+        FirstRunOnboardingStep.WEEK_END_INTRO -> FinPetDialogueAction(
+            id = SHOW_WEEK_SUMMARY_ACTION_ID,
+            label = stringResource(R.string.onboarding_show_week_summary),
+        )
+        FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE -> FinPetDialogueAction(
+            id = START_NEW_WEEK_PLAN_ACTION_ID,
+            label = stringResource(R.string.onboarding_start_new_week_plan),
+        )
+        else -> null
+    }
     FinPetDialogueDialog(
         speakerName = petName,
         cards = cards,
@@ -44,7 +58,9 @@ internal fun FirstRunOnboardingDialog(
         topInset = topInset,
         onPageChanged = onPageChanged,
         dismissOnBackPress = false,
-        advanceOnTap = !isDepositChoice,
+        focusable = !isTapTableInstruction,
+        advanceOnTap = !isDepositChoice && destinationAction == null && !isTapTableInstruction,
+        alignment = Alignment.TopCenter.takeIf { isTapTableInstruction },
         actions = when {
             isDepositChoice -> listOf(
                 FinPetDialogueAction(
@@ -56,9 +72,17 @@ internal fun FirstRunOnboardingDialog(
                     label = stringResource(R.string.onboarding_deposit_later),
                 ),
             )
+            destinationAction != null -> listOf(destinationAction)
             else -> emptyList()
         },
-        onActionSelected = { action -> onDepositSelected(action.id == DEPOSIT_NOW_ACTION_ID) },
+        onActionSelected = { action ->
+            when (action.id) {
+                DEPOSIT_NOW_ACTION_ID -> onDepositSelected(true)
+                DEPOSIT_LATER_ACTION_ID -> onDepositSelected(false)
+                SHOW_WEEK_SUMMARY_ACTION_ID -> onShowWeekSummary()
+                START_NEW_WEEK_PLAN_ACTION_ID -> onStartNewWeekPlan()
+            }
+        },
         additionalContent = {
             if (state.step == FirstRunOnboardingStep.GOAL_CREATED) {
                 GoalProgressCard(state)
@@ -70,6 +94,8 @@ internal fun FirstRunOnboardingDialog(
 
 private const val DEPOSIT_NOW_ACTION_ID = "deposit_now"
 private const val DEPOSIT_LATER_ACTION_ID = "deposit_later"
+private const val SHOW_WEEK_SUMMARY_ACTION_ID = "show_week_summary"
+private const val START_NEW_WEEK_PLAN_ACTION_ID = "start_new_week_plan"
 
 @Composable
 private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when (step) {
@@ -120,6 +146,27 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.DEPOSIT_SKIPPED -> listOf(
         stringResource(R.string.onboarding_deposit_skipped),
     )
+    FirstRunOnboardingStep.HUNGER_INTRO -> listOf(stringResource(R.string.onboarding_hunger_intro))
+    FirstRunOnboardingStep.HUNGER_FIND_FOOD -> listOf(stringResource(R.string.onboarding_hunger_find_food))
+    FirstRunOnboardingStep.PHONE_GUIDANCE -> listOf(stringResource(R.string.onboarding_phone_guidance))
+    FirstRunOnboardingStep.PURCHASE_READY -> listOf(stringResource(R.string.onboarding_purchase_ready))
+    FirstRunOnboardingStep.FRIDGE_GUIDANCE -> listOf(stringResource(R.string.onboarding_fridge_guidance))
+    FirstRunOnboardingStep.TABLE_PROMPT -> listOf(stringResource(R.string.onboarding_table_prompt))
+    FirstRunOnboardingStep.TABLE_GUIDANCE -> listOf(stringResource(R.string.onboarding_table_guidance))
+    FirstRunOnboardingStep.BEDTIME_LATE -> listOf(stringResource(R.string.onboarding_bedtime_late))
+    FirstRunOnboardingStep.BEDTIME_GUIDANCE -> listOf(stringResource(R.string.onboarding_bedtime_guidance))
+    FirstRunOnboardingStep.SECOND_DAY_MORNING -> listOf(
+        stringResource(R.string.onboarding_second_day_morning),
+        stringResource(R.string.onboarding_second_day_free),
+    )
+    FirstRunOnboardingStep.WEEK_END_INTRO -> listOf(
+        stringResource(R.string.onboarding_week_end_wait),
+        stringResource(R.string.onboarding_week_end_finished),
+        stringResource(R.string.onboarding_week_end_guidance),
+    )
+    FirstRunOnboardingStep.NEW_WEEK_INTRO -> listOf(stringResource(R.string.onboarding_new_week_intro))
+    FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE ->
+        listOf(stringResource(R.string.onboarding_new_week_plan_guidance))
     FirstRunOnboardingStep.WISH,
     FirstRunOnboardingStep.FIRST_MONEY,
     FirstRunOnboardingStep.PLAN,
@@ -130,6 +177,24 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
     FirstRunOnboardingStep.GAMES,
     FirstRunOnboardingStep.FINISH,
+    FirstRunOnboardingStep.WAITING_FOR_HUNGER,
+    FirstRunOnboardingStep.PURCHASE_STORAGE_HINT,
+    FirstRunOnboardingStep.WAITING_FOR_PHONE,
+    FirstRunOnboardingStep.PHONE_STORE_GUIDANCE,
+    FirstRunOnboardingStep.WAITING_FOR_STORE,
+    FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE,
+    FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE,
+    FirstRunOnboardingStep.SHOP_FOOD_SELECTED,
+    FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
+    FirstRunOnboardingStep.FRIDGE_FOUND,
+    FirstRunOnboardingStep.FRIDGE_EXPLANATION,
+    FirstRunOnboardingStep.FRIDGE_PICK_FOOD,
+    FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE,
+    FirstRunOnboardingStep.FEEDING,
+    FirstRunOnboardingStep.FEEDING_DONE,
+    FirstRunOnboardingStep.WAITING_FOR_BED,
+    FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
+    FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
     FirstRunOnboardingStep.COMPLETED,
     -> null
 }

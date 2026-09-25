@@ -27,6 +27,7 @@ internal fun RoomContent(
     active: Boolean = true,
     previewZoneId: String? = null,
     focusObjectId: String? = null,
+    isFeedingScene: Boolean = focusObjectId == "dining_table",
     petAnchorObjectId: String? = null,
     petZIndex: Float = 3f,
     petBaselineFraction: Float? = null,
@@ -56,6 +57,7 @@ internal fun RoomContent(
                 onSavePosition = {},
                 previewZoneId = null,
                 focusObjectId = focusObjectId,
+                isFeedingScene = isFeedingScene,
                 petAnchorObjectId = petAnchorObjectId,
                 petZIndex = petZIndex,
                 petBaselineFraction = petBaselineFraction,
@@ -74,7 +76,7 @@ internal fun RoomContent(
             is RoomViewState.Content -> {
                 HouseScene(
                     state.zones, state.initialPosition, active && !state.sleeping, state.buyingZoneId,
-                    nightMode = state.sleeping,
+                    nightMode = state.sleeping || state.onboarding?.step in bedtimeSteps,
                     onZoneClick = { onEvent(RoomViewEvent.ZoneClicked(it)) },
                     onPhoneClick = onPhoneClick,
                     onFoodClick = onFoodClick,
@@ -90,6 +92,7 @@ internal fun RoomContent(
                     onSavePosition = { onEvent(RoomViewEvent.SavePosition(it)) },
                     previewZoneId = previewZoneId,
                     focusObjectId = focusObjectId,
+                    isFeedingScene = isFeedingScene,
                     petAnchorObjectId = petAnchorObjectId,
                     petZIndex = petZIndex,
                     petBaselineFraction = petBaselineFraction,
@@ -113,3 +116,9 @@ internal fun RoomContent(
         }
     }
 }
+
+private val bedtimeSteps = setOf(
+    github.detrig.feature.room.api.FirstRunOnboardingStep.BEDTIME_LATE,
+    github.detrig.feature.room.api.FirstRunOnboardingStep.BEDTIME_GUIDANCE,
+    github.detrig.feature.room.api.FirstRunOnboardingStep.WAITING_FOR_BED,
+)

@@ -39,7 +39,9 @@ internal fun RoomBuyDialog(
     zone: RoomZoneUiModel,
     progress: RoomProgress,
     isBuying: Boolean,
-    onConfirm: () -> Unit,
+    onConfirm: (Boolean) -> Unit,
+    showBuyNow: Boolean = true,
+    canBuyFromSavings: Boolean = false,
     isSavingGoal: Boolean,
     onSaveAsGoal: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -53,14 +55,16 @@ internal fun RoomBuyDialog(
         onDismissRequest = onDismiss,
         dismissEnabled = !isBuying,
         actions = {
-            FinPetButton(
+            if (showBuyNow) FinPetButton(
                 text = if (isBuying) {
                     stringResource(R.string.room_buying)
+                } else if (canBuyFromSavings) {
+                    stringResource(R.string.room_buy_from_savings)
                 } else {
                     stringResource(R.string.room_confirm)
                 },
-                onClick = onConfirm,
-                enabled = zone.canAfford && !isBuying,
+                onClick = { onConfirm(canBuyFromSavings) },
+                enabled = (zone.canAfford || canBuyFromSavings) && !isBuying,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -89,7 +93,7 @@ internal fun RoomBuyDialog(
         Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
             MoneyRow(stringResource(R.string.room_price), access.priceRub)
         }
-        if (!zone.canAfford) {
+        if (showBuyNow && !zone.canAfford && !canBuyFromSavings) {
             FinPetModalSection(
                 modifier = Modifier.fillMaxWidth(),
                 tone = FinPetModalSectionTone.Warning,

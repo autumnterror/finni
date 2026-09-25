@@ -347,7 +347,9 @@ fun FinPetAmountInput(
                     }
                 },
             )
-            if (suffix == "₽") FinPetCoinIcon() else Text(suffix, style = AppTheme.typography.currency)
+            if (suffix == "₽") FinPetCoinIcon() else if (suffix.isNotEmpty()) {
+                Text(suffix, style = AppTheme.typography.currency)
+            }
         }
     }
 }

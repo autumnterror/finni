@@ -12,6 +12,7 @@ import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.savings.api.SavingsGoalPurchaser
 import github.detrig.core.database.RoomTransactionRunner
+import github.detrig.feature.gamestate.api.ProgressionApi
 
 interface SavingsDependencies {
     fun economyApi(): EconomyApi
@@ -20,6 +21,7 @@ interface SavingsDependencies {
     fun petApi(): PetApi
     fun roomBackdrop(): SavingsRoomBackdrop
     fun learningApi(): LearningApi
+    fun progressionApi(): ProgressionApi
     fun globalNavigator(): GlobalNavigator
     fun configuration(): SavingsConfiguration
     fun gameAudio(): GameAudio

@@ -36,19 +36,21 @@ data class MetricRuleDefinition(
 
 data class LearningConfig(
     val catalogVersion: Int = 1,
-    val defaultAchievementXp: Int = 10,
+    val defaultAchievementXp: Int = 50,
+    val defaultLearnedAchievementXp: Int = 20,
     val achievementXpOverrides: Map<String, Int> = emptyMap(),
     val metricRules: List<MetricRuleDefinition> = emptyList(),
 ) {
     init {
         require(catalogVersion > 0)
         require(defaultAchievementXp > 0)
+        require(defaultLearnedAchievementXp > 0)
         require(achievementXpOverrides.values.all { it > 0 })
         require(metricRules.map { it.metricId }.distinct().size == metricRules.size) {
             "Only one metric rule may own a metric"
         }
     }
 
-    fun xpFor(achievementId: String): Int =
-        achievementXpOverrides[achievementId] ?: defaultAchievementXp
+    fun xpFor(achievementId: String): Int = achievementXpOverrides[achievementId]
+        ?: if (achievementId.endsWith(".learned")) defaultLearnedAchievementXp else defaultAchievementXp
 }

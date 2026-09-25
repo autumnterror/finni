@@ -76,6 +76,7 @@ internal fun HouseScene(
     allowedObjectIds: Set<String>,
     onHighlightedObjectBoundsChanged: (Rect?) -> Unit,
     onPreviewReady: (String) -> Unit,
+    isFeedingScene: Boolean = focusObjectId == "dining_table",
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier) -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
@@ -92,7 +93,7 @@ internal fun HouseScene(
     val focusedPlacement = remember(focusObjectId) {
         focusObjectId?.let { id -> HouseLayout.objects.firstOrNull { it.id == id } }
     }
-    val feedingScene = focusObjectId == "dining_table"
+    val feedingScene = isFeedingScene
     val sceneZoom = if (feedingScene) FEEDING_SCENE_ZOOM else 1f
     val scenePivotX = focusedPlacement?.centerX?.div(HouseLayout.WORLD_WIDTH) ?: 0.5f
     val scenePivotY = focusedPlacement?.bounds?.let { (it.top + it.bottom) / 2f } ?: 0.5f

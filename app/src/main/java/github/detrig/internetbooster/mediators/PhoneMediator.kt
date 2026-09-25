@@ -21,6 +21,7 @@ internal class PhoneMediator(
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
     private val learningMediator: LearningMediator,
+    private val gameStateMediator: GameStateMediator,
 ) : Mediator<PhoneApi> {
 
     @MainThread
@@ -35,6 +36,7 @@ internal class PhoneMediator(
                 override fun economyApi() = economyMediator.getApi()
                 override fun weekApi() = weekMediator.getApi()
                 override fun learningApi() = learningMediator.getApi()
+                override fun progressionApi() = gameStateMediator.getProgressionApi()
                 override fun messagesStorage(): PhoneMessagesStorage = DurablePhoneMessagesStorage(
                     preferences = coreComponent.context.getSharedPreferences(
                         MESSAGES_PREFERENCES,
@@ -47,6 +49,7 @@ internal class PhoneMediator(
                     SECURITY_EVENT_DAILY_PROBABILITY
                 }
                 override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
+                override fun globalMessageController() = coreComponent.globalMessageController
             }
         }
         PhoneFeature.getApi().initialize()

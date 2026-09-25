@@ -3,6 +3,8 @@ package github.detrig.feature.gamestate.di
 import github.detrig.feature.gamestate.GameStateDependencies
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.gamestate.api.GameStateApiImpl
+import github.detrig.feature.gamestate.api.ProgressionApi
+import github.detrig.feature.gamestate.api.ProgressionApiImpl
 import github.detrig.feature.gamestate.data.GameStateRepositoryImpl
 import github.detrig.feature.gamestate.data.local.GameStateLocalDataSource
 import github.detrig.feature.gamestate.domain.interactor.BuyZoneInteractor
@@ -30,5 +32,9 @@ internal class GameStateModule(
 
     override val api: GameStateApi by lazy {
         GameStateApiImpl(repository, BuyZoneInteractor(repository))
+    }
+
+    override val progressionApi: ProgressionApi by lazy {
+        ProgressionApiImpl(repository)
     }
 }

@@ -16,7 +16,7 @@ interface GameStateApi {
     fun observeState(): Flow<GameState?>
 
     /** Проверяет условия, списывает валюту и сохраняет зону в одной транзакции. */
-    suspend fun buyZone(offer: ZoneOffer): ZoneBuyResult
+    suspend fun buyZone(offer: ZoneOffer, useSavings: Boolean = false): ZoneBuyResult
 
     /** Применяет эффект игры один раз; повтор возвращает фактически записанную дельту. */
     suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int

@@ -29,6 +29,11 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object CloseDayTransitionNotice : RoomViewEvent
     data object CloseImpulseWish : RoomViewEvent
     data object FirstRunOnboardingContinue : RoomViewEvent
+    data object FirstRunOpenPhone : RoomViewEvent
+    data object FirstRunOpenFridge : RoomViewEvent
+    data object FirstRunOpenTable : RoomViewEvent
+    data object FirstRunShowWeekSummary : RoomViewEvent
+    data object FirstRunStartNewWeekPlan : RoomViewEvent
     data object FirstRunMoneyNoticeClosed : RoomViewEvent
     data class FirstRunDepositSelected(val depositNow: Boolean) : RoomViewEvent
     data object Resumed : RoomViewEvent
@@ -37,15 +42,28 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object PlanTutorialNext : RoomViewEvent
     data object PlanDialogueFinished : RoomViewEvent
     data object PlanDialogueEditRequested : RoomViewEvent
-    data object AchievementsClicked : RoomViewEvent
+    data object MenuClicked : RoomViewEvent
+    data object CloseMenu : RoomViewEvent
+    data object ToggleMenuAchievements : RoomViewEvent
+    data object ShowAllAchievements : RoomViewEvent
     data object CloseAchievements : RoomViewEvent
+    data object ParentCabinetClicked : RoomViewEvent
+    data class ParentAnswerChanged(val answer: String) : RoomViewEvent
+    data object ParentAnswerSubmitted : RoomViewEvent
+    data object CloseParentGate : RoomViewEvent
+    data object CloseParentCabinet : RoomViewEvent
     data object ClosePlanSummary : RoomViewEvent
     data object CloseWeekResult : RoomViewEvent
+    data object WeekSummaryTutorialNext : RoomViewEvent
+    data object CloseFirstGamePurchaseFeedback : RoomViewEvent
+    data class FirstRunViewReadyGame(val zoneId: String) : RoomViewEvent
+    data object CloseFirstWeekNeedHint : RoomViewEvent
+    data object CloseFirstWeekGoalHint : RoomViewEvent
     data class PlanPercentChanged(val category: PlanCategory, val percent: Int) : RoomViewEvent
     data class PlanReserveChanged(val percent: Int) : RoomViewEvent
     data object Load : RoomViewEvent
     data object RetryClicked : RoomViewEvent
     data class ZoneClicked(val zoneId: String) : RoomViewEvent
-    data class BuyConfirmed(val zoneId: String) : RoomViewEvent
+    data class BuyConfirmed(val zoneId: String, val useSavings: Boolean = false) : RoomViewEvent
     data class SaveZoneAsGoal(val zoneId: String, val title: String) : RoomViewEvent
 }

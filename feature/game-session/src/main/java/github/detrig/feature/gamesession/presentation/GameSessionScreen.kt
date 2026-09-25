@@ -1,13 +1,17 @@
 package github.detrig.feature.gamesession.presentation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import github.detrig.feature.gamesession.GameSessionFeature
 import github.detrig.feature.gamesession.presentation.component.GameSessionHome
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 @Composable
 internal fun GameSessionScreen() {
     val component = GameSessionFeature.component()
+    val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
     component.phoneApi.RoomNotifications { phoneState, dismissFirstPrompt ->
         component.petApi.RequirePet(modifier = Modifier) {
             petProfile,
@@ -33,7 +37,9 @@ internal fun GameSessionScreen() {
                         component.petApi.Content(
                             profile = petProfile,
                             modifier = petModifier,
-                            onClick = onPetClick,
+                            onClick = onPetClick.takeIf {
+                                firstRunStep == FirstRunOnboardingStep.COMPLETED
+                            },
                         )
                     },
                     petPortrait = { portraitModifier ->

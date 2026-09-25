@@ -61,8 +61,8 @@ internal class RoomRepositoryImpl(
         }
     }.distinctUntilChanged()
 
-    override suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult {
-        val result = gameStateApi.buyZone(ZoneOffer(zone.id, zone.priceRub, zone.requiredLevel))
+    override suspend fun buyZone(zone: RoomZoneDefinition, useSavings: Boolean): ZoneBuyResult {
+        val result = gameStateApi.buyZone(ZoneOffer(zone.id, zone.priceRub, zone.requiredLevel), useSavings)
         if (result == ZoneBuyResult.Bought) {
             val week = weekApi.observeState().first()
             if (planningApi.getPlanProgress(week.weekNumber) != null) {

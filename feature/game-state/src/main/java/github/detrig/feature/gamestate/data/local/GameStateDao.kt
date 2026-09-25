@@ -20,6 +20,15 @@ interface GameStateDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertInitialState(state: GameStateEntity)
 
+    @Query("SELECT * FROM experience_grants WHERE grantId = :grantId")
+    suspend fun getExperienceGrant(grantId: String): ExperienceGrantEntity?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertExperienceGrant(grant: ExperienceGrantEntity): Long
+
+    @Query("UPDATE game_sessions SET totalXp = :totalXp, playerLevel = :playerLevel WHERE id = 'current'")
+    suspend fun updateProgression(totalXp: Int, playerLevel: Int): Int
+
     @Transaction
     @Query("SELECT * FROM game_sessions WHERE id = 'current'")
     suspend fun getCurrentStateWithZones(): GameStateWithZones?

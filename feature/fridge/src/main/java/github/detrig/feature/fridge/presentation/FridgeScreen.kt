@@ -64,6 +64,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.FinPetIconButton
+import github.detrig.designsystem.component.FinPetDialogueAction
+import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.fridge.FridgeFeature
@@ -78,6 +80,7 @@ import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
 import kotlinx.coroutines.delay
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 private const val FLIGHT_DURATION_MILLIS = 360
 private const val DEFAULT_FRIDGE_SHELF_COUNT = 5
@@ -87,6 +90,8 @@ internal fun FridgeScreen() {
     val component = FridgeFeature.component()
     val viewModel: FridgeViewModel = viewModel { component.viewModel() }
     val state by viewModel.state().observeAsState(FridgeViewState())
+    val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
+    val petProfile by component.petApi.observeProfile().collectAsState(initial = null)
 
     LaunchedEffect(viewModel) { viewModel.perform(FridgeViewEvent.Load) }
     BackHandler { viewModel.perform(FridgeViewEvent.Back) }
@@ -100,6 +105,36 @@ internal fun FridgeScreen() {
             viewModel.perform(FridgeViewEvent.FlightAnimationFinished(it))
         },
     )
+    val profile = petProfile
+    if (profile != null) {
+        when (firstRunStep) {
+            FirstRunOnboardingStep.FRIDGE_EXPLANATION -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_explanation)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                advanceOnTap = false,
+                dismissOnBackPress = false,
+                actions = listOf(FinPetDialogueAction("next", LocalContext.current.getString(R.string.first_run_next))),
+                onActionSelected = {
+                    component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.FRIDGE_PICK_FOOD)
+                },
+                onFinished = {
+                    component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.FRIDGE_PICK_FOOD)
+                },
+            )
+            FirstRunOnboardingStep.FRIDGE_PICK_FOOD -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_pick_food)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                focusable = false,
+                advanceOnTap = false,
+                dismissOnBackPress = false,
+                alignment = Alignment.TopCenter,
+                onFinished = {},
+            )
+            else -> Unit
+        }
+    }
 }
 
 @Composable

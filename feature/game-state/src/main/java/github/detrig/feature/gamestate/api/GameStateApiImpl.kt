@@ -18,7 +18,8 @@ internal class GameStateApiImpl(
 
     override fun observeState(): Flow<GameState?> = repository.observeState()
 
-    override suspend fun buyZone(offer: ZoneOffer): ZoneBuyResult = buyZoneInteractor(offer)
+    override suspend fun buyZone(offer: ZoneOffer, useSavings: Boolean): ZoneBuyResult =
+        buyZoneInteractor(offer, useSavings)
 
     override suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int =
         repository.completePetPlay(completion)

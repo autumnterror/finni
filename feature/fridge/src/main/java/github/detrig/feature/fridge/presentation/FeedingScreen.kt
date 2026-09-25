@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.feature.fridge.FridgeFeature
 import github.detrig.feature.fridge.R
 import github.detrig.feature.shop.api.ShopArtworkResolver
@@ -55,6 +56,8 @@ import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryCategoryIds
 import github.detrig.products.ProductId
 import kotlin.math.roundToInt
+import github.detrig.feature.room.api.FirstRunOnboardingStep
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 internal fun FeedingScreen() {
@@ -62,6 +65,7 @@ internal fun FeedingScreen() {
     val viewModel: FeedingViewModel = viewModel { component.feedingViewModel() }
     val state by viewModel.state().observeAsState(FeedingViewState())
     val petProfile by component.petApi.observeProfile().collectAsState(initial = null)
+    val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
     val soundPlayer = component.gameAudio
     val catalog = remember { GroceryCatalog() }
     val isDrink = state.activePortion?.productId?.let { catalog.find(it)?.categoryId == GroceryCategoryIds.Drinks } == true
@@ -112,6 +116,29 @@ internal fun FeedingScreen() {
             }
         },
     )
+    val profile = petProfile
+    if (profile != null) {
+        when (firstRunStep) {
+            FirstRunOnboardingStep.FEEDING -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_feeding_drag)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                focusable = false,
+                advanceOnTap = false,
+                dismissOnBackPress = false,
+                alignment = Alignment.TopCenter,
+                onFinished = {},
+            )
+            FirstRunOnboardingStep.FEEDING_DONE -> FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(LocalContext.current.getString(R.string.first_run_fed_thanks)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                dismissOnBackPress = false,
+                onFinished = { viewModel.perform(FeedingViewEvent.FirstRunThanksDismissed) },
+            )
+            else -> Unit
+        }
+    }
 }
 
 @Composable

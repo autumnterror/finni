@@ -18,6 +18,7 @@ import github.detrig.internetbooster.database.AppDatabaseModule
 
 internal class LearningMediator(
     private val databaseModule: AppDatabaseModule,
+    private val gameStateMediator: GameStateMediator,
 ) : Mediator<LearningApi> {
     fun init() {
         LearningFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -32,19 +33,34 @@ internal class LearningMediator(
                         FinancialSecurityLearning.rules(),
                 )
 
-                // XP остаётся в outbox до появления ProgressionApi.
-                override fun xpRewardGateway(): LearningXpRewardGateway = DeferredXpRewardGateway
+                override fun xpRewardGateway(): LearningXpRewardGateway = ProgressionXpRewardGateway(
+                    gameStateMediator = gameStateMediator,
+                )
             }
         }
     }
 
     override fun getApi(): LearningApi = LearningFeature.getApi()
 
-    private object DeferredXpRewardGateway : LearningXpRewardGateway {
+    private class ProgressionXpRewardGateway(
+        private val gameStateMediator: GameStateMediator,
+    ) : LearningXpRewardGateway {
         override suspend fun grantXp(
             grantId: String,
             profileId: String,
             amount: Int,
-        ): XpGrantResult = XpGrantResult.RetryLater
+        ): XpGrantResult = when (
+            gameStateMediator.getProgressionApi().grantXp(
+                grantId = grantId,
+                profileId = profileId,
+                amount = amount,
+                source = github.detrig.feature.gamestate.domain.progression.XpSources.ACHIEVEMENT,
+            )
+        ) {
+            is github.detrig.feature.gamestate.domain.progression.GrantXpResult.Granted -> XpGrantResult.Granted
+            is github.detrig.feature.gamestate.domain.progression.GrantXpResult.AlreadyGranted -> XpGrantResult.AlreadyGranted
+            is github.detrig.feature.gamestate.domain.progression.GrantXpResult.OperationIdConflict ->
+                error("Conflicting achievement XP grant $grantId")
+        }
     }
 }

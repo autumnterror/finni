@@ -16,10 +16,16 @@ class MvpAchievementCatalogTest {
         assertTrue(catalog.definitions.all { it.xpReward > 0 })
         assertTrue(catalog.definitions
             .filter { it.stage == AchievementStage.INTRODUCTION }
-            .all { it.parentText.startsWith("Ребёнок ознакомился") })
+            .all { it.xpReward == 50 })
         assertTrue(catalog.definitions
             .filter { it.stage == AchievementStage.LEARNED }
-            .all { it.parentText.startsWith("Ребёнок научился") })
+            .all { it.xpReward == 20 })
+        assertTrue(catalog.definitions
+            .filter { it.stage == AchievementStage.INTRODUCTION }
+            .all { it.parentText.startsWith("Ребёнок познакомился") })
+        assertTrue(catalog.definitions
+            .filter { it.stage == AchievementStage.LEARNED }
+            .all { it.parentText.startsWith("Ребёнок умеет") })
         assertTrue(catalog.definitions.groupBy { it.metricId }.values.all { it.size == 2 })
     }
 

@@ -84,7 +84,9 @@ internal class LearningRepositoryImpl(
         dao.observeUnlocks(profileId),
     ) { progressEntities, unlockEntities ->
         val progressByMetric = progressEntities.associate { it.metricId to it.toDomain() }
-        val unlockByAchievement = unlockEntities.mapNotNull { it.toDomain(catalog) }
+        val unlockByAchievement = unlockEntities.mapIndexedNotNull { index, entity ->
+            entity.toDomain(catalog)?.copy(unlockOrder = (unlockEntities.size - index).toLong())
+        }
             .associateBy { it.definition.achievementId }
         catalog.definitions.map { definition ->
             AchievementProgress(

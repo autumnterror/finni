@@ -10,12 +10,17 @@ import github.detrig.feature.learning.domain.RecordLearningResult
 import github.detrig.feature.learning.domain.SavingsLearning
 import github.detrig.feature.week.api.WeekApi
 import kotlinx.coroutines.flow.first
+import github.detrig.feature.gamestate.api.ProgressionApi
+import github.detrig.feature.gamestate.domain.progression.GrantXpResult
+import github.detrig.feature.gamestate.domain.progression.XpRewards
+import github.detrig.feature.gamestate.domain.progression.XpSources
 
 /** Replays committed source facts after process death; Learning deduplicates by stable IDs. */
 internal class SavingsLearningInteractor(
     private val economy: EconomyApi,
     private val week: WeekApi,
     private val learning: LearningApi,
+    private val progression: ProgressionApi,
 ) {
     suspend fun currentWeek(): Long {
         week.initialize()
@@ -46,7 +51,19 @@ internal class SavingsLearningInteractor(
                         previous.before.savingsRub < previousTarget && previous.after.savingsRub >= previousTarget
                     } == true
             }
-            if (!earlierReach) record(SavingsLearning.goalReached(PROFILE_ID, goalId, period))
+            if (!earlierReach) {
+                record(SavingsLearning.goalReached(PROFILE_ID, goalId, period))
+                when (progression.grantXp(
+                    grantId = "savings-goal-reached:$goalId",
+                    profileId = PROFILE_ID,
+                    amount = XpRewards.SAVINGS_GOAL_REACHED,
+                    source = XpSources.SAVINGS_GOAL_REACHED,
+                )) {
+                    is GrantXpResult.Granted,
+                    is GrantXpResult.AlreadyGranted -> Unit
+                    is GrantXpResult.OperationIdConflict -> error("Conflicting savings XP grant for $goalId")
+                }
+            }
         }
     }
 

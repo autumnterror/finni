@@ -33,4 +33,10 @@
     <string name="messages_no_messages">Здесь пока нет сообщений.</string>
     <string name="messages_unread_count">Непрочитанных сообщений: %1$d</string>
     <string name="messages_sender_avatar">Аватар отправителя %1$s</string>
+    <string name="first_run_store_intro">Здесь можно покупать еду и другие вещи.</string>
+    <string name="first_run_open_store">Открыть магазин</string>
+    <string name="first_run_price_intro">У каждого товара есть цена.\n\nВсё, что ты покупаешь, оплачивается из наших денег.</string>
+    <string name="first_run_next">Дальше</string>
+    <string name="first_run_buy_food">Давай для начала купим что-нибудь поесть.</string>
+    <string name="first_run_spent">Потрачено: %1$d ₽</string>
 </resources>

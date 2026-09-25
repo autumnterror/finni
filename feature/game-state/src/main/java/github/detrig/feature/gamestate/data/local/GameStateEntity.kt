@@ -11,6 +11,7 @@ data class GameStateEntity(
     val happiness: Int,
     val health: Int,
     val playerLevel: Int,
+    val totalXp: Int = 0,
     val hungerCheckpointMillis: Long = 0,
     val happinessCheckpointMillis: Long = 0,
     val hungerAlertEpisode: Long = 0,

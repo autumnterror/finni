@@ -55,10 +55,12 @@ internal class AppModuleImpl(
 
     private val economyMediator: EconomyMediator by lazy { EconomyMediator(databaseModule) }
     private val weekMediator: WeekMediator by lazy {
-        WeekMediator(databaseModule, economyMediator, gameStateMediator)
+        WeekMediator(databaseModule, economyMediator, gameStateMediator, planningMediator)
     }
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
-    private val learningMediator: LearningMediator by lazy { LearningMediator(databaseModule) }
+    private val learningMediator: LearningMediator by lazy {
+        LearningMediator(databaseModule, gameStateMediator)
+    }
     private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
     private val savingsMediator: SavingsMediator by lazy {
         SavingsMediator(
@@ -69,6 +71,7 @@ internal class AppModuleImpl(
             pet = petMediator,
             roomApiProvider = { roomMediator.getApi() },
             learning = learningMediator,
+            gameState = gameStateMediator,
             gameAudio = gameAudio,
         )
     }
@@ -104,6 +107,7 @@ internal class AppModuleImpl(
 
     override suspend fun reconcileTimedEvents() {
         timedEventProcessor.reconcile()
+        learningMediator.getApi().deliverPendingXpRewards("current")
         hungerNotifications.dispatch()
     }
 
@@ -118,6 +122,7 @@ internal class AppModuleImpl(
             economyMediator = economyMediator,
             weekMediator = weekMediator,
             learningMediator = learningMediator,
+            gameStateMediator = gameStateMediator,
         )
     }
 
@@ -134,7 +139,7 @@ internal class AppModuleImpl(
     }
 
     private val petMediator: PetMediator by lazy {
-        PetMediator(coreComponent)
+        PetMediator(coreComponent, gameStateMediator)
     }
 
     private val gameSessionMediator: GameSessionMediator by lazy {
@@ -159,6 +164,7 @@ internal class AppModuleImpl(
             learningMediator,
             savingsMediator,
             shopMediator,
+            inventoryMediator,
             gameAudio,
         )
     }

@@ -24,6 +24,8 @@ kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_11 } }
 dependencies {
     implementation(project(":core"))
     implementation(project(":feature:economy"))
+    implementation(project(":feature:game-state"))
+    implementation(project(":feature:planning"))
     api(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

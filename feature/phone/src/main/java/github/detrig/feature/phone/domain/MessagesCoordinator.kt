@@ -22,11 +22,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import github.detrig.feature.gamestate.api.ProgressionApi
+import github.detrig.feature.gamestate.domain.progression.GrantXpResult
+import github.detrig.feature.gamestate.domain.progression.XpRewards
+import github.detrig.feature.gamestate.domain.progression.XpSources
 
 internal class MessagesCoordinator(
     private val repository: MessagesRepository,
     private val weekApi: WeekApi,
     private val learningApi: LearningApi,
+    private val progressionApi: ProgressionApi,
     private val economyApi: EconomyApi,
     private val minimumHelpBalanceRub: Long,
     private val eventConfig: SecurityEventConfig,
@@ -173,7 +178,16 @@ internal class MessagesCoordinator(
             ),
         )
         if (result is RecordLearningResult.Processed || result is RecordLearningResult.AlreadyProcessed) {
-            repository.markLearningDelivered(event.id)
+            when (progressionApi.grantXp(
+                grantId = "financial-task:${event.id}",
+                profileId = CURRENT_PROFILE_ID,
+                amount = XpRewards.FINANCIAL_TASK_COMPLETED,
+                source = XpSources.FINANCIAL_TASK_COMPLETED,
+            )) {
+                is GrantXpResult.Granted,
+                is GrantXpResult.AlreadyGranted -> repository.markLearningDelivered(event.id)
+                is GrantXpResult.OperationIdConflict -> error("Conflicting financial task XP grant ${event.id}")
+            }
         }
     }
 

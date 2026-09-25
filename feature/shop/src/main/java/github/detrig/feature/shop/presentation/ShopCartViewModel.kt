@@ -155,7 +155,7 @@ internal class ShopCartViewModel(
                             checkoutRejection = null,
                         )
                     }
-                    finishCheckout()
+                    finishCheckout(currentState.totalRub)
                 }
 
                 is ShopCheckoutResult.Rejected -> {
@@ -180,9 +180,9 @@ internal class ShopCartViewModel(
         }
     }
 
-    private fun finishCheckout() {
+    private fun finishCheckout(spentRub: Long) {
         if (useHostCheckoutCompleted) {
-            commands.onNext(ShopCartCommand.CheckoutCompleted)
+            commands.onNext(ShopCartCommand.CheckoutCompleted(spentRub))
         } else {
             router.back()
         }

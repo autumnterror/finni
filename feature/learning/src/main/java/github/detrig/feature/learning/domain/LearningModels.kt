@@ -106,6 +106,7 @@ data class AchievementUnlock(
     val sourceActionId: String,
     val unlockedAtGamePeriod: Long,
     val xpGrantId: String,
+    val unlockOrder: Long = 0,
 )
 
 data class AchievementProgress(

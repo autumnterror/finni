@@ -14,6 +14,7 @@ internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
     private val resources: Resources,
     private val purchaseSavingsGoal: PurchaseSavingsGoalInteractor,
+    override val firstRunGuide: FirstRunGuideApi,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)

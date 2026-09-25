@@ -7,10 +7,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -20,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetOutlinedButton
+import github.detrig.designsystem.component.FinPetModalSection
+import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.R
@@ -28,6 +36,7 @@ import github.detrig.feature.shop.api.ShopItemDetail
 import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
 import github.detrig.feature.shop.api.ShopPetPortrait
+import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 
@@ -41,7 +50,26 @@ internal fun ShopContent(
     onBack: () -> Unit = { onEvent(ShopViewEvent.Back) },
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    highlightedProductId: github.detrig.products.ProductId? = null,
+    onProductSelected: (github.detrig.products.ProductId) -> Unit = {},
+    tutorialMessage: String? = null,
 ) {
+    val gridState = rememberLazyGridState()
+    val promotionIntro = state.decisionEvent?.takeIf {
+        state.eventDialogueVisible && it.type == ShopDecisionEventType.PROMOTION
+    }
+    var promotionInView by rememberSaveable(promotionIntro?.eventId) { mutableStateOf(false) }
+    val visibleItems = state.visibleItems
+    LaunchedEffect(promotionIntro?.eventId, visibleItems, state.selectedCategoryId) {
+        val promotion = promotionIntro ?: return@LaunchedEffect
+        val index = visibleItems.indexOfFirst { it.id == promotion.productId }
+        if (index < 0) {
+            onEvent(ShopViewEvent.CategorySelected(null))
+        } else {
+            gridState.animateScrollToItem(index)
+            promotionInView = true
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -60,6 +88,21 @@ internal fun ShopContent(
                 selectedCategoryId = state.selectedCategoryId,
                 onSelected = { onEvent(ShopViewEvent.CategorySelected(it)) },
             )
+            tutorialMessage?.let { message ->
+                FinPetModalSection(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.xs),
+                    tone = FinPetModalSectionTone.Highlighted,
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(AppTheme.spacing.md),
+                        style = AppTheme.typography.bodyStrong,
+                        color = AppTheme.colors.storefront.onSurface,
+                    )
+                }
+            }
             if (state.visibleItems.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -76,12 +119,17 @@ internal fun ShopContent(
                 ShopProductGrid(
                     items = state.visibleItems,
                     columns = storefront.gridLayout.columns,
+                    gridState = gridState,
                     quantityInCart = state::quantityInCart,
-                    onItemClick = { onEvent(ShopViewEvent.ProductClicked(it)) },
+                    onItemClick = {
+                        onEvent(ShopViewEvent.ProductClicked(it))
+                        onProductSelected(it)
+                    },
                     artworkResolver = artworkResolver,
                     itemDetailsResolver = itemDetailsResolver,
                     unitPriceRub = state::effectiveUnitPrice,
                     decisionEvent = state.decisionEvent,
+                    highlightedProductId = highlightedProductId,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -167,7 +215,9 @@ internal fun ShopContent(
         )
     }
 
-    if (state.receipt == null && state.purchaseFeedback == null && state.eventDialogueVisible) {
+    if (state.receipt == null && state.purchaseFeedback == null && state.eventDialogueVisible &&
+        (promotionIntro == null || promotionInView)
+    ) {
         val event = state.decisionEvent
         if (event != null) {
             ShopDecisionEventDialog(

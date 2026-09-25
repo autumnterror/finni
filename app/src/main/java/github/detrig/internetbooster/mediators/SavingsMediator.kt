@@ -20,6 +20,7 @@ internal class SavingsMediator(
     private val roomApiProvider: () -> github.detrig.feature.room.api.RoomApi,
     private val gameAudio: GameAudio,
     private val learning: LearningMediator,
+    private val gameState: GameStateMediator,
 ) : Mediator<SavingsApi> {
     fun init() {
         SavingsFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -37,6 +38,7 @@ internal class SavingsMediator(
                     )
                 }
                 override fun learningApi() = learning.getApi()
+                override fun progressionApi() = gameState.getProgressionApi()
                 override fun globalNavigator() = core.globalNavigator
                 override fun configuration() = SavingsConfiguration()
                 override fun gameAudio() = gameAudio

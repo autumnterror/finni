@@ -19,7 +19,7 @@ internal interface RoomRepository {
     fun zones(): List<RoomZoneDefinition>
     suspend fun initialize()
     fun observeProgress(): Flow<RoomProgress>
-    suspend fun buyZone(zone: RoomZoneDefinition): ZoneBuyResult
+    suspend fun buyZone(zone: RoomZoneDefinition, useSavings: Boolean = false): ZoneBuyResult
     suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult
     fun assessPlan(percentages: PlanPercentages): PlanAssessment
     suspend fun savePlan(weekNumber: Long, availableRub: Long, percentages: PlanPercentages): SavePlanResult

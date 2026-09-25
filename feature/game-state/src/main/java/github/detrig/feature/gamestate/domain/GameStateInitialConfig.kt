@@ -1,6 +1,7 @@
 package github.detrig.feature.gamestate.domain
 
 import github.detrig.feature.gamestate.domain.model.PetSatietyRules
+import github.detrig.feature.gamestate.domain.progression.ProgressionRules
 
 /** Стартовые настройки прототипа. Применяются только к новой игре. */
 data class GameStateInitialConfig(
@@ -28,6 +29,7 @@ data class GameStateInitialConfig(
                 health = health,
             ),
             playerLevel = playerLevel,
+            totalXp = ProgressionRules.minimumXpForLevel(playerLevel),
         )
     }
 }

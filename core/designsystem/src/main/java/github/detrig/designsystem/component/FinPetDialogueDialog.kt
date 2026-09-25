@@ -1,5 +1,6 @@
 package github.detrig.designsystem.component
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
@@ -91,11 +92,13 @@ fun FinPetDialogueDialog(
     additionalContent: @Composable ColumnScope.() -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
     dismissOnBackPress: Boolean = true,
+    focusable: Boolean = true,
     advanceOnTap: Boolean = true,
     topInset: androidx.compose.ui.unit.Dp = 0.dp,
     actions: List<FinPetDialogueAction> = emptyList(),
     onActionSelected: (FinPetDialogueAction) -> Unit = {},
     onFinished: () -> Unit,
+    alignment: Alignment? = null
 ) {
     require(cards.isNotEmpty()) { "Dialogue must contain at least one card" }
     require(actions.size <= MAX_DIALOGUE_ACTIONS) { "Dialogue supports up to three actions" }
@@ -117,38 +120,73 @@ fun FinPetDialogueDialog(
     val overlayTopInset = LocalFinPetDialogueTopInset.current
 
     Popup(
-        alignment = Alignment.TopCenter,
+        alignment = alignment ?: if (focusable) {
+            Alignment.TopCenter
+        } else {
+            Alignment.BottomCenter
+        },
         onDismissRequest = onFinished,
         properties = PopupProperties(
-            focusable = true,
+            focusable = focusable,
             dismissOnBackPress = dismissOnBackPress,
             dismissOnClickOutside = false,
         ),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            underlay()
+        if (focusable) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                underlay()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (canAdvanceOnTap) {
+                                Modifier.clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null,
+                                    onClickLabel = tapHint,
+                                    role = Role.Button,
+                                ) {
+                                    if (pageIndex < lastIndex) {
+                                        pageIndex++
+                                        onPageChanged(pageIndex)
+                                    } else {
+                                        onFinished()
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .padding(
+                            start = AppTheme.spacing.md,
+                            top = maxOf(AppTheme.spacing.xl, overlayTopInset) + topInset,
+                            end = AppTheme.spacing.md,
+                            bottom = AppTheme.spacing.xl,
+                        )
+                        .testTag("finpet_dialogue"),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    DialogueBubble(
+                        speakerName = speakerName,
+                        text = cards[pageIndex],
+                        pageIndex = pageIndex,
+                        pageCount = cards.size,
+                        portrait = portrait,
+                        tapHint = tapHint,
+                        showTapHint = canAdvanceOnTap,
+                        actions = actions,
+                        onActionSelected = onActionSelected,
+                        scrollState = scrollState,
+                        maxHeight = maxCardHeight,
+                        additionalContent = additionalContent,
+                    )
+                }
+            }
+        } else {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .then(
-                        if (canAdvanceOnTap) {
-                            Modifier.clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                                onClickLabel = tapHint,
-                                role = Role.Button,
-                            ) {
-                                if (pageIndex < lastIndex) {
-                                    pageIndex++
-                                    onPageChanged(pageIndex)
-                                } else {
-                                    onFinished()
-                                }
-                            }
-                        } else {
-                            Modifier
-                        },
-                    )
+                    .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(
                         start = AppTheme.spacing.md,
@@ -178,6 +216,7 @@ fun FinPetDialogueDialog(
     }
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun DialogueBubble(
     speakerName: String,
@@ -201,11 +240,11 @@ private fun DialogueBubble(
             .heightIn(max = maxHeight)
             .shadow(
                 elevation = AppTheme.elevation.high,
-                shape = DialogueBubbleShape,
+                shape = DialoguePanelShape,
                 ambientColor = colors.shadow,
                 spotColor = colors.shadow,
             ),
-        shape = DialogueBubbleShape,
+        shape = DialoguePanelShape,
         containerColor = colors.panel,
         contentColor = colors.onPanel,
         borderColor = colors.outline,
@@ -225,7 +264,7 @@ private fun DialogueBubble(
                         start = AppTheme.spacing.lg,
                         top = AppTheme.spacing.lg,
                         end = AppTheme.spacing.lg,
-                        bottom = DIALOGUE_TAIL_CONTENT_PADDING,
+                        bottom = AppTheme.spacing.lg,
                     ),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             ) {
@@ -316,6 +355,7 @@ private fun DialogueBubble(
     }
 }
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 private fun DialogueActions(
     actions: List<FinPetDialogueAction>,
@@ -442,31 +482,28 @@ private fun DialoguePaw(modifier: Modifier = Modifier) {
     )
 }
 
-private object DialogueBubbleShape : Shape {
+private object DialoguePanelShape : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
         density: Density,
     ): Outline {
-        val tailHeight = min(size.height * 0.12f, with(density) { 30.dp.toPx() })
-        val bodyBottom = size.height - tailHeight
+        val formerBodyHeight = size.height - min(
+            size.height * 0.12f,
+            with(density) { 30.dp.toPx() },
+        )
         val cornerRadius = min(
-            min(size.width, bodyBottom) * 0.18f,
+            min(size.width, formerBodyHeight) * 0.18f,
             with(density) { 56.dp.toPx() },
         )
-        val tailHalfWidth = min(size.width * 0.09f, with(density) { 42.dp.toPx() })
-        val centerX = size.width / 2f
         val path = Path().apply {
             moveTo(cornerRadius, 0f)
             lineTo(size.width - cornerRadius, 0f)
             quadraticTo(size.width, 0f, size.width, cornerRadius)
-            lineTo(size.width, bodyBottom - cornerRadius)
-            quadraticTo(size.width, bodyBottom, size.width - cornerRadius, bodyBottom)
-            lineTo(centerX + tailHalfWidth, bodyBottom)
-            lineTo(centerX, size.height)
-            lineTo(centerX - tailHalfWidth, bodyBottom)
-            lineTo(cornerRadius, bodyBottom)
-            quadraticTo(0f, bodyBottom, 0f, bodyBottom - cornerRadius)
+            lineTo(size.width, size.height - cornerRadius)
+            quadraticTo(size.width, size.height, size.width - cornerRadius, size.height)
+            lineTo(cornerRadius, size.height)
+            quadraticTo(0f, size.height, 0f, size.height - cornerRadius)
             lineTo(0f, cornerRadius)
             quadraticTo(0f, 0f, cornerRadius, 0f)
             close()
@@ -479,7 +516,6 @@ private const val MAX_DIALOGUE_ACTIONS = 3
 private const val PORTRAIT_WIDTH_FRACTION = 0.22f
 private val MIN_PORTRAIT_SIZE = 72.dp
 private val MAX_PORTRAIT_SIZE = 112.dp
-private val DIALOGUE_TAIL_CONTENT_PADDING = 42.dp
 private val DIALOGUE_HEART_TEXT_INSET = 28.dp
 private val DIALOGUE_HEART_SIZE = 24.dp
 private const val DIALOGUE_ACTION_WIDTH_FRACTION = 0.62f

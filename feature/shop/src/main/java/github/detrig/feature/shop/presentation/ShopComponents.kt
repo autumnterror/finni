@@ -215,6 +215,7 @@ internal fun ShopCategoryRow(
 internal fun ShopProductGrid(
     items: List<SellableItem>,
     columns: Int,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     quantityInCart: (ProductId) -> Int,
     onItemClick: (ProductId) -> Unit,
     artworkResolver: ShopArtworkResolver,
@@ -223,10 +224,12 @@ internal fun ShopProductGrid(
         items.first { it.id == productId }.priceRub
     },
     decisionEvent: ShopDecisionEvent? = null,
+    highlightedProductId: ProductId? = null,
     modifier: Modifier = Modifier,
 ) {
     FinPetLazyGrid(
         items = items,
+        state = gridState,
         modifier = modifier.fillMaxWidth(),
         columns = FinPetGridColumns.Fixed(columns),
         contentPadding = PaddingValues(AppTheme.spacing.lg),
@@ -242,6 +245,7 @@ internal fun ShopProductGrid(
             itemDetailsResolver = itemDetailsResolver,
             unitPriceRub = unitPriceRub(item.id),
             decisionEvent = decisionEvent?.takeIf { it.productId == item.id },
+            tutorialHighlighted = item.id == highlightedProductId,
         )
     }
 }
@@ -255,6 +259,7 @@ private fun ShopProductCard(
     itemDetailsResolver: ShopItemDetailsResolver,
     unitPriceRub: Long,
     decisionEvent: ShopDecisionEvent?,
+    tutorialHighlighted: Boolean = false,
 ) {
     val itemDescription = stringResource(
         R.string.shop_item_accessibility,
@@ -290,11 +295,12 @@ private fun ShopProductCard(
             AppTheme.colors.storefront.surface
         },
         borderColor = when {
+            tutorialHighlighted -> AppTheme.colors.actionPrimary
             promotionEvent != null -> AppTheme.colors.currencyAccent
             isInCart -> AppTheme.colors.actionPrimary
             else -> AppTheme.colors.storefront.outline
         },
-        borderWidth = AppTheme.sizes.borderStrong,
+        borderWidth = if (tutorialHighlighted) AppTheme.sizes.borderStrong * 2 else AppTheme.sizes.borderStrong,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (promotionEvent != null) {

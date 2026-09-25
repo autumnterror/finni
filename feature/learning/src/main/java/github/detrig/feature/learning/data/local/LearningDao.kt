@@ -36,7 +36,7 @@ interface LearningDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertUnlock(unlock: AchievementUnlockEntity): Long
 
-    @Query("SELECT * FROM achievement_unlocks WHERE profileId = :profileId ORDER BY achievementId")
+    @Query("SELECT * FROM achievement_unlocks WHERE profileId = :profileId ORDER BY rowid DESC")
     fun observeUnlocks(profileId: String): Flow<List<AchievementUnlockEntity>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
