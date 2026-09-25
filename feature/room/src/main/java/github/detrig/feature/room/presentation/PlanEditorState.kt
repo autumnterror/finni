@@ -34,6 +34,22 @@ internal data class PlanEditorState(
         }
     }
 
+    fun updateReserve(requestedPercent: Int): PlanEditorState {
+        val selected = requestedPercent.coerceIn(0, PlanPercentages.TOTAL_PERCENT)
+        if (selected == reserve) return this
+
+        val remaining = PlanPercentages.TOTAL_PERCENT - selected
+        val source = if (total == 0) PlanPercentages.DEFAULT else toPercentages()
+        val nextMandatory = remaining * source.mandatory / source.total
+        val nextWants = remaining * source.wants / source.total
+        val nextSavings = remaining - nextMandatory - nextWants
+        return copy(
+            mandatory = nextMandatory,
+            wants = nextWants,
+            savings = nextSavings,
+        )
+    }
+
     private fun withValue(category: PlanCategory, value: Int) = when (category) {
         PlanCategory.MANDATORY -> copy(mandatory = value)
         PlanCategory.WANTS -> copy(wants = value)

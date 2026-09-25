@@ -43,7 +43,16 @@ internal class FirstRunOnboardingStorage(preferences: SharedPreferences) :
     }
 
     private fun migrateLegacyProgress(): Set<FirstRunOnboardingChapter> {
-        val legacyStep = readString(LEGACY_STEP_KEY, null)
+        val storedStep = readString(LEGACY_STEP_KEY, null)
+        if (storedStep == REMOVED_PLAN_SAVED_STEP) {
+            return setOf(
+                FirstRunOnboardingChapter.INTRODUCTION_AND_FIRST_MONEY,
+                FirstRunOnboardingChapter.BUDGET_PLANNING,
+            ).also { completed ->
+                putStringSet(COMPLETED_CHAPTERS_KEY, completed.mapTo(linkedSetOf()) { it.name })
+            }
+        }
+        val legacyStep = storedStep
             ?.let { stored -> FirstRunOnboardingStep.entries.firstOrNull { it.name == stored } }
             ?: FirstRunOnboardingStep.INTRODUCTION
         return legacyStep.completedChaptersForMigration().also { completed ->
@@ -55,5 +64,6 @@ internal class FirstRunOnboardingStorage(preferences: SharedPreferences) :
         const val COMPLETED_CHAPTERS_KEY = "first_run_onboarding_completed_chapters_v1"
         const val LEGACY_STEP_KEY = "first_run_onboarding_step_v1"
         const val SUGGESTED_GOAL_ZONE_KEY = "first_run_onboarding_suggested_goal_zone_v1"
+        const val REMOVED_PLAN_SAVED_STEP = "PLAN_SAVED"
     }
 }

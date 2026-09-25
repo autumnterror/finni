@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -104,8 +104,10 @@ internal fun WeeklyPlanEditorDialog(
     onFeedbackEdit: () -> Unit,
     onFeedbackFinished: () -> Unit,
     onPercentChanged: (PlanCategory, Int) -> Unit,
+    onReserveChanged: (Int) -> Unit,
     onSave: () -> Unit,
 ) {
+    val density = LocalDensity.current
     val mandatoryRequester = remember { BringIntoViewRequester() }
     val wantsRequester = remember { BringIntoViewRequester() }
     val savingsRequester = remember { BringIntoViewRequester() }
@@ -114,7 +116,6 @@ internal fun WeeklyPlanEditorDialog(
     var wantsBounds by remember { mutableStateOf<Rect?>(null) }
     var savingsBounds by remember { mutableStateOf<Rect?>(null) }
     var reserveBounds by remember { mutableStateOf<Rect?>(null) }
-    var totalBounds by remember { mutableStateOf<Rect?>(null) }
 
     LaunchedEffect(tutorialStep) {
         val requester = when (tutorialStep) {
@@ -122,7 +123,6 @@ internal fun WeeklyPlanEditorDialog(
             PlanTutorialStep.WANTS -> wantsRequester
             PlanTutorialStep.SAVINGS -> savingsRequester
             PlanTutorialStep.RESERVE -> reserveRequester
-            PlanTutorialStep.INTRODUCTION,
             PlanTutorialStep.PRACTICE,
             null,
             -> null
@@ -147,71 +147,63 @@ internal fun WeeklyPlanEditorDialog(
             )
         },
     ) {
-        NotebookSection(
-            modifier = Modifier.fillMaxWidth()
-                .onGloballyPositioned { totalBounds = it.boundsInWindow() },
-        ) {
-            Text(
-                text = stringResource(R.string.plan_description, availableRub),
-                modifier = Modifier.padding(AppTheme.spacing.md),
-                style = AppTheme.typography.body,
-                color = AppTheme.colors.storefront.onSurface,
-            )
-        }
-        NotebookSection(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.plan_distribution, editor.total),
-                modifier = Modifier.padding(AppTheme.spacing.md),
-                style = AppTheme.typography.bodyStrong,
-                color = AppTheme.colors.storefront.onSurface,
-            )
-        }
-        NotebookSection(
-            modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(reserveRequester)
-                .onGloballyPositioned { reserveBounds = it.boundsInWindow() },
-        ) {
-            Column(Modifier.padding(AppTheme.spacing.md)) {
-                Text(
-                    text = stringResource(
-                        R.string.plan_reserve,
-                        editor.reserve,
-                        availableRub * editor.reserve / 100,
-                    ),
-                    style = AppTheme.typography.bodyStrong,
-                    color = AppTheme.colors.storefront.onSurface,
-                )
-            }
-        }
-        PercentageSlider(
+        MoneySlider(
             category = PlanCategory.MANDATORY,
-            value = editor.mandatory,
+            valuePercent = editor.mandatory,
+            availableRub = availableRub,
             enabled = tutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(mandatoryRequester)
                 .onGloballyPositioned { mandatoryBounds = it.boundsInWindow() },
             onPercentChanged = onPercentChanged,
         )
-        PercentageSlider(
+        MoneySlider(
             category = PlanCategory.WANTS,
-            value = editor.wants,
+            valuePercent = editor.wants,
+            availableRub = availableRub,
             enabled = tutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(wantsRequester)
                 .onGloballyPositioned { wantsBounds = it.boundsInWindow() },
             onPercentChanged = onPercentChanged,
         )
-        PercentageSlider(
+        MoneySlider(
             category = PlanCategory.SAVINGS,
-            value = editor.savings,
+            valuePercent = editor.savings,
+            availableRub = availableRub,
             enabled = tutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(savingsRequester)
                 .onGloballyPositioned { savingsBounds = it.boundsInWindow() },
             onPercentChanged = onPercentChanged,
         )
+        MoneySlider(
+            title = stringResource(R.string.plan_reserve_title),
+            valuePercent = editor.reserve,
+            valueRub = availableRub - listOf(
+                editor.mandatory,
+                editor.wants,
+                editor.savings,
+            ).sumOf { percent -> availableRub * percent / 100 },
+            availableRub = availableRub,
+            enabled = tutorialStep == null && feedbackCards == null,
+            testTag = "weekly_plan_reserve",
+            modifier = Modifier
+                .bringIntoViewRequester(reserveRequester)
+                .onGloballyPositioned { reserveBounds = it.boundsInWindow() },
+            onPercentChanged = onReserveChanged,
+        )
         if (tutorialStep != null) {
+            val tutorialDialogueTopInset = if (tutorialStep == PlanTutorialStep.MANDATORY) {
+                mandatoryBounds?.let { bounds ->
+                    maxOf(
+                        dialogueTopInset,
+                        with(density) { bounds.bottom.toDp() } + AppTheme.spacing.sm,
+                    )
+                } ?: dialogueTopInset
+            } else {
+                dialogueTopInset
+            }
             FinPetDialogueDialog(
                 speakerName = petName,
                 cards = listOf(tutorialStep.message()),
@@ -223,14 +215,13 @@ internal fun WeeklyPlanEditorDialog(
                             PlanTutorialStep.WANTS -> wantsBounds
                             PlanTutorialStep.SAVINGS -> savingsBounds
                             PlanTutorialStep.RESERVE -> reserveBounds
-                            PlanTutorialStep.INTRODUCTION -> totalBounds
                             PlanTutorialStep.PRACTICE -> null
                         },
                     )
                 },
                 advanceOnTap = false,
                 dismissOnBackPress = false,
-                topInset = dialogueTopInset,
+                topInset = tutorialDialogueTopInset,
                 actions = listOf(FinPetDialogueAction(
                     id = "next",
                     label = stringResource(if (tutorialStep == PlanTutorialStep.RESERVE) {
@@ -291,7 +282,7 @@ private fun WeeklyPlanNotebookDialog(
             BoxWithConstraints(
                 modifier = modifier
                     .width(maxWidth.coerceAtMost(430.dp))
-                    .fillMaxHeight(),
+                    .height((maxHeight * 0.86f).coerceAtMost(680.dp)),
             ) {
                 val horizontalPadding = maxWidth * 0.085f
                 val topPadding = maxHeight * 0.12f
@@ -401,7 +392,6 @@ private fun NotebookSection(
 
 @Composable
 private fun PlanTutorialStep.message(): String = stringResource(when (this) {
-    PlanTutorialStep.INTRODUCTION -> R.string.plan_tutorial_intro
     PlanTutorialStep.MANDATORY -> R.string.plan_tutorial_mandatory
     PlanTutorialStep.WANTS -> R.string.plan_tutorial_wants
     PlanTutorialStep.SAVINGS -> R.string.plan_tutorial_savings
@@ -445,13 +435,39 @@ internal fun TutorialSpotlight(targetBounds: Rect?) {
 }
 
 @Composable
-private fun PercentageSlider(
+private fun MoneySlider(
     category: PlanCategory,
-    value: Int,
+    valuePercent: Int,
+    availableRub: Long,
     enabled: Boolean,
     modifier: Modifier = Modifier,
     onPercentChanged: (PlanCategory, Int) -> Unit,
 ) {
+    MoneySlider(
+        title = category.title(),
+        artwork = category.artwork(),
+        valuePercent = valuePercent,
+        availableRub = availableRub,
+        enabled = enabled,
+        testTag = "weekly_plan_${category.code}",
+        modifier = modifier,
+        onPercentChanged = { onPercentChanged(category, it) },
+    )
+}
+
+@Composable
+private fun MoneySlider(
+    title: String,
+    valuePercent: Int,
+    availableRub: Long,
+    valueRub: Long = availableRub * valuePercent / 100,
+    enabled: Boolean,
+    testTag: String,
+    modifier: Modifier = Modifier,
+    artwork: Int? = null,
+    onPercentChanged: (Int) -> Unit,
+) {
+    val sliderMaximum = availableRub.coerceAtLeast(1L).toFloat()
     NotebookSection(
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -464,14 +480,16 @@ private fun PercentageSlider(
                 horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Image(
-                    painter = painterResource(category.artwork()),
-                    contentDescription = null,
-                    modifier = Modifier.size(AppTheme.sizes.iconLarge),
-                    contentScale = ContentScale.Fit,
-                )
+                if (artwork != null) {
+                    Image(
+                        painter = painterResource(artwork),
+                        contentDescription = null,
+                        modifier = Modifier.size(AppTheme.sizes.iconLarge),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
                 Text(
-                    category.title(),
+                    title,
                     modifier = Modifier.weight(1f),
                     style = AppTheme.typography.bodyStrong,
                 )
@@ -482,22 +500,24 @@ private fun PercentageSlider(
                     border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
                 ) {
                     Text(
-                        text = stringResource(R.string.plan_percent, value),
+                        text = stringResource(R.string.plan_money, valueRub),
                         modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
                         style = AppTheme.typography.bodyStrong,
                     )
                 }
             }
             FinPetStorefrontSlider(
-                value = value.toFloat(),
-                onValueChange = { onPercentChanged(category, it.roundToInt()) },
-                valueRange = 0f..100f,
+                value = valueRub.toFloat(),
+                onValueChange = {
+                    onPercentChanged(((it / sliderMaximum) * 100).roundToInt())
+                },
+                valueRange = 0f..sliderMaximum,
                 steps = 99,
-                enabled = enabled,
+                enabled = enabled && availableRub > 0,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = AppTheme.sizes.minimumTouchTarget)
-                    .testTag("weekly_plan_${category.code}"),
+                    .testTag(testTag),
             )
         }
     }
@@ -713,6 +733,7 @@ private fun WeeklyPlanDialogPreview() {
             onFeedbackEdit = {},
             onFeedbackFinished = {},
             onPercentChanged = { _, _ -> },
+            onReserveChanged = {},
             onSave = {},
         )
     }

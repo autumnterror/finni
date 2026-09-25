@@ -6,6 +6,13 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class FirstRunOnboardingStateTest {
+    @Test fun planKeepsTheCameraCenteredUntilTheGameDiscoveryDialogue() {
+        val state = FirstRunOnboardingState(FirstRunOnboardingStep.PLAN)
+
+        assertNull(state.focusObjectId)
+        assertEquals(emptySet<String>(), state.highlightedObjectIds)
+    }
+
     @Test fun gameDiscoveryMovesToTheFarEdgeAndHighlightsLockedChoices() {
         val state = FirstRunOnboardingState(FirstRunOnboardingStep.GAME_DISCOVERY)
 

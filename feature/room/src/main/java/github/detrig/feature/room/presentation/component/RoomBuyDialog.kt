@@ -1,9 +1,12 @@
 package github.detrig.feature.room.presentation.component
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -11,6 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.component.FinPetButton
@@ -25,6 +31,7 @@ import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.room.domain.model.RoomZoneAccess
+import github.detrig.feature.room.presentation.model.RoomZoneAppearance
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 
 @Composable
@@ -50,7 +57,7 @@ internal fun RoomBuyDialog(
                 text = if (isBuying) {
                     stringResource(R.string.room_buying)
                 } else {
-                    stringResource(R.string.room_confirm, access.priceRub)
+                    stringResource(R.string.room_confirm)
                 },
                 onClick = onConfirm,
                 enabled = zone.canAfford && !isBuying,
@@ -61,7 +68,7 @@ internal fun RoomBuyDialog(
                 text = if (isSavingGoal) {
                     stringResource(R.string.room_goal_saving)
                 } else {
-                    stringResource(R.string.room_save_as_goal, access.priceRub)
+                    stringResource(R.string.room_save_as_goal)
                 },
                 onClick = { onSaveAsGoal(title) },
                 enabled = controlsEnabled,
@@ -77,13 +84,10 @@ internal fun RoomBuyDialog(
             )
         },
     ) {
+        MiniGameGameplayPreview(zone.appearance)
         Text(stringResource(R.string.room_buy_description), style = AppTheme.typography.body)
         Column(verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
             MoneyRow(stringResource(R.string.room_price), access.priceRub)
-            MoneyRow(stringResource(R.string.room_balance), progress.balanceRub)
-            if (zone.canAfford) {
-                MoneyRow(stringResource(R.string.room_balance_after), progress.balanceRub - access.priceRub)
-            }
         }
         if (!zone.canAfford) {
             FinPetModalSection(
@@ -104,6 +108,31 @@ internal fun RoomBuyDialog(
             color = AppTheme.colors.textSecondary,
         )
     }
+}
+
+@Composable
+internal fun MiniGameGameplayPreview(
+    appearance: RoomZoneAppearance,
+    modifier: Modifier = Modifier,
+) {
+    val imageRes = appearance.gameplayPreviewRes() ?: return
+    Image(
+        painter = painterResource(imageRes),
+        contentDescription = null,
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9f)
+            .clip(AppTheme.shapes.storefrontControl),
+        contentScale = ContentScale.Crop,
+    )
+}
+
+@DrawableRes
+private fun RoomZoneAppearance.gameplayPreviewRes(): Int? = when (this) {
+    RoomZoneAppearance.DRAWING -> R.drawable.minigame_preview_drawing
+    RoomZoneAppearance.MUSIC -> R.drawable.minigame_preview_music
+    RoomZoneAppearance.FISHING -> R.drawable.minigame_preview_fishing
+    else -> null
 }
 
 @Preview(name = "Покупка игровой зоны", widthDp = 360, heightDp = 680, showBackground = true)
