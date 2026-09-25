@@ -28,6 +28,8 @@ internal class GameStateApiImpl(
 
     override suspend fun consumeHungerForSleep(): Int = repository.consumeHungerForSleep()
 
+    override suspend fun startFirstNeed(): Int = repository.startFirstNeed()
+
     override suspend fun reconcileTimedNeeds(nowMillis: Long) = repository.reconcileTimedNeeds(nowMillis)
 
     override suspend fun hungerAlertState() = repository.hungerAlertState()

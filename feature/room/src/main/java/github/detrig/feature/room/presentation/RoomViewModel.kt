@@ -26,9 +26,13 @@ import github.detrig.feature.room.domain.model.HousePositionRepository
 import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
-import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
 import github.detrig.feature.room.domain.model.shouldOfferAutomaticParentHelp
+import github.detrig.feature.room.api.FirstRunGuideApi
+import github.detrig.feature.room.api.FirstRunOnboardingStep
+import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.inventory.api.InventoryApi
+import kotlinx.coroutines.flow.first
 import github.detrig.feature.room.presentation.model.HouseLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -63,6 +67,9 @@ internal class RoomViewModel(
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
     private val onboardingRepository: FirstRunOnboardingRepository,
+    private val firstRunGuide: FirstRunGuideApi,
+    private val gameStateApi: GameStateApi,
+    private val inventoryApi: InventoryApi,
     private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
@@ -72,9 +79,14 @@ internal class RoomViewModel(
     private var parentHelpJob: Job? = null
     private var lowBalanceJob: Job? = null
     private var onboardingRefreshJob: Job? = null
+    private var firstNeedJob: Job? = null
+    private var firstWeekNeedHintJob: Job? = null
+    private var firstWeekGoalHintJob: Job? = null
     private var impulseWishJob: Job? = null
     private val checkedImpulseWishDays = mutableSetOf<Long>()
     private val promptedSavingsRecoveryWeeks = mutableSetOf<Long>()
+    private val hintedHungerDays = mutableSetOf<Long>()
+    private var firstWeekGoalHintShown = false
     private val reconciledPlanWeeks = mutableSetOf<Long>()
     private var reconcilingPlanWeek: Long? = null
     // Read this small preference before the first composition of HouseScene. Loading it
@@ -95,6 +107,8 @@ internal class RoomViewModel(
     private companion object {
         const val DEFAULT_SUGGESTED_GOAL_ZONE_ID = "fishing"
         const val ROOM_GOAL_ID_PREFIX = "room-zone:"
+        const val FIRST_NEED_DELAY_MILLIS = 1_500L
+        const val FIRST_WEEK_HUNGER_HINT_THRESHOLD = 35
     }
 
     override fun perform(viewEvent: RoomViewEvent) {
@@ -151,6 +165,13 @@ internal class RoomViewModel(
                 updateState(it.copy(impulseWish = null))
             }
             RoomViewEvent.FirstRunOnboardingContinue -> continueFirstRunOnboarding()
+            RoomViewEvent.FirstRunOpenPhone -> transitionOnboarding(FirstRunOnboardingStep.PHONE_STORE_GUIDANCE)
+            RoomViewEvent.FirstRunOpenFridge -> transitionOnboarding(FirstRunOnboardingStep.FRIDGE_FOUND)
+            RoomViewEvent.FirstRunOpenTable -> transitionOnboarding(FirstRunOnboardingStep.FEEDING)
+            RoomViewEvent.FirstRunGoToBed ->
+                transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_BED)
+            RoomViewEvent.FirstRunShowWeekSummary -> showFirstWeekSummary()
+            RoomViewEvent.FirstRunStartNewWeekPlan -> startNextWeekPlan()
             RoomViewEvent.FirstRunMoneyNoticeClosed -> {
                 if (onboardingStep == FirstRunOnboardingStep.FIRST_MONEY) {
                     transitionOnboarding(FirstRunOnboardingStep.MONEY_EXPLANATION)
@@ -180,6 +201,15 @@ internal class RoomViewModel(
                 updateState(it.copy(isPlanSummaryVisible = false))
             }
             RoomViewEvent.CloseWeekResult -> closeWeekResult()
+            RoomViewEvent.WeekSummaryTutorialNext -> advanceWeekSummaryTutorial()
+            RoomViewEvent.CloseFirstGamePurchaseFeedback -> closeFirstGamePurchaseFeedback()
+            is RoomViewEvent.FirstRunViewReadyGame -> viewReadyFirstGame(viewEvent.zoneId)
+            RoomViewEvent.CloseFirstWeekNeedHint -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(firstWeekNeedHint = null))
+            }
+            RoomViewEvent.CloseFirstWeekGoalHint -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(firstWeekGoalHint = null))
+            }
             is RoomViewEvent.PlanPercentChanged -> updatePlanPercent(viewEvent.category, viewEvent.percent)
             is RoomViewEvent.PlanReserveChanged -> updatePlanReserve(viewEvent.percent)
             is RoomViewEvent.SavePosition -> {
@@ -210,7 +240,7 @@ internal class RoomViewModel(
             },
         ) {
             onboardingProgress = onboardingRepository.load()
-            onboardingStep = onboardingProgress.firstStep
+            onboardingStep = firstRunGuide.step.value
             onboardingSuggestedGoalZoneId = onboardingRepository.loadSuggestedGoalZoneId()
                 ?.takeIf(FIRST_SAVINGS_GOAL_ZONE_IDS::contains)
             reconcileSavingsLearning()
@@ -219,7 +249,9 @@ internal class RoomViewModel(
                 weeklyPlanLearning.observeAchievements(),
             ) { roomData, achievements -> roomData to achievements }
                 .collect { (roomData, achievements) ->
+                    reconcileCommittedOnboardingActions(roomData.progress)
                     val current = nullableState<RoomViewState.Content>()
+                    val zones = roomData.toRoomZones()
                     if (onboardingProgress.currentChapter == FirstRunOnboardingChapter.BUDGET_PLANNING &&
                         onboardingStep == FirstRunOnboardingStep.PLAN &&
                         roomData.progress.planProgress != null &&
@@ -247,7 +279,7 @@ internal class RoomViewModel(
                     }
                     updateState(
                         RoomViewState.Content(
-                            zones = roomData.toRoomZones(),
+                            zones = zones,
                             initialPosition = savedPosition,
                             progress = roomData.progress,
                             buyingZoneId = current?.buyingZoneId,
@@ -260,6 +292,13 @@ internal class RoomViewModel(
                             isSavingPlan = current?.isSavingPlan ?: false,
                             isPlanSummaryVisible = current?.isPlanSummaryVisible ?: false,
                             weekResult = current?.weekResult,
+                            weekSummaryTutorialStep = current?.weekSummaryTutorialStep,
+                            showFirstGamePurchaseFeedback = current?.showFirstGamePurchaseFeedback == true ||
+                                shouldShowFirstGamePurchaseFeedback(roomData.progress),
+                            readyFirstGameZoneId = current?.readyFirstGameZoneId
+                                ?: readyFirstGameZoneId(zones),
+                            firstWeekNeedHint = current?.firstWeekNeedHint,
+                            firstWeekGoalHint = current?.firstWeekGoalHint,
                             achievements = achievements.map { achievement ->
                                 PlanAchievementFeedback(
                                     id = achievement.id,
@@ -288,6 +327,8 @@ internal class RoomViewModel(
                             onboarding = onboardingUiState(),
                         ),
                     )
+                    startFirstNeedIfNeeded()
+                    showFirstWeekNeedHintIfNeeded(roomData.progress)
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 handleLowBalance(roomData.progress)
                 if (onboardingStep == FirstRunOnboardingStep.COMPLETED) {
@@ -318,7 +359,10 @@ internal class RoomViewModel(
     }
 
     private fun onboardingUiState(): FirstRunOnboardingState? {
-        if (onboardingStep == FirstRunOnboardingStep.COMPLETED) return null
+        if (onboardingStep == FirstRunOnboardingStep.COMPLETED ||
+            onboardingStep == FirstRunOnboardingStep.WAITING_FOR_WEEK_END ||
+            onboardingStep == FirstRunOnboardingStep.WEEK_SUMMARY_VIEW
+        ) return null
         return FirstRunOnboardingState(
             step = onboardingStep,
             suggestedGoalZoneId = onboardingSuggestedGoalZoneId,
@@ -334,6 +378,7 @@ internal class RoomViewModel(
     ) {
         onboardingProgress = onboardingRepository.markChapterCompleted(chapter)
         onboardingStep = nextStep ?: onboardingProgress.firstStep
+        firstRunGuide.moveTo(onboardingStep)
         if (onboardingProgress.isCompleted) {
             onboardingSuggestedGoalZoneId = null
             onboardingRepository.saveSuggestedGoalZoneId(null)
@@ -342,11 +387,16 @@ internal class RoomViewModel(
 
     private fun transitionOnboarding(step: FirstRunOnboardingStep) {
         onboardingStep = step
+        firstRunGuide.moveTo(step)
         nullableState<RoomViewState.Content>()?.let { content ->
             updateState(content.copy(onboarding = onboardingUiState()))
             if (step == FirstRunOnboardingStep.COMPLETED) {
                 loadImpulseWishForDay(content.progress.absoluteDay)
                 handleLowBalance(content.progress)
+            }
+            if (step == FirstRunOnboardingStep.WAITING_FOR_WEEK_END) {
+                showFirstWeekNeedHintIfNeeded(content.progress)
+                loadFirstWeekGoalHintIfNeeded()
             }
         }
     }
@@ -384,6 +434,23 @@ internal class RoomViewModel(
                 completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_GOAL_SELECTION)
                 transitionOnboarding(onboardingProgress.firstStep)
             }
+            FirstRunOnboardingStep.HUNGER_INTRO ->
+                transitionOnboarding(FirstRunOnboardingStep.HUNGER_FIND_FOOD)
+            FirstRunOnboardingStep.HUNGER_FIND_FOOD -> guideToAvailableFood()
+            FirstRunOnboardingStep.PURCHASE_READY ->
+                transitionOnboarding(FirstRunOnboardingStep.PURCHASE_STORAGE_HINT)
+            FirstRunOnboardingStep.PURCHASE_STORAGE_HINT ->
+                transitionOnboarding(FirstRunOnboardingStep.FRIDGE_GUIDANCE)
+            FirstRunOnboardingStep.TABLE_PROMPT ->
+                transitionOnboarding(FirstRunOnboardingStep.TABLE_GUIDANCE)
+            FirstRunOnboardingStep.BEDTIME_LATE ->
+                transitionOnboarding(FirstRunOnboardingStep.BEDTIME_GUIDANCE)
+            FirstRunOnboardingStep.SECOND_DAY_MORNING -> {
+                completeOnboardingChapter(FirstRunOnboardingChapter.SECOND_DAY_MORNING)
+                transitionOnboarding(onboardingProgress.firstStep)
+            }
+            FirstRunOnboardingStep.NEW_WEEK_INTRO ->
+                transitionOnboarding(FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE)
             FirstRunOnboardingStep.GAMES,
             FirstRunOnboardingStep.FINISH,
             -> transitionOnboarding(onboardingProgress.firstStep)
@@ -394,8 +461,100 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.WAITING_FOR_GOAL,
             FirstRunOnboardingStep.FIRST_DEPOSIT,
             FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
+            FirstRunOnboardingStep.WAITING_FOR_HUNGER,
+            FirstRunOnboardingStep.PHONE_GUIDANCE,
+            FirstRunOnboardingStep.PHONE_STORE_GUIDANCE,
+            FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE,
+            FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE,
+            FirstRunOnboardingStep.FRIDGE_GUIDANCE,
+            FirstRunOnboardingStep.FRIDGE_FOUND,
+            FirstRunOnboardingStep.FRIDGE_EXPLANATION,
+            FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE,
+            FirstRunOnboardingStep.TABLE_GUIDANCE,
+            FirstRunOnboardingStep.FEEDING,
+            FirstRunOnboardingStep.FEEDING_DONE,
+            FirstRunOnboardingStep.BEDTIME_GUIDANCE,
+            FirstRunOnboardingStep.WAITING_FOR_BED,
+            FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
+            FirstRunOnboardingStep.WEEK_END_INTRO,
+            FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
+            FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE,
             FirstRunOnboardingStep.COMPLETED,
             -> Unit
+        }
+    }
+
+    private fun reconcileCommittedOnboardingActions(
+        progress: github.detrig.feature.room.domain.model.RoomProgress,
+    ) {
+        var reconciled: Boolean
+        do {
+            reconciled = when (onboardingProgress.currentChapter) {
+                FirstRunOnboardingChapter.FIRST_BEDTIME -> progress.absoluteDay > 1L
+                FirstRunOnboardingChapter.SECOND_DAY_MORNING -> progress.absoluteDay > 2L
+                FirstRunOnboardingChapter.FIRST_WEEK_SUMMARY -> progress.weekNumber > 1L
+                else -> false
+            }
+            if (reconciled) {
+                completeOnboardingChapter(checkNotNull(onboardingProgress.currentChapter))
+            }
+        } while (reconciled)
+    }
+
+    private fun startFirstNeedIfNeeded() {
+        if (onboardingStep != FirstRunOnboardingStep.WAITING_FOR_HUNGER || firstNeedJob?.isActive == true) return
+        firstNeedJob = launchCoroutine {
+            delay(FIRST_NEED_DELAY_MILLIS)
+            gameStateApi.startFirstNeed()
+            transitionOnboarding(FirstRunOnboardingStep.HUNGER_INTRO)
+            firstNeedJob = null
+        }
+    }
+
+    private fun guideToAvailableFood() {
+        launchCoroutine {
+            val hasFood = inventoryApi.observeStock().first().any { it.quantity > 0 }
+            transitionOnboarding(
+                if (hasFood) FirstRunOnboardingStep.FRIDGE_GUIDANCE
+                else FirstRunOnboardingStep.PHONE_GUIDANCE,
+            )
+        }
+    }
+
+    private fun showFirstWeekNeedHintIfNeeded(
+        progress: github.detrig.feature.room.domain.model.RoomProgress,
+    ) {
+        if (onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END ||
+            progress.petHunger > FIRST_WEEK_HUNGER_HINT_THRESHOLD ||
+            progress.absoluteDay in hintedHungerDays ||
+            firstWeekNeedHintJob?.isActive == true
+        ) return
+        hintedHungerDays += progress.absoluteDay
+        firstWeekNeedHintJob = launchCoroutine {
+            val fridgeIsEmpty = inventoryApi.observeStock().first().none { it.quantity > 0 }
+            nullableState<RoomViewState.Content>()?.let { content ->
+                if (content.progress.absoluteDay == progress.absoluteDay &&
+                    content.firstWeekNeedHint == null
+                ) {
+                    updateState(content.copy(firstWeekNeedHint = FirstWeekNeedHint(fridgeIsEmpty)))
+                }
+            }
+            firstWeekNeedHintJob = null
+        }
+    }
+
+    private fun loadFirstWeekGoalHintIfNeeded() {
+        if (firstWeekGoalHintShown || firstWeekGoalHintJob?.isActive == true) return
+        firstWeekGoalHintJob = launchCoroutine {
+            val goal = loadActiveSavingsGoal()
+            val threshold = goal?.goal?.targetRub?.div(5)?.coerceAtLeast(50L) ?: 0L
+            if (goal != null && goal.remainingRub in 1..threshold) {
+                firstWeekGoalHintShown = true
+                nullableState<RoomViewState.Content>()?.let { content ->
+                    updateState(content.copy(firstWeekGoalHint = FirstWeekGoalHint(goal.remainingRub)))
+                }
+            }
+            firstWeekGoalHintJob = null
         }
     }
 
@@ -447,6 +606,17 @@ internal class RoomViewModel(
     }
 
     private fun refreshFirstRunOnboarding() {
+        val externalStep = firstRunGuide.step.value
+        if (externalStep != onboardingStep) {
+            onboardingStep = externalStep
+            transitionOnboarding(externalStep)
+        }
+        if (externalStep == FirstRunOnboardingStep.WAITING_FOR_HUNGER) {
+            startFirstNeedIfNeeded()
+        }
+        if (externalStep == FirstRunOnboardingStep.WAITING_FOR_WEEK_END) {
+            loadFirstWeekGoalHintIfNeeded()
+        }
         if (onboardingRefreshJob?.isActive == true) return
         if (onboardingStep != FirstRunOnboardingStep.WAITING_FOR_GOAL &&
             onboardingStep != FirstRunOnboardingStep.WAITING_FOR_DEPOSIT
@@ -489,7 +659,9 @@ internal class RoomViewModel(
             commands.onNext(RoomCommand.ShowBuyConfirmation(zoneId))
             return
         }
-        if (onboardingStep != FirstRunOnboardingStep.COMPLETED) return
+        if (onboardingStep != FirstRunOnboardingStep.COMPLETED &&
+            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
+        ) return
         when (val access = zone.access) {
             RoomZoneAccess.Open -> launchOnce { router.openGame(zone.gameId) }
             is RoomZoneAccess.Unavailable -> router.showLevelRequired(access.requiredLevel)
@@ -565,6 +737,10 @@ internal class RoomViewModel(
     private fun showSleepConfirmation() {
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping || content.buyingZoneId != null) return
+        if (onboardingStep != FirstRunOnboardingStep.COMPLETED &&
+            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_BED &&
+            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
+        ) return
         updateState(content.copy(sleepConfirmationVisible = true))
     }
 
@@ -592,6 +768,12 @@ internal class RoomViewModel(
         ) {
             try {
                 delay(800)
+                if (content.progress.dayOfWeek == 7 &&
+                    onboardingStep == FirstRunOnboardingStep.WAITING_FOR_WEEK_END
+                ) {
+                    transitionOnboarding(FirstRunOnboardingStep.WEEK_END_INTRO)
+                    return@launchCoroutine
+                }
                 if (content.progress.dayOfWeek == 7 && content.progress.planProgress != null) {
                     nullableState<RoomViewState.Content>()?.let { latest ->
                         updateState(latest.copy(
@@ -601,7 +783,13 @@ internal class RoomViewModel(
                     }
                     return@launchCoroutine
                 }
-                advanceDay(expectedDay)
+                val result = advanceDay(expectedDay)
+                if (result is EndDayResult.Advanced &&
+                    onboardingStep == FirstRunOnboardingStep.WAITING_FOR_BED
+                ) {
+                    completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_BEDTIME)
+                    transitionOnboarding(onboardingProgress.firstStep)
+                }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
@@ -621,17 +809,26 @@ internal class RoomViewModel(
             },
         ) {
             try {
-                advanceDay(expectedDay)
+                advanceDay(expectedDay, showAllowanceNotice = onboardingStep != FirstRunOnboardingStep.WEEK_SUMMARY_VIEW)
+                if (onboardingStep == FirstRunOnboardingStep.WEEK_SUMMARY_VIEW) {
+                    completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_WEEK_SUMMARY)
+                    transitionOnboarding(onboardingProgress.firstStep)
+                }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
         }
     }
 
-    private suspend fun advanceDay(expectedDay: Long) {
+    private suspend fun advanceDay(
+        expectedDay: Long,
+        showAllowanceNotice: Boolean = true,
+    ): EndDayResult {
         val result = endDay(expectedDay)
         if (result is EndDayResult.Advanced) gameAudio.play(RoomAudioCues.Sleep)
-        if (result is EndDayResult.Advanced) {
+        if (showAllowanceNotice && onboardingStep == FirstRunOnboardingStep.COMPLETED &&
+            result is EndDayResult.Advanced
+        ) {
             nullableState<RoomViewState.Content>()?.let { latest ->
                 updateState(latest.copy(
                     dayTransitionNotice = DayTransitionNoticeState(
@@ -650,6 +847,79 @@ internal class RoomViewModel(
                 ))
             }
         }
+        return result
+    }
+
+    private fun showFirstWeekSummary() {
+        if (onboardingStep != FirstRunOnboardingStep.WEEK_END_INTRO) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val progress = content.progress.planProgress ?: return
+        transitionOnboarding(FirstRunOnboardingStep.WEEK_SUMMARY_VIEW)
+        nullableState<RoomViewState.Content>()?.let { latest ->
+            updateState(latest.copy(
+                weekResult = progress,
+                weekSummaryTutorialStep = WeekSummaryTutorialStep.INCOME,
+                onboarding = null,
+            ))
+        }
+    }
+
+    private fun advanceWeekSummaryTutorial() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val next = when (content.weekSummaryTutorialStep) {
+            WeekSummaryTutorialStep.INCOME -> WeekSummaryTutorialStep.EXPENSES
+            WeekSummaryTutorialStep.EXPENSES -> WeekSummaryTutorialStep.REMAINDER
+            WeekSummaryTutorialStep.REMAINDER -> null
+            null -> return
+        }
+        updateState(content.copy(weekSummaryTutorialStep = next))
+    }
+
+    private fun shouldShowFirstGamePurchaseFeedback(progress: github.detrig.feature.room.domain.model.RoomProgress): Boolean {
+        if (onboardingRepository.isFirstGamePurchaseExplained()) return false
+        if (onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END &&
+            onboardingStep != FirstRunOnboardingStep.COMPLETED
+        ) return false
+        return progress.ownedZoneIds.any(FIRST_SAVINGS_GOAL_ZONE_IDS::contains)
+    }
+
+    private fun closeFirstGamePurchaseFeedback() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        onboardingRepository.markFirstGamePurchaseExplained()
+        updateState(content.copy(showFirstGamePurchaseFeedback = false))
+    }
+
+    private fun readyFirstGameZoneId(
+        zones: List<github.detrig.feature.room.presentation.model.RoomZoneUiModel>,
+    ): String? {
+        if (onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END ||
+            onboardingRepository.isFirstGameReadyIntroduced()
+        ) return null
+        val suggested = onboardingSuggestedGoalZoneId ?: return null
+        return zones.firstOrNull { zone ->
+            zone.id == suggested && zone.access is RoomZoneAccess.Buyable && zone.canAfford
+        }?.id
+    }
+
+    private fun viewReadyFirstGame(zoneId: String) {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.readyFirstGameZoneId != zoneId) return
+        val zone = content.zones.firstOrNull { it.id == zoneId } ?: return
+        if (zone.access !is RoomZoneAccess.Buyable || !zone.canAfford) return
+        onboardingRepository.markFirstGameReadyIntroduced()
+        updateState(content.copy(readyFirstGameZoneId = null))
+        commands.onNext(RoomCommand.ShowBuyConfirmation(zoneId))
+    }
+
+    private fun startNextWeekPlan() {
+        if (onboardingStep != FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        completeOnboardingChapter(FirstRunOnboardingChapter.NEXT_WEEK_PLANNING)
+        updateState(content.copy(
+            onboarding = null,
+            planEditor = content.planEditor ?: PlanEditorState(),
+            planTutorialStep = null,
+        ))
     }
 
     private fun updatePlanPercent(category: github.detrig.feature.planning.domain.PlanCategory, percent: Int) {

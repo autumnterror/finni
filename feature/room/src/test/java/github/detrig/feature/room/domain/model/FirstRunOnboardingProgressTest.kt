@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 class FirstRunOnboardingProgressTest {
     @Test fun chaptersAreCompletedInDocumentOrder() {
@@ -44,12 +45,13 @@ class FirstRunOnboardingProgressTest {
         assertEquals(FirstRunOnboardingChapter.BUDGET_PLANNING, completedTwice.currentChapter)
     }
 
-    @Test fun legacyCompletedStepDoesNotRestartOnboarding() {
+    @Test fun legacyCompletedStepContinuesWithTheNewCareChapter() {
         val migrated = FirstRunOnboardingProgress(
             FirstRunOnboardingStep.COMPLETED.completedChaptersForMigration(),
         )
 
-        assertTrue(migrated.isCompleted)
+        assertFalse(migrated.isCompleted)
+        assertEquals(FirstRunOnboardingStep.WAITING_FOR_HUNGER, migrated.firstStep)
     }
 
     @Test fun legacyMiddleStepRestartsItsChapter() {

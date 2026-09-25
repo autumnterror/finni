@@ -3,6 +3,7 @@ package github.detrig.feature.shop.api
 import androidx.compose.runtime.Composable
 import github.detrig.core.presentation.navigation.v3.EntryHostProviderInstaller
 import github.detrig.products.StoreId
+import github.detrig.products.ProductId
 
 interface ShopApi {
     fun open(storeId: StoreId)
@@ -15,6 +16,7 @@ interface ShopApi {
         onBack: () -> Unit,
         onOpenCart: () -> Unit,
         closeAfterReceipt: () -> Unit,
+        highlightedProductId: ProductId? = null,
     )
 
     /** Renders the cart without taking over the host navigation stack. */
@@ -22,6 +24,6 @@ interface ShopApi {
     fun CartContent(
         storeId: StoreId,
         onBack: () -> Unit,
-        onCheckoutCompleted: () -> Unit,
+        onCheckoutCompleted: (spentRub: Long) -> Unit,
     )
 }

@@ -30,6 +30,7 @@ dependencies {
     implementation(project(":feature:planning"))
     implementation(project(":feature:learning"))
     implementation(project(":feature:savings"))
+    implementation(project(":feature:inventory"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.ui)

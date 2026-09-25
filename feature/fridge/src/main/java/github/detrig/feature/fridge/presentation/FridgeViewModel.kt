@@ -7,10 +7,13 @@ import github.detrig.feature.inventory.api.InventoryApi
 import github.detrig.feature.inventory.domain.InventoryStageResult
 import github.detrig.products.ProductId
 import kotlinx.coroutines.Job
+import github.detrig.feature.room.api.FirstRunGuideApi
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 internal class FridgeViewModel(
     private val inventoryApi: InventoryApi,
     private val router: FridgeRouter,
+    private val firstRunGuide: FirstRunGuideApi,
 ) : CoreViewModel<FridgeViewState, FridgeViewEvent>(FridgeViewState()) {
     private var observationJob: Job? = null
 
@@ -20,6 +23,7 @@ internal class FridgeViewModel(
             FridgeViewEvent.Back -> close()
             is FridgeViewEvent.ProductClicked -> startFlight(viewEvent.productId)
             is FridgeViewEvent.FlightAnimationFinished -> finishFlight(viewEvent.productId)
+            FridgeViewEvent.FirstRunContinue -> prepareFirstRunFood()
         }
     }
 
@@ -49,6 +53,9 @@ internal class FridgeViewModel(
     }
 
     private fun close() {
+        if (firstRunGuide.step.value == FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE) {
+            firstRunGuide.moveTo(FirstRunOnboardingStep.TABLE_PROMPT)
+        }
         observationJob?.cancel()
         observationJob = null
         updateState {
@@ -60,6 +67,19 @@ internal class FridgeViewModel(
             )
         }
         router.back()
+    }
+
+    private fun prepareFirstRunFood() {
+        if (firstRunGuide.step.value != FirstRunOnboardingStep.FRIDGE_EXPLANATION) return
+        val productId = stateData.stock.firstOrNull { it.quantity > 0 }?.productId ?: return
+        launchCoroutine {
+            when (inventoryApi.stageForTable(productId)) {
+                InventoryStageResult.Staged ->
+                    firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE)
+                InventoryStageResult.InsufficientStock ->
+                    updateState { copy(message = "Этот продукт уже закончился") }
+            }
+        }
     }
 
     private fun startFlight(productId: ProductId) {

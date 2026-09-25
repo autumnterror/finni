@@ -537,6 +537,7 @@ private fun MoneySlider(
 internal fun WeeklyPlanProgressDialog(
     progress: WeeklyPlanProgress,
     isWeekResult: Boolean = false,
+    remainingRub: Long? = null,
     onDismiss: () -> Unit,
 ) {
     val assessment = remember(progress, isWeekResult) {
@@ -560,6 +561,9 @@ internal fun WeeklyPlanProgressDialog(
             )
         },
     ) {
+        if (isWeekResult && remainingRub != null) {
+            WeekMoneyOverview(progress, remainingRub)
+        }
         if (assessment != null) {
             WeekResultFeedback(assessment)
         }
@@ -591,6 +595,55 @@ internal fun WeeklyPlanProgressDialog(
                 style = AppTheme.typography.bodyStrong,
             )
         }
+    }
+}
+
+@Composable
+private fun WeekMoneyOverview(progress: WeeklyPlanProgress, remainingRub: Long) {
+    val mandatory = progress.category(PlanCategory.MANDATORY).actualRub
+    val wants = progress.category(PlanCategory.WANTS).actualRub
+    val savings = progress.category(PlanCategory.SAVINGS).actualRub
+    NotebookSection(modifier = Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
+        Column(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+        ) {
+            Text(stringResource(R.string.week_summary_income_title), style = AppTheme.typography.bodyStrong)
+            SummaryMoneyRow(stringResource(R.string.week_summary_allowance), progress.plan.availableRub)
+            SummaryMoneyRow(stringResource(R.string.week_summary_jobs), 0)
+            SummaryMoneyRow(stringResource(R.string.week_summary_other_income), 0)
+            Text(stringResource(R.string.week_summary_expenses_title), style = AppTheme.typography.bodyStrong)
+            SummaryMoneyRow(stringResource(R.string.week_summary_food), mandatory)
+            SummaryMoneyRow(stringResource(R.string.week_summary_wants_and_games), wants)
+            SummaryMoneyRow(stringResource(R.string.week_summary_other_expenses), 0)
+            Text(stringResource(R.string.week_summary_result_title), style = AppTheme.typography.bodyStrong)
+            SummaryMoneyRow(stringResource(R.string.week_summary_remaining), remainingRub)
+            SummaryMoneyRow(stringResource(R.string.week_summary_savings), savings)
+            Text(
+                text = when {
+                    remainingRub <= progress.plan.availableRub / 10 ->
+                        stringResource(R.string.week_summary_comment_almost_all_spent)
+                    savings > 0 -> stringResource(R.string.week_summary_comment_saved, savings)
+                    mandatory >= wants -> stringResource(R.string.week_summary_comment_food)
+                    else -> stringResource(R.string.week_summary_comment_wants)
+                },
+                style = AppTheme.typography.body,
+            )
+            if (remainingRub <= progress.plan.availableRub / 10) {
+                Text(
+                    stringResource(R.string.week_summary_comment_leave_reserve),
+                    style = AppTheme.typography.body,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMoneyRow(label: String, amountRub: Long) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = AppTheme.typography.body)
+        Text(stringResource(R.string.plan_money, amountRub), style = AppTheme.typography.bodyStrong)
     }
 }
 

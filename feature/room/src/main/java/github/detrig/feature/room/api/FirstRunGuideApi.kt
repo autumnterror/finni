@@ -1,0 +1,62 @@
+package github.detrig.feature.room.api
+
+import kotlinx.coroutines.flow.StateFlow
+
+enum class FirstRunOnboardingStep {
+    INTRODUCTION,
+    WISH,
+    FIRST_MONEY,
+    MONEY_EXPLANATION,
+    PLAN_TRANSITION,
+    PLAN,
+    GAME_DISCOVERY,
+    GAME_DISCOVERY_DETAILS,
+    GAME_SELECTION,
+    GAME_SELECTED,
+    PIGGY_BANK,
+    PIGGY_TAP,
+    WAITING_FOR_PIGGY,
+    WAITING_FOR_GOAL,
+    GOAL_CREATED,
+    FIRST_DEPOSIT,
+    WAITING_FOR_DEPOSIT,
+    DEPOSIT_DONE,
+    DEPOSIT_SKIPPED,
+    GAMES,
+    FINISH,
+    WAITING_FOR_HUNGER,
+    HUNGER_INTRO,
+    HUNGER_FIND_FOOD,
+    PHONE_GUIDANCE,
+    PHONE_STORE_GUIDANCE,
+    SHOP_PRICE_GUIDANCE,
+    SHOP_FOOD_GUIDANCE,
+    PURCHASE_READY,
+    PURCHASE_STORAGE_HINT,
+    FRIDGE_GUIDANCE,
+    FRIDGE_FOUND,
+    FRIDGE_EXPLANATION,
+    WAITING_FOR_FRIDGE_CLOSE,
+    TABLE_PROMPT,
+    TABLE_GUIDANCE,
+    FEEDING,
+    FEEDING_DONE,
+    BEDTIME_LATE,
+    BEDTIME_GUIDANCE,
+    WAITING_FOR_BED,
+    SECOND_DAY_MORNING,
+    WAITING_FOR_WEEK_END,
+    WEEK_END_INTRO,
+    WEEK_SUMMARY_VIEW,
+    NEW_WEEK_INTRO,
+    NEW_WEEK_PLAN_GUIDANCE,
+    COMPLETED,
+}
+
+interface FirstRunGuideApi {
+    val step: StateFlow<FirstRunOnboardingStep>
+
+    fun moveTo(step: FirstRunOnboardingStep)
+
+    fun completeFirstNeed()
+}

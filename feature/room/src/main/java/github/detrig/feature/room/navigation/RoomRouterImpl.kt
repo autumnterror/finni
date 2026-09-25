@@ -17,7 +17,7 @@ internal class RoomRouterImpl(
     override fun showLevelRequired(level: Int) =
         messageController.showMessage(resources.getString(R.string.room_level_required, level))
     override fun showNotEnoughMoney(missingRub: Int) =
-        messageController.showMessage(resources.getString(R.string.room_missing_money, missingRub))
+        messageController.showMessage(resources.getString(R.string.room_not_enough_money_advice))
     override fun showBought() =
         messageController.showSuccessMessage(resources.getString(R.string.room_bought))
     override fun showBuyError() =

@@ -9,7 +9,7 @@ import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
-import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.room.domain.model.RoomImpulseWish
 
 data class ParentHelpDialogState(
@@ -38,6 +38,14 @@ internal data class DayTransitionNoticeState(
     val dayOfWeek: Int,
     val weekNumber: Long,
 )
+internal enum class WeekSummaryTutorialStep {
+    INCOME,
+    EXPENSES,
+    REMAINDER,
+}
+
+internal data class FirstWeekNeedHint(val fridgeIsEmpty: Boolean)
+internal data class FirstWeekGoalHint(val remainingRub: Long)
 
 internal data class FirstRunOnboardingState(
     val step: FirstRunOnboardingStep,
@@ -58,6 +66,15 @@ internal data class FirstRunOnboardingState(
         FirstRunOnboardingStep.WAITING_FOR_PIGGY,
         FirstRunOnboardingStep.WAITING_FOR_GOAL,
         -> "piggy_bank"
+        FirstRunOnboardingStep.PHONE_GUIDANCE -> "phone"
+        FirstRunOnboardingStep.FRIDGE_GUIDANCE -> "fridge"
+        FirstRunOnboardingStep.TABLE_PROMPT,
+        FirstRunOnboardingStep.TABLE_GUIDANCE,
+        -> "dining_table"
+        FirstRunOnboardingStep.BEDTIME_LATE,
+        FirstRunOnboardingStep.BEDTIME_GUIDANCE,
+        FirstRunOnboardingStep.WAITING_FOR_BED,
+        -> "bed"
         else -> null
     }
 
@@ -71,12 +88,25 @@ internal data class FirstRunOnboardingState(
         FirstRunOnboardingStep.PIGGY_TAP,
         FirstRunOnboardingStep.WAITING_FOR_PIGGY,
         -> setOf("piggy_bank")
+        FirstRunOnboardingStep.PHONE_GUIDANCE -> setOf("phone")
+        FirstRunOnboardingStep.FRIDGE_GUIDANCE -> setOf("fridge")
+        FirstRunOnboardingStep.TABLE_PROMPT,
+        FirstRunOnboardingStep.TABLE_GUIDANCE,
+        -> setOf("dining_table")
+        FirstRunOnboardingStep.BEDTIME_LATE,
+        FirstRunOnboardingStep.BEDTIME_GUIDANCE,
+        FirstRunOnboardingStep.WAITING_FOR_BED,
+        -> setOf("bed")
         else -> emptySet()
     }
 
     val allowedObjectIds: Set<String> get() = when (step) {
         FirstRunOnboardingStep.GAME_SELECTION -> selectableGoalZoneIds
         FirstRunOnboardingStep.WAITING_FOR_PIGGY -> setOf("piggy_bank")
+        FirstRunOnboardingStep.PHONE_GUIDANCE -> setOf("phone")
+        FirstRunOnboardingStep.FRIDGE_GUIDANCE -> setOf("fridge")
+        FirstRunOnboardingStep.TABLE_GUIDANCE -> setOf("dining_table")
+        FirstRunOnboardingStep.WAITING_FOR_BED -> setOf("bed")
         else -> emptySet()
     }
 }
@@ -128,6 +158,11 @@ internal sealed interface RoomViewState : CoreViewState {
         val isSavingPlan: Boolean = false,
         val isPlanSummaryVisible: Boolean = false,
         val weekResult: WeeklyPlanProgress? = null,
+        val weekSummaryTutorialStep: WeekSummaryTutorialStep? = null,
+        val showFirstGamePurchaseFeedback: Boolean = false,
+        val readyFirstGameZoneId: String? = null,
+        val firstWeekNeedHint: FirstWeekNeedHint? = null,
+        val firstWeekGoalHint: FirstWeekGoalHint? = null,
         val achievements: List<PlanAchievementFeedback> = emptyList(),
         val isAchievementsVisible: Boolean = false,
         val parentHelpDialog: ParentHelpDialogState? = null,

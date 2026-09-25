@@ -91,6 +91,7 @@ fun FinPetDialogueDialog(
     additionalContent: @Composable ColumnScope.() -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
     dismissOnBackPress: Boolean = true,
+    focusable: Boolean = true,
     advanceOnTap: Boolean = true,
     topInset: androidx.compose.ui.unit.Dp = 0.dp,
     actions: List<FinPetDialogueAction> = emptyList(),
@@ -120,7 +121,7 @@ fun FinPetDialogueDialog(
         alignment = Alignment.TopCenter,
         onDismissRequest = onFinished,
         properties = PopupProperties(
-            focusable = true,
+            focusable = focusable,
             dismissOnBackPress = dismissOnBackPress,
             dismissOnClickOutside = false,
         ),

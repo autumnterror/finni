@@ -9,6 +9,7 @@ import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.week.api.WeekApi
 import github.detrig.feature.phone.api.PhoneMessagesStorage
 import kotlinx.coroutines.CoroutineScope
+import github.detrig.core.presentation.message.GlobalMessageController
 
 interface PhoneDependencies {
     fun globalNavigator(): GlobalNavigator
@@ -22,4 +23,5 @@ interface PhoneDependencies {
     fun messagesStorage(): PhoneMessagesStorage
     fun dailySecurityEventProbability(): Double
     fun minimumHelpBalanceRub(): Long
+    fun globalMessageController(): GlobalMessageController
 }

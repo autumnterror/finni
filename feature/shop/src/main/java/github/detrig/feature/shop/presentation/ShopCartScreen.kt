@@ -26,7 +26,7 @@ import github.detrig.products.StoreId
 internal fun ShopCartScreen(
     storeId: StoreId,
     onBack: (() -> Unit)? = null,
-    onCheckoutCompleted: (() -> Unit)? = null,
+    onCheckoutCompleted: ((Long) -> Unit)? = null,
 ) {
     val component = ShopFeature.component()
     val viewModel: ShopCartViewModel = viewModel(
@@ -45,7 +45,7 @@ internal fun ShopCartScreen(
     CommandsQueueEffect(commands) { command ->
         when (command) {
             ShopCartCommand.Back -> onBack?.invoke()
-            ShopCartCommand.CheckoutCompleted -> onCheckoutCompleted?.invoke()
+            is ShopCartCommand.CheckoutCompleted -> onCheckoutCompleted?.invoke(command.spentRub)
         }
     }
 

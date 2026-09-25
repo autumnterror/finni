@@ -27,6 +27,9 @@ interface GameStateApi {
     /** Вызывается при успешном End day внутри общей транзакции Week. */
     suspend fun consumeHungerForSleep(): Int
 
+    /** Applies the one-time hunger drop that starts the first care lesson. */
+    suspend fun startFirstNeed(): Int
+
     /** Safe to call repeatedly from foreground or background; does not create a pet. */
     suspend fun reconcileTimedNeeds(nowMillis: Long)
 

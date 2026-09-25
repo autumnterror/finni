@@ -6,6 +6,7 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -59,6 +61,8 @@ import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetOutlinedButton
+import github.detrig.designsystem.component.FinPetDialogueAction
+import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.phone.PhoneFeature
@@ -67,6 +71,9 @@ import github.detrig.feature.phone.navigation.PhoneRoute
 import github.detrig.feature.phone.R
 import github.detrig.feature.shop.api.ShopApi
 import github.detrig.products.GroceryStoreIds
+import github.detrig.products.GroceryCatalog
+import github.detrig.products.ProductId
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -93,8 +100,10 @@ private const val HOME_CLOSE_GLYPH_SIZE = 54f
 @Composable
 internal fun PhoneScreen(route: PhoneRoute) {
     val component = PhoneFeature.component()
+    val componentContext = LocalContext.current
     val messagesViewModel: MessagesViewModel = viewModel { component.messagesViewModel() }
     val messagesState by messagesViewModel.state().observeAsState(MessagesViewState())
+    val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
     var activeAppId by rememberSaveable(route) {
         mutableStateOf((route as? PhoneRoute.App)?.appId)
     }
@@ -105,7 +114,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
         }
     }
     BackHandler(enabled = activeAppId != null) {
-        activeAppId = null
+        if (firstRunStep != FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) activeAppId = null
     }
     component.petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _, _ ->
         Box(Modifier.fillMaxSize()) {
@@ -124,8 +133,19 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 messagesState = messagesState,
                 onMessagesEvent = messagesViewModel::perform,
                 onClose = { component.router.close() },
-                onBack = { activeAppId = null },
+                onBack = {
+                    if (firstRunStep != FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) activeAppId = null
+                },
                 onOpenApp = { activeAppId = it },
+                firstRunStep = firstRunStep,
+                onFirstRunCheckout = { spentRub ->
+                    if (component.roomApi.firstRunGuide.step.value == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) {
+                        component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.PURCHASE_READY)
+                        component.globalMessageController.showMessage(
+                            componentContext.getString(R.string.first_run_spent, spentRub),
+                        )
+                    }
+                },
             )
             if (activeAppId == MESSAGES_APP_ID) {
                 MessagesPetDialogue(
@@ -141,6 +161,48 @@ internal fun PhoneScreen(route: PhoneRoute) {
                     },
                 )
             }
+            when {
+                firstRunStep == FirstRunOnboardingStep.PHONE_STORE_GUIDANCE && activeAppId == null -> {
+                    FinPetDialogueDialog(
+                        speakerName = petProfile.name,
+                        cards = listOf(componentContext.getString(R.string.first_run_store_intro)),
+                        portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
+                        advanceOnTap = false,
+                        dismissOnBackPress = false,
+                        actions = listOf(FinPetDialogueAction("open_store", componentContext.getString(R.string.first_run_open_store))),
+                        onActionSelected = {
+                            component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE)
+                            activeAppId = GROCERY_APP
+                        },
+                        onFinished = {},
+                    )
+                }
+                firstRunStep == FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE && activeAppId == GROCERY_APP -> {
+                    FinPetDialogueDialog(
+                        speakerName = petProfile.name,
+                        cards = listOf(componentContext.getString(R.string.first_run_price_intro)),
+                        portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
+                        advanceOnTap = false,
+                        dismissOnBackPress = false,
+                        actions = listOf(FinPetDialogueAction("next", componentContext.getString(R.string.first_run_next))),
+                        onActionSelected = {
+                            component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE)
+                        },
+                        onFinished = {},
+                    )
+                }
+                firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE && activeAppId == GROCERY_APP -> {
+                    FinPetDialogueDialog(
+                        speakerName = petProfile.name,
+                        cards = listOf(componentContext.getString(R.string.first_run_buy_food)),
+                        portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
+                        focusable = false,
+                        advanceOnTap = false,
+                        dismissOnBackPress = false,
+                        onFinished = {},
+                    )
+                }
+            }
         }
     }
 }
@@ -155,6 +217,8 @@ private fun PhoneDevice(
     onClose: () -> Unit,
     onBack: () -> Unit,
     onOpenApp: (String) -> Unit,
+    firstRunStep: FirstRunOnboardingStep,
+    onFirstRunCheckout: (Long) -> Unit,
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize(),
@@ -217,6 +281,9 @@ private fun PhoneDevice(
                         unreadMessages = messagesState.inbox.unreadCount,
                         onClose = onClose,
                         onOpenApp = onOpenApp,
+                        highlightedAppId = GROCERY_APP.takeIf {
+                            firstRunStep == FirstRunOnboardingStep.PHONE_STORE_GUIDANCE
+                        },
                     )
                 } else {
                     PhoneAppContent(
@@ -226,6 +293,8 @@ private fun PhoneDevice(
                         messagesState = messagesState,
                         onMessagesEvent = onMessagesEvent,
                         onBack = onBack,
+                        firstRunStep = firstRunStep,
+                        onFirstRunCheckout = onFirstRunCheckout,
                     )
                 }
             }
@@ -322,6 +391,7 @@ private fun PhoneHomeContent(
     unreadMessages: Int,
     onClose: () -> Unit,
     onOpenApp: (String) -> Unit,
+    highlightedAppId: String? = null,
 ) {
     PhoneAssetButton(
         x = CLOSE_X + (BUTTON_SIZE - HOME_CLOSE_BUTTON_SIZE),
@@ -349,6 +419,12 @@ private fun PhoneHomeContent(
                     y = (app.y * scale).dp,
                 )
                 .size((178f * scale).dp)
+                .then(
+                    if (app.id == highlightedAppId) Modifier
+                        .border(4.dp, AppTheme.colors.actionPrimary, AppTheme.shapes.storefrontControl)
+                        .padding(4.dp)
+                    else Modifier,
+                )
                 .clickable(role = Role.Button, onClick = { onOpenApp(app.id) })
                 .semantics { this.role = Role.Button },
         ) {
@@ -428,6 +504,8 @@ private fun PhoneAppContent(
     messagesState: MessagesViewState,
     onMessagesEvent: (MessagesViewEvent) -> Unit,
     onBack: () -> Unit,
+    firstRunStep: FirstRunOnboardingStep,
+    onFirstRunCheckout: (Long) -> Unit,
 ) {
     val screenTop = stretchedPhoneY(SCREEN_TOP)
     val screenBottom = stretchedPhoneY(SCREEN_TOP + SCREEN_HEIGHT)
@@ -439,7 +517,12 @@ private fun PhoneAppContent(
             .clipToBounds(),
     ) {
         when (appId) {
-            GROCERY_APP -> GroceryAppContent(shopApi = shopApi, onBack = onBack)
+            GROCERY_APP -> GroceryAppContent(
+                shopApi = shopApi,
+                onBack = onBack,
+                firstRunStep = firstRunStep,
+                onFirstRunCheckout = onFirstRunCheckout,
+            )
             CLOTHING_APP -> PhonePlaceholderApp(
                 title = "Одежда",
                 iconRes = R.drawable.phone_icon_clothing_hd,
@@ -597,6 +680,8 @@ private fun DebugBalanceButton(
 private fun GroceryAppContent(
     shopApi: ShopApi,
     onBack: () -> Unit,
+    firstRunStep: FirstRunOnboardingStep,
+    onFirstRunCheckout: (Long) -> Unit,
 ) {
     var page by rememberSaveable { mutableStateOf(PhoneShopPage.Catalog) }
     when (page) {
@@ -605,11 +690,17 @@ private fun GroceryAppContent(
             onBack = onBack,
             onOpenCart = { page = PhoneShopPage.Cart },
             closeAfterReceipt = onBack,
+            highlightedProductId = remember {
+                GroceryCatalog().storefront.items.minByOrNull { it.priceRub }?.id
+            }.takeIf { firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE },
         )
         PhoneShopPage.Cart -> shopApi.CartContent(
             storeId = GroceryStoreIds.Store,
             onBack = { page = PhoneShopPage.Catalog },
-            onCheckoutCompleted = { page = PhoneShopPage.Catalog },
+            onCheckoutCompleted = { spentRub ->
+                onFirstRunCheckout(spentRub)
+                page = PhoneShopPage.Catalog
+            },
         )
     }
 }

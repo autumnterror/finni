@@ -5,8 +5,8 @@ import github.detrig.core.infrastructure.preferences.SharedStorage
 import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
-import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.room.domain.model.completedChaptersForMigration
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 internal class FirstRunOnboardingStorage(preferences: SharedPreferences) :
     SharedStorage(preferences), FirstRunOnboardingRepository {
@@ -42,6 +42,20 @@ internal class FirstRunOnboardingStorage(preferences: SharedPreferences) :
         }
     }
 
+    override fun isFirstGamePurchaseExplained(): Boolean =
+        readBoolean(FIRST_GAME_PURCHASE_EXPLAINED_KEY, false)
+
+    override fun markFirstGamePurchaseExplained() {
+        putBoolean(FIRST_GAME_PURCHASE_EXPLAINED_KEY, true)
+    }
+
+    override fun isFirstGameReadyIntroduced(): Boolean =
+        readBoolean(FIRST_GAME_READY_INTRODUCED_KEY, false)
+
+    override fun markFirstGameReadyIntroduced() {
+        putBoolean(FIRST_GAME_READY_INTRODUCED_KEY, true)
+    }
+
     private fun migrateLegacyProgress(): Set<FirstRunOnboardingChapter> {
         val storedStep = readString(LEGACY_STEP_KEY, null)
         if (storedStep == REMOVED_PLAN_SAVED_STEP) {
@@ -64,6 +78,8 @@ internal class FirstRunOnboardingStorage(preferences: SharedPreferences) :
         const val COMPLETED_CHAPTERS_KEY = "first_run_onboarding_completed_chapters_v1"
         const val LEGACY_STEP_KEY = "first_run_onboarding_step_v1"
         const val SUGGESTED_GOAL_ZONE_KEY = "first_run_onboarding_suggested_goal_zone_v1"
+        const val FIRST_GAME_PURCHASE_EXPLAINED_KEY = "first_game_purchase_explained_v1"
+        const val FIRST_GAME_READY_INTRODUCED_KEY = "first_game_ready_introduced_v1"
         const val REMOVED_PLAN_SAVED_STEP = "PLAN_SAVED"
     }
 }

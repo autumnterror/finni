@@ -30,6 +30,9 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     private val onboarding by lazy {
         github.detrig.feature.room.data.local.FirstRunOnboardingStorage(dependencies.housePreferences())
     }
+    private val firstRunGuide by lazy {
+        github.detrig.feature.room.data.local.FirstRunGuideCoordinator(onboarding)
+    }
     private val previewRequests = github.detrig.feature.room.navigation.RoomPreviewRequests()
     private val repository by lazy {
         RoomRepositoryImpl(
@@ -39,7 +42,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     }
     private val purchaseSavingsGoal by lazy { PurchaseSavingsGoalInteractor(repository) }
     override val api: RoomApi by lazy {
-        RoomApiImpl(previewRequests, dependencies.resources(), purchaseSavingsGoal)
+        RoomApiImpl(previewRequests, dependencies.resources(), purchaseSavingsGoal, firstRunGuide)
     }
     private val router by lazy {
         RoomRouterImpl(dependencies.gameLauncher(), dependencies.globalMessageController(), dependencies.resources(),
@@ -69,6 +72,8 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
         loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
         endWeekEarlyWithParentHelp, parentHelpPrompt, minimumProductPriceRub, loadImpulseWish, router, positions, onboarding,
+        firstRunGuide,
+        dependencies.gameStateApi(), dependencies.inventoryApi(),
         dependencies.gameAudio(),
     )
 }

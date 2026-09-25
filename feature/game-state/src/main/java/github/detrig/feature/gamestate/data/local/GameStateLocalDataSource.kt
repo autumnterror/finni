@@ -101,6 +101,25 @@ internal class GameStateLocalDataSource(
         PetSatietyRules.afterCost(current.pet.hunger, PetSatietyRules.SLEEP_COST)
     }
 
+    suspend fun startFirstNeed(): Int = transactionRunner.runInTransaction {
+        val operationId = FIRST_NEED_EFFECT_OPERATION_ID
+        val current = initialize()
+        val existing = petPlayEffectDao.find(operationId)
+        if (existing != null) return@runInTransaction current.pet.hunger
+        check(dao.decreaseHunger(FIRST_NEED_HUNGER_COST) == 1)
+        petPlayEffectDao.insert(
+            PetPlayEffectEntity(
+                operationId = operationId,
+                profileId = GameStateEntity.CURRENT_STATE_ID,
+                sessionId = operationId,
+                gameId = FIRST_NEED_EFFECT_GAME_ID,
+                happinessDelta = 0,
+                appliedAtMillis = currentTimeMillis(),
+            ),
+        )
+        PetSatietyRules.afterCost(current.pet.hunger, FIRST_NEED_HUNGER_COST)
+    }
+
     /**
      * Reuses the existing idempotent pet-effect outbox. It lives in the same Room
      * transaction as the pet counters, so restoring the process cannot feed twice.
@@ -170,5 +189,8 @@ internal class GameStateLocalDataSource(
 
     private companion object {
         const val FEEDING_EFFECT_GAME_ID = "feeding"
+        const val FIRST_NEED_EFFECT_GAME_ID = "first_need"
+        const val FIRST_NEED_EFFECT_OPERATION_ID = "first_need:hunger"
+        const val FIRST_NEED_HUNGER_COST = 30
     }
 }

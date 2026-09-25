@@ -41,6 +41,7 @@ internal fun ShopContent(
     onBack: () -> Unit = { onEvent(ShopViewEvent.Back) },
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    highlightedProductId: github.detrig.products.ProductId? = null,
 ) {
     Column(
         modifier = modifier
@@ -82,6 +83,7 @@ internal fun ShopContent(
                     itemDetailsResolver = itemDetailsResolver,
                     unitPriceRub = state::effectiveUnitPrice,
                     decisionEvent = state.decisionEvent,
+                    highlightedProductId = highlightedProductId,
                     modifier = Modifier.weight(1f),
                 )
             }

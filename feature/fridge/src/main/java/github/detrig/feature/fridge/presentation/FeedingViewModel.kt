@@ -11,6 +11,8 @@ import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import github.detrig.feature.room.api.FirstRunGuideApi
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 
 private const val MOUTH_OPEN_MILLIS = 100L
 private const val CHEW_A_MILLIS = 120L
@@ -20,6 +22,7 @@ internal class FeedingViewModel(
     private val inventoryApi: InventoryApi,
     private val gameStateApi: GameStateApi,
     private val router: FridgeRouter,
+    private val firstRunGuide: FirstRunGuideApi,
 ) : CoreViewModel<FeedingViewState, FeedingViewEvent>(FeedingViewState()) {
     private var tableObservation: Job? = null
     private var petObservation: Job? = null
@@ -35,6 +38,7 @@ internal class FeedingViewModel(
             FeedingViewEvent.PreviousPage -> changePage(-1)
             FeedingViewEvent.NextPage -> changePage(1)
             is FeedingViewEvent.FoodDroppedIntoMouth -> startConsumption(viewEvent.productId)
+            FeedingViewEvent.FirstRunThanksDismissed -> finishFirstRunLesson()
         }
     }
 
@@ -148,6 +152,9 @@ internal class FeedingViewModel(
                 ),
             )
             inventoryApi.consumeTableItem(portion.id)
+            if (firstRunGuide.step.value == FirstRunOnboardingStep.FEEDING) {
+                firstRunGuide.moveTo(FirstRunOnboardingStep.FEEDING_DONE)
+            }
             updateState {
                 copy(
                     hunger = result.hunger,
@@ -161,6 +168,12 @@ internal class FeedingViewModel(
                 )
             }
         }
+    }
+
+    private fun finishFirstRunLesson() {
+        if (firstRunGuide.step.value != FirstRunOnboardingStep.FEEDING_DONE) return
+        firstRunGuide.completeFirstNeed()
+        close()
     }
 
     private fun close() {

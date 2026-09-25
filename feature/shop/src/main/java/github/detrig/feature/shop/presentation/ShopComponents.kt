@@ -223,6 +223,7 @@ internal fun ShopProductGrid(
         items.first { it.id == productId }.priceRub
     },
     decisionEvent: ShopDecisionEvent? = null,
+    highlightedProductId: ProductId? = null,
     modifier: Modifier = Modifier,
 ) {
     FinPetLazyGrid(
@@ -242,6 +243,7 @@ internal fun ShopProductGrid(
             itemDetailsResolver = itemDetailsResolver,
             unitPriceRub = unitPriceRub(item.id),
             decisionEvent = decisionEvent?.takeIf { it.productId == item.id },
+            tutorialHighlighted = item.id == highlightedProductId,
         )
     }
 }
@@ -255,6 +257,7 @@ private fun ShopProductCard(
     itemDetailsResolver: ShopItemDetailsResolver,
     unitPriceRub: Long,
     decisionEvent: ShopDecisionEvent?,
+    tutorialHighlighted: Boolean = false,
 ) {
     val itemDescription = stringResource(
         R.string.shop_item_accessibility,
@@ -290,11 +293,12 @@ private fun ShopProductCard(
             AppTheme.colors.storefront.surface
         },
         borderColor = when {
+            tutorialHighlighted -> AppTheme.colors.actionPrimary
             promotionEvent != null -> AppTheme.colors.currencyAccent
             isInCart -> AppTheme.colors.actionPrimary
             else -> AppTheme.colors.storefront.outline
         },
-        borderWidth = AppTheme.sizes.borderStrong,
+        borderWidth = if (tutorialHighlighted) AppTheme.sizes.borderStrong * 2 else AppTheme.sizes.borderStrong,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (promotionEvent != null) {

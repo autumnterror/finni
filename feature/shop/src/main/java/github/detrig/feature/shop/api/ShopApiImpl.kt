@@ -20,18 +20,20 @@ internal class ShopApiImpl(
         onBack: () -> Unit,
         onOpenCart: () -> Unit,
         closeAfterReceipt: () -> Unit,
+        highlightedProductId: github.detrig.products.ProductId?,
     ) = ShopScreen(
         storeId = storeId,
         onBack = onBack,
         onOpenCart = onOpenCart,
         closeAfterReceipt = closeAfterReceipt,
+        highlightedProductId = highlightedProductId,
     )
 
     @Composable
     override fun CartContent(
         storeId: StoreId,
         onBack: () -> Unit,
-        onCheckoutCompleted: () -> Unit,
+        onCheckoutCompleted: (Long) -> Unit,
     ) = ShopCartScreen(
         storeId = storeId,
         onBack = onBack,

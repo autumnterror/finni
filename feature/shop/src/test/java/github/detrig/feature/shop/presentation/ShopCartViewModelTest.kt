@@ -162,7 +162,7 @@ class ShopCartViewModelTest {
         dispatcher.scheduler.runCurrent()
 
         assertEquals(
-            listOf(ShopCartCommand.CheckoutCompleted),
+            listOf(ShopCartCommand.CheckoutCompleted(apple.priceRub)),
             viewModel.commands<ShopCartCommand>().value?.toList(),
         )
         assertEquals(0, router.backCount)

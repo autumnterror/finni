@@ -18,6 +18,7 @@ internal interface GameStateRepository {
 
     suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult
     suspend fun consumeHungerForSleep(): Int
+    suspend fun startFirstNeed(): Int
     suspend fun reconcileTimedNeeds(nowMillis: Long)
     suspend fun hungerAlertState(): github.detrig.feature.gamestate.domain.model.HungerAlertState?
     suspend fun markHungerAlertDelivered(episode: Long): Boolean

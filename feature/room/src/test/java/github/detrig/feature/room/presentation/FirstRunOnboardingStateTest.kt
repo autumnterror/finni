@@ -1,6 +1,6 @@
 package github.detrig.feature.room.presentation
 
-import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.api.FirstRunOnboardingStep
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -67,5 +67,26 @@ class FirstRunOnboardingStateTest {
 
         assertNull(state.focusObjectId)
         assertEquals(emptySet<String>(), state.highlightedObjectIds)
+    }
+
+    @Test fun firstCareLessonFocusesOnlyTheCurrentRoomObject() {
+        val phone = FirstRunOnboardingState(FirstRunOnboardingStep.PHONE_GUIDANCE)
+        val fridge = FirstRunOnboardingState(FirstRunOnboardingStep.FRIDGE_GUIDANCE)
+        val table = FirstRunOnboardingState(FirstRunOnboardingStep.TABLE_GUIDANCE)
+
+        assertEquals("phone", phone.focusObjectId)
+        assertEquals(setOf("phone"), phone.allowedObjectIds)
+        assertEquals("fridge", fridge.focusObjectId)
+        assertEquals(setOf("fridge"), fridge.allowedObjectIds)
+        assertEquals("dining_table", table.focusObjectId)
+        assertEquals(setOf("dining_table"), table.allowedObjectIds)
+    }
+    @Test fun bedtimeLessonFocusesAndUnlocksOnlyTheBedAtTheActionStep() {
+        val explanation = FirstRunOnboardingState(FirstRunOnboardingStep.BEDTIME_GUIDANCE)
+        val waiting = FirstRunOnboardingState(FirstRunOnboardingStep.WAITING_FOR_BED)
+
+        assertEquals("bed", explanation.focusObjectId)
+        assertEquals(emptySet<String>(), explanation.allowedObjectIds)
+        assertEquals(setOf("bed"), waiting.allowedObjectIds)
     }
 }

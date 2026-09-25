@@ -11,6 +11,7 @@ import github.detrig.feature.week.api.WeekApi
 import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.savings.api.SavingsApi
+import github.detrig.feature.inventory.api.InventoryApi
 import github.detrig.feature.room.api.RoomGameLauncher
 import github.detrig.feature.room.domain.model.RoomImpulseWishSource
 
@@ -22,6 +23,7 @@ interface RoomDependencies {
     fun planningApi(): PlanningApi
     fun learningApi(): LearningApi
     fun savingsApi(): SavingsApi
+    fun inventoryApi(): InventoryApi
     fun gameLauncher(): RoomGameLauncher
     fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher
     fun impulseWishSource(): RoomImpulseWishSource

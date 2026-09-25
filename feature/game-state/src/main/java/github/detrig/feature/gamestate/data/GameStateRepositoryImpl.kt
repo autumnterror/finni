@@ -27,6 +27,8 @@ internal class GameStateRepositoryImpl(
 
     override suspend fun consumeHungerForSleep(): Int = localDataSource.consumeHungerForSleep()
 
+    override suspend fun startFirstNeed(): Int = localDataSource.startFirstNeed()
+
     override suspend fun reconcileTimedNeeds(nowMillis: Long) = localDataSource.reconcileTimedNeeds(nowMillis)
 
     override suspend fun hungerAlertState() = localDataSource.hungerAlertState()

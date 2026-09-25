@@ -20,6 +20,7 @@ internal class PhoneModule(
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()
     private val weekApi = dependencies.weekApi()
+    override val globalMessageController = dependencies.globalMessageController()
     private val economyApi = dependencies.economyApi()
     private val messagesRepository by lazy {
         PersistentMessagesRepository(
