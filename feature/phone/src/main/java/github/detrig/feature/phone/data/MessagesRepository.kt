@@ -1,5 +1,6 @@
 package github.detrig.feature.phone.data
 
+import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.phone.domain.MessageKind
 import github.detrig.feature.phone.domain.MessageSenderId
 import github.detrig.feature.phone.domain.MessagesInbox
@@ -31,10 +32,7 @@ internal interface MessagesRepository {
     suspend fun preparePenalty(eventId: String, amountRub: Long): SecurityMessageEvent?
     suspend fun markPenaltyApplied(eventId: String)
     suspend fun acknowledgeFeedback(eventId: String)
-    suspend fun addParentHelpReminder(absoluteDay: Long) = Unit
-    suspend fun removeParentHelpReminder() = Unit
-    suspend fun addParentHelpRepaymentMessage(absoluteDay: Long) = Unit
-    suspend fun removeParentHelpRepaymentMessage() = Unit
+    suspend fun upsertParentHelpMessage(absoluteDay: Long, activeHelp: ParentHelpState?)
 }
 
 internal class PersistentMessagesRepository(
@@ -219,42 +217,30 @@ internal class PersistentMessagesRepository(
         )
     }
 
-    override suspend fun addParentHelpReminder(absoluteDay: Long) = update { current ->
-        if (current.messages.any { it.id == PARENT_HELP_MESSAGE_ID }) return@update current
-        current.copy(
-            parentHelpReminderCreated = true,
-            messages = current.messages + PhoneMessage(
-                id = PARENT_HELP_MESSAGE_ID,
-                eventId = PARENT_HELP_MESSAGE_ID,
-                senderId = MessageSenderId.MOM,
-                absoluteDay = absoluteDay,
-                kind = MessageKind.PARENT_HELP_OFFER,
-            ),
+    override suspend fun upsertParentHelpMessage(
+        absoluteDay: Long,
+        activeHelp: ParentHelpState?,
+    ) = update { current ->
+        val previous = current.messages.firstOrNull { it.id == PARENT_HELP_MESSAGE_ID }
+            ?: current.messages.firstOrNull { it.id == LEGACY_PARENT_HELP_REPAYMENT_MESSAGE_ID }
+        val kind = if (activeHelp == null) MessageKind.PARENT_HELP_OFFER else MessageKind.PARENT_HELP_REPAYMENT
+        val payload = activeHelp?.let { "${it.paymentsRemaining}|${it.remainingRub}" }.orEmpty()
+        val changed = previous?.kind != kind || previous.payload != payload
+        val message = PhoneMessage(
+            id = PARENT_HELP_MESSAGE_ID,
+            eventId = PARENT_HELP_MESSAGE_ID,
+            senderId = MessageSenderId.MOM,
+            absoluteDay = if (changed) absoluteDay else checkNotNull(previous).absoluteDay,
+            kind = kind,
+            payload = payload,
+            isRead = !changed && checkNotNull(previous).isRead,
         )
-    }
-
-    override suspend fun removeParentHelpReminder() = update { current ->
-        current.copy(
-            parentHelpReminderCreated = false,
-            messages = current.messages.filterNot { it.id == PARENT_HELP_MESSAGE_ID },
-        )
-    }
-
-    override suspend fun addParentHelpRepaymentMessage(absoluteDay: Long) = update { current ->
-        if (current.messages.any { it.id == PARENT_HELP_REPAYMENT_MESSAGE_ID }) return@update current
-        current.copy(
-            messages = current.messages + PhoneMessage(
-                id = PARENT_HELP_REPAYMENT_MESSAGE_ID,
-                eventId = PARENT_HELP_REPAYMENT_MESSAGE_ID,
-                senderId = MessageSenderId.MOM,
-                absoluteDay = absoluteDay,
-                kind = MessageKind.PARENT_HELP_REPAYMENT,
-            ),
-        )
-    }
-
-    override suspend fun removeParentHelpRepaymentMessage() = update { current ->
-        current.copy(messages = current.messages.filterNot { it.id == PARENT_HELP_REPAYMENT_MESSAGE_ID })
+        if (previous == message && current.messages.none { it.id == LEGACY_PARENT_HELP_REPAYMENT_MESSAGE_ID }) {
+            return@update current
+        }
+        current.copy(messages = current.messages.filterNot {
+            it.id == PARENT_HELP_MESSAGE_ID || it.id == LEGACY_PARENT_HELP_REPAYMENT_MESSAGE_ID
+        } + message)
     }
 
     private suspend fun update(
@@ -280,6 +266,6 @@ internal class PersistentMessagesRepository(
     private companion object {
         const val CODE_SALT = 0xC0DE
         const val PARENT_HELP_MESSAGE_ID = "parent-help-reminder"
-        const val PARENT_HELP_REPAYMENT_MESSAGE_ID = "parent-help-repayment"
+        const val LEGACY_PARENT_HELP_REPAYMENT_MESSAGE_ID = "parent-help-repayment"
     }
 }

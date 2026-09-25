@@ -39,6 +39,24 @@ fun lowBalanceRecoveryAction(
     }
 }
 
+fun canOfferParentHelp(
+    availableRub: Long,
+    savingsRub: Long,
+    debtRub: Long,
+    hasActiveParentHelp: Boolean,
+    minimumRequiredBalanceRub: Long,
+): Boolean {
+    require(availableRub >= 0)
+    require(savingsRub >= 0)
+    require(debtRub >= 0)
+    require(minimumRequiredBalanceRub > 0)
+
+    return availableRub < minimumRequiredBalanceRub &&
+        savingsRub == 0L &&
+        debtRub == 0L &&
+        !hasActiveParentHelp
+}
+
 data class FinancialSnapshot(
     val availableRub: Long,
     val savingsRub: Long,
@@ -92,6 +110,7 @@ enum class RejectionReason {
     INSUFFICIENT_AVAILABLE_FUNDS,
     INSUFFICIENT_SAVINGS,
     ACTIVE_DEBT_EXISTS,
+    PARENT_HELP_NOT_AVAILABLE,
     SCHEDULED_REPAYMENT_ONLY,
     DEBT_LIMIT_EXCEEDED,
     NO_ACTIVE_DEBT,

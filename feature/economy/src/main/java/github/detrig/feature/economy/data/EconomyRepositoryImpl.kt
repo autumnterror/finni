@@ -128,11 +128,12 @@ internal class EconomyRepositoryImpl(
     override suspend fun settleParentHelpInFull(operationId: String, context: OperationContext) = atomic {
         val state = ensureState()
         if (operationId.isBlank()) return@atomic FinancialOperationResult.Rejected(RejectionReason.INVALID_OPERATION_ID, state)
+        val activeHelp = dao.getParentHelp()?.toDomain()
         dao.getOperation(operationId)?.toDomain()?.let { existing ->
             val expectedAmount = context.metadata?.split(';')
                 ?.firstOrNull { it.startsWith("amountRub=") }
                 ?.substringAfter('=')?.toLongOrNull()
-            return@atomic if (
+            if (activeHelp == null) return@atomic if (
                 existing.type == FinancialOperationType.DEBT_REPAYMENT &&
                 existing.context == context &&
                 expectedAmount == existing.amountRub
@@ -142,7 +143,7 @@ internal class EconomyRepositoryImpl(
                 FinancialOperationResult.Rejected(RejectionReason.OPERATION_ID_CONFLICT, state)
             }
         }
-        val help = dao.getParentHelp()?.toDomain()
+        val help = activeHelp
             ?: return@atomic FinancialOperationResult.Rejected(RejectionReason.NO_ACTIVE_DEBT, state)
         val amountRub = help.remainingRub
         if (amountRub <= 0) return@atomic FinancialOperationResult.Rejected(RejectionReason.INVALID_AMOUNT, state)
@@ -152,8 +153,9 @@ internal class EconomyRepositoryImpl(
         if (state.availableRub < amountRub) {
             return@atomic FinancialOperationResult.Rejected(RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS, state)
         }
+        val uniqueOperationId = nextAvailableOperationId(operationId)
         val result = persistOperation(
-            id = operationId,
+            id = uniqueOperationId,
             amountRub = amountRub,
             type = FinancialOperationType.DEBT_REPAYMENT,
             context = context,
@@ -320,16 +322,14 @@ internal class EconomyRepositoryImpl(
             ?: return@atomic ParentHelpRequestResult.Rejected(RejectionReason.INVALID_AMOUNT, state)
         if (state.hasActiveDebt) return@atomic ParentHelpRequestResult.Rejected(RejectionReason.ACTIVE_DEBT_EXISTS, state)
         if (operationId.isBlank()) return@atomic ParentHelpRequestResult.Rejected(RejectionReason.INVALID_OPERATION_ID, state)
-        dao.getOperation(operationId)?.let {
-            return@atomic ParentHelpRequestResult.Rejected(RejectionReason.OPERATION_ID_CONFLICT, state)
-        }
+        val uniqueOperationId = nextAvailableOperationId(operationId)
         val updated = state.copy(
             availableRub = Math.addExact(state.availableRub, offer.receivedRub),
             debtRub = Math.addExact(state.debtRub, offer.totalRepaymentRub),
         )
         validate(updated)
         val operation = operation(
-            operationId, offer.receivedRub, FinancialOperationType.DEBT_CREATED,
+            uniqueOperationId, offer.receivedRub, FinancialOperationType.DEBT_CREATED,
             OperationContext(reasonId = offer.id, metadata = "source=parent-help;totalRepaymentRub=${offer.totalRepaymentRub}"),
             state, updated, currentTimeMillis(),
         )
@@ -454,6 +454,9 @@ internal class EconomyRepositoryImpl(
         dao.insertOperation(operation.toEntity())
         return FinancialOperationResult.Applied(operation, after)
     }
+
+    private suspend fun nextAvailableOperationId(baseId: String): String =
+        firstAvailableOperationId(baseId) { dao.getOperation(it) != null }
 
     private fun operation(
         id: String,

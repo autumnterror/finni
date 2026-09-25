@@ -261,6 +261,32 @@ class EconomyApiTest {
         assertEquals(720L, api.getParentHelp()?.remainingRub)
     }
 
+    @Test fun parentHelpCanBeTakenAndSettledAgainWithTheSameBaseOperationIds() = runBlocking {
+        val api = api(EconomyConfig(initialAvailableRub = 1_000))
+        val payoffContext = OperationContext(
+            reasonId = "quick",
+            metadata = "source=parent-help;settlement=full;amountRub=720",
+        )
+
+        assertTrue(api.requestParentHelp("help:quick", "quick") is ParentHelpRequestResult.Accepted)
+        val firstPayoff = api.settleParentHelpInFull("help:payoff", payoffContext)
+        assertTrue(firstPayoff is FinancialOperationResult.Applied)
+        assertEquals(880L, api.getState().availableRub)
+
+        val secondHelp = api.requestParentHelp("help:quick", "quick") as ParentHelpRequestResult.Accepted
+        assertEquals(1_480L, secondHelp.state.availableRub)
+
+        val secondPayoff = api.settleParentHelpInFull("help:payoff", payoffContext)
+        assertTrue(secondPayoff is FinancialOperationResult.Applied)
+        assertEquals(760L, secondPayoff.state.availableRub)
+        assertEquals(0L, secondPayoff.state.debtRub)
+        assertNull(api.getParentHelp())
+        assertEquals(
+            2,
+            api.getDebtHistory().count { it.type == FinancialOperationType.DEBT_REPAYMENT },
+        )
+    }
+
     @Test fun debtRulesAutoRepaymentAndEarlyRepaymentAreExplicit() = runBlocking {
         val api = api(EconomyConfig(
             initialAvailableRub = 0,

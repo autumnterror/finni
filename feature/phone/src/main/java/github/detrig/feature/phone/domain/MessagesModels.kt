@@ -69,7 +69,6 @@ internal data class SecurityMessageEvent(
 internal data class StoredMessagesState(
     val lastProcessedAbsoluteDay: Long = 0,
     val firstRoomPromptPending: Boolean = false,
-    val parentHelpReminderCreated: Boolean = false,
     val messages: List<PhoneMessage> = emptyList(),
     val events: List<SecurityMessageEvent> = emptyList(),
 )
@@ -101,6 +100,9 @@ internal data class ParentHelpDialogData(
     val offers: List<ParentHelpOffer>,
     val activeHelp: ParentHelpState?,
     val availableRub: Long,
+    val savingsRub: Long,
+    val debtRub: Long,
+    val minimumRequiredBalanceRub: Long,
 )
 
 internal data class SecurityEventConfig(

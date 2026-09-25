@@ -121,6 +121,23 @@ fun ParentHelpDialog(
                             val active = state.activeHelp
                             if (active == null) {
                                 ParentHelpDescription()
+                                if (state.offers.isEmpty()) {
+                                    val unavailableMessage = when {
+                                        state.debtRub > 0 -> R.string.parent_help_unavailable_payments
+                                        state.savingsRub > 0 -> R.string.parent_help_unavailable_savings
+                                        state.minimumRequiredBalanceRub > 0 &&
+                                            state.availableRub >= state.minimumRequiredBalanceRub ->
+                                            R.string.parent_help_unavailable_wallet
+                                        else -> R.string.parent_help_unavailable_other
+                                    }
+                                    FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = stringResource(unavailableMessage),
+                                            modifier = Modifier.padding(AppTheme.spacing.md),
+                                            style = AppTheme.typography.body,
+                                        )
+                                    }
+                                }
                                 state.offers.forEach { offer ->
                                     ParentHelpOfferCard(offer, isRequesting, onOfferSelected)
                                 }

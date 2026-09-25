@@ -23,4 +23,5 @@ internal fun GameState.toRoomProgress(
     requiresPlan = planProgress == null,
     petHunger = pet.hunger,
     petHappiness = pet.happiness,
+    debtRub = economy.debtRub,
 )

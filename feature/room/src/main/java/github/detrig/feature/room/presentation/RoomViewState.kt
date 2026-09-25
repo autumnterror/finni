@@ -17,6 +17,9 @@ data class ParentHelpDialogState(
     val activeHelp: ParentHelpState?,
     val isSubmitting: Boolean = false,
     val availableRub: Long = 0,
+    val savingsRub: Long = 0,
+    val debtRub: Long = 0,
+    val minimumRequiredBalanceRub: Long = 0,
 )
 
 internal data class AllowanceNoticeState(
@@ -28,6 +31,8 @@ internal data class AllowanceNoticeState(
 internal data object EarlyWeekParentHelpNoticeState
 
 internal data object SavingsRecoveryPromptState
+
+internal data object ParentHelpPhonePromptState
 
 internal data class DayTransitionNoticeState(
     val dayOfWeek: Int,
@@ -125,6 +130,9 @@ internal sealed interface RoomViewState : CoreViewState {
         val weekResult: WeeklyPlanProgress? = null,
         val achievements: List<PlanAchievementFeedback> = emptyList(),
         val isAchievementsVisible: Boolean = false,
+        val parentHelpDialog: ParentHelpDialogState? = null,
+        val isRequestingParentHelp: Boolean = false,
+        val parentHelpPhonePrompt: ParentHelpPhonePromptState? = null,
         val savingsRecoveryPrompt: SavingsRecoveryPromptState? = null,
         val allowanceNotice: AllowanceNoticeState? = null,
         val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,

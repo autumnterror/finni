@@ -521,12 +521,12 @@ Preferred wording:
 
 > Ask parents for money until the next pocket-money payment.
 
-Debt is **contextual**, not a permanently available generic money button.
-
-Show it only when:
-- the player cannot afford an important allowed purchase;
-- the expense category explicitly allows debt;
-- there is no conflicting active debt rule.
+Parent help is **contextual**. The conversation with Mom always contains one
+message. It opens the same help window as the automatic offer. The message
+shows available help when the wallet is below the configured minimum, the piggy
+bank is empty, and no repayment is active; otherwise it explains why help is
+currently unavailable. After help is accepted, the same message shows the
+remaining payments and allows early settlement when affordable.
 
 Rules:
 - at most one active debt;
@@ -536,10 +536,11 @@ Rules:
 - debt cannot be used for cosmetics, room luxuries, or optional wants;
 - parent-help offers may include a small, clearly shown extra repayment amount;
 - the extra repayment percentage decreases as the repayment period gets longer.
-- if the child closes the one-time offer, a reminder remains available in the phone messages until help is accepted; accepting help removes that reminder.
-- a parent-help reminder is delivered in the phone when the wallet becomes
-  insufficient, including a balance change during the current game day. The
-  food table is not an entry point for parent help.
+- the automatic offer is shown once in a game week when its conditions are met;
+  closing it prompts the child to speak with Mom through the phone;
+- the Mom message keeps one stable identity while its content changes with the
+  help state. The food table is not an entry point for parent help;
+- child-facing text does not use the word "долг".
 
 Before confirmation show:
 - amount received now;

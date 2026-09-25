@@ -383,7 +383,16 @@ private fun PhoneMessage.displayText(): String = when (kind) {
     MessageKind.REQUEST_CONFIRMATION_CODE -> stringResource(R.string.messages_code_request)
     MessageKind.UNKNOWN_LINK -> stringResource(R.string.messages_unknown_link, payload)
     MessageKind.PARENT_HELP_OFFER -> stringResource(R.string.messages_parent_help_offer)
-    MessageKind.PARENT_HELP_REPAYMENT -> stringResource(R.string.messages_parent_help_repayment)
+    MessageKind.PARENT_HELP_REPAYMENT -> {
+        val details = payload.split('|')
+        val paymentsRemaining = details.getOrNull(0)?.toIntOrNull()
+        val remainingRub = details.getOrNull(1)?.toLongOrNull()
+        if (paymentsRemaining != null && remainingRub != null) {
+            stringResource(R.string.messages_parent_help_repayment, paymentsRemaining, remainingRub)
+        } else {
+            stringResource(R.string.messages_parent_help_repayment_fallback)
+        }
+    }
 }
 
 

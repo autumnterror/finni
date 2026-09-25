@@ -33,6 +33,7 @@ import github.detrig.feature.room.RoomFeature
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
+import github.detrig.feature.room.presentation.component.ParentHelpDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
 import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
@@ -162,6 +163,7 @@ internal fun RoomScreen(
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
                 content?.weekResult == null &&
+                content?.parentHelpDialog == null &&
                 content?.allowanceNotice == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
@@ -295,6 +297,29 @@ internal fun RoomScreen(
                     )
                 },
                 onFinished = { viewModel.perform(RoomViewEvent.DismissSavingsRecoveryPrompt) },
+            )
+        }
+        content?.parentHelpDialog != null && canShowDialogs && externalActive && resumed &&
+            onboarding == null && content.planEditor == null && content.planDialogue == null &&
+            content.weekResult == null && content.dayTransitionNotice == null &&
+            !content.isAchievementsVisible && !showPhoneNotificationPrompt -> {
+            LaunchedEffect(content.progress.weekNumber) {
+                viewModel.perform(RoomViewEvent.ParentHelpDialogShown)
+            }
+            ParentHelpDialog(
+                state = content.parentHelpDialog,
+                isRequesting = content.isRequestingParentHelp,
+                onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
+            )
+        }
+        content?.parentHelpPhonePrompt != null && canShowDialogs -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(stringResource(R.string.parent_help_phone_prompt)),
+                portrait = petPortrait,
+                topInset = 0.dp,
+                onFinished = { viewModel.perform(RoomViewEvent.CloseParentHelpPhonePrompt) },
             )
         }
         content?.impulseWish != null && canShowDialogs -> {

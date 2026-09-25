@@ -75,14 +75,15 @@ internal class MessagesViewModel(
         if (actionJob?.isActive == true) return
         actionJob = launchCoroutine(handleAction = errorHandler()) {
             val data = coordinator.parentHelpDialogData()
-            if (data.offers.isNotEmpty() || data.activeHelp != null) {
-                updateState {
-                    copy(parentHelpDialog = ParentHelpDialogState(
-                        offers = data.offers,
-                        activeHelp = data.activeHelp,
-                        availableRub = data.availableRub,
-                    ))
-                }
+            updateState {
+                copy(parentHelpDialog = ParentHelpDialogState(
+                    offers = data.offers,
+                    activeHelp = data.activeHelp,
+                    availableRub = data.availableRub,
+                    savingsRub = data.savingsRub,
+                    debtRub = data.debtRub,
+                    minimumRequiredBalanceRub = data.minimumRequiredBalanceRub,
+                ))
             }
             actionJob = null
         }

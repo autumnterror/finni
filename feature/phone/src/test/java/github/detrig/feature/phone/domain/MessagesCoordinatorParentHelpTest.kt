@@ -34,7 +34,7 @@ import org.junit.Test
 class MessagesCoordinatorParentHelpTest {
 
     @Test
-    fun `low wallet balance creates phone reminder without waiting for next game day`() = runTest {
+    fun `mom message persists when wallet crosses help threshold`() = runTest {
         val economyState = MutableStateFlow(economyState(availableRub = 500, savingsRub = 0))
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
         val coordinator = MessagesCoordinator(
@@ -48,9 +48,8 @@ class MessagesCoordinatorParentHelpTest {
 
         coordinator.start(backgroundScope)
         runCurrent()
-        assertTrue(repository.observeInbox().value.threads
-            .flatMap { it.messages }
-            .none { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertTrue(coordinator.parentHelpOffers().isEmpty())
 
         economyState.value = economyState(availableRub = 20, savingsRub = 0)
         runCurrent()
@@ -59,10 +58,11 @@ class MessagesCoordinatorParentHelpTest {
             .single { it.senderId == MessageSenderId.MOM }
             .messages
         assertEquals(1, momMessages.count { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertEquals(1, coordinator.parentHelpOffers().size)
     }
 
     @Test
-    fun `phone reminder is suppressed when savings cover the recovery amount`() = runTest {
+    fun `mom message remains while savings make offers unavailable`() = runTest {
         val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 100))
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
         val coordinator = MessagesCoordinator(
@@ -77,13 +77,52 @@ class MessagesCoordinatorParentHelpTest {
         coordinator.start(backgroundScope)
         runCurrent()
 
-        assertTrue(repository.observeInbox().value.threads
-            .flatMap { it.messages }
-            .none { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertTrue(coordinator.parentHelpOffers().isEmpty())
     }
 
     @Test
-    fun `existing phone reminder remains but offers are suppressed when savings become sufficient`() = runTest {
+    fun `mom message stays visible when savings are nonzero but below minimum`() = runTest {
+        val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 1))
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        val coordinator = MessagesCoordinator(
+            repository = repository,
+            weekApi = weekApi(absoluteDay = 3),
+            learningApi = learningApi(),
+            economyApi = economyApi(economyState),
+            minimumHelpBalanceRub = 100,
+            eventConfig = SecurityEventConfig(dailyProbability = 0.0),
+        )
+
+        coordinator.start(backgroundScope)
+        runCurrent()
+
+        assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertTrue(coordinator.parentHelpOffers().isEmpty())
+    }
+
+    @Test
+    fun `mom message stays visible while economy has outstanding repayments`() = runTest {
+        val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 0, debtRub = 1))
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        val coordinator = MessagesCoordinator(
+            repository = repository,
+            weekApi = weekApi(absoluteDay = 3),
+            learningApi = learningApi(),
+            economyApi = economyApi(economyState),
+            minimumHelpBalanceRub = 100,
+            eventConfig = SecurityEventConfig(dailyProbability = 0.0),
+        )
+
+        coordinator.start(backgroundScope)
+        runCurrent()
+
+        assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
+        assertTrue(coordinator.parentHelpOffers().isEmpty())
+    }
+
+    @Test
+    fun `mom message stays in place when savings become nonzero`() = runTest {
         val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 0))
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
         val coordinator = MessagesCoordinator(
@@ -111,6 +150,22 @@ class MessagesCoordinatorParentHelpTest {
     }
 
     @Test
+    fun `help request is rejected when savings remain in the piggy bank`() = runTest {
+        val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 1))
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        val coordinator = MessagesCoordinator(
+            repository = repository,
+            weekApi = weekApi(absoluteDay = 3),
+            learningApi = learningApi(),
+            economyApi = economyApi(economyState),
+            minimumHelpBalanceRub = 100,
+            eventConfig = SecurityEventConfig(dailyProbability = 0.0),
+        )
+
+        assertTrue(coordinator.requestParentHelp("offer") is ParentHelpRequestResult.Rejected)
+    }
+
+    @Test
     fun `accepting help replaces the offer message with a repayment message from mom`() = runTest {
         val economyState = MutableStateFlow(economyState(availableRub = 20, savingsRub = 0))
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
@@ -129,7 +184,7 @@ class MessagesCoordinatorParentHelpTest {
             minimumHelpBalanceRub = 100,
             eventConfig = SecurityEventConfig(dailyProbability = 0.0),
         )
-        repository.addParentHelpReminder(absoluteDay = 3)
+        repository.upsertParentHelpMessage(absoluteDay = 3, activeHelp = null)
 
         coordinator.requestParentHelp("offer")
 
@@ -165,15 +220,12 @@ class MessagesCoordinatorParentHelpTest {
             paymentsRemaining = 2,
         )
         activeHelp.value = help
-        repository.removeParentHelpReminder()
-        repository.addParentHelpRepaymentMessage(absoluteDay = 3)
-        economyState.value = economyState(availableRub = 15, savingsRub = 0)
+        economyState.value = economyState(availableRub = 15, savingsRub = 0, debtRub = 110)
         runCurrent()
         assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_REPAYMENT })
 
         activeHelp.value = null
-        repository.removeParentHelpRepaymentMessage()
-        economyState.value = economyState(availableRub = 10, savingsRub = 0)
+        economyState.value = economyState(availableRub = 10, savingsRub = 0, debtRub = 0)
         runCurrent()
 
         assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
@@ -225,10 +277,10 @@ class MessagesCoordinatorParentHelpTest {
         override suspend fun resetProfile(profileId: String) = error("Unused")
     }
 
-    private fun economyState(availableRub: Long, savingsRub: Long) = EconomyState(
+    private fun economyState(availableRub: Long, savingsRub: Long, debtRub: Long = 0) = EconomyState(
         availableRub = availableRub,
         savingsRub = savingsRub,
-        debtRub = 0,
+        debtRub = debtRub,
         periodicIncome = PeriodicIncome(amountRub = 1, periodMillis = 1, nextAtMillis = 1),
     )
 

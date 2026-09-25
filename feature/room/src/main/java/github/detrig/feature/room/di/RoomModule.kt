@@ -17,6 +17,7 @@ import github.detrig.feature.room.domain.interactor.LoadActiveSavingsGoalInterac
 import github.detrig.feature.room.domain.interactor.ReconcileSavingsLearningInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
 import github.detrig.feature.room.domain.interactor.PurchaseSavingsGoalInteractor
@@ -33,7 +34,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     private val repository by lazy {
         RoomRepositoryImpl(
             RoomZoneCatalog(), dependencies.gameStateApi(), dependencies.economyApi(), dependencies.weekApi(),
-            dependencies.planningApi(),
+            dependencies.planningApi(), minimumProductPriceRub,
         )
     }
     private val purchaseSavingsGoal by lazy { PurchaseSavingsGoalInteractor(repository) }
@@ -57,13 +58,17 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     private val reconcileSavingsLearning by lazy { ReconcileSavingsLearningInteractor(dependencies.savingsApi()) }
     private val saveZoneAsGoal by lazy { SaveZoneAsSavingsGoalInteractor(repository, dependencies.savingsApi()) }
     private val loadParentHelp by lazy { LoadParentHelpInteractor(repository) }
+    private val requestParentHelp by lazy { RequestParentHelpInteractor(repository) }
+    private val parentHelpPrompt by lazy {
+        github.detrig.feature.room.data.local.ParentHelpPromptStorage(dependencies.housePreferences())
+    }
     private val endWeekEarlyWithParentHelp by lazy { EndWeekEarlyWithParentHelpInteractor(repository) }
     private val loadImpulseWish by lazy { LoadRoomImpulseWishInteractor(dependencies.impulseWishSource()) }
 
     override fun getRoomViewModel() = RoomViewModel(
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
-        loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp,
-        endWeekEarlyWithParentHelp, minimumProductPriceRub, loadImpulseWish, router, positions, onboarding,
+        loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
+        endWeekEarlyWithParentHelp, parentHelpPrompt, minimumProductPriceRub, loadImpulseWish, router, positions, onboarding,
         dependencies.gameAudio(),
     )
 }

@@ -15,6 +15,7 @@ import github.detrig.feature.room.domain.interactor.LoadActiveSavingsGoalInterac
 import github.detrig.feature.room.domain.interactor.ReconcileSavingsLearningInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
@@ -26,6 +27,8 @@ import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
+import github.detrig.feature.room.domain.model.shouldOfferAutomaticParentHelp
 import github.detrig.feature.room.presentation.model.HouseLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,6 +37,8 @@ import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.economy.domain.LowBalanceRecoveryAction
 import github.detrig.feature.economy.domain.lowBalanceRecoveryAction
+import github.detrig.feature.economy.domain.canOfferParentHelp
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.week.domain.EndDayResult
 import github.detrig.feature.week.domain.EarlyWeekEndResult
 import github.detrig.feature.economy.domain.SavingsGoalProgress
@@ -50,7 +55,9 @@ internal class RoomViewModel(
     private val loadActiveSavingsGoal: LoadActiveSavingsGoalInteractor,
     private val reconcileSavingsLearning: ReconcileSavingsLearningInteractor,
     private val loadParentHelpInteractor: LoadParentHelpInteractor,
+    private val requestParentHelpInteractor: RequestParentHelpInteractor,
     private val endWeekEarlyWithParentHelp: EndWeekEarlyWithParentHelpInteractor,
+    private val parentHelpPromptRepository: ParentHelpPromptRepository,
     private val minimumProductPriceRub: Long,
     private val loadRoomImpulseWish: LoadRoomImpulseWishInteractor,
     private val router: RoomRouter,
@@ -62,6 +69,7 @@ internal class RoomViewModel(
     private var buyJob: Job? = null
     private var sleepJob: Job? = null
     private var savePlanJob: Job? = null
+    private var parentHelpJob: Job? = null
     private var lowBalanceJob: Job? = null
     private var onboardingRefreshJob: Job? = null
     private var impulseWishJob: Job? = null
@@ -111,6 +119,24 @@ internal class RoomViewModel(
             RoomViewEvent.DismissSavingsRecoveryPrompt -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(savingsRecoveryPrompt = null))
             }
+            is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
+            RoomViewEvent.ParentHelpDialogShown -> nullableState<RoomViewState.Content>()?.let {
+                if (it.parentHelpDialog != null) parentHelpPromptRepository.markShownInWeek(it.progress.weekNumber)
+            }
+            RoomViewEvent.CloseParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
+                parentHelpPromptRepository.markShownInWeek(it.progress.weekNumber)
+                updateState(it.copy(
+                    parentHelpDialog = null,
+                    parentHelpPhonePrompt = if (it.parentHelpDialog?.activeHelp == null) {
+                        ParentHelpPhonePromptState
+                    } else {
+                        null
+                    },
+                ))
+            }
+            RoomViewEvent.CloseParentHelpPhonePrompt -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(parentHelpPhonePrompt = null))
+            }
             RoomViewEvent.CloseAllowanceNotice -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(allowanceNotice = null))
             }
@@ -132,6 +158,9 @@ internal class RoomViewModel(
             is RoomViewEvent.FirstRunDepositSelected -> selectFirstDeposit(viewEvent.depositNow)
             RoomViewEvent.Resumed -> {
                 refreshFirstRunOnboarding()
+                nullableState<RoomViewState.Content>()?.let { content ->
+                    handleLowBalance(content.progress)
+                }
             }
             RoomViewEvent.Paused -> Unit
             RoomViewEvent.SavePlanClicked -> savePlan()
@@ -239,6 +268,17 @@ internal class RoomViewModel(
                                 )
                             },
                             isAchievementsVisible = current?.isAchievementsVisible ?: false,
+                            parentHelpDialog = current?.parentHelpDialog?.takeIf { dialog ->
+                                dialog.activeHelp != null || canOfferParentHelp(
+                                    availableRub = roomData.progress.balanceRub.toLong(),
+                                    savingsRub = roomData.progress.savingsRub,
+                                    debtRub = roomData.progress.debtRub,
+                                    hasActiveParentHelp = false,
+                                    minimumRequiredBalanceRub = minimumProductPriceRub,
+                                )
+                            },
+                            isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
+                            parentHelpPhonePrompt = current?.parentHelpPhonePrompt,
                             savingsRecoveryPrompt = current?.savingsRecoveryPrompt,
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
@@ -305,6 +345,7 @@ internal class RoomViewModel(
             updateState(content.copy(onboarding = onboardingUiState()))
             if (step == FirstRunOnboardingStep.COMPLETED) {
                 loadImpulseWishForDay(content.progress.absoluteDay)
+                handleLowBalance(content.progress)
             }
         }
     }
@@ -740,6 +781,34 @@ internal class RoomViewModel(
         updateState(content.copy(isPlanSummaryVisible = true))
     }
 
+    private fun requestParentHelp(offerId: String) {
+        if (parentHelpJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.parentHelpDialog == null || content.isRequestingParentHelp) return
+        updateState(content.copy(isRequestingParentHelp = true))
+        parentHelpJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let { latest ->
+                    updateState(latest.copy(isRequestingParentHelp = false))
+                }
+                true
+            },
+        ) {
+            val result = requestParentHelpInteractor(offerId)
+            val activeHelp = when (result) {
+                is ParentHelpRequestResult.Accepted -> result.help
+                is ParentHelpRequestResult.AlreadyActive -> result.help
+                is ParentHelpRequestResult.Rejected -> loadParentHelpInteractor()
+            }
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    parentHelpDialog = latest.parentHelpDialog?.copy(activeHelp = activeHelp),
+                    isRequestingParentHelp = false,
+                ))
+            }
+        }
+    }
+
     private fun handleLowBalance(progress: github.detrig.feature.room.domain.model.RoomProgress) {
         val recoveryAction = lowBalanceRecoveryAction(
             availableRub = progress.balanceRub.toLong(),
@@ -747,6 +816,8 @@ internal class RoomViewModel(
             minimumRequiredBalanceRub = minimumProductPriceRub,
         )
         if (recoveryAction == LowBalanceRecoveryAction.NONE ||
+            (recoveryAction == LowBalanceRecoveryAction.ASK_PARENTS &&
+                onboardingStep != FirstRunOnboardingStep.COMPLETED) ||
             lowBalanceJob?.isActive == true
         ) return
         lowBalanceJob = launchCoroutine(
@@ -771,7 +842,35 @@ internal class RoomViewModel(
                 return@launchCoroutine
             }
 
-            if (loadParentHelpInteractor() != null) {
+            val activeHelp = loadParentHelpInteractor()
+            if (activeHelp == null) {
+                val canOfferHelp = shouldOfferAutomaticParentHelp(
+                    onboardingCompleted = onboardingStep == FirstRunOnboardingStep.COMPLETED,
+                    availableRub = progress.balanceRub.toLong(),
+                    savingsRub = progress.savingsRub,
+                    debtRub = progress.debtRub,
+                    hasActiveParentHelp = false,
+                    minimumRequiredBalanceRub = minimumProductPriceRub,
+                    alreadyShownInWeek = parentHelpPromptRepository.wasShownInWeek(progress.weekNumber),
+                )
+                val current = nullableState<RoomViewState.Content>()
+                if (canOfferHelp &&
+                    current?.parentHelpDialog == null &&
+                    current?.earlyWeekParentHelpNotice == null
+                ) {
+                    val offers = loadParentHelpInteractor.offers()
+                    if (offers.isNotEmpty()) updateState(checkNotNull(current).copy(
+                        parentHelpDialog = ParentHelpDialogState(
+                            offers = offers,
+                            activeHelp = null,
+                            availableRub = progress.balanceRub.toLong(),
+                            savingsRub = progress.savingsRub,
+                            debtRub = progress.debtRub,
+                            minimumRequiredBalanceRub = minimumProductPriceRub,
+                        ),
+                    ))
+                }
+            } else {
                 when (val result = endWeekEarlyWithParentHelp(
                     expectedAbsoluteDay = progress.absoluteDay,
                     minimumProductPriceRub = minimumProductPriceRub,

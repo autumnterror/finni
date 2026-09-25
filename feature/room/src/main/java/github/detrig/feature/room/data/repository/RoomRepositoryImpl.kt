@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.RejectionReason
+import github.detrig.feature.economy.domain.canOfferParentHelp
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.gamestate.domain.model.MiniGameAccess
 import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
@@ -40,6 +41,7 @@ internal class RoomRepositoryImpl(
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
     private val planningApi: PlanningApi,
+    private val minimumProductPriceRub: Long,
 ) : RoomRepository {
     override fun zones(): List<RoomZoneDefinition> = catalog.zones
 
@@ -92,6 +94,16 @@ internal class RoomRepositoryImpl(
     override suspend fun parentHelp(): ParentHelpState? = economyApi.getParentHelp()
 
     override suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult {
+        val economy = economyApi.getState()
+        val activeHelp = economyApi.getParentHelp()
+        if (activeHelp == null && !canOfferParentHelp(
+                availableRub = economy.availableRub,
+                savingsRub = economy.savingsRub,
+                debtRub = economy.debtRub,
+                hasActiveParentHelp = false,
+                minimumRequiredBalanceRub = minimumProductPriceRub,
+            )
+        ) return ParentHelpRequestResult.Rejected(RejectionReason.PARENT_HELP_NOT_AVAILABLE, economy)
         val week = weekApi.observeState().first()
         return economyApi.requestParentHelp(
             operationId = "parent-help:${week.weekNumber}:$offerId",

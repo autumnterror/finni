@@ -2,6 +2,8 @@ package github.detrig.feature.phone.data
 
 import github.detrig.feature.phone.domain.MessageKind
 import github.detrig.feature.phone.domain.MessageSenderId
+import github.detrig.feature.phone.domain.PhoneMessage
+import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.phone.domain.SecurityEventConfig
 import github.detrig.feature.phone.domain.SecurityResponseChoice
 import github.detrig.feature.phone.domain.StoredMessagesState
@@ -126,36 +128,26 @@ class PersistentMessagesRepositoryTest {
     }
 
     @Test
-    fun parentHelpReminderComesFromMomAndIsRemovedAfterHelpIsAccepted() = runTest {
+    fun parentHelpMessageStaysInMomThreadAfterBeingRead() = runTest {
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
 
-        repository.addParentHelpReminder(absoluteDay = 7)
-        repository.addParentHelpReminder(absoluteDay = 8)
+        repository.upsertParentHelpMessage(absoluteDay = 7, activeHelp = null)
+        repository.markThreadRead(MessageSenderId.MOM)
+        repository.upsertParentHelpMessage(absoluteDay = 8, activeHelp = null)
 
         val reminder = repository.observeInbox().value.threads
             .single { it.senderId == MessageSenderId.MOM }
             .messages.single()
         assertEquals(MessageSenderId.MOM, reminder.senderId)
         assertEquals(7L, reminder.absoluteDay)
-
-        repository.removeParentHelpReminder()
-
-        assertTrue(repository.observeInbox().value.threads
-            .single { it.senderId == MessageSenderId.MOM }
-            .messages.isEmpty())
-
-        repository.addParentHelpReminder(absoluteDay = 9)
-        val renewedReminder = repository.observeInbox().value.threads
-            .single { it.senderId == MessageSenderId.MOM }
-            .messages.single()
-        assertEquals(MessageKind.PARENT_HELP_OFFER, renewedReminder.kind)
-        assertEquals(9L, renewedReminder.absoluteDay)
+        assertEquals(MessageKind.PARENT_HELP_OFFER, reminder.kind)
+        assertTrue(reminder.isRead)
     }
 
     @Test
     fun parentHelpReminderSurvivesDailyMessageCleanup() = runTest {
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
-        repository.addParentHelpReminder(absoluteDay = 7)
+        repository.upsertParentHelpMessage(absoluteDay = 7, activeHelp = null)
 
         repository.ensureEventForDay(8, SecurityEventConfig(dailyProbability = 0.0))
 
@@ -166,12 +158,14 @@ class PersistentMessagesRepositoryTest {
     }
 
     @Test
-    fun activeParentHelpMessageSurvivesUntilRepaymentIsClosed() = runTest {
+    fun parentHelpMessageChangesInPlaceAsRepaymentsChange() = runTest {
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
-        repository.addParentHelpReminder(absoluteDay = 7)
-        repository.removeParentHelpReminder()
-        repository.addParentHelpRepaymentMessage(absoluteDay = 7)
-        repository.addParentHelpRepaymentMessage(absoluteDay = 8)
+        val activeHelp = ParentHelpState("offer", 100, 110, 110, 2)
+        repository.upsertParentHelpMessage(absoluteDay = 7, activeHelp = null)
+        val originalId = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.single().id
+        repository.upsertParentHelpMessage(absoluteDay = 8, activeHelp = activeHelp)
 
         repository.ensureEventForDay(8, SecurityEventConfig(dailyProbability = 0.0))
 
@@ -179,12 +173,51 @@ class PersistentMessagesRepositoryTest {
             .single { it.senderId == MessageSenderId.MOM }
             .messages.single()
         assertEquals(MessageKind.PARENT_HELP_REPAYMENT, message.kind)
-        assertEquals(7L, message.absoluteDay)
+        assertEquals(originalId, message.id)
+        assertEquals(8L, message.absoluteDay)
+        assertEquals("2|110", message.payload)
 
-        repository.removeParentHelpRepaymentMessage()
-        assertTrue(repository.observeInbox().value.threads
+        repository.upsertParentHelpMessage(absoluteDay = 9, activeHelp = activeHelp.copy(
+            remainingRub = 55,
+            paymentsRemaining = 1,
+        ))
+        val updatedMessage = repository.observeInbox().value.threads
             .single { it.senderId == MessageSenderId.MOM }
-            .messages.isEmpty())
+            .messages.single()
+        assertEquals(9L, updatedMessage.absoluteDay)
+        assertEquals("1|55", updatedMessage.payload)
+
+        repository.upsertParentHelpMessage(absoluteDay = 10, activeHelp = null)
+        val nextOffer = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.single()
+        assertEquals(originalId, nextOffer.id)
+        assertEquals(MessageKind.PARENT_HELP_OFFER, nextOffer.kind)
+    }
+
+    @Test
+    fun oldRepaymentMessageIsMigratedToThePermanentMomMessage() = runTest {
+        val store = InMemoryMessagesStore()
+        store.save(StoredMessagesState(messages = listOf(PhoneMessage(
+            id = "parent-help-repayment",
+            eventId = "parent-help-repayment",
+            senderId = MessageSenderId.MOM,
+            absoluteDay = 7,
+            kind = MessageKind.PARENT_HELP_REPAYMENT,
+            payload = "2|110",
+        ))))
+        val repository = PersistentMessagesRepository(store)
+
+        repository.upsertParentHelpMessage(
+            absoluteDay = 8,
+            activeHelp = ParentHelpState("offer", 100, 110, 110, 2),
+        )
+
+        val message = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.single()
+        assertEquals("parent-help-reminder", message.id)
+        assertEquals(MessageKind.PARENT_HELP_REPAYMENT, message.kind)
     }
 
     private class InMemoryMessagesStore : MessagesStore {

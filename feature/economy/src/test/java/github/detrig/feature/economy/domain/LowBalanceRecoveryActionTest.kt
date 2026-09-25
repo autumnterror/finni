@@ -28,4 +28,22 @@ class LowBalanceRecoveryActionTest {
             lowBalanceRecoveryAction(availableRub = 100, savingsRub = 0, minimumRequiredBalanceRub = 100),
         )
     }
+
+    @Test
+    fun `offers parent help only with an empty piggy bank low wallet and no repayments`() {
+        assertEquals(
+            true,
+            canOfferParentHelp(
+                availableRub = 99,
+                savingsRub = 0,
+                debtRub = 0,
+                hasActiveParentHelp = false,
+                minimumRequiredBalanceRub = 100,
+            ),
+        )
+        assertEquals(false, canOfferParentHelp(20, 1, 0, false, 100))
+        assertEquals(false, canOfferParentHelp(100, 0, 0, false, 100))
+        assertEquals(false, canOfferParentHelp(20, 0, 1, false, 100))
+        assertEquals(false, canOfferParentHelp(20, 0, 0, true, 100))
+    }
 }

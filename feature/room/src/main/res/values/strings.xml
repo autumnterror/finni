@@ -55,8 +55,13 @@
     <string name="parent_help_active_schedule">Осталось выплат: %2$d. Следующая выплата: %1$d ₽.</string>
     <string name="parent_help_payoff_now">Закрыть выплаты: %1$d ₽ с учётом доплаты</string>
     <string name="parent_help_payoff_unavailable">Для полной выплаты нужно %1$d ₽. В кошельке сейчас %2$d ₽.</string>
+    <string name="parent_help_phone_prompt">Ты можешь получить помощь через телефон, поговори с мамой</string>
+    <string name="parent_help_unavailable_payments">Новые выплаты станут доступны после завершения текущих.</string>
+    <string name="parent_help_unavailable_savings">Пока в копилке есть деньги, помощь от родителей недоступна.</string>
+    <string name="parent_help_unavailable_wallet">Сейчас денег в кошельке хватает на важную покупку.</string>
+    <string name="parent_help_unavailable_other">Сейчас помощь от родителей недоступна.</string>
     <string name="parent_help_money">%1$d ₽</string>
-    <string name="parent_help_close">Понятно</string>
+    <string name="parent_help_close">Закрыть</string>
     <string name="savings_recovery_prompt">В копилке есть деньги на важные расходы. Давай сначала посмотрим на накопления и переведём нужную сумму в кошелёк.</string>
     <string name="savings_recovery_open">Открыть копилку</string>
     <string name="savings_recovery_later">Позже</string>

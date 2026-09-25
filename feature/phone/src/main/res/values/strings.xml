@@ -12,8 +12,9 @@
     <string name="messages_bank_code">Никому не сообщайте этот код. Код: %1$s</string>
     <string name="messages_code_request">сообщи код</string>
     <string name="messages_unknown_link">Вам подарок! Откройте ссылку: %1$s</string>
-    <string name="messages_parent_help_offer">Родители могут помочь с важной покупкой. Нажми, чтобы посмотреть условия.</string>
-    <string name="messages_parent_help_repayment">Помощь получена. Посмотри, сколько осталось выплат, и при желании выплати всё сразу.</string>
+    <string name="messages_parent_help_offer">Мама рядом. Здесь можно посмотреть условия помощи для важной покупки.</string>
+    <string name="messages_parent_help_repayment">Помощь получена. Осталось выплат: %1$d. Осталось выплатить: %2$d ₽ с доплатой. Нажми, чтобы посмотреть варианты.</string>
+    <string name="messages_parent_help_repayment_fallback">Помощь получена. Нажми, чтобы посмотреть оставшиеся выплаты.</string>
     <string name="messages_parent_help_title">Помощь от родителей</string>
     <string name="messages_parent_help_weeks">Вернуть за %1$d нед.</string>
     <string name="messages_parent_help_received">Сейчас придёт: %1$d ₽</string>
