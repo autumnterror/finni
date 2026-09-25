@@ -9,6 +9,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import github.detrig.core.database.RoomTransactionRunner
+import github.detrig.core.audio.AndroidGameAudio
 import github.detrig.core.infrastructure.preferences.SharedStorage
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.minigames.fishing.api.*
@@ -21,17 +22,28 @@ import kotlinx.serialization.json.Json
 
 /** Только debug: полная игра в отдельном сохранении, без покупки и изменения общего профиля. */
 class FishingSandboxActivity : ComponentActivity() {
+    private val dependencies by lazy { SandboxDependencies(applicationContext) }
+
+    override fun onStart() {
+        super.onStart()
+        dependencies.gameAudio.setForeground(true)
+    }
+
+    override fun onStop() {
+        dependencies.gameAudio.setForeground(false)
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dependencies = SandboxDependencies(applicationContext)
         setContent {
             FinPetTheme {
-                FishingScreen(viewModel {
+                FishingScreen(vm = viewModel {
                     dependencies.viewModel(object : FishingRouter {
                         override fun open() = Unit
                         override fun back() = finish()
                     })
-                })
+                }, gameAudio = dependencies.gameAudio)
             }
         }
     }
@@ -41,6 +53,7 @@ class FishingSandboxActivity : ComponentActivity() {
 abstract class FishingSandboxDatabase : RoomDatabase() { abstract fun fishingDao(): FishingDao }
 
 private class SandboxDependencies(context: Context) {
+    val gameAudio = AndroidGameAudio(context)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val config = json.decodeFromString<FishingConfig>(context.assets.open("fishing_balance.json").bufferedReader().use { it.readText() }).validate()
     private val engine = FishingEngine(config)

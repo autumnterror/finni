@@ -23,6 +23,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.*
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.core.audio.GameAudio
+import github.detrig.core.audio.SilentGameAudio
+import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.minigames.fishing.FishingFeature
 import github.detrig.minigames.fishing.R
@@ -32,6 +36,7 @@ import github.detrig.minigames.fishing.domain.*
 internal fun FishingScreen(
     vm: FishingViewModel = viewModel { FishingFeature.component().viewModel() },
     petApi: PetApi? = null,
+    gameAudio: GameAudio = SilentGameAudio,
 ) {
     val petBitmap = petApi?.rememberCurrentAppearanceBitmap(PET_BITMAP_SIZE_PX)
     val state by vm.state().observeAsState(FishingViewState())
@@ -96,7 +101,7 @@ internal fun FishingScreen(
                 else -> {
                     val loadedArt = requireNotNull(art)
                     when (state.page) {
-                        FishingPage.GAME -> FishingGame(state, loadedArt, petBitmap, vm, action)
+                        FishingPage.GAME -> FishingGame(state, loadedArt, petBitmap, vm, action, gameAudio)
                         FishingPage.RECORDS -> FishingRecords(state, vm.engine.config, action)
                         FishingPage.RESULTS -> FishingResults(state, petBitmap, action)
                         FishingPage.PRACTICE_INFO -> FishingPracticeInfo(state, action)
@@ -136,10 +141,12 @@ private fun FishingGame(
     petBitmap: ImageBitmap?,
     vm: FishingViewModel,
     action: (FishingViewEvent) -> Unit,
+    gameAudio: GameAudio,
 ) {
     val s = state.hud ?: return
     val preferences = state.progress?.preferences ?: FishingPreferences()
-    FishingFeedback(s, preferences, active = !s.paused && s.resumeSeconds <= 0 && state.error == null)
+    FishingFeedback(s, preferences, active = !s.paused && s.resumeSeconds <= 0 && state.error == null,
+        audio = gameAudio)
     Box(Modifier.fillMaxSize()) {
         FishingWorld(art, vm, preferences, petBitmap, Modifier.fillMaxSize().fishingInput(state, action))
         Row(Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(AppTheme.spacing.md),
@@ -248,5 +255,13 @@ internal fun FishingErrorPanel(message: Int, onRetry: () -> Unit, onExit: () -> 
                 FinPetOutlinedButton(stringResource(R.string.fishing_room), onExit, Modifier.fillMaxWidth())
             }
         }
+    }
+}
+
+@Preview(name = "Ошибка загрузки рыбалки", widthDp = 360, heightDp = 640)
+@Composable
+private fun FishingErrorPanelPreview() {
+    FinPetTheme {
+        FishingErrorPanel(R.string.fishing_loading_error, onRetry = {}, onExit = {})
     }
 }

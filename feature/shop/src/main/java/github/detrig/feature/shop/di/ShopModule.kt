@@ -35,6 +35,7 @@ internal class ShopModule(
         router = router,
         onOpenCart = onOpenCart,
         closeAfterReceipt = closeAfterReceipt,
+        gameAudio = dependencies.gameAudio(),
     )
 
     override fun cartViewModel(
@@ -50,5 +51,6 @@ internal class ShopModule(
         router = router,
         onBack = onBack,
         onCheckoutCompleted = onCheckoutCompleted,
+        gameAudio = dependencies.gameAudio(),
     )
 }

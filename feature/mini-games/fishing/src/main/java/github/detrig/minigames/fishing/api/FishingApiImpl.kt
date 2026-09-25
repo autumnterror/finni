@@ -11,7 +11,8 @@ internal class FishingApiImpl(private val router: FishingRouter) : FishingApi {
     override fun open() = router.open()
     override fun entries(): EntryHostProviderInstaller = {
         composable<FishingRoute.Home> {
-            FishingScreen(petApi = FishingFeature.component().petApi)
+            FishingScreen(petApi = FishingFeature.component().petApi,
+                gameAudio = FishingFeature.component().gameAudio)
         }
     }
 }

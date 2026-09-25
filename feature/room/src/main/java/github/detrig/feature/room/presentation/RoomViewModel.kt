@@ -2,6 +2,8 @@ package github.detrig.feature.room.presentation
 
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
+import github.detrig.core.audio.GameAudio
+import github.detrig.core.audio.SilentGameAudio
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
 import github.detrig.feature.room.domain.interactor.EndDayInteractor
@@ -48,6 +50,7 @@ internal class RoomViewModel(
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
     private val onboardingRepository: FirstRunOnboardingRepository,
+    private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
     private var buyJob: Job? = null
@@ -478,6 +481,7 @@ internal class RoomViewModel(
             try {
                 delay(800)
                 val result = endDay(expectedDay)
+                if (result is EndDayResult.Advanced) gameAudio.play(RoomAudioCues.Sleep)
                 if (result is EndDayResult.Advanced && result.allowanceGrossRub > 0) {
                     nullableState<RoomViewState.Content>()?.let { latest ->
                         updateState(latest.copy(allowanceNotice = AllowanceNoticeState(

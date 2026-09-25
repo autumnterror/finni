@@ -2,6 +2,8 @@ package github.detrig.feature.savings.presentation
 
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
+import github.detrig.core.audio.GameAudio
+import github.detrig.core.audio.SilentGameAudio
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.RejectionReason
@@ -23,6 +25,7 @@ internal class SavingsViewModel(
     private val router: SavingsRouter,
     firstRunOnboarding: Boolean,
     suggestedGoalId: String?,
+    private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<SavingsViewState, SavingsViewEvent>(
     SavingsViewState(
         starterGoals = configuration.starterGoals.prioritize(suggestedGoalId),
@@ -82,6 +85,7 @@ internal class SavingsViewModel(
         updateState { copy(busy = true, notice = null) }
         actionJob = launchCoroutine(handleAction = actionFailure()) {
             createGoal(draft)
+            gameAudio.play(SavingsAudioCues.GoalSaved)
             refreshGoal()
             updateState {
                 val isOnboarding = onboardingStep != null
@@ -107,7 +111,12 @@ internal class SavingsViewModel(
             }
             when (result) {
                 is FinancialOperationResult.Applied,
-                is FinancialOperationResult.AlreadyApplied -> updateState {
+                is FinancialOperationResult.AlreadyApplied -> {
+                    if (result is FinancialOperationResult.Applied) {
+                        gameAudio.play(if (direction == SavingsTransferDirection.DEPOSIT)
+                            SavingsAudioCues.Deposit else SavingsAudioCues.Withdrawal)
+                    }
+                    updateState {
                     val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT
                     copy(
                         busy = false,
@@ -120,6 +129,7 @@ internal class SavingsViewModel(
                             onboardingStep
                         },
                     )
+                    }
                 }
                 is FinancialOperationResult.Rejected -> updateState {
                     val isOnboardingDeposit = onboardingStep == SavingsOnboardingStep.WAITING_FOR_DEPOSIT

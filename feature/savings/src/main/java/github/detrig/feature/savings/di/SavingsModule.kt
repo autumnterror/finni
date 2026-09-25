@@ -37,5 +37,6 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
         router = router,
         firstRunOnboarding = firstRunOnboarding,
         suggestedGoalId = suggestedGoalId,
+        gameAudio = dependencies.gameAudio(),
     )
 }

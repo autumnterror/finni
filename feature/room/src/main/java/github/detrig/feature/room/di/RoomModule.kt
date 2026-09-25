@@ -21,7 +21,7 @@ import github.detrig.feature.room.domain.interactor.ProvideZeroBalanceHelpIntera
 import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
 
-internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
+internal class RoomModule(private val dependencies: RoomDependencies) : RoomComponent {
     private val positions by lazy { github.detrig.feature.room.data.local.HousePositionStorage(dependencies.housePreferences()) }
     private val onboarding by lazy {
         github.detrig.feature.room.data.local.FirstRunOnboardingStorage(dependencies.housePreferences())
@@ -56,5 +56,6 @@ internal class RoomModule(dependencies: RoomDependencies) : RoomComponent {
     override fun getRoomViewModel() = RoomViewModel(
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
         loadActiveSavingsGoal, loadParentHelp, requestParentHelp, provideZeroBalanceHelp, router, positions, onboarding,
+        dependencies.gameAudio(),
     )
 }

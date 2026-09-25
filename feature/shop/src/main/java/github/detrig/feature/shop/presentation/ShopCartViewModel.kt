@@ -2,6 +2,8 @@ package github.detrig.feature.shop.presentation
 
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
+import github.detrig.core.audio.GameAudio
+import github.detrig.core.audio.SilentGameAudio
 import github.detrig.feature.shop.api.ShopCheckoutRejection
 import github.detrig.feature.shop.api.ShopCheckoutRequest
 import github.detrig.feature.shop.api.ShopCheckoutResult
@@ -27,6 +29,7 @@ internal class ShopCartViewModel(
     private val router: ShopRouter,
     private val onBack: (() -> Unit)? = null,
     private val onCheckoutCompleted: (() -> Unit)? = null,
+    private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<ShopCartViewState, ShopCartViewEvent>(ShopCartViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
@@ -86,11 +89,13 @@ internal class ShopCartViewModel(
     private fun add(productId: ProductId) {
         if (stateData.storefront?.items?.none { it.id == productId } != false) return
         cartStore.add(storeId, productId)
+        gameAudio.play(ShopAudioCues.Select)
     }
 
     private fun removeOne(productId: ProductId) {
         if (stateData.cart.quantityOf(productId) == 0) return
         cartStore.removeOne(storeId, productId)
+        gameAudio.play(ShopAudioCues.Select)
     }
 
     private fun checkout() {
@@ -99,6 +104,7 @@ internal class ShopCartViewModel(
         if (currentState.paymentInProgress || pendingCart.isEmpty) return
         if (!currentState.canPay) {
             updateState { copy(checkoutRejection = ShopCheckoutRejection.INSUFFICIENT_FUNDS) }
+            gameAudio.play(ShopAudioCues.Rejected)
             return
         }
         val operationId = "shop-checkout:${storeId.value}:${UUID.randomUUID()}"
@@ -142,6 +148,7 @@ internal class ShopCartViewModel(
                 }
 
                 is ShopCheckoutResult.Rejected -> {
+                    gameAudio.play(ShopAudioCues.Rejected)
                     updateState {
                         copy(
                             balanceRub = result.balanceRub,

@@ -2,6 +2,8 @@ package github.detrig.feature.shop.presentation
 
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
+import github.detrig.core.audio.GameAudio
+import github.detrig.core.audio.SilentGameAudio
 import github.detrig.feature.shop.api.ShopHost
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
 import github.detrig.feature.shop.domain.ShopCartStore
@@ -23,6 +25,7 @@ internal class ShopViewModel(
     private val router: ShopRouter,
     private val onOpenCart: (() -> Unit)? = null,
     private val closeAfterReceipt: (() -> Unit)? = null,
+    private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<ShopViewState, ShopViewEvent>(ShopViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
@@ -89,12 +92,14 @@ internal class ShopViewModel(
         val storefront = stateData.storefront ?: return
         if (categoryId != null && storefront.categories.none { it.id == categoryId }) return
         updateState { copy(selectedCategoryId = categoryId) }
+        gameAudio.play(ShopAudioCues.Select)
     }
 
     private fun addProductToCart(productId: ProductId) {
         val storefront = stateData.storefront ?: return
         if (storefront.items.none { it.id == productId }) return
         cartStore.add(storeId, productId)
+        gameAudio.play(ShopAudioCues.Select)
     }
 
     private fun dismissReceipt() {
