@@ -18,11 +18,10 @@ class PlanEditorStateTest {
     }
 
     @Test fun tutorialVisitsEveryCategoryBeforeGivingControlToThePlayer() {
-        val steps = generateSequence(PlanTutorialStep.INTRODUCTION) { it.nextOrNull() }.toList()
+        val steps = generateSequence(PlanTutorialStep.MANDATORY) { it.nextOrNull() }.toList()
 
         assertEquals(
             listOf(
-                PlanTutorialStep.INTRODUCTION,
                 PlanTutorialStep.MANDATORY,
                 PlanTutorialStep.WANTS,
                 PlanTutorialStep.SAVINGS,
@@ -31,5 +30,13 @@ class PlanEditorStateTest {
             ),
             steps,
         )
+    }
+
+    @Test fun reserveSliderKeepsAllAllocationsWithinOneHundredPercent() {
+        val editor = PlanEditorState().updateReserve(40)
+
+        assertEquals(40, editor.reserve)
+        assertEquals(100, editor.total + editor.reserve)
+        assertEquals(60, editor.total)
     }
 }

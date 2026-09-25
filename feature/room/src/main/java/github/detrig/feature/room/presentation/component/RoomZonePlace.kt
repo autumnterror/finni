@@ -35,7 +35,7 @@ internal fun RoomZonePlace(
     val description = when (val access = zone.access) {
         RoomZoneAccess.Open -> stringResource(R.string.room_open)
         is RoomZoneAccess.Unavailable -> stringResource(R.string.room_from_level, access.requiredLevel)
-        is RoomZoneAccess.Buyable -> stringResource(R.string.room_buy_price, access.priceRub)
+        is RoomZoneAccess.Buyable -> stringResource(R.string.room_locked)
     }
     val title = stringResource(zone.appearance.titleRes)
     Box(modifier.testTag("room_zone_${zone.id}")

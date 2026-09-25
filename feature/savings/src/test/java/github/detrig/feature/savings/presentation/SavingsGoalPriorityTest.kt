@@ -4,7 +4,7 @@ import github.detrig.feature.savings.api.SavingsGoalDraft
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class SavingsGoalPriorityTest {
+class SavingsGoalSelectionTest {
     private val goals = listOf(
         SavingsGoalDraft("drawing", "Рисование", 200),
         SavingsGoalDraft("music", "Музыка", 350),
@@ -12,15 +12,20 @@ class SavingsGoalPriorityTest {
     )
 
     @Test
-    fun selectedGameMovesToTheFirstPosition() {
+    fun onlySelectedGameRemainsAvailable() {
         assertEquals(
-            listOf("music", "drawing", "fishing"),
-            goals.prioritize("music").map { it.id },
+            listOf("music"),
+            goals.selected("music").map { it.id },
         )
     }
 
     @Test
-    fun unknownSelectionKeepsConfiguredOrder() {
-        assertEquals(goals, goals.prioritize("unknown"))
+    fun unknownSelectionShowsNoGoals() {
+        assertEquals(emptyList<SavingsGoalDraft>(), goals.selected("unknown"))
+    }
+
+    @Test
+    fun missingSelectionShowsNoGoals() {
+        assertEquals(emptyList<SavingsGoalDraft>(), goals.selected(null))
     }
 }

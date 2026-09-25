@@ -77,7 +77,6 @@ internal data class PlanAchievementFeedback(
 )
 
 internal enum class PlanTutorialStep {
-    INTRODUCTION,
     MANDATORY,
     WANTS,
     SAVINGS,

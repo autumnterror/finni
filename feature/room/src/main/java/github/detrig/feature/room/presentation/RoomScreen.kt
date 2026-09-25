@@ -306,13 +306,18 @@ internal fun RoomScreen(
                 petName = petName,
                 petPortrait = petPortrait,
                 tutorialStep = content.planTutorialStep,
-                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
+                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(
+                    availableRub = content.progress.balanceRub.toLong(),
+                ),
                 dialogueTopInset = 0.dp,
                 onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
                 onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
                 onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
                 onPercentChanged = { category, percent ->
                     viewModel.perform(RoomViewEvent.PlanPercentChanged(category, percent))
+                },
+                onReserveChanged = { percent ->
+                    viewModel.perform(RoomViewEvent.PlanReserveChanged(percent))
                 },
                 onSave = { viewModel.perform(RoomViewEvent.SavePlanClicked) },
             )
@@ -347,7 +352,6 @@ internal fun RoomScreen(
         visibleOnboarding != null -> {
             FirstRunOnboardingDialog(
                 state = visibleOnboarding,
-                selectedZone = content.zones.firstOrNull { it.id == visibleOnboarding.suggestedGoalZoneId },
                 petName = petName,
                 petPortrait = petPortrait,
                 topInset = 0.dp,
@@ -438,7 +442,7 @@ private val spotlightSteps = setOf(
 )
 
 @Composable
-private fun PlanDialogueState.cards(): List<String> = when (this) {
+private fun PlanDialogueState.cards(availableRub: Long = 0): List<String> = when (this) {
     is PlanDialogueState.NeedsChanges -> listOf(
         when (reason) {
             PlanAdjustmentReason.MANDATORY_TOO_LOW -> stringResource(
@@ -447,11 +451,11 @@ private fun PlanDialogueState.cards(): List<String> = when (this) {
             )
             PlanAdjustmentReason.RESERVE_TOO_LOW -> stringResource(
                 R.string.plan_feedback_reserve,
-                recommendedPercent,
+                availableRub * recommendedPercent / 100,
             )
             PlanAdjustmentReason.SAVINGS_TOO_LOW -> stringResource(
                 R.string.plan_feedback_savings,
-                recommendedPercent,
+                availableRub * recommendedPercent / 100,
             )
         },
     )
@@ -469,7 +473,7 @@ private fun PlanDialoguePreview() {
             cards = PlanDialogueState.NeedsChanges(
                 reason = PlanAdjustmentReason.MANDATORY_TOO_LOW,
                 recommendedPercent = 40,
-            ).cards(),
+            ).cards(availableRub = 500),
             portrait = { modifier ->
                 Box(
                     modifier = modifier.background(AppTheme.colors.actionSecondary),

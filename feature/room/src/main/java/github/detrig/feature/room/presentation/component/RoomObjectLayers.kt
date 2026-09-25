@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -50,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
-import github.detrig.designsystem.component.FinPetCard
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.presentation.model.HouseLayout
@@ -98,9 +94,7 @@ internal fun RoomObjectLayers(
     )
     val motion = AppTheme.motion
     val touchTarget = AppTheme.sizes.preferredTouchTarget
-    val priceBadgeOffset = AppTheme.spacing.xl
     val lockSize = AppTheme.sizes.iconMedium
-    val priceBadgeOffsetPx = with(density) { priceBadgeOffset.toPx() }
     val lockSizePx = with(density) { lockSize.toPx() }
     val pressScale = remember { Animatable(1f) }
     var pressedId by remember { mutableStateOf<String?>(null) }
@@ -227,7 +221,7 @@ internal fun RoomObjectLayers(
             val accessDescription = when (val access = zone?.access) {
                 RoomZoneAccess.Open -> stringResource(R.string.room_open)
                 is RoomZoneAccess.Unavailable -> stringResource(R.string.room_from_level, access.requiredLevel)
-                is RoomZoneAccess.Buyable -> stringResource(R.string.room_buy_price, access.priceRub)
+                is RoomZoneAccess.Buyable -> stringResource(R.string.room_locked)
                 null -> null
             }
             val destination = destinations.getValue(placement.id)
@@ -286,27 +280,6 @@ internal fun RoomObjectLayers(
                 )
             }
             if (zone?.access is RoomZoneAccess.Buyable) {
-                val price = zone.access.priceRub
-                val badgeWidth = maxOf(targetWidth, AppTheme.sizes.preferredTouchTarget)
-                FinPetCard(
-                    modifier = Modifier.offset {
-                        IntOffset(
-                            (destination.center.x - with(density) { badgeWidth.toPx() } / 2f).roundToInt(),
-                            (destination.bottom - priceBadgeOffsetPx).roundToInt(),
-                        )
-                    }.width(badgeWidth),
-                    shape = AppTheme.shapes.compact,
-                    borderColor = AppTheme.colors.currencyAccent,
-                    borderWidth = AppTheme.sizes.borderThin,
-                    elevation = AppTheme.elevation.low,
-                ) {
-                    Text(
-                        text = stringResource(R.string.room_money, price),
-                        modifier = Modifier.padding(horizontal = AppTheme.spacing.xs),
-                        style = AppTheme.typography.caption,
-                        color = AppTheme.colors.textPrimary,
-                    )
-                }
                 RoomZoneLock(
                     modifier = Modifier.offset {
                         IntOffset(

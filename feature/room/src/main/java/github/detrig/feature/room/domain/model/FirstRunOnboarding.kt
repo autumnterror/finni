@@ -17,7 +17,6 @@ internal enum class FirstRunOnboardingStep {
     MONEY_EXPLANATION,
     PLAN_TRANSITION,
     PLAN,
-    PLAN_SAVED,
     GAME_DISCOVERY,
     GAME_DISCOVERY_DETAILS,
     GAME_SELECTION,
@@ -72,7 +71,6 @@ internal fun FirstRunOnboardingStep.completedChaptersForMigration(): Set<FirstRu
     FirstRunOnboardingStep.PLAN,
     -> setOf(FirstRunOnboardingChapter.INTRODUCTION_AND_FIRST_MONEY)
 
-    FirstRunOnboardingStep.PLAN_SAVED,
     FirstRunOnboardingStep.GAME_DISCOVERY,
     FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS,
     FirstRunOnboardingStep.GAME_SELECTION,
