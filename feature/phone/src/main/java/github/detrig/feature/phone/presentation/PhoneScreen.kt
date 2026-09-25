@@ -460,6 +460,10 @@ private fun PhoneAppContent(
                 onSuspiciousInteraction = { eventId, choice ->
                     onMessagesEvent(MessagesViewEvent.SuspiciousInteraction(eventId, choice))
                 },
+                onParentHelpOfferOpened = { onMessagesEvent(MessagesViewEvent.ParentHelpOfferOpened) },
+                onParentHelpAccepted = { onMessagesEvent(MessagesViewEvent.ParentHelpAccepted(it)) },
+                onParentHelpPaidOff = { onMessagesEvent(MessagesViewEvent.ParentHelpPaidOff) },
+                onParentHelpDismissed = { onMessagesEvent(MessagesViewEvent.ParentHelpDismissed) },
             )
             DEBUG_APP -> DebugMenuApp(onBack = onBack)
             else -> PhonePlaceholderApp(
@@ -485,6 +489,7 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         onBack = onBack,
         onChangeBalance = { viewModel.perform(DebugMenuViewEvent.ChangeBalance(it)) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
+        onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
     )
 }
 
@@ -494,6 +499,7 @@ private fun DebugMenuContent(
     onBack: () -> Unit,
     onChangeBalance: (Long) -> Unit,
     onResetBalance: () -> Unit,
+    onEndWeek: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -541,15 +547,29 @@ private fun DebugMenuContent(
         FinPetOutlinedButton(
             text = "Обнулить баланс",
             onClick = onResetBalance,
-            enabled = !state.isChanging && state.balanceRub > 0,
+            enabled = !state.isChanging && !state.isEndingWeek && state.balanceRub > 0,
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
+        FinPetButton(
+            text = if (state.isEndingWeek) "Завершаем неделю…" else "Завершить неделю",
+            onClick = onEndWeek,
+            enabled = !state.isChanging && !state.isEndingWeek,
+            modifier = Modifier.fillMaxWidth(),
+            style = FinPetButtonDefaults.storefrontPrimaryStyle(),
         )
         state.errorMessage?.let { message ->
             Text(
                 text = message,
                 style = AppTheme.typography.caption,
                 color = AppTheme.colors.statusCritical.accent,
+            )
+        }
+        state.statusMessage?.let { message ->
+            Text(
+                text = message,
+                style = AppTheme.typography.caption,
+                color = AppTheme.colors.storefront.onSurface,
             )
         }
     }
@@ -566,7 +586,8 @@ private fun DebugBalanceButton(
     FinPetButton(
         text = label,
         onClick = { onChangeBalance(deltaRub) },
-        enabled = !state.isChanging && (deltaRub > 0 || state.balanceRub >= -deltaRub),
+        enabled = !state.isChanging && !state.isEndingWeek &&
+            (deltaRub > 0 || state.balanceRub >= -deltaRub),
         modifier = modifier,
         style = FinPetButtonDefaults.storefrontPrimaryStyle(),
     )
@@ -765,6 +786,7 @@ private fun DebugMenuPreview() {
                 onBack = {},
                 onChangeBalance = {},
                 onResetBalance = {},
+                onEndWeek = {},
             )
         }
     }

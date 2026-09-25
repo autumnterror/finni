@@ -32,3 +32,15 @@ data class SavingsGoalDraft(
         require(targetRub > 0)
     }
 }
+
+fun interface SavingsGoalPurchaser {
+    suspend fun purchase(goal: SavingsGoal): SavingsGoalPurchaseResult
+}
+
+sealed interface SavingsGoalPurchaseResult {
+    data object Purchased : SavingsGoalPurchaseResult
+    data object AlreadyPurchased : SavingsGoalPurchaseResult
+    data class NotEnoughSavings(val missingRub: Long) : SavingsGoalPurchaseResult
+    data class LevelTooLow(val requiredLevel: Int) : SavingsGoalPurchaseResult
+    data object UnsupportedGoal : SavingsGoalPurchaseResult
+}

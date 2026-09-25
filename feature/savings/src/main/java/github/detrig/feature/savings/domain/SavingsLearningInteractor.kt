@@ -29,7 +29,9 @@ internal class SavingsLearningInteractor(
 
     suspend fun recordTransfer(operation: FinancialOperation) {
         if (operation.type != FinancialOperationType.TRANSFER_TO_SAVINGS) return
-        val goalId = operation.context.reasonId ?: return
+        val goalId = operation.context.reasonId
+            ?.takeUnless { it == UNASSIGNED_SAVINGS_ID }
+            ?: return
         val period = operation.context.metadata.period() ?: return
         record(SavingsLearning.contribution(PROFILE_ID, operation.id, goalId, operation.amountRub, period))
         val target = operation.context.metadata.field("target")?.toLongOrNull() ?: return

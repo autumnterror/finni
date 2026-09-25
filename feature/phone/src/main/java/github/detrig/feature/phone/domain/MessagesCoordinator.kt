@@ -7,11 +7,17 @@ import github.detrig.feature.learning.domain.SecurityScenario
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.economy.domain.ParentHelpOffer
+import github.detrig.feature.economy.domain.ParentHelpState
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
+import github.detrig.feature.economy.domain.LowBalanceRecoveryAction
+import github.detrig.feature.economy.domain.lowBalanceRecoveryAction
 import github.detrig.feature.phone.data.MessagesRepository
 import github.detrig.feature.week.api.WeekApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -20,6 +26,7 @@ internal class MessagesCoordinator(
     private val weekApi: WeekApi,
     private val learningApi: LearningApi,
     private val economyApi: EconomyApi,
+    private val minimumHelpBalanceRub: Long,
     private val eventConfig: SecurityEventConfig,
 ) {
     private var observationJob: Job? = null
@@ -30,15 +37,79 @@ internal class MessagesCoordinator(
             retryPendingLearningActions()
             retryPendingPenalties()
             processDay(weekApi.initialize().absoluteDay)
-            weekApi.observeState()
-                .map { it.absoluteDay }
+            combine(
+                weekApi.observeState().map { it.absoluteDay },
+                economyApi.observeState().map { it.availableRub to it.savingsRub },
+            ) { absoluteDay, balances -> absoluteDay to balances }
                 .distinctUntilChanged()
-                .collect(::processDay)
+                .collect { (absoluteDay, _) -> processDay(absoluteDay) }
         }
     }
 
     suspend fun consumeFirstRoomPrompt() {
         repository.consumeFirstRoomPrompt()
+    }
+
+    suspend fun parentHelpOffers(): List<ParentHelpOffer> {
+        val economy = economyApi.getState()
+        return if (
+            economyApi.getParentHelp() == null &&
+            lowBalanceRecoveryAction(
+                availableRub = economy.availableRub,
+                savingsRub = economy.savingsRub,
+                minimumRequiredBalanceRub = minimumHelpBalanceRub,
+            ) == LowBalanceRecoveryAction.ASK_PARENTS
+        ) {
+            economyApi.parentHelpOffers()
+        } else {
+            emptyList()
+        }
+    }
+
+    suspend fun parentHelpDialogData(): ParentHelpDialogData {
+        val economy = economyApi.getState()
+        val activeHelp = economyApi.getParentHelp()
+        val offers = if (
+            activeHelp == null && lowBalanceRecoveryAction(
+                availableRub = economy.availableRub,
+                savingsRub = economy.savingsRub,
+                minimumRequiredBalanceRub = minimumHelpBalanceRub,
+            ) == LowBalanceRecoveryAction.ASK_PARENTS
+        ) economyApi.parentHelpOffers() else emptyList()
+        return ParentHelpDialogData(offers, activeHelp, economy.availableRub)
+    }
+
+    suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult {
+        val week = weekApi.initialize()
+        val result = economyApi.requestParentHelp(
+            operationId = "phone-parent-help:${week.weekNumber}:$offerId",
+            offerId = offerId,
+        )
+        if (result is ParentHelpRequestResult.Accepted || result is ParentHelpRequestResult.AlreadyActive) {
+            repository.removeParentHelpReminder()
+            repository.addParentHelpRepaymentMessage(week.absoluteDay)
+        }
+        return result
+    }
+
+    suspend fun settleParentHelpInFull(): FinancialOperationResult {
+        val help = economyApi.getParentHelp()
+            ?: return FinancialOperationResult.Rejected(
+                reason = github.detrig.feature.economy.domain.RejectionReason.NO_ACTIVE_DEBT,
+                state = economyApi.getState(),
+            )
+        val result = economyApi.settleParentHelpInFull(
+            operationId = "phone-parent-help-payoff:${help.offerId}:${help.remainingRub}",
+            context = OperationContext(
+                reasonId = help.offerId,
+                metadata = "source=parent-help;settlement=full;amountRub=${help.remainingRub}",
+            ),
+        )
+        if (result is FinancialOperationResult.Applied || result is FinancialOperationResult.AlreadyApplied) {
+            repository.removeParentHelpReminder()
+            repository.removeParentHelpRepaymentMessage()
+        }
+        return result
     }
 
     suspend fun revealFirstGuidance(event: SecurityMessageEvent) {
@@ -88,8 +159,27 @@ internal class MessagesCoordinator(
     private suspend fun processDay(absoluteDay: Long) {
         runCatching {
             repository.ensureEventForDay(absoluteDay, eventConfig)
+            ensureParentHelpReminder(absoluteDay)
             retryPendingLearningActions()
             retryPendingPenalties()
+        }
+    }
+
+    private suspend fun ensureParentHelpReminder(absoluteDay: Long) {
+        val economy = economyApi.getState()
+        val action = lowBalanceRecoveryAction(
+            availableRub = economy.availableRub,
+            savingsRub = economy.savingsRub,
+            minimumRequiredBalanceRub = minimumHelpBalanceRub,
+        )
+        if (economyApi.getParentHelp() != null) {
+            repository.removeParentHelpReminder()
+            repository.addParentHelpRepaymentMessage(absoluteDay)
+            return
+        }
+        repository.removeParentHelpRepaymentMessage()
+        if (action == LowBalanceRecoveryAction.ASK_PARENTS && economyApi.parentHelpOffers().isNotEmpty()) {
+            repository.addParentHelpReminder(absoluteDay)
         }
     }
 

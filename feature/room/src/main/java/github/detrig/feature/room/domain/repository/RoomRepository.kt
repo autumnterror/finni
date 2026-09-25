@@ -12,6 +12,8 @@ import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.week.domain.EarlyWeekEndResult
+import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 
 internal interface RoomRepository {
     fun zones(): List<RoomZoneDefinition>
@@ -28,4 +30,5 @@ internal interface RoomRepository {
         expectedAbsoluteDay: Long,
         minimumProductPriceRub: Long,
     ): EarlyWeekEndResult
+    suspend fun buySavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult
 }

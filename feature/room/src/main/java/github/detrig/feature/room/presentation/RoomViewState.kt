@@ -12,9 +12,11 @@ import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.room.domain.model.RoomImpulseWish
 
-internal data class ParentHelpDialogState(
+data class ParentHelpDialogState(
     val offers: List<ParentHelpOffer>,
     val activeHelp: ParentHelpState?,
+    val isSubmitting: Boolean = false,
+    val availableRub: Long = 0,
 )
 
 internal data class AllowanceNoticeState(
@@ -24,6 +26,13 @@ internal data class AllowanceNoticeState(
 )
 
 internal data object EarlyWeekParentHelpNoticeState
+
+internal data object SavingsRecoveryPromptState
+
+internal data class DayTransitionNoticeState(
+    val dayOfWeek: Int,
+    val weekNumber: Long,
+)
 
 internal data class FirstRunOnboardingState(
     val step: FirstRunOnboardingStep,
@@ -116,10 +125,10 @@ internal sealed interface RoomViewState : CoreViewState {
         val weekResult: WeeklyPlanProgress? = null,
         val achievements: List<PlanAchievementFeedback> = emptyList(),
         val isAchievementsVisible: Boolean = false,
-        val parentHelpDialog: ParentHelpDialogState? = null,
-        val isRequestingParentHelp: Boolean = false,
+        val savingsRecoveryPrompt: SavingsRecoveryPromptState? = null,
         val allowanceNotice: AllowanceNoticeState? = null,
         val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
+        val dayTransitionNotice: DayTransitionNoticeState? = null,
         val impulseWish: RoomImpulseWish? = null,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),

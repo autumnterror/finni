@@ -4,6 +4,7 @@ import github.detrig.feature.planning.domain.WeeklyPlanProgress
 
 internal data class RoomProgress(
     val balanceRub: Int,
+    val savingsRub: Long = 0,
     val playerLevel: Int,
     val ownedZoneIds: Set<String>,
     val absoluteDay: Long,

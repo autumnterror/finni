@@ -39,6 +39,10 @@ interface EconomyApi {
     suspend fun getParentHelp(): ParentHelpState? = null
     suspend fun requestParentHelp(operationId: String, offerId: String): ParentHelpRequestResult =
         error("Parent help is unavailable")
+    suspend fun settleParentHelpInFull(
+        operationId: String,
+        context: OperationContext = OperationContext(),
+    ): FinancialOperationResult = error("Paying off parent help at once is unavailable")
     suspend fun getHistory(filter: HistoryFilter = HistoryFilter()): List<FinancialOperation>
     suspend fun getIncomeHistory(filter: HistoryFilter = HistoryFilter()): List<FinancialOperation>
     suspend fun getExpenseHistory(filter: HistoryFilter = HistoryFilter()): List<FinancialOperation>

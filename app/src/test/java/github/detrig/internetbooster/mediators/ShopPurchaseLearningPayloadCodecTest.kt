@@ -37,6 +37,8 @@ class ShopPurchaseLearningPayloadCodecTest {
                 eventTargetQuantity = 3,
                 eventTargetMinimumQuantity = 3,
             ),
+            mandatoryPlanRub = 70,
+            wantsPlanRub = 0,
         )
 
         assertEquals(payload, ShopPurchaseLearningPayloadCodec.decode(ShopPurchaseLearningPayloadCodec.encode(payload)))

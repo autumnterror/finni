@@ -125,6 +125,48 @@ internal class EconomyRepositoryImpl(
         )
     }
 
+    override suspend fun settleParentHelpInFull(operationId: String, context: OperationContext) = atomic {
+        val state = ensureState()
+        if (operationId.isBlank()) return@atomic FinancialOperationResult.Rejected(RejectionReason.INVALID_OPERATION_ID, state)
+        dao.getOperation(operationId)?.toDomain()?.let { existing ->
+            val expectedAmount = context.metadata?.split(';')
+                ?.firstOrNull { it.startsWith("amountRub=") }
+                ?.substringAfter('=')?.toLongOrNull()
+            return@atomic if (
+                existing.type == FinancialOperationType.DEBT_REPAYMENT &&
+                existing.context == context &&
+                expectedAmount == existing.amountRub
+            ) {
+                FinancialOperationResult.AlreadyApplied(existing, state)
+            } else {
+                FinancialOperationResult.Rejected(RejectionReason.OPERATION_ID_CONFLICT, state)
+            }
+        }
+        val help = dao.getParentHelp()?.toDomain()
+            ?: return@atomic FinancialOperationResult.Rejected(RejectionReason.NO_ACTIVE_DEBT, state)
+        val amountRub = help.remainingRub
+        if (amountRub <= 0) return@atomic FinancialOperationResult.Rejected(RejectionReason.INVALID_AMOUNT, state)
+        if (state.debtRub < amountRub) {
+            return@atomic FinancialOperationResult.Rejected(RejectionReason.AMOUNT_EXCEEDS_DEBT, state)
+        }
+        if (state.availableRub < amountRub) {
+            return@atomic FinancialOperationResult.Rejected(RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS, state)
+        }
+        val result = persistOperation(
+            id = operationId,
+            amountRub = amountRub,
+            type = FinancialOperationType.DEBT_REPAYMENT,
+            context = context,
+            before = state,
+            after = state.copy(
+                availableRub = state.availableRub - amountRub,
+                debtRub = state.debtRub - amountRub,
+            ),
+        )
+        dao.clearParentHelp()
+        result
+    }
+
     override suspend fun transferToSavings(id: String, amountRub: Long, context: OperationContext) = mutate(
         id, amountRub, FinancialOperationType.TRANSFER_TO_SAVINGS, context,
         reject = { if (it.availableRub < amountRub) RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS else null },

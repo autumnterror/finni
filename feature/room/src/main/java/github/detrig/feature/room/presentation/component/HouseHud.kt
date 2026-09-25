@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -28,7 +27,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -102,10 +100,6 @@ internal fun HouseHud(
                     transparent = true,
                     modifier = Modifier.semantics { contentDescription = balanceDescription }.testTag("house_balance"),
                 )
-                if (showDetails) {
-                    androidx.compose.foundation.layout.Spacer(Modifier.height(AppTheme.spacing.sm))
-                    HouseDayBadge(progress.weekNumber, progress.dayOfWeek, Modifier.testTag("hud_day"))
-                }
             }
         }
     }
@@ -201,30 +195,6 @@ private fun HouseNeedArtwork(icon: HouseNeedIcon, modifier: Modifier = Modifier)
                     style = Stroke(stroke * .75f),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun HouseDayBadge(week: Long, day: Int, modifier: Modifier = Modifier) {
-    val dayName = stringArrayResource(R.array.house_weekdays_short)[(day - 1).coerceIn(0, 6)]
-    FinPetCard(
-        modifier = modifier,
-        shape = AppTheme.shapes.storefrontControl,
-        containerColor = AppTheme.colors.roomBackground.copy(alpha = .62f),
-        contentColor = AppTheme.colors.onRoomBackground,
-        borderColor = AppTheme.colors.onRoomBackground.copy(alpha = .75f),
-        borderWidth = AppTheme.sizes.borderStrong,
-        elevation = AppTheme.elevation.low,
-    ) {
-        Row(
-            Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-        ) {
-            Text(dayName, style = AppTheme.typography.bodyStrong, maxLines = 1)
-            Text("·", style = AppTheme.typography.bodyStrong)
-            Text(stringResource(R.string.hud_week, week), style = AppTheme.typography.bodyStrong, maxLines = 1)
         }
     }
 }

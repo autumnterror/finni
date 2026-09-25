@@ -6,10 +6,14 @@ import androidx.compose.ui.Modifier
 import github.detrig.feature.room.presentation.RoomScreen
 import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomSpriteCache
+import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
+import github.detrig.feature.room.domain.interactor.PurchaseSavingsGoalInteractor
 
 internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
     private val resources: Resources,
+    private val purchaseSavingsGoal: PurchaseSavingsGoalInteractor,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)
@@ -20,6 +24,8 @@ internal class RoomApiImpl(
     }
 
     override fun requestZonePreview(zoneId: String) = requests.request(zoneId)
+    override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
+        purchaseSavingsGoal(goal)
     @Composable
     override fun Content(
         modifier: Modifier,

@@ -21,7 +21,13 @@ internal sealed interface SavingsNotice {
     data class TransferCompleted(val direction: SavingsTransferDirection, val amountRub: Long) : SavingsNotice
     data class Rejected(val reason: RejectionReason, val missingRub: Long = 0) : SavingsNotice
     data object GoalSaved : SavingsNotice
+    data object GoalRemoved : SavingsNotice
     data class GoalReached(val title: String) : SavingsNotice
+    data class GoalPurchased(val title: String) : SavingsNotice
+    data class GoalPurchaseRejected(
+        val missingRub: Long? = null,
+        val requiredLevel: Int? = null,
+    ) : SavingsNotice
 }
 
 internal data class SavingsViewState(

@@ -3,6 +3,7 @@ package github.detrig.feature.room.domain.interactor
 import github.detrig.feature.room.domain.repository.RoomRepository
 import github.detrig.feature.savings.api.SavingsApi
 import github.detrig.feature.savings.api.SavingsGoalDraft
+import github.detrig.feature.economy.domain.SavingsGoal
 
 internal class OpenSavingsInteractor(private val savings: SavingsApi) {
     operator fun invoke(
@@ -17,6 +18,10 @@ internal class LoadActiveSavingsGoalInteractor(private val savings: SavingsApi) 
 
 internal class ReconcileSavingsLearningInteractor(private val savings: SavingsApi) {
     suspend operator fun invoke() = savings.reconcileLearning()
+}
+
+internal class PurchaseSavingsGoalInteractor(private val repository: RoomRepository) {
+    suspend operator fun invoke(goal: SavingsGoal) = repository.buySavingsGoal(goal)
 }
 
 internal class SaveZoneAsSavingsGoalInteractor(

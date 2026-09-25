@@ -21,6 +21,7 @@ internal interface EconomyRepository {
     fun parentHelpOffers(): List<ParentHelpOffer>
     suspend fun parentHelp(): ParentHelpState?
     suspend fun requestParentHelp(operationId: String, offerId: String): ParentHelpRequestResult
+    suspend fun settleParentHelpInFull(operationId: String, context: OperationContext): FinancialOperationResult
     suspend fun history(filter: HistoryFilter): List<FinancialOperation>
     suspend fun summary(filter: HistoryFilter): FinancialSummary
     suspend fun upsertGoal(goal: SavingsGoal): SavingsGoal

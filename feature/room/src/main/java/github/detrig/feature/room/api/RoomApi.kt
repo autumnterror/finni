@@ -2,6 +2,8 @@ package github.detrig.feature.room.api
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 
 interface RoomApi {
     /** Blocks until the process-wide room sprites are ready for the first frame. */
@@ -9,6 +11,8 @@ interface RoomApi {
 
     /** Показывает обычные условия зоны при возвращении в комнату; ничего не покупает. */
     fun requestZonePreview(zoneId: String)
+
+    suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult
 
     /** Непрерывный дом размещает один переданный UI питомца в мировых координатах. */
     @Composable

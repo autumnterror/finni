@@ -7,6 +7,9 @@ import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.PlanActualOperation
 import github.detrig.feature.savings.api.SavingsGoalDraft
+import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
+import github.detrig.feature.savings.api.SavingsGoalPurchaser
+import github.detrig.core.database.RoomTransactionRunner
 
 internal class CreateSavingsGoalInteractor(
     private val economy: EconomyApi,
@@ -30,11 +33,12 @@ internal class TransferToSavingsInteractor(
     private val planning: PlanningApi,
     private val learning: SavingsLearningInteractor,
 ) {
-    suspend operator fun invoke(operationId: String, goalId: String, amountRub: Long): FinancialOperationResult {
+    suspend operator fun invoke(operationId: String, goalId: String?, amountRub: Long): FinancialOperationResult {
         val currentWeek = learning.currentWeek()
-        val target = economy.getGoals().firstOrNull { it.id == goalId }?.targetRub
+        val target = goalId?.let { id -> economy.getGoals().firstOrNull { it.id == id }?.targetRub }
         val previous = economy.getSavingsHistory().firstOrNull { it.id == operationId }
-        val originalContext = previous?.context?.takeIf { it.reasonId == goalId }
+        val reasonId = goalId ?: UNASSIGNED_SAVINGS_ID
+        val originalContext = previous?.context?.takeIf { it.reasonId == reasonId }
         val operationWeek = originalContext?.metadata?.split(';')
             ?.firstOrNull { it.startsWith("week=") }
             ?.substringAfter('=')?.toLongOrNull() ?: currentWeek
@@ -42,8 +46,8 @@ internal class TransferToSavingsInteractor(
             operationId = operationId,
             amountRub = amountRub,
             context = originalContext ?: OperationContext(
-                reasonId = goalId,
-                metadata = "source=savings-goal;week=$currentWeek;target=${target ?: 0}",
+                reasonId = reasonId,
+                metadata = "source=${if (goalId == null) "savings" else "savings-goal"};week=$currentWeek;target=${target ?: 0}",
             ),
         )
         if (result is FinancialOperationResult.Applied || result is FinancialOperationResult.AlreadyApplied) {
@@ -56,20 +60,69 @@ internal class TransferToSavingsInteractor(
                     ),
                 )
             }
-            learning.recordTransfer(when (result) {
-                is FinancialOperationResult.Applied -> result.operation
-                is FinancialOperationResult.AlreadyApplied -> result.operation
-            })
+            if (goalId != null) {
+                learning.recordTransfer(when (result) {
+                    is FinancialOperationResult.Applied -> result.operation
+                    is FinancialOperationResult.AlreadyApplied -> result.operation
+                })
+            }
         }
         return result
     }
 }
 
-internal class TransferFromSavingsInteractor(private val economy: EconomyApi) {
-    suspend operator fun invoke(operationId: String, goalId: String, amountRub: Long): FinancialOperationResult =
-        economy.transferFromSavings(
+internal class TransferFromSavingsInteractor(
+    private val economy: EconomyApi,
+    private val planning: PlanningApi,
+    private val learning: SavingsLearningInteractor,
+) {
+    suspend operator fun invoke(operationId: String, goalId: String?, amountRub: Long): FinancialOperationResult {
+        val previous = economy.getSavingsHistory().firstOrNull { it.id == operationId }
+        val reasonId = goalId ?: UNASSIGNED_SAVINGS_ID
+        val originalContext = previous?.context?.takeIf { it.reasonId == reasonId }
+        val operationWeek = originalContext?.metadata?.weekNumber() ?: learning.currentWeek()
+        val result = economy.transferFromSavings(
             operationId = operationId,
             amountRub = amountRub,
-            context = OperationContext(reasonId = goalId, metadata = "source=savings-goal"),
+            context = originalContext ?: OperationContext(
+                reasonId = reasonId,
+                metadata = "source=${if (goalId == null) "savings" else "savings-goal"};week=$operationWeek",
+            ),
         )
+        if (result is FinancialOperationResult.Applied || result is FinancialOperationResult.AlreadyApplied) {
+            if (planning.getPlanProgress(operationWeek) != null) {
+                planning.recordActual(
+                    PlanActualOperation.SavingsWithdrawal(
+                        operationId = operationId,
+                        weekNumber = operationWeek,
+                        amountRub = amountRub,
+                    ),
+                )
+            }
+        }
+        return result
+    }
+
+    private fun String?.weekNumber(): Long? = this?.split(';')
+        ?.firstOrNull { it.startsWith("week=") }
+        ?.substringAfter('=')?.toLongOrNull()
+}
+
+internal const val UNASSIGNED_SAVINGS_ID = "unassigned-savings"
+
+internal class PurchaseSavingsGoalInteractor(
+    private val economy: EconomyApi,
+    private val purchaser: SavingsGoalPurchaser,
+    private val transactionRunner: RoomTransactionRunner,
+) {
+    suspend operator fun invoke(goal: SavingsGoal): SavingsGoalPurchaseResult =
+        transactionRunner.runInTransaction {
+            val result = purchaser.purchase(goal)
+            if (result == SavingsGoalPurchaseResult.Purchased ||
+                result == SavingsGoalPurchaseResult.AlreadyPurchased
+            ) {
+                economy.deleteGoal(goal.id)
+            }
+            result
+        }
 }

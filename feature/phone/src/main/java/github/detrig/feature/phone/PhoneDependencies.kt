@@ -21,4 +21,5 @@ interface PhoneDependencies {
     fun learningApi(): LearningApi
     fun messagesStorage(): PhoneMessagesStorage
     fun dailySecurityEventProbability(): Double
+    fun minimumHelpBalanceRub(): Long
 }

@@ -217,11 +217,26 @@ internal class ShopLearningCoordinator(
                 },
             )
         }
+        val impulseWishProductId = event
+            ?.takeIf { it.type == ShopDecisionEventType.IMPULSE_WISH }
+            ?.productId
+        val planActuals = classifyShopPlanActuals(
+            lines = pricedLines.map { line ->
+                ShopPlanLine(
+                    productId = line.item.id,
+                    isFood = line.item is FoodItem,
+                    totalRub = line.lineTotalRub,
+                )
+            },
+            impulseWishProductId = impulseWishProductId,
+        )
         return ShopPurchaseLearningPayload(
             gamePeriod = week.weekNumber,
             sourceOperationId = sourceOperationId,
             standardPurchase = standardContext,
             eventDecision = eventContext,
+            mandatoryPlanRub = planActuals.mandatoryRub,
+            wantsPlanRub = planActuals.wantsRub,
         )
     }
 
@@ -247,21 +262,20 @@ internal class ShopLearningCoordinator(
 
     private suspend fun recordPlanActuals(payload: ShopPurchaseLearningPayload) {
         if (planningApi.getPlanProgress(payload.gamePeriod) == null) return
-        val context = payload.standardPurchase
-        if (context.requiredFoodCostRub > 0) {
+        if (payload.mandatoryPlanRub > 0) {
             recordPlanActual(
                 operationId = "${payload.sourceOperationId}:mandatory",
                 weekNumber = payload.gamePeriod,
                 category = PlanCategory.MANDATORY,
-                amountRub = context.requiredFoodCostRub,
+                amountRub = payload.mandatoryPlanRub,
             )
         }
-        if (context.optionalPurchaseRub > 0) {
+        if (payload.wantsPlanRub > 0) {
             recordPlanActual(
                 operationId = "${payload.sourceOperationId}:optional",
                 weekNumber = payload.gamePeriod,
                 category = PlanCategory.WANTS,
-                amountRub = context.optionalPurchaseRub,
+                amountRub = payload.wantsPlanRub,
             )
         }
     }

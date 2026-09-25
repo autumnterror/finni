@@ -47,13 +47,19 @@
     <string name="parent_help_get_now">Сейчас придёт</string>
     <string name="parent_help_return_total">Всего вернуть</string>
     <string name="parent_help_extra">На %1$d ₽ больше, чем пришло</string>
+    <string name="parent_help_rate">Доплата: %1$d%% от полученной суммы</string>
     <string name="parent_help_weekly">Каждую неделю: %1$d ₽</string>
     <string name="parent_help_choose">Получить %1$d ₽</string>
     <string name="parent_help_active">Помощь уже выбрана.</string>
     <string name="parent_help_remaining">Осталось вернуть</string>
-    <string name="parent_help_active_schedule">Следующее удержание: %1$d ₽. Недель осталось: %2$d.</string>
+    <string name="parent_help_active_schedule">Осталось выплат: %2$d. Следующая выплата: %1$d ₽.</string>
+    <string name="parent_help_payoff_now">Закрыть выплаты: %1$d ₽ с учётом доплаты</string>
+    <string name="parent_help_payoff_unavailable">Для полной выплаты нужно %1$d ₽. В кошельке сейчас %2$d ₽.</string>
     <string name="parent_help_money">%1$d ₽</string>
     <string name="parent_help_close">Понятно</string>
+    <string name="savings_recovery_prompt">В копилке есть деньги на важные расходы. Давай сначала посмотрим на накопления и переведём нужную сумму в кошелёк.</string>
+    <string name="savings_recovery_open">Открыть копилку</string>
+    <string name="savings_recovery_later">Позже</string>
     <string name="allowance_notice_title">Карманные деньги</string>
     <string name="allowance_notice_received">Пришли карманные деньги: %1$d ₽.</string>
     <string name="allowance_notice_first_received">Получено: %1$d ₽</string>
@@ -85,6 +91,14 @@
     <string-array name="house_weekdays_short">
         <item>Пн</item><item>Вт</item><item>Ср</item><item>Чт</item><item>Пт</item><item>Сб</item><item>Вс</item>
     </string-array>
+    <string-array name="house_weekdays_full">
+        <item>Понедельник</item><item>Вторник</item><item>Среда</item><item>Четверг</item><item>Пятница</item><item>Суббота</item><item>Воскресенье</item>
+    </string-array>
+    <string name="day_transition_title">%1$s - неделя %2$d</string>
+    <string name="day_transition_week_title">Неделя %1$d</string>
+    <string name="room_sleep_hungry_title">Сначала покорми питомца</string>
+    <string name="room_sleep_hungry_message">Питомец голоден и пока не может уснуть.</string>
+    <string name="room_sleep_hungry_ok">Хорошо</string>
     <string name="plan_not_ready">Сначала сохрани план на эту неделю.</string>
     <string name="plan_save_error">Не получилось сохранить план. Попробуй ещё раз.</string>
     <string name="plan_title">План на неделю %1$d</string>
@@ -97,8 +111,7 @@
     <string name="plan_saving">Сохраняем…</string>
     <string name="plan_progress_title">План · неделя %1$d</string>
     <string name="plan_result_title">Итоги недели %1$d</string>
-    <string name="plan_progress_description">Серый фон — запланированная сумма. Цветная часть — уже потрачено или отложено.</string>
-    <string name="plan_progress_reserve">Оставлено в запасе: %1$d ₽</string>
+    <string name="plan_progress_reserve">Должно остаться: %1$d ₽</string>
     <string name="plan_result_reserve">Финансовый запас: %1$d ₽ из %2$d ₽</string>
     <string name="plan_result_all_matched">Ты отлично справился! Получилось придерживаться плана во всех пунктах. Продолжай так же на следующей неделе.</string>
     <string name="plan_result_partially_matched">Многое получилось! На следующей неделе обрати внимание на: %1$s.</string>

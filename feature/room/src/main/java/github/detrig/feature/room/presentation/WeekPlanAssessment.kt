@@ -35,18 +35,21 @@ internal data class WeekPlanAssessment(
 }
 
 internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
-    val actualReserveRub = (plan.availableRub - categories.sumOf { it.actualRub }).coerceAtLeast(0)
+    val categorizedActualRub = categories.sumOf { it.actualRub }
+    val actualReserveRub = (plan.availableRub - categorizedActualRub).coerceAtLeast(0)
     val matched = buildSet {
-        if (category(PlanCategory.MANDATORY).let { it.actualRub <= it.plannedRub }) {
+        if (category(PlanCategory.MANDATORY).let { it.actualRub == it.plannedRub }) {
             add(WeekPlanItem.MANDATORY)
         }
-        if (category(PlanCategory.WANTS).let { it.actualRub <= it.plannedRub }) {
+        if (category(PlanCategory.WANTS).let { it.actualRub == it.plannedRub }) {
             add(WeekPlanItem.WANTS)
         }
-        if (category(PlanCategory.SAVINGS).let { it.actualRub >= it.plannedRub }) {
+        if (category(PlanCategory.SAVINGS).let { it.actualRub == it.plannedRub }) {
             add(WeekPlanItem.SAVINGS)
         }
-        if (actualReserveRub >= plan.reserveRub) add(WeekPlanItem.RESERVE)
+        if (categorizedActualRub <= plan.availableRub && actualReserveRub == plan.reserveRub) {
+            add(WeekPlanItem.RESERVE)
+        }
     }
     return WeekPlanAssessment(
         matchedItems = matched,

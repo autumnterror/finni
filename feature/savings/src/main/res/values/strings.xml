@@ -8,7 +8,7 @@
     <string name="savings_goal_label">Цель</string>
     <string name="savings_selected_game">Выбранная игра</string>
     <string name="savings_no_goal_title">Пока цели нет</string>
-    <string name="savings_no_goal_description">Выбери закрытую игру в комнате и нажми «Добавить в копилку».</string>
+    <string name="savings_no_goal_description">Деньги останутся в копилке, пока ты не выберешь новую цель. Их можно откладывать и забирать.</string>
     <string name="savings_goal_choice">%1$s · %2$d ₽</string>
     <string name="savings_goal_choice_suggested">%1$s · %2$d ₽ · твой выбор</string>
     <string name="savings_goal_suggested_title">%1$s ★</string>
@@ -29,6 +29,13 @@
     <string name="savings_reached">Цель уже накоплена!</string>
     <string name="savings_deposit">Положить в копилку</string>
     <string name="savings_withdraw">Забрать деньги</string>
+    <string name="savings_purchase_goal">Купить цель</string>
+    <string name="savings_remove_goal">Убрать цель</string>
+    <string name="savings_goal_removed">Цель убрана. Деньги остались в копилке.</string>
+    <string name="savings_goal_purchased">Цель «%1$s» куплена!</string>
+    <string name="savings_goal_purchase_missing">Для покупки не хватает ещё %1$d ₽ в копилке.</string>
+    <string name="savings_goal_purchase_level">Эта цель откроется на уровне %1$d.</string>
+    <string name="savings_goal_purchase_unsupported">Эту цель пока нельзя купить прямо из копилки.</string>
     <string name="savings_deposit_title">Положить в копилку?</string>
     <string name="savings_withdraw_title">Забрать деньги?</string>
     <string name="savings_deposit_description">Деньги перейдут из кошелька в копилку.</string>

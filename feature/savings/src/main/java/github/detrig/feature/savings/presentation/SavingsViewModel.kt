@@ -13,6 +13,8 @@ import github.detrig.feature.savings.domain.SavingsConfiguration
 import github.detrig.feature.savings.domain.TransferFromSavingsInteractor
 import github.detrig.feature.savings.domain.TransferToSavingsInteractor
 import github.detrig.feature.savings.domain.SavingsLearningInteractor
+import github.detrig.feature.savings.domain.PurchaseSavingsGoalInteractor
+import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 import github.detrig.feature.savings.navigation.SavingsRouter
 import kotlinx.coroutines.Job
 import java.util.UUID
@@ -23,6 +25,7 @@ internal class SavingsViewModel(
     private val createGoal: CreateSavingsGoalInteractor,
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
+    private val purchaseGoalInteractor: PurchaseSavingsGoalInteractor,
     private val learning: SavingsLearningInteractor,
     private val router: SavingsRouter,
     firstRunOnboarding: Boolean,
@@ -60,6 +63,8 @@ internal class SavingsViewModel(
                 )
             }
             is SavingsViewEvent.TransferConfirmed -> transfer(viewEvent.amountRub)
+            SavingsViewEvent.PurchaseGoal -> buyGoal()
+            SavingsViewEvent.RemoveGoal -> removeGoal()
             SavingsViewEvent.NoticeDismissed -> updateState { copy(notice = null) }
             SavingsViewEvent.OnboardingContinue -> continueOnboarding()
             is SavingsViewEvent.OnboardingDepositSelected ->
@@ -121,13 +126,13 @@ internal class SavingsViewModel(
     private fun transfer(amountRub: Long) {
         if (actionJob?.isActive == true || amountRub <= 0) return
         val direction = stateData.transferDirection ?: return
-        val goal = stateData.goal?.goal ?: return
+        val goal = stateData.goal?.goal
         updateState { copy(busy = true, notice = null) }
-        val operationId = "savings:${direction.name.lowercase()}:${goal.id}:${UUID.randomUUID()}"
+        val operationId = "savings:${direction.name.lowercase()}:${goal?.id ?: "unassigned"}:${UUID.randomUUID()}"
         actionJob = launchCoroutine(handleAction = actionFailure()) {
             val result = when (direction) {
-                SavingsTransferDirection.DEPOSIT -> transferTo(operationId, goal.id, amountRub)
-                SavingsTransferDirection.WITHDRAW -> transferFrom(operationId, goal.id, amountRub)
+                SavingsTransferDirection.DEPOSIT -> transferTo(operationId, goal?.id, amountRub)
+                SavingsTransferDirection.WITHDRAW -> transferFrom(operationId, goal?.id, amountRub)
             }
             when (result) {
                 is FinancialOperationResult.Applied,
@@ -141,7 +146,7 @@ internal class SavingsViewModel(
                         is FinancialOperationResult.Applied -> result.operation
                         is FinancialOperationResult.AlreadyApplied -> result.operation
                     }
-                    val reachedNow = direction == SavingsTransferDirection.DEPOSIT &&
+                    val reachedNow = goal != null && direction == SavingsTransferDirection.DEPOSIT &&
                         operation.before.savingsRub < goal.targetRub &&
                         operation.after.savingsRub >= goal.targetRub
                     updateState {
@@ -177,11 +182,54 @@ internal class SavingsViewModel(
         }
     }
 
+    private fun buyGoal() {
+        if (actionJob?.isActive == true) return
+        val goal = stateData.goal?.takeIf { it.isReached }?.goal ?: return
+        updateState { copy(busy = true, notice = null) }
+        actionJob = launchCoroutine(handleAction = actionFailure()) {
+            when (val result = purchaseGoalInteractor(goal)) {
+                SavingsGoalPurchaseResult.Purchased,
+                SavingsGoalPurchaseResult.AlreadyPurchased,
+                -> {
+                    refreshGoal()
+                    updateState { copy(busy = false, notice = SavingsNotice.GoalPurchased(goal.title)) }
+                }
+                is SavingsGoalPurchaseResult.NotEnoughSavings -> updateState {
+                    copy(
+                        busy = false,
+                        notice = SavingsNotice.GoalPurchaseRejected(missingRub = result.missingRub),
+                    )
+                }
+                is SavingsGoalPurchaseResult.LevelTooLow -> updateState {
+                    copy(
+                        busy = false,
+                        notice = SavingsNotice.GoalPurchaseRejected(requiredLevel = result.requiredLevel),
+                    )
+                }
+                SavingsGoalPurchaseResult.UnsupportedGoal -> updateState {
+                    copy(busy = false, notice = SavingsNotice.GoalPurchaseRejected())
+                }
+            }
+        }
+    }
+
     private fun missingRub(reason: RejectionReason, amountRub: Long, state: github.detrig.feature.economy.domain.EconomyState): Long = when (reason) {
         RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS -> amountRub - state.availableRub
         RejectionReason.INSUFFICIENT_SAVINGS -> amountRub - state.savingsRub
         else -> 0
     }.coerceAtLeast(0)
+
+    private fun removeGoal() {
+        if (actionJob?.isActive == true) return
+        val goal = stateData.goal?.goal ?: return
+        updateState { copy(busy = true, notice = null) }
+        actionJob = launchCoroutine(handleAction = actionFailure()) {
+            economy.deleteGoal(goal.id)
+            refreshGoal()
+            updateState { copy(busy = false, notice = SavingsNotice.GoalRemoved) }
+            actionJob = null
+        }
+    }
 
     private fun actionFailure() = ExceptionConsumer {
         updateState {

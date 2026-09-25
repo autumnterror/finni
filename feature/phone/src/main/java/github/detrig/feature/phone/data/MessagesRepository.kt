@@ -31,6 +31,10 @@ internal interface MessagesRepository {
     suspend fun preparePenalty(eventId: String, amountRub: Long): SecurityMessageEvent?
     suspend fun markPenaltyApplied(eventId: String)
     suspend fun acknowledgeFeedback(eventId: String)
+    suspend fun addParentHelpReminder(absoluteDay: Long) = Unit
+    suspend fun removeParentHelpReminder() = Unit
+    suspend fun addParentHelpRepaymentMessage(absoluteDay: Long) = Unit
+    suspend fun removeParentHelpRepaymentMessage() = Unit
 }
 
 internal class PersistentMessagesRepository(
@@ -53,7 +57,7 @@ internal class PersistentMessagesRepository(
         val processed = current.copy(
             lastProcessedAbsoluteDay = absoluteDay,
             messages = current.messages.filter { message ->
-                message.senderId == MessageSenderId.BANK
+                message.senderId == MessageSenderId.BANK || message.senderId == MessageSenderId.MOM
             },
         )
         if (dailyRoll(absoluteDay, config.randomSeed) >= config.dailyProbability) {
@@ -215,6 +219,44 @@ internal class PersistentMessagesRepository(
         )
     }
 
+    override suspend fun addParentHelpReminder(absoluteDay: Long) = update { current ->
+        if (current.messages.any { it.id == PARENT_HELP_MESSAGE_ID }) return@update current
+        current.copy(
+            parentHelpReminderCreated = true,
+            messages = current.messages + PhoneMessage(
+                id = PARENT_HELP_MESSAGE_ID,
+                eventId = PARENT_HELP_MESSAGE_ID,
+                senderId = MessageSenderId.MOM,
+                absoluteDay = absoluteDay,
+                kind = MessageKind.PARENT_HELP_OFFER,
+            ),
+        )
+    }
+
+    override suspend fun removeParentHelpReminder() = update { current ->
+        current.copy(
+            parentHelpReminderCreated = false,
+            messages = current.messages.filterNot { it.id == PARENT_HELP_MESSAGE_ID },
+        )
+    }
+
+    override suspend fun addParentHelpRepaymentMessage(absoluteDay: Long) = update { current ->
+        if (current.messages.any { it.id == PARENT_HELP_REPAYMENT_MESSAGE_ID }) return@update current
+        current.copy(
+            messages = current.messages + PhoneMessage(
+                id = PARENT_HELP_REPAYMENT_MESSAGE_ID,
+                eventId = PARENT_HELP_REPAYMENT_MESSAGE_ID,
+                senderId = MessageSenderId.MOM,
+                absoluteDay = absoluteDay,
+                kind = MessageKind.PARENT_HELP_REPAYMENT,
+            ),
+        )
+    }
+
+    override suspend fun removeParentHelpRepaymentMessage() = update { current ->
+        current.copy(messages = current.messages.filterNot { it.id == PARENT_HELP_REPAYMENT_MESSAGE_ID })
+    }
+
     private suspend fun update(
         transform: (StoredMessagesState) -> StoredMessagesState,
     ) {
@@ -237,5 +279,7 @@ internal class PersistentMessagesRepository(
 
     private companion object {
         const val CODE_SALT = 0xC0DE
+        const val PARENT_HELP_MESSAGE_ID = "parent-help-reminder"
+        const val PARENT_HELP_REPAYMENT_MESSAGE_ID = "parent-help-repayment"
     }
 }

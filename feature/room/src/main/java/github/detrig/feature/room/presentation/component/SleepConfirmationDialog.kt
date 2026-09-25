@@ -11,30 +11,44 @@ import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import github.detrig.designsystem.theme.AppTheme
 
 @Composable
 internal fun SleepConfirmationDialog(
+    canSleep: Boolean,
     onConfirm: () -> Unit,
     onPostpone: () -> Unit,
 ) {
     FinPetModalDialog(
-        title = stringResource(R.string.room_sleep_title),
+        title = stringResource(if (canSleep) R.string.room_sleep_title else R.string.room_sleep_hungry_title),
         onDismissRequest = onPostpone,
         actions = {
-            FinPetButton(
-                text = stringResource(R.string.room_sleep_confirm),
-                onClick = onConfirm,
-                modifier = Modifier.fillMaxWidth(),
-                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-            )
+            if (canSleep) {
+                FinPetButton(
+                    text = stringResource(R.string.room_sleep_confirm),
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+            }
             FinPetOutlinedButton(
-                text = stringResource(R.string.room_sleep_postpone),
+                text = stringResource(if (canSleep) R.string.room_sleep_postpone else R.string.room_sleep_hungry_ok),
                 onClick = onPostpone,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontOutlinedStyle(),
             )
         },
-        content = {},
+        content = {
+            if (!canSleep) {
+                Text(
+                    text = stringResource(R.string.room_sleep_hungry_message),
+                    modifier = Modifier.padding(horizontal = AppTheme.spacing.sm),
+                    style = AppTheme.typography.body,
+                )
+            }
+        },
     )
 }
 
@@ -42,6 +56,6 @@ internal fun SleepConfirmationDialog(
 @Composable
 private fun SleepConfirmationDialogPreview() {
     FinPetTheme {
-        SleepConfirmationDialog(onConfirm = {}, onPostpone = {})
+        SleepConfirmationDialog(canSleep = false, onConfirm = {}, onPostpone = {})
     }
 }

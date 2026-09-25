@@ -12,6 +12,7 @@ internal fun GameState.toRoomProgress(
     planProgress: WeeklyPlanProgress?,
 ) = RoomProgress(
     balanceRub = Math.toIntExact(economy.availableRub),
+    savingsRub = economy.savingsRub,
     playerLevel = playerLevel,
     ownedZoneIds = ownedZoneIds,
     absoluteDay = week.absoluteDay,

@@ -44,6 +44,7 @@ import github.detrig.feature.phone.domain.PhoneMessage
 import github.detrig.feature.phone.domain.SecurityMessageEvent
 import github.detrig.feature.phone.domain.SecurityMessageScenario
 import github.detrig.feature.phone.domain.SecurityResponseChoice
+import github.detrig.feature.room.presentation.component.ParentHelpDialog
 
 @Composable
 internal fun MessagesApp(
@@ -52,6 +53,10 @@ internal fun MessagesApp(
     onThreadOpened: (MessageSenderId) -> Unit,
     onThreadClosed: () -> Unit,
     onSuspiciousInteraction: (String, SecurityResponseChoice) -> Unit,
+    onParentHelpOfferOpened: () -> Unit = {},
+    onParentHelpAccepted: (String) -> Unit = {},
+    onParentHelpPaidOff: () -> Unit = {},
+    onParentHelpDismissed: () -> Unit = {},
 ) {
     val selectedThread = state.selectedSenderId?.let { sender ->
         state.inbox.threads.firstOrNull { it.senderId == sender }
@@ -71,6 +76,16 @@ internal fun MessagesApp(
             errorMessage = state.errorMessage,
             onBack = onThreadClosed,
             onSuspiciousMessageOpened = onSuspiciousInteraction,
+            onParentHelpOfferOpened = onParentHelpOfferOpened,
+        )
+    }
+    state.parentHelpDialog?.let { help ->
+        ParentHelpDialog(
+            state = help,
+            isRequesting = help.isSubmitting,
+            onOfferSelected = onParentHelpAccepted,
+            onPayOffNow = onParentHelpPaidOff,
+            onDismiss = onParentHelpDismissed,
         )
     }
 }
@@ -239,6 +254,7 @@ private fun MessageThreadContent(
     errorMessage: String?,
     onBack: () -> Unit,
     onSuspiciousMessageOpened: (String, SecurityResponseChoice) -> Unit,
+    onParentHelpOfferOpened: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -272,10 +288,17 @@ private fun MessageThreadContent(
                         MessageKind.REQUEST_CONFIRMATION_CODE -> SecurityResponseChoice.SHARE_CODE
                         MessageKind.UNKNOWN_LINK -> SecurityResponseChoice.OPEN_LINK
                         MessageKind.BANK_CONFIRMATION_CODE -> null
+                        MessageKind.PARENT_HELP_OFFER,
+                        MessageKind.PARENT_HELP_REPAYMENT,
+                        -> null
                     }
                 }
                 IncomingMessageBubble(
                     message = message,
+                    onParentHelpOfferOpened = if (
+                        message.kind == MessageKind.PARENT_HELP_OFFER ||
+                        message.kind == MessageKind.PARENT_HELP_REPAYMENT
+                    ) onParentHelpOfferOpened else null,
                     onSuspiciousInteraction = unsafeChoice?.let { choice ->
                         { onSuspiciousMessageOpened(message.eventId, choice) }
                     },
@@ -298,6 +321,7 @@ private fun MessageThreadContent(
 @Composable
 private fun IncomingMessageBubble(
     message: PhoneMessage,
+    onParentHelpOfferOpened: (() -> Unit)?,
     onSuspiciousInteraction: (() -> Unit)?,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
@@ -305,7 +329,9 @@ private fun IncomingMessageBubble(
             modifier = Modifier
                 .fillMaxWidth(0.84f)
                 .then(
-                    if (onSuspiciousInteraction != null) {
+                    if (onParentHelpOfferOpened != null) {
+                        Modifier.clickable(onClick = onParentHelpOfferOpened)
+                    } else if (onSuspiciousInteraction != null) {
                         Modifier.clickable(
                             onClickLabel = stringResource(
                                 if (message.kind == MessageKind.UNKNOWN_LINK) {
@@ -345,6 +371,7 @@ private fun IncomingMessageBubble(
 private fun MessageSenderId.displayName(): String = stringResource(
     when (this) {
         MessageSenderId.BANK -> R.string.messages_bank
+        MessageSenderId.MOM -> R.string.messages_mom
         MessageSenderId.UNKNOWN_1 -> R.string.messages_unknown_1
         MessageSenderId.UNKNOWN_2 -> R.string.messages_unknown_2
     },
@@ -355,7 +382,10 @@ private fun PhoneMessage.displayText(): String = when (kind) {
     MessageKind.BANK_CONFIRMATION_CODE -> stringResource(R.string.messages_bank_code, payload)
     MessageKind.REQUEST_CONFIRMATION_CODE -> stringResource(R.string.messages_code_request)
     MessageKind.UNKNOWN_LINK -> stringResource(R.string.messages_unknown_link, payload)
+    MessageKind.PARENT_HELP_OFFER -> stringResource(R.string.messages_parent_help_offer)
+    MessageKind.PARENT_HELP_REPAYMENT -> stringResource(R.string.messages_parent_help_repayment)
 }
+
 
 @Composable
 internal fun MessagesPetDialogue(
@@ -451,6 +481,9 @@ private fun MessagesAppPreview() {
                 onThreadOpened = {},
                 onThreadClosed = {},
                 onSuspiciousInteraction = { _, _ -> },
+                onParentHelpOfferOpened = {},
+                onParentHelpAccepted = {},
+                onParentHelpDismissed = {},
             )
             MessagesPetDialogue(
                 state = state,

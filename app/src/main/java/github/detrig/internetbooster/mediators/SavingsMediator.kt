@@ -9,6 +9,7 @@ import github.detrig.feature.savings.SavingsFeature
 import github.detrig.feature.savings.SavingsRoomBackdrop
 import github.detrig.feature.savings.api.SavingsApi
 import github.detrig.feature.savings.domain.SavingsConfiguration
+import github.detrig.feature.savings.api.SavingsGoalPurchaser
 
 internal class SavingsMediator(
     private val core: CoreComponent,
@@ -39,6 +40,10 @@ internal class SavingsMediator(
                 override fun globalNavigator() = core.globalNavigator
                 override fun configuration() = SavingsConfiguration()
                 override fun gameAudio() = gameAudio
+                override fun goalPurchaser() = SavingsGoalPurchaser { goal ->
+                    roomApiProvider().purchaseSavingsGoal(goal)
+                }
+                override fun transactionRunner() = economy.transactionRunner()
             }
         }
     }

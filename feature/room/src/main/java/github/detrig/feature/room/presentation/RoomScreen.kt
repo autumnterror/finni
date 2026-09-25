@@ -35,7 +35,6 @@ import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
-import github.detrig.feature.room.presentation.component.ParentHelpDialog
 import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
 import github.detrig.feature.room.presentation.component.EarlyWeekParentHelpDialog
 import github.detrig.feature.room.presentation.component.HouseHud
@@ -44,6 +43,7 @@ import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialo
 import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
+import github.detrig.feature.room.presentation.component.DayTransitionDialog
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
@@ -162,7 +162,7 @@ internal fun RoomScreen(
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
                 content?.weekResult == null &&
-                content?.parentHelpDialog == null && content?.allowanceNotice == null &&
+                content?.allowanceNotice == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
                 !showPhoneNotificationPrompt &&
@@ -240,11 +240,12 @@ internal fun RoomScreen(
     when {
         content?.sleepConfirmationVisible == true && canShowDialogs -> {
             SleepConfirmationDialog(
+                canSleep = content.progress.petHunger > 0,
                 onConfirm = { viewModel.perform(RoomViewEvent.SleepConfirmed) },
                 onPostpone = { viewModel.perform(RoomViewEvent.SleepPostponed) },
             )
         }
-        zone?.access is RoomZoneAccess.Buyable && content != null && canShowDialogs -> {
+        zone?.access is RoomZoneAccess.Buyable && canShowDialogs -> {
             RoomBuyDialog(zone, content.progress, content.buyingZoneId != null,
                 onConfirm = { viewModel.perform(RoomViewEvent.BuyConfirmed(zone.id)) },
                 isSavingGoal = content.savingGoalZoneId == zone.id,
@@ -273,12 +274,27 @@ internal fun RoomScreen(
                 viewModel.perform(RoomViewEvent.CloseEarlyWeekParentHelpNotice)
             }
         }
-        content?.parentHelpDialog != null && canShowDialogs -> {
-            ParentHelpDialog(
-                state = content.parentHelpDialog,
-                isRequesting = content.isRequestingParentHelp,
-                onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
-                onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
+        content?.savingsRecoveryPrompt != null && canShowDialogs -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(stringResource(R.string.savings_recovery_prompt)),
+                portrait = petPortrait,
+                topInset = 0.dp,
+                advanceOnTap = false,
+                actions = listOf(
+                    FinPetDialogueAction(id = "open", label = stringResource(R.string.savings_recovery_open)),
+                    FinPetDialogueAction(id = "later", label = stringResource(R.string.savings_recovery_later)),
+                ),
+                onActionSelected = { action ->
+                    viewModel.perform(
+                        if (action.id == "open") {
+                            RoomViewEvent.OpenSavingsFromRecoveryPrompt
+                        } else {
+                            RoomViewEvent.DismissSavingsRecoveryPrompt
+                        },
+                    )
+                },
+                onFinished = { viewModel.perform(RoomViewEvent.DismissSavingsRecoveryPrompt) },
             )
         }
         content?.impulseWish != null && canShowDialogs -> {
@@ -376,6 +392,11 @@ internal fun RoomScreen(
                 },
                 onFinished = onPhonePromptDismiss,
             )
+        }
+    }
+    if (content?.dayTransitionNotice != null && canShowDialogs) {
+        DayTransitionDialog(content.dayTransitionNotice) {
+            viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
         }
     }
     LaunchedEffect(zone?.access, content != null) {

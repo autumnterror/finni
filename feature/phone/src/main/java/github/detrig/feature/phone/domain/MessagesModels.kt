@@ -1,10 +1,13 @@
 package github.detrig.feature.phone.domain
 
 import kotlinx.serialization.Serializable
+import github.detrig.feature.economy.domain.ParentHelpOffer
+import github.detrig.feature.economy.domain.ParentHelpState
 
 @Serializable
 internal enum class MessageSenderId {
     BANK,
+    MOM,
     UNKNOWN_1,
     UNKNOWN_2,
 }
@@ -20,6 +23,8 @@ internal enum class MessageKind {
     BANK_CONFIRMATION_CODE,
     REQUEST_CONFIRMATION_CODE,
     UNKNOWN_LINK,
+    PARENT_HELP_OFFER,
+    PARENT_HELP_REPAYMENT,
 }
 
 @Serializable
@@ -64,6 +69,7 @@ internal data class SecurityMessageEvent(
 internal data class StoredMessagesState(
     val lastProcessedAbsoluteDay: Long = 0,
     val firstRoomPromptPending: Boolean = false,
+    val parentHelpReminderCreated: Boolean = false,
     val messages: List<PhoneMessage> = emptyList(),
     val events: List<SecurityMessageEvent> = emptyList(),
 )
@@ -90,6 +96,12 @@ internal data class MessagesInbox(
         )
     }
 }
+
+internal data class ParentHelpDialogData(
+    val offers: List<ParentHelpOffer>,
+    val activeHelp: ParentHelpState?,
+    val availableRub: Long,
+)
 
 internal data class SecurityEventConfig(
     val dailyProbability: Double,

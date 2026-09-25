@@ -35,13 +35,25 @@ sealed interface PlanActualOperation {
         override val amountRub: Long,
     ) : PlanActualOperation
 
+    data class SavingsWithdrawal(
+        override val operationId: String,
+        override val weekNumber: Long,
+        override val amountRub: Long,
+    ) : PlanActualOperation
+
+    val signedAmountRub: Long
+        get() = when (this) {
+            is SavingsWithdrawal -> -amountRub
+            is Payment, is SavingsContribution -> amountRub
+        }
+
     val planCategory: PlanCategory
         get() = when (this) {
             is Payment -> when (classification) {
                 PaymentClassification.MANDATORY -> PlanCategory.MANDATORY
                 PaymentClassification.OPTIONAL -> PlanCategory.WANTS
             }
-            is SavingsContribution -> PlanCategory.SAVINGS
+            is SavingsContribution, is SavingsWithdrawal -> PlanCategory.SAVINGS
         }
 }
 

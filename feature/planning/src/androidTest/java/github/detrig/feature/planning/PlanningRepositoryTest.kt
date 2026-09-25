@@ -67,10 +67,16 @@ class PlanningRepositoryTest {
                     weekNumber = 2,
                     amountRub = 50,
                 )))
+            assertEquals(RecordActualResult.Recorded,
+                repository.recordActual(PlanActualOperation.SavingsWithdrawal(
+                    operationId = "savings:withdrawal:1",
+                    weekNumber = 2,
+                    amountRub = 20,
+                )))
             val progress = requireNotNull(repository.getPlanProgress(2))
             assertEquals(100L, progress.category(PlanCategory.MANDATORY).actualRub)
             assertEquals(75L, progress.category(PlanCategory.WANTS).actualRub)
-            assertEquals(50L, progress.category(PlanCategory.SAVINGS).actualRub)
+            assertEquals(30L, progress.category(PlanCategory.SAVINGS).actualRub)
         } finally {
             database.close()
         }

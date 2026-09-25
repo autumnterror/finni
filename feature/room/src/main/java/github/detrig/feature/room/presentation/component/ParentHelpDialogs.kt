@@ -47,7 +47,6 @@ import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetMoneyAmount
 import github.detrig.designsystem.component.FinPetCoinIcon
-import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.economy.domain.ParentHelpOffer
@@ -57,11 +56,12 @@ import github.detrig.feature.room.presentation.AllowanceNoticeState
 import github.detrig.feature.room.presentation.ParentHelpDialogState
 
 @Composable
-internal fun ParentHelpDialog(
+fun ParentHelpDialog(
     state: ParentHelpDialogState,
     isRequesting: Boolean,
     onOfferSelected: (String) -> Unit,
     onDismiss: () -> Unit,
+    onPayOffNow: (() -> Unit)? = null,
 ) {
     val canDismiss = !isRequesting
     Dialog(
@@ -125,16 +125,14 @@ internal fun ParentHelpDialog(
                                     ParentHelpOfferCard(offer, isRequesting, onOfferSelected)
                                 }
                             } else {
-                                ActiveParentHelpCard(active)
+                                ActiveParentHelpCard(
+                                    help = active,
+                                    availableRub = state.availableRub,
+                                    isRequesting = isRequesting,
+                                    onPayOffNow = onPayOffNow,
+                                )
                             }
                         }
-                        FinPetOutlinedButton(
-                            text = stringResource(R.string.parent_help_close),
-                            onClick = onDismiss,
-                            enabled = canDismiss,
-                            modifier = Modifier.fillMaxWidth(),
-                            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                        )
                     }
                 }
                 Image(
@@ -250,6 +248,7 @@ private fun ParentHelpOfferCard(
             ParentHelpMoneyRow(R.string.parent_help_get_now, offer.receivedRub)
             ParentHelpMoneyRow(R.string.parent_help_return_total, offer.totalRepaymentRub)
             Text(stringResource(R.string.parent_help_extra, offer.extraRub), style = AppTheme.typography.caption)
+            Text(stringResource(R.string.parent_help_rate, offer.ratePercent), style = AppTheme.typography.caption)
             Text(stringResource(R.string.parent_help_weekly, offer.weeklyRepaymentRub), style = AppTheme.typography.caption)
             FinPetButton(
                 text = stringResource(R.string.parent_help_choose, offer.receivedRub),
@@ -263,7 +262,12 @@ private fun ParentHelpOfferCard(
 }
 
 @Composable
-private fun ActiveParentHelpCard(help: ParentHelpState) {
+private fun ActiveParentHelpCard(
+    help: ParentHelpState,
+    availableRub: Long,
+    isRequesting: Boolean,
+    onPayOffNow: (() -> Unit)?,
+) {
     FinPetModalSection(
         modifier = Modifier.fillMaxWidth(),
         tone = FinPetModalSectionTone.Highlighted,
@@ -289,6 +293,26 @@ private fun ActiveParentHelpCard(help: ParentHelpState) {
                 stringResource(R.string.parent_help_active_schedule, help.nextPaymentRub, help.paymentsRemaining),
                 style = AppTheme.typography.bodyStrong,
             )
+            if (onPayOffNow != null) {
+                if (availableRub < help.remainingRub) {
+                    Text(
+                        stringResource(
+                            R.string.parent_help_payoff_unavailable,
+                            help.remainingRub,
+                            availableRub,
+                        ),
+                        style = AppTheme.typography.caption,
+                        color = AppTheme.colors.textSecondary,
+                    )
+                }
+                FinPetButton(
+                    text = stringResource(R.string.parent_help_payoff_now, help.remainingRub),
+                    onClick = onPayOffNow,
+                    enabled = !isRequesting && availableRub >= help.remainingRub,
+                    modifier = Modifier.fillMaxWidth().testTag("parent_help_payoff_now"),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+            }
         }
     }
 }

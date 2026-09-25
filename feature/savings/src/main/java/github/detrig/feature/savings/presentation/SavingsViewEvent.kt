@@ -11,6 +11,8 @@ internal sealed interface SavingsViewEvent : CoreViewEvent {
     data class TransferOpened(val direction: SavingsTransferDirection) : SavingsViewEvent
     data object TransferDismissed : SavingsViewEvent
     data class TransferConfirmed(val amountRub: Long) : SavingsViewEvent
+    data object PurchaseGoal : SavingsViewEvent
+    data object RemoveGoal : SavingsViewEvent
     data object NoticeDismissed : SavingsViewEvent
     data object OnboardingContinue : SavingsViewEvent
     data class OnboardingDepositSelected(val depositNow: Boolean) : SavingsViewEvent

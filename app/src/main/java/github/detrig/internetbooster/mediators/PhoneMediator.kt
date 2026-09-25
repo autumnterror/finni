@@ -46,6 +46,7 @@ internal class PhoneMediator(
                 } else {
                     SECURITY_EVENT_DAILY_PROBABILITY
                 }
+                override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
             }
         }
         PhoneFeature.getApi().initialize()

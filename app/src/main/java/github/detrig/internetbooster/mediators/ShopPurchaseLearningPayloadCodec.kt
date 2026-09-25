@@ -11,10 +11,13 @@ internal data class ShopPurchaseLearningPayload(
     val sourceOperationId: String,
     val standardPurchase: PurchaseDecisionContext,
     val eventDecision: PurchaseDecisionContext?,
+    val mandatoryPlanRub: Long,
+    val wantsPlanRub: Long,
 )
 
 internal object ShopPurchaseLearningPayloadCodec {
-    private const val VERSION = "v1"
+    private const val VERSION = "v2"
+    private const val LEGACY_VERSION = "v1"
 
     fun encode(payload: ShopPurchaseLearningPayload): String {
         val raw = buildString {
@@ -23,6 +26,10 @@ internal object ShopPurchaseLearningPayloadCodec {
             append(payload.gamePeriod)
             append('\t')
             append(payload.sourceOperationId)
+            append('\t')
+            append(payload.mandatoryPlanRub)
+            append('\t')
+            append(payload.wantsPlanRub)
             append('\n')
             append(payload.standardPurchase.encode())
             payload.eventDecision?.let {
@@ -38,13 +45,19 @@ internal object ShopPurchaseLearningPayloadCodec {
         val raw = String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8)
         val lines = raw.lines()
         val header = lines.first().split('\t')
-        require(header.size == 3 && header[0] == VERSION)
+        require(
+            (header[0] == VERSION && header.size == 5) ||
+                (header[0] == LEGACY_VERSION && header.size == 3),
+        )
         require(lines.size in 2..3)
+        val standard = lines[1].decodeContext()
         ShopPurchaseLearningPayload(
             gamePeriod = header[1].toLong(),
             sourceOperationId = header[2],
-            standardPurchase = lines[1].decodeContext(),
+            standardPurchase = standard,
             eventDecision = lines.getOrNull(2)?.decodeContext(),
+            mandatoryPlanRub = header.getOrNull(3)?.toLong() ?: standard.requiredFoodCostRub,
+            wantsPlanRub = header.getOrNull(4)?.toLong() ?: standard.optionalPurchaseRub,
         )
     }.getOrNull()
 

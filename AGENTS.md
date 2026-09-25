@@ -313,7 +313,9 @@ The bed must **not**:
 
 If an unresolved mandatory event requires a decision, it must be resolved before ending the day.
 
-If hunger is low, the UI may warn the player before ending the day, but the player may continue.
+If hunger is zero, the player cannot end the day until the pet is fed. The existing
+unrecoverable-crisis flow remains the exception: when no food or recovery path is
+available, parent help may end the week early and provide the required care.
 
 Demo mode must allow fast day advancement with no real-time waiting.
 
@@ -469,6 +471,13 @@ MVP rules:
 - show remaining amount;
 - allow transfer to savings;
 - withdrawal requires explicit confirmation.
+- when spendable balance falls below the configured minimum for an important
+  necessary purchase and savings alone cover that amount, first invite the child
+  to review the piggy bank and transfer money; do not offer parent help while
+  those savings are sufficient.
+- when an active goal represents a purchasable game unlock and the target amount
+  has been reached, the player may buy it directly from the piggy bank; a
+  successful purchase removes that goal while leaving any excess savings intact.
 
 The game may show an estimated time to goal if calculation is simple and transparent.
 
@@ -525,7 +534,12 @@ Rules:
 - debt reduces the next pocket-money payment;
 - no new debt until the current one is repaid;
 - debt cannot be used for cosmetics, room luxuries, or optional wants;
-- no interest in MVP.
+- parent-help offers may include a small, clearly shown extra repayment amount;
+- the extra repayment percentage decreases as the repayment period gets longer.
+- if the child closes the one-time offer, a reminder remains available in the phone messages until help is accepted; accepting help removes that reminder.
+- a parent-help reminder is delivered in the phone when the wallet becomes
+  insufficient, including a balance change during the current game day. The
+  food table is not an entry point for parent help.
 
 Before confirmation show:
 - amount received now;
@@ -965,6 +979,11 @@ The result should distinguish between:
 - intentional tradeoff;
 - impulsive overspending.
 
+Category copy may say "Получилось по плану" only when the actual amount equals
+the planned amount. Over- or underspending and a reserve different from plan
+must be described as deviations; the overall feedback should remain neutral and
+consider the reason for the deviation when that context is available.
+
 The copy shown to the child remains simple and neutral.
 
 ---
@@ -1306,7 +1325,8 @@ The UI must make important consequences visible before confirmation.
 The child should be able to quickly understand:
 
 1. current spendable balance;
-2. current day of the week;
+2. the new day and week in a short notice immediately after sleep (not as a
+   permanent HUD counter);
 3. savings / current goal;
 4. pet hunger;
 5. pet happiness if enabled;

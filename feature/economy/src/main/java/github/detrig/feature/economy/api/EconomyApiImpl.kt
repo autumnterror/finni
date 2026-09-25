@@ -28,6 +28,8 @@ internal class EconomyApiImpl(private val repository: EconomyRepository) : Econo
     override suspend fun getParentHelp() = repository.parentHelp()
     override suspend fun requestParentHelp(operationId: String, offerId: String) =
         repository.requestParentHelp(operationId, offerId)
+    override suspend fun settleParentHelpInFull(operationId: String, context: OperationContext) =
+        repository.settleParentHelpInFull(operationId, context)
     override suspend fun getHistory(filter: HistoryFilter) = repository.history(filter)
     override suspend fun getIncomeHistory(filter: HistoryFilter) = repository.history(filter.withTypes(setOf(
         FinancialOperationType.CREDIT, FinancialOperationType.PERIODIC_INCOME, FinancialOperationType.WEEKLY_ALLOWANCE,

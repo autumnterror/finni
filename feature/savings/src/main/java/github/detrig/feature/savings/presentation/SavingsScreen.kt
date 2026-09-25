@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import github.detrig.designsystem.component.FinPetAmountInput
 import github.detrig.designsystem.component.FinPetBackButton
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
@@ -40,6 +39,7 @@ import github.detrig.designsystem.component.FinPetCoinIcon
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.designsystem.component.FinPetStorefrontProgressIndicator
+import github.detrig.designsystem.component.FinPetStorefrontSlider
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.economy.domain.EconomyState
@@ -136,7 +136,7 @@ private fun SavingsContent(
                 val horizontalContentInset = maxWidth * 0.14f
                 val topContentInset = maxHeight * 0.12f
                 val bottomContentInset = maxHeight * 0.115f
-                val frameBackgroundHorizontalInset = maxWidth * 0.12f
+                val frameBackgroundHorizontalInset = maxWidth * 0.105f
                 val frameBackgroundTopInset = maxHeight * 0.105f
                 val frameBackgroundBottomInset = maxHeight * 0.10f
                 Box(
@@ -182,7 +182,11 @@ private fun SavingsContent(
         }
     }
     state.transferDirection?.let { direction ->
-        TransferDialog(direction, state.busy,
+        val maximumRub = when (direction) {
+            SavingsTransferDirection.DEPOSIT -> state.economy?.availableRub
+            SavingsTransferDirection.WITHDRAW -> state.economy?.savingsRub
+        } ?: 0
+        TransferDialog(direction, maximumRub, state.busy,
             onDismiss = { onEvent(SavingsViewEvent.TransferDismissed) },
             onConfirm = { onEvent(SavingsViewEvent.TransferConfirmed(it)) })
     }
@@ -269,16 +273,34 @@ private fun ColumnScope.SavingsBody(
                 )
             }
         }
-        if (state.goal != null) {
+        if (state.goal?.let { it.isReached && it.goal.isPurchasableRoomGoal() } == true) {
             FinPetButton(
-                text = stringResource(R.string.savings_deposit),
-                onClick = {
-                    onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.DEPOSIT))
-                },
+                text = stringResource(R.string.savings_purchase_goal),
+                onClick = { onEvent(SavingsViewEvent.PurchaseGoal) },
                 enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth().testTag("savings_deposit"),
+                modifier = Modifier.fillMaxWidth().testTag("savings_purchase_goal"),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
+        }
+        if (state.goal != null) {
+            FinPetOutlinedButton(
+                text = stringResource(R.string.savings_remove_goal),
+                onClick = { onEvent(SavingsViewEvent.RemoveGoal) },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().testTag("savings_remove_goal"),
+                style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+            )
+        }
+        FinPetButton(
+            text = stringResource(R.string.savings_deposit),
+            onClick = {
+                onEvent(SavingsViewEvent.TransferOpened(SavingsTransferDirection.DEPOSIT))
+            },
+            enabled = !state.busy,
+            modifier = Modifier.fillMaxWidth().testTag("savings_deposit"),
+            style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+        )
+        if (state.goal != null || (state.economy?.savingsRub ?: 0L) > 0L) {
             FinPetOutlinedButton(
                 text = stringResource(R.string.savings_withdraw),
                 onClick = {
@@ -564,12 +586,13 @@ private fun savingsGoalArtwork(goalId: String, title: String): Int {
 @Composable
 private fun TransferDialog(
     direction: SavingsTransferDirection,
+    maximumRub: Long,
     busy: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
 ) {
-    var amount by rememberSaveable(direction) { mutableStateOf("") }
-    val parsed = amount.toLongOrNull()?.takeIf { it > 0 }
+    var amountRub by rememberSaveable(direction, maximumRub) { mutableLongStateOf(0L) }
+    val sliderMaximum = maximumRub.coerceAtLeast(1L).toFloat()
     FinPetModalDialog(
         title = stringResource(
             if (direction == SavingsTransferDirection.DEPOSIT) {
@@ -590,8 +613,8 @@ private fun TransferDialog(
                         R.string.savings_confirm_withdraw
                     },
                 ),
-                onClick = { parsed?.let(onConfirm) },
-                enabled = parsed != null && !busy,
+                onClick = { onConfirm(amountRub) },
+                enabled = amountRub > 0 && !busy,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -619,21 +642,33 @@ private fun TransferDialog(
             style = AppTheme.typography.bodyStrong,
             color = AppTheme.colors.storefront.onSurface,
         )
-        FinPetAmountInput(
-            value = amount,
-            onValueChange = { value -> amount = value.filter { character -> character.isDigit() } },
-            enabled = !busy,
-            suffix = stringResource(R.string.savings_rub),
-            modifier = Modifier.fillMaxWidth().testTag("savings_transfer_amount"),
+        FinPetMoneyAmount(
+            amount = amountRub.toString(),
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        FinPetStorefrontSlider(
+            value = amountRub.toFloat(),
+            onValueChange = { amountRub = it.toLong().coerceIn(0L, maximumRub) },
+            enabled = !busy && maximumRub > 0,
+            valueRange = 0f..sliderMaximum,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = AppTheme.sizes.minimumTouchTarget)
+                .testTag("savings_transfer_amount"),
         )
     }
 }
 
 private fun SavingsNotice.sectionTone(): FinPetModalSectionTone = when (this) {
-    is SavingsNotice.Rejected -> FinPetModalSectionTone.Warning
+    is SavingsNotice.Rejected,
+    is SavingsNotice.GoalPurchaseRejected,
+    -> FinPetModalSectionTone.Warning
     SavingsNotice.GoalSaved,
+    SavingsNotice.GoalRemoved,
     is SavingsNotice.GoalReached,
-    is SavingsNotice.TransferCompleted -> FinPetModalSectionTone.Highlighted
+    is SavingsNotice.TransferCompleted,
+    is SavingsNotice.GoalPurchased,
+    -> FinPetModalSectionTone.Highlighted
 }
 
 @Composable
@@ -643,13 +678,23 @@ private fun SavingsNotice.message(): String = when (this) {
         amountRub,
     )
     SavingsNotice.GoalSaved -> stringResource(R.string.savings_goal_saved)
+    SavingsNotice.GoalRemoved -> stringResource(R.string.savings_goal_removed)
     is SavingsNotice.GoalReached -> stringResource(R.string.savings_goal_reached_feedback, title)
+    is SavingsNotice.GoalPurchased -> stringResource(R.string.savings_goal_purchased, title)
+    is SavingsNotice.GoalPurchaseRejected -> when {
+        missingRub != null -> stringResource(R.string.savings_goal_purchase_missing, missingRub)
+        requiredLevel != null -> stringResource(R.string.savings_goal_purchase_level, requiredLevel)
+        else -> stringResource(R.string.savings_goal_purchase_unsupported)
+    }
     is SavingsNotice.Rejected -> when (reason) {
         RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS -> stringResource(R.string.savings_not_enough_wallet, missingRub)
         RejectionReason.INSUFFICIENT_SAVINGS -> stringResource(R.string.savings_not_enough_savings, missingRub)
         else -> stringResource(R.string.savings_transfer_error)
     }
 }
+
+private fun github.detrig.feature.economy.domain.SavingsGoal.isPurchasableRoomGoal(): Boolean =
+    metadata.orEmpty().split(';').any { it == "source=room-zone" }
 
 @Preview(name = "Копилка", widthDp = 360, heightDp = 800, showBackground = true)
 @Composable

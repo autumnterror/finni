@@ -55,7 +55,7 @@ internal class PlanningRepository(
             operationId = operation.operationId,
             weekNumber = operation.weekNumber,
             categoryCode = operation.planCategory.code,
-            amountRub = operation.amountRub,
+            amountRub = operation.signedAmountRub,
         )
         dao.getActualOperation(operation.operationId)?.let { current ->
             return@runInTransaction if (current == incoming) RecordActualResult.AlreadyRecorded else RecordActualResult.OperationIdConflict

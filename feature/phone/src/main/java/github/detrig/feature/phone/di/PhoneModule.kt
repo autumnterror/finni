@@ -19,6 +19,7 @@ internal class PhoneModule(
     override val roomApi = dependencies.roomApi()
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()
+    private val weekApi = dependencies.weekApi()
     private val economyApi = dependencies.economyApi()
     private val messagesRepository by lazy {
         PersistentMessagesRepository(
@@ -28,9 +29,10 @@ internal class PhoneModule(
     private val messagesCoordinator by lazy {
         MessagesCoordinator(
             repository = messagesRepository,
-            weekApi = dependencies.weekApi(),
+            weekApi = weekApi,
             learningApi = dependencies.learningApi(),
             economyApi = dependencies.economyApi(),
+            minimumHelpBalanceRub = dependencies.minimumHelpBalanceRub(),
             eventConfig = SecurityEventConfig(
                 dailyProbability = dependencies.dailySecurityEventProbability(),
             ),
@@ -49,7 +51,7 @@ internal class PhoneModule(
         )
     }
 
-    override fun debugMenuViewModel() = DebugMenuViewModel(economyApi)
+    override fun debugMenuViewModel() = DebugMenuViewModel(economyApi, weekApi)
 
     override fun messagesViewModel() = MessagesViewModel(
         repository = messagesRepository,

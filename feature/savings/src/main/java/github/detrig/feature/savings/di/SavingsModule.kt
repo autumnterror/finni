@@ -7,6 +7,7 @@ import github.detrig.feature.savings.domain.CreateSavingsGoalInteractor
 import github.detrig.feature.savings.domain.TransferFromSavingsInteractor
 import github.detrig.feature.savings.domain.TransferToSavingsInteractor
 import github.detrig.feature.savings.domain.SavingsLearningInteractor
+import github.detrig.feature.savings.domain.PurchaseSavingsGoalInteractor
 import github.detrig.feature.savings.navigation.SavingsRouterImpl
 import github.detrig.feature.savings.presentation.SavingsViewModel
 
@@ -19,7 +20,16 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
     private val transferTo by lazy {
         TransferToSavingsInteractor(dependencies.economyApi(), dependencies.planningApi(), learning)
     }
-    private val transferFrom by lazy { TransferFromSavingsInteractor(dependencies.economyApi()) }
+    private val transferFrom by lazy {
+        TransferFromSavingsInteractor(dependencies.economyApi(), dependencies.planningApi(), learning)
+    }
+    private val purchaseGoal by lazy {
+        PurchaseSavingsGoalInteractor(
+            dependencies.economyApi(),
+            dependencies.goalPurchaser(),
+            dependencies.transactionRunner(),
+        )
+    }
 
     override val api: SavingsApi by lazy {
         SavingsApiImpl(
@@ -39,6 +49,7 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
         createGoal = createGoal,
         transferTo = transferTo,
         transferFrom = transferFrom,
+        purchaseGoalInteractor = purchaseGoal,
         learning = learning,
         router = router,
         firstRunOnboarding = firstRunOnboarding,

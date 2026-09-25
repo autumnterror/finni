@@ -241,11 +241,20 @@ internal fun WeeklyPlanEditorDialog(
                 dismissOnBackPress = false,
                 advanceOnTap = false,
                 topInset = dialogueTopInset,
-                actions = listOf(FinPetDialogueAction(
-                    id = PLAN_EDIT_ACTION_ID,
-                    label = stringResource(R.string.plan_feedback_edit),
-                )),
-                onActionSelected = { onFeedbackEdit() },
+                actions = listOf(
+                    FinPetDialogueAction(
+                        id = PLAN_EDIT_ACTION_ID,
+                        label = stringResource(R.string.plan_feedback_edit),
+                    ),
+                    FinPetDialogueAction(
+                        id = PLAN_SAVE_ANYWAY_ACTION_ID,
+                        label = stringResource(R.string.plan_feedback_save_anyway),
+                    ),
+                ),
+                onActionSelected = { action ->
+                    if (action.id == PLAN_SAVE_ANYWAY_ACTION_ID) onFeedbackFinished()
+                    else onFeedbackEdit()
+                },
                 onFinished = onFeedbackEdit,
             )
         }
@@ -253,6 +262,7 @@ internal fun WeeklyPlanEditorDialog(
 }
 
 private const val PLAN_EDIT_ACTION_ID = "edit_plan"
+private const val PLAN_SAVE_ANYWAY_ACTION_ID = "save_plan_anyway"
 
 @Composable
 private fun WeeklyPlanNotebookDialog(
@@ -552,14 +562,6 @@ internal fun WeeklyPlanProgressDialog(
     ) {
         if (assessment != null) {
             WeekResultFeedback(assessment)
-        }
-        NotebookSection(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.plan_progress_description),
-                modifier = Modifier.padding(AppTheme.spacing.md),
-                style = AppTheme.typography.body,
-                color = AppTheme.colors.storefront.onSurface,
-            )
         }
         progress.categories.forEach { category ->
             CategoryProgressRow(

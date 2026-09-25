@@ -1,5 +1,6 @@
 package github.detrig.feature.phone.data
 
+import github.detrig.feature.phone.domain.MessageKind
 import github.detrig.feature.phone.domain.MessageSenderId
 import github.detrig.feature.phone.domain.SecurityEventConfig
 import github.detrig.feature.phone.domain.SecurityResponseChoice
@@ -122,6 +123,68 @@ class PersistentMessagesRepositoryTest {
         assertEquals(0L, securityPenaltyRub(0))
         assertEquals(80L, securityPenaltyRub(400))
         assertEquals(99L, securityPenaltyRub(499))
+    }
+
+    @Test
+    fun parentHelpReminderComesFromMomAndIsRemovedAfterHelpIsAccepted() = runTest {
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+
+        repository.addParentHelpReminder(absoluteDay = 7)
+        repository.addParentHelpReminder(absoluteDay = 8)
+
+        val reminder = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.single()
+        assertEquals(MessageSenderId.MOM, reminder.senderId)
+        assertEquals(7L, reminder.absoluteDay)
+
+        repository.removeParentHelpReminder()
+
+        assertTrue(repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.isEmpty())
+
+        repository.addParentHelpReminder(absoluteDay = 9)
+        val renewedReminder = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.single()
+        assertEquals(MessageKind.PARENT_HELP_OFFER, renewedReminder.kind)
+        assertEquals(9L, renewedReminder.absoluteDay)
+    }
+
+    @Test
+    fun parentHelpReminderSurvivesDailyMessageCleanup() = runTest {
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        repository.addParentHelpReminder(absoluteDay = 7)
+
+        repository.ensureEventForDay(8, SecurityEventConfig(dailyProbability = 0.0))
+
+        val momThread = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+        assertEquals(1, momThread.messages.size)
+        assertEquals(7L, momThread.messages.single().absoluteDay)
+    }
+
+    @Test
+    fun activeParentHelpMessageSurvivesUntilRepaymentIsClosed() = runTest {
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        repository.addParentHelpReminder(absoluteDay = 7)
+        repository.removeParentHelpReminder()
+        repository.addParentHelpRepaymentMessage(absoluteDay = 7)
+        repository.addParentHelpRepaymentMessage(absoluteDay = 8)
+
+        repository.ensureEventForDay(8, SecurityEventConfig(dailyProbability = 0.0))
+
+        val message = repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.single()
+        assertEquals(MessageKind.PARENT_HELP_REPAYMENT, message.kind)
+        assertEquals(7L, message.absoluteDay)
+
+        repository.removeParentHelpRepaymentMessage()
+        assertTrue(repository.observeInbox().value.threads
+            .single { it.senderId == MessageSenderId.MOM }
+            .messages.isEmpty())
     }
 
     private class InMemoryMessagesStore : MessagesStore {

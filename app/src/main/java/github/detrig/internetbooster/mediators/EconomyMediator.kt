@@ -12,6 +12,8 @@ import github.detrig.feature.economy.domain.EconomyConfig
 import github.detrig.internetbooster.database.AppDatabaseModule
 
 internal class EconomyMediator(private val databaseModule: AppDatabaseModule) : Mediator<EconomyApi> {
+    fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
+
     @MainThread
     fun init() {
         EconomyFeature.dependenciesProvider = ModuleDependenciesProvider {

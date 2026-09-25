@@ -27,6 +27,12 @@ import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.ParentHelpState
 import kotlinx.coroutines.flow.first
+import github.detrig.feature.economy.domain.FinancialOperationResult
+import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.economy.domain.RejectionReason
+import github.detrig.feature.economy.domain.SavingsGoal
+import github.detrig.feature.gamestate.domain.model.MiniGameAccess
+import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 
 internal class RoomRepositoryImpl(
     private val catalog: RoomZoneCatalog,
@@ -97,4 +103,54 @@ internal class RoomRepositoryImpl(
         expectedAbsoluteDay: Long,
         minimumProductPriceRub: Long,
     ) = weekApi.endWeekEarlyWithParentHelp(expectedAbsoluteDay, minimumProductPriceRub)
+
+    override suspend fun buySavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult {
+        val zoneId = goal.metadata.metadataValue("zoneId")
+            ?: return SavingsGoalPurchaseResult.UnsupportedGoal
+        if (goal.metadata.metadataValue("source") != "room-zone") {
+            return SavingsGoalPurchaseResult.UnsupportedGoal
+        }
+        val zone = catalog.zones.firstOrNull { it.id == zoneId }
+            ?: return SavingsGoalPurchaseResult.UnsupportedGoal
+        val game = gameStateApi.initialize()
+        if (MiniGameAccess.isOpen(zone.id, game.ownedZoneIds)) {
+            return SavingsGoalPurchaseResult.AlreadyPurchased
+        }
+        if (game.playerLevel < zone.requiredLevel) {
+            return SavingsGoalPurchaseResult.LevelTooLow(zone.requiredLevel)
+        }
+        val operationId = "savings-goal-purchase:${goal.id}:withdraw"
+        val withdrawal = economyApi.transferFromSavings(
+            operationId = operationId,
+            amountRub = zone.priceRub.toLong(),
+            context = OperationContext(
+                reasonId = goal.id,
+                metadata = "source=savings-goal-purchase;zoneId=${zone.id}",
+            ),
+        )
+        when (withdrawal) {
+            is FinancialOperationResult.Applied,
+            is FinancialOperationResult.AlreadyApplied,
+            -> Unit
+            is FinancialOperationResult.Rejected -> {
+                if (withdrawal.reason == RejectionReason.INSUFFICIENT_SAVINGS) {
+                    return SavingsGoalPurchaseResult.NotEnoughSavings(
+                        (zone.priceRub - withdrawal.state.savingsRub).coerceAtLeast(0),
+                    )
+                }
+                error("Savings withdrawal rejected: ${withdrawal.reason}")
+            }
+        }
+        return when (val purchase = buyZone(zone)) {
+            ZoneBuyResult.Bought -> SavingsGoalPurchaseResult.Purchased
+            ZoneBuyResult.AlreadyOwned -> SavingsGoalPurchaseResult.AlreadyPurchased
+            is ZoneBuyResult.LevelTooLow -> SavingsGoalPurchaseResult.LevelTooLow(purchase.requiredLevel)
+            is ZoneBuyResult.NotEnoughMoney -> error("Withdrawn goal funds were not available for purchase")
+        }
+    }
 }
+
+private fun String?.metadataValue(key: String): String? = this
+    ?.split(';')
+    ?.firstOrNull { it.startsWith("$key=") }
+    ?.substringAfter('=')

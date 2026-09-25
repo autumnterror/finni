@@ -226,6 +226,41 @@ class EconomyApiTest {
         assertEquals(360L, api.grantWeeklyAllowance(3).parentHelpRepaidRub)
     }
 
+    @Test fun parentHelpCanBeSettledInFullIncludingTheExtraRepayment() = runBlocking {
+        val api = api(EconomyConfig(initialAvailableRub = 1_000))
+        api.requestParentHelp("help:quick", "quick")
+        val context = OperationContext(
+            reasonId = "quick",
+            metadata = "source=parent-help;settlement=full;amountRub=720",
+        )
+
+        val result = api.settleParentHelpInFull("help:payoff", context)
+
+        assertTrue(result is FinancialOperationResult.Applied)
+        assertEquals(720L, (result as FinancialOperationResult.Applied).operation.amountRub)
+        assertEquals(880L, result.state.availableRub)
+        assertEquals(0L, result.state.debtRub)
+        assertNull(api.getParentHelp())
+        assertTrue(api.settleParentHelpInFull("help:payoff", context) is FinancialOperationResult.AlreadyApplied)
+    }
+
+    @Test fun parentHelpFullSettlementRequiresEnoughWalletMoney() = runBlocking {
+        val api = api(EconomyConfig(initialAvailableRub = 0))
+        api.requestParentHelp("help:quick", "quick")
+
+        val result = api.settleParentHelpInFull(
+            "help:payoff",
+            OperationContext(reasonId = "quick", metadata = "source=parent-help;settlement=full;amountRub=720"),
+        )
+
+        assertEquals(
+            RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS,
+            (result as FinancialOperationResult.Rejected).reason,
+        )
+        assertEquals(600L, api.getState().availableRub)
+        assertEquals(720L, api.getParentHelp()?.remainingRub)
+    }
+
     @Test fun debtRulesAutoRepaymentAndEarlyRepaymentAreExplicit() = runBlocking {
         val api = api(EconomyConfig(
             initialAvailableRub = 0,

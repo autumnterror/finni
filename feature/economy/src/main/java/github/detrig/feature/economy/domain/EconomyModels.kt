@@ -17,6 +17,28 @@ data class EconomyState(
     val hasActiveDebt: Boolean get() = debtRub > 0
 }
 
+enum class LowBalanceRecoveryAction {
+    NONE,
+    USE_SAVINGS,
+    ASK_PARENTS,
+}
+
+fun lowBalanceRecoveryAction(
+    availableRub: Long,
+    savingsRub: Long,
+    minimumRequiredBalanceRub: Long,
+): LowBalanceRecoveryAction {
+    require(availableRub >= 0)
+    require(savingsRub >= 0)
+    require(minimumRequiredBalanceRub > 0)
+
+    return when {
+        availableRub >= minimumRequiredBalanceRub -> LowBalanceRecoveryAction.NONE
+        savingsRub >= minimumRequiredBalanceRub -> LowBalanceRecoveryAction.USE_SAVINGS
+        else -> LowBalanceRecoveryAction.ASK_PARENTS
+    }
+}
+
 data class FinancialSnapshot(
     val availableRub: Long,
     val savingsRub: Long,
@@ -143,6 +165,7 @@ data class ParentHelpOffer(
 
     val extraRub: Long get() = totalRepaymentRub - receivedRub
     val weeklyRepaymentRub: Long get() = totalRepaymentRub / repaymentWeeks
+    val ratePercent: Int get() = ((extraRub * 100 + receivedRub / 2) / receivedRub).toInt()
 }
 
 data class ParentHelpState(
