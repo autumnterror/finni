@@ -7,7 +7,7 @@ internal interface EconomyRepository {
     suspend fun state(): EconomyState
     fun observeState(): Flow<EconomyState>
     suspend fun canDebit(amountRub: Long): Boolean
-    suspend fun provideZeroBalanceHelp(): ZeroBalanceHelpResult
+    suspend fun provideZeroBalanceHelp(minimumRequiredBalanceRub: Long): ZeroBalanceHelpResult
     suspend fun credit(id: String, amountRub: Long, context: OperationContext): FinancialOperationResult
     suspend fun debit(id: String, amountRub: Long, context: OperationContext): FinancialOperationResult
     suspend fun createDebt(id: String, amountRub: Long, context: OperationContext): FinancialOperationResult

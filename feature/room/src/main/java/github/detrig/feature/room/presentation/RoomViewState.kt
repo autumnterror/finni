@@ -8,7 +8,9 @@ import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
+import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
+import github.detrig.feature.room.domain.model.RoomImpulseWish
 
 internal data class ParentHelpDialogState(
     val offers: List<ParentHelpOffer>,
@@ -21,7 +23,7 @@ internal data class AllowanceNoticeState(
     val receivedRub: Long,
 )
 
-internal data class ZeroBalanceHelpNoticeState(val amountRub: Long)
+internal data object EarlyWeekParentHelpNoticeState
 
 internal data class FirstRunOnboardingState(
     val step: FirstRunOnboardingStep,
@@ -33,10 +35,13 @@ internal data class FirstRunOnboardingState(
 ) {
     val focusObjectId: String? get() = when (step) {
         FirstRunOnboardingStep.GAME_DISCOVERY,
+        FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS,
         FirstRunOnboardingStep.GAME_SELECTION,
         -> "drawing"
+        FirstRunOnboardingStep.GAME_SELECTED -> suggestedGoalZoneId ?: "drawing"
         FirstRunOnboardingStep.PIGGY_BANK,
         FirstRunOnboardingStep.PIGGY_TAP,
+        FirstRunOnboardingStep.WAITING_FOR_PIGGY,
         FirstRunOnboardingStep.WAITING_FOR_GOAL,
         -> "piggy_bank"
         else -> null
@@ -44,17 +49,20 @@ internal data class FirstRunOnboardingState(
 
     val highlightedObjectIds: Set<String> get() = when (step) {
         FirstRunOnboardingStep.GAME_DISCOVERY,
+        FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS,
         FirstRunOnboardingStep.GAME_SELECTION,
         -> selectableGoalZoneIds
+        FirstRunOnboardingStep.GAME_SELECTED -> setOfNotNull(suggestedGoalZoneId)
         FirstRunOnboardingStep.PIGGY_BANK,
         FirstRunOnboardingStep.PIGGY_TAP,
+        FirstRunOnboardingStep.WAITING_FOR_PIGGY,
         -> setOf("piggy_bank")
         else -> emptySet()
     }
 
     val allowedObjectIds: Set<String> get() = when (step) {
         FirstRunOnboardingStep.GAME_SELECTION -> selectableGoalZoneIds
-        FirstRunOnboardingStep.PIGGY_TAP -> setOf("piggy_bank")
+        FirstRunOnboardingStep.WAITING_FOR_PIGGY -> setOf("piggy_bank")
         else -> emptySet()
     }
 }
@@ -87,6 +95,7 @@ internal sealed interface PlanDialogueState {
 
     data class Saved(
         val showSuccessExplanation: Boolean,
+        val hasSavings: Boolean,
     ) : PlanDialogueState
 }
 
@@ -98,20 +107,21 @@ internal sealed interface RoomViewState : CoreViewState {
         val progress: RoomProgress,
         val buyingZoneId: String? = null,
         val savingGoalZoneId: String? = null,
+        val sleepConfirmationVisible: Boolean = false,
         val sleeping: Boolean = false,
         val planEditor: PlanEditorState? = null,
         val planTutorialStep: PlanTutorialStep? = null,
         val planDialogue: PlanDialogueState? = null,
         val isSavingPlan: Boolean = false,
         val isPlanSummaryVisible: Boolean = false,
+        val weekResult: WeeklyPlanProgress? = null,
         val achievements: List<PlanAchievementFeedback> = emptyList(),
         val isAchievementsVisible: Boolean = false,
-        val achievementBanner: PlanAchievementFeedback? = null,
-        val pendingAchievementBanners: List<PlanAchievementFeedback> = emptyList(),
         val parentHelpDialog: ParentHelpDialogState? = null,
         val isRequestingParentHelp: Boolean = false,
         val allowanceNotice: AllowanceNoticeState? = null,
-        val zeroBalanceHelpNotice: ZeroBalanceHelpNoticeState? = null,
+        val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
+        val impulseWish: RoomImpulseWish? = null,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
     ) : RoomViewState

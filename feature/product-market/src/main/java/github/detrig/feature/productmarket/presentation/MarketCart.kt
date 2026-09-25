@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.window.Dialog
 import github.detrig.designsystem.component.FinPetOutlinedButton
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.productmarket.R
@@ -38,6 +39,7 @@ import github.detrig.products.ProductIds
 internal fun MarketCartDialog(
     trip: MarketTrip, catalog: ProductCatalog, onRemove: (ProductId) -> Unit, onDismiss: () -> Unit,
 ) {
+    FinPetModalVisibilityEffect()
     val quote = catalog.quote(trip.cart.map { (id, quantity) -> ProductQuantity(id, quantity) })
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = AppTheme.shapes.dialog, border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.borderDefault)) {

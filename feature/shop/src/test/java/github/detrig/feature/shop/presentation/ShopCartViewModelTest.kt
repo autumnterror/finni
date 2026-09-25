@@ -10,6 +10,10 @@ import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.feature.shop.api.ShopHost
 import github.detrig.feature.shop.domain.ShopCartStore
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
+import github.detrig.feature.shop.domain.ShopDecisionEvent
+import github.detrig.feature.shop.domain.ShopDecisionEventStore
+import github.detrig.feature.shop.domain.ShopDecisionEventType
+import github.detrig.feature.shop.domain.ShopPromotionKind
 import github.detrig.feature.shop.navigation.ShopRouter
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryStoreIds
@@ -38,6 +42,7 @@ class ShopCartViewModelTest {
     private lateinit var host: FakeHost
     private lateinit var router: FakeRouter
     private lateinit var cartStore: ShopCartStore
+    private lateinit var decisionEventStore: ShopDecisionEventStore
     private lateinit var receiptStore: ShopReceiptStore
     private lateinit var viewModel: ShopCartViewModel
 
@@ -55,18 +60,27 @@ class ShopCartViewModelTest {
         host = FakeHost()
         router = FakeRouter()
         cartStore = ShopCartStore()
+        decisionEventStore = ShopDecisionEventStore()
         receiptStore = ShopReceiptStore()
-        viewModel = ShopCartViewModel(
-            storeId = GroceryStoreIds.Store,
-            catalogRegistry = ShopCatalogRegistry { requestedId ->
-                catalog.takeIf { it.storefront.storeId == requestedId }
-            },
-            host = host,
-            cartStore = cartStore,
-            receiptStore = receiptStore,
-            router = router,
-        )
+        viewModel = createViewModel()
     }
+
+    private fun createViewModel(
+        useHostBack: Boolean = false,
+        useHostCheckoutCompleted: Boolean = false,
+    ) = ShopCartViewModel(
+        storeId = GroceryStoreIds.Store,
+        catalogRegistry = ShopCatalogRegistry { requestedId ->
+            catalog.takeIf { it.storefront.storeId == requestedId }
+        },
+        host = host,
+        cartStore = cartStore,
+        decisionEventStore = decisionEventStore,
+        receiptStore = receiptStore,
+        router = router,
+        useHostBack = useHostBack,
+        useHostCheckoutCompleted = useHostCheckoutCompleted,
+    )
 
     @After
     fun tearDown() {
@@ -112,6 +126,50 @@ class ShopCartViewModelTest {
     }
 
     @Test
+    fun promotionRemainsAvailableAfterSuccessfulCheckout() {
+        val apple = catalog.storefront.items.first()
+        val promotion = ShopDecisionEvent(
+            eventId = "promotion:day-1:${apple.id.value}",
+            type = ShopDecisionEventType.PROMOTION,
+            gamePeriod = 1,
+            eventPeriod = 1,
+            storeId = GroceryStoreIds.Store,
+            productId = apple.id,
+            productTitle = apple.title,
+            regularPriceRub = apple.priceRub,
+            offeredPriceRub = apple.priceRub - 1,
+            promotionKind = ShopPromotionKind.PERCENT_DISCOUNT,
+        )
+        decisionEventStore.set(promotion)
+        cartStore.add(GroceryStoreIds.Store, apple.id)
+        start()
+
+        viewModel.perform(ShopCartViewEvent.PayClicked)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(promotion, state().decisionEvent)
+        assertEquals(promotion, host.lastRequest?.decisionEvent)
+    }
+
+    @Test
+    fun embeddedCheckoutRequestsImmediateReturnToReceipt() {
+        val apple = catalog.storefront.items.first()
+        cartStore.add(GroceryStoreIds.Store, apple.id)
+        viewModel = createViewModel(useHostCheckoutCompleted = true)
+        start()
+
+        viewModel.perform(ShopCartViewEvent.PayClicked)
+        dispatcher.scheduler.runCurrent()
+
+        assertEquals(
+            listOf(ShopCartCommand.CheckoutCompleted),
+            viewModel.commands<ShopCartCommand>().value?.toList(),
+        )
+        assertEquals(0, router.backCount)
+        assertTrue(state().cart.isEmpty)
+    }
+
+    @Test
     fun decrementRemovesAProductWhenItsQuantityReachesZero() {
         val apple = catalog.storefront.items.first()
         cartStore.add(GroceryStoreIds.Store, apple.id)
@@ -139,6 +197,16 @@ class ShopCartViewModelTest {
         override suspend fun preparePlayer() = Unit
 
         override fun observeBalanceRub(): Flow<Long> = balance
+
+        override fun observePetName(): Flow<String> = MutableStateFlow("Пончик")
+
+        override suspend fun currentDecisionEvent(storeId: StoreId) = null
+
+        override suspend fun claimPromotionIntroduction() = false
+
+        override suspend fun recordEventDeclined(
+            event: github.detrig.feature.shop.domain.ShopDecisionEvent,
+        ) = Unit
 
         override suspend fun checkout(request: ShopCheckoutRequest): ShopCheckoutResult {
             checkoutCalls++

@@ -6,8 +6,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
@@ -15,6 +18,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -31,19 +37,31 @@ import github.detrig.feature.room.presentation.component.WeeklyPlanEditorDialog
 import github.detrig.feature.room.presentation.component.WeeklyPlanProgressDialog
 import github.detrig.feature.room.presentation.component.ParentHelpDialog
 import github.detrig.feature.room.presentation.component.AllowanceReceiptDialog
-import github.detrig.feature.room.presentation.component.ZeroBalanceHelpDialog
+import github.detrig.feature.room.presentation.component.EarlyWeekParentHelpDialog
 import github.detrig.feature.room.presentation.component.HouseHud
-import github.detrig.feature.room.presentation.component.AchievementUnlockedBanner
 import github.detrig.feature.room.presentation.component.AchievementsDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
+import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
+import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetDialogueAction
+import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
+import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetStorefrontCard
+import github.detrig.feature.room.domain.model.RoomProgress
+import github.detrig.feature.room.presentation.preview.RoomPreviewData
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import github.detrig.feature.room.R
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun RoomScreen(
@@ -54,6 +72,10 @@ internal fun RoomScreen(
     petPortrait: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
+    phoneUnreadCount: Int = 0,
+    phoneNotificationPrompt: String? = null,
+    onPhonePromptOpen: () -> Unit = {},
+    onPhonePromptDismiss: () -> Unit = {},
     onFoodClick: () -> Unit = {},
     onFeedingClick: () -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
@@ -89,16 +111,12 @@ internal fun RoomScreen(
     val requestedZoneId by previewRequests.zoneId.collectAsState()
     val content = state as? RoomViewState.Content
     val onboarding = content?.onboarding
-    val showAchievementBanner = canShowDialogs && content?.achievementBanner != null &&
-        (onboarding == null || onboarding.step == FirstRunOnboardingStep.PLAN_SAVED)
-    var achievementBannerHeight by remember { mutableStateOf(0.dp) }
-    LaunchedEffect(showAchievementBanner) {
-        if (!showAchievementBanner) achievementBannerHeight = 0.dp
-    }
-    val dialogueTopInset = if (showAchievementBanner) {
-        maxOf(achievementBannerHeight, 112.dp) + AppTheme.spacing.md
-    } else {
-        0.dp
+    var petLookingAround by remember { mutableStateOf(false) }
+    LaunchedEffect(petLookingAround) {
+        if (petLookingAround) {
+            delay(1_200)
+            petLookingAround = false
+        }
     }
     val activeFocusObjectId = onboarding?.focusObjectId ?: focusObjectId ?: requestedZoneId
     var focusedObjectId by remember { mutableStateOf<String?>(null) }
@@ -116,10 +134,12 @@ internal fun RoomScreen(
         focusedObjectId = null
         spotlightBoundsInWindow = null
     }
-    LaunchedEffect(resumed, onboarding != null) {
-        if (resumed && onboarding != null) viewModel.perform(RoomViewEvent.Resumed)
+    LaunchedEffect(resumed, externalActive) {
+        viewModel.perform(if (resumed && externalActive) RoomViewEvent.Resumed else RoomViewEvent.Paused)
     }
     val hasAllowedOnboardingObjects = onboarding?.allowedObjectIds?.isNotEmpty() == true
+    val showPhoneNotificationPrompt = phoneNotificationPrompt != null && onboarding == null &&
+        content != null && !content.sleeping && canShowDialogs
     Box(
         modifier = modifier.onGloballyPositioned { coordinates ->
             roomOriginInWindow = coordinates.positionInWindow()
@@ -130,8 +150,10 @@ internal fun RoomScreen(
             onEvent = viewModel::perform,
             modifier = Modifier.fillMaxSize(),
             petContent = petContent,
+            petLookingAround = petLookingAround,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,
+            phoneUnreadCount = phoneUnreadCount,
             onFoodClick = onFoodClick,
             onFeedingClick = onFeedingClick,
             tableFoodContent = tableFoodContent,
@@ -139,8 +161,11 @@ internal fun RoomScreen(
                 (focused || hasAllowedOnboardingObjects) && dialogZoneId == null &&
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.isAchievementsVisible != true &&
+                content?.weekResult == null &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
-                content?.zeroBalanceHelpNotice == null && content?.planDialogue == null &&
+                content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
+                content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
+                !showPhoneNotificationPrompt &&
                 (onboarding == null || hasAllowedOnboardingObjects),
             previewZoneId = requestedZoneId,
             focusObjectId = activeFocusObjectId,
@@ -166,124 +191,244 @@ internal fun RoomScreen(
         if ((externalActive || showHud) && content != null) {
             HouseHud(
                 progress = content.progress,
-                showMenu = externalActive && content.achievementBanner == null && onboarding == null,
-                showDetails = showHud || (content.achievementBanner == null && onboarding == null),
+                showMenu = externalActive && onboarding == null,
+                showDetails = showHud || onboarding == null,
                 onMenuClick = { viewModel.perform(RoomViewEvent.AchievementsClicked) },
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
+        if (onboarding?.step == FirstRunOnboardingStep.GAME_SELECTION) {
+            FinPetStorefrontCard(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(AppTheme.spacing.md)
+                    .widthIn(max = 400.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(AppTheme.spacing.md),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(56.dp)) { petPortrait(Modifier.fillMaxSize()) }
+                    Text(
+                        stringResource(R.string.onboarding_games_selection),
+                        modifier = Modifier.padding(start = AppTheme.spacing.md),
+                        style = AppTheme.typography.bodyStrong,
+                    )
+                }
+            }
+        }
     }
     val zone = content?.zones?.find { it.id == dialogZoneId }
-    if (zone?.access is RoomZoneAccess.Buyable) {
-        RoomBuyDialog(zone, content.progress, content.buyingZoneId != null,
-            onConfirm = { viewModel.perform(RoomViewEvent.BuyConfirmed(zone.id)) },
-            isSavingGoal = content.savingGoalZoneId == zone.id,
-            onSaveAsGoal = { title -> viewModel.perform(RoomViewEvent.SaveZoneAsGoal(zone.id, title)) },
-            onDismiss = { dialogZoneId = null })
-    }
-    content?.allowanceNotice?.let { notice ->
-        AllowanceReceiptDialog(notice) { viewModel.perform(RoomViewEvent.CloseAllowanceNotice) }
-    }
-    onboarding?.takeIf {
-        canShowDialogs && it.step == FirstRunOnboardingStep.FIRST_MONEY
-    }?.let {
-        AllowanceReceiptDialog(
-            notice = AllowanceNoticeState(
-                grossRub = content.progress.balanceRub.toLong(),
-                parentHelpRepaidRub = 0,
-                receivedRub = content.progress.balanceRub.toLong(),
-            ),
-            firstRun = true,
-            onDismiss = { viewModel.perform(RoomViewEvent.FirstRunMoneyNoticeClosed) },
+    val firstMoneyNotice = if (
+        canShowDialogs && content != null && onboarding?.step == FirstRunOnboardingStep.FIRST_MONEY
+    ) {
+        content.allowanceNotice ?: AllowanceNoticeState(
+            grossRub = content.progress.balanceRub.toLong(),
+            parentHelpRepaidRub = 0,
+            receivedRub = content.progress.balanceRub.toLong(),
         )
+    } else {
+        null
     }
-    content?.zeroBalanceHelpNotice?.let { notice ->
-        ZeroBalanceHelpDialog(notice) { viewModel.perform(RoomViewEvent.CloseZeroBalanceHelpNotice) }
-    }
-    content?.parentHelpDialog?.takeIf { content.zeroBalanceHelpNotice == null }?.let { dialog ->
-        ParentHelpDialog(
-            state = dialog,
-            isRequesting = content.isRequestingParentHelp,
-            onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
-            onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
-        )
-    }
-    content?.planEditor?.takeIf {
-        canShowDialogs &&
-        content.allowanceNotice == null && content.zeroBalanceHelpNotice == null
-    }?.let { editor ->
-        WeeklyPlanEditorDialog(
-            editor = editor,
-            availableRub = content.progress.balanceRub.toLong(),
-            isSaving = content.isSavingPlan,
-            petName = petName,
-            petPortrait = petPortrait,
-            tutorialStep = content.planTutorialStep,
-            feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
-            dialogueTopInset = dialogueTopInset,
-            onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
-            onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
-            onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
-            onPercentChanged = { category, percent ->
-                viewModel.perform(RoomViewEvent.PlanPercentChanged(category, percent))
-            },
-            onSave = { viewModel.perform(RoomViewEvent.SavePlanClicked) },
-        )
-    }
-    content?.progress?.planProgress?.takeIf { content.isPlanSummaryVisible }?.let { plan ->
-        WeeklyPlanProgressDialog(plan) { viewModel.perform(RoomViewEvent.ClosePlanSummary) }
-    }
-    content?.takeIf { it.isAchievementsVisible && canShowDialogs }?.let {
-        AchievementsDialog(
-            achievements = it.achievements,
-            onDismiss = { viewModel.perform(RoomViewEvent.CloseAchievements) },
-        )
-    }
-    content?.planDialogue?.takeIf { dialogue ->
-        canShowDialogs && dialogue is PlanDialogueState.Saved
-    }?.let { dialogue ->
-        FinPetDialogueDialog(
-            speakerName = petName,
-            cards = dialogue.cards(),
-            portrait = petPortrait,
-            topInset = dialogueTopInset,
-            onFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
-        )
-    }
-    onboarding?.takeIf { firstRun ->
+    val visibleOnboarding = onboarding?.takeIf { firstRun ->
         val spotlightRequired = firstRun.step in spotlightSteps
         canShowDialogs &&
             (firstRun.focusObjectId == null || focusedObjectId == firstRun.focusObjectId) &&
             (!spotlightRequired || spotlightBounds != null)
-    }?.let { firstRun ->
-        FirstRunOnboardingDialog(
-            state = firstRun,
-            petName = petName,
-            petPortrait = petPortrait,
-            topInset = dialogueTopInset,
-            onContinue = { viewModel.perform(RoomViewEvent.FirstRunOnboardingContinue) },
-            onDepositSelected = {
-                viewModel.perform(RoomViewEvent.FirstRunDepositSelected(it))
-            },
-        )
     }
-    content?.achievementBanner?.takeIf { showAchievementBanner }?.let { achievement ->
-        AchievementUnlockedBanner(
-            achievement = achievement,
-            onDismiss = { viewModel.perform(RoomViewEvent.AchievementBannerDismissed) },
-            onHeightChanged = { achievementBannerHeight = it },
-        )
+    when {
+        content?.sleepConfirmationVisible == true && canShowDialogs -> {
+            SleepConfirmationDialog(
+                onConfirm = { viewModel.perform(RoomViewEvent.SleepConfirmed) },
+                onPostpone = { viewModel.perform(RoomViewEvent.SleepPostponed) },
+            )
+        }
+        zone?.access is RoomZoneAccess.Buyable && content != null && canShowDialogs -> {
+            RoomBuyDialog(zone, content.progress, content.buyingZoneId != null,
+                onConfirm = { viewModel.perform(RoomViewEvent.BuyConfirmed(zone.id)) },
+                isSavingGoal = content.savingGoalZoneId == zone.id,
+                onSaveAsGoal = { title -> viewModel.perform(RoomViewEvent.SaveZoneAsGoal(zone.id, title)) },
+                onDismiss = { dialogZoneId = null })
+        }
+        firstMoneyNotice != null -> {
+            AllowanceReceiptDialog(
+                notice = firstMoneyNotice,
+                firstRun = true,
+                onDismiss = {
+                    if (content?.allowanceNotice != null) {
+                        viewModel.perform(RoomViewEvent.CloseAllowanceNotice)
+                    }
+                    viewModel.perform(RoomViewEvent.FirstRunMoneyNoticeClosed)
+                },
+            )
+        }
+        content?.allowanceNotice != null && content.weekResult == null && canShowDialogs -> {
+            AllowanceReceiptDialog(content.allowanceNotice) {
+                viewModel.perform(RoomViewEvent.CloseAllowanceNotice)
+            }
+        }
+        content?.earlyWeekParentHelpNotice != null && canShowDialogs -> {
+            EarlyWeekParentHelpDialog {
+                viewModel.perform(RoomViewEvent.CloseEarlyWeekParentHelpNotice)
+            }
+        }
+        content?.parentHelpDialog != null && canShowDialogs -> {
+            ParentHelpDialog(
+                state = content.parentHelpDialog,
+                isRequesting = content.isRequestingParentHelp,
+                onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
+            )
+        }
+        content?.impulseWish != null && canShowDialogs -> {
+            RoomImpulseWishDialog(
+                wish = content.impulseWish,
+                petName = petName,
+                petPortrait = petPortrait,
+                onFinished = { viewModel.perform(RoomViewEvent.CloseImpulseWish) },
+            )
+        }
+        content?.planEditor != null && canShowDialogs && !content.sleeping &&
+            content.allowanceNotice == null && content.earlyWeekParentHelpNotice == null &&
+            content.weekResult == null -> {
+            WeeklyPlanEditorDialog(
+                editor = content.planEditor,
+                weekNumber = content.progress.weekNumber,
+                availableRub = content.progress.balanceRub.toLong(),
+                isSaving = content.isSavingPlan,
+                petName = petName,
+                petPortrait = petPortrait,
+                tutorialStep = content.planTutorialStep,
+                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
+                dialogueTopInset = 0.dp,
+                onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
+                onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
+                onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
+                onPercentChanged = { category, percent ->
+                    viewModel.perform(RoomViewEvent.PlanPercentChanged(category, percent))
+                },
+                onSave = { viewModel.perform(RoomViewEvent.SavePlanClicked) },
+            )
+        }
+        content?.isPlanSummaryVisible == true && content.progress.planProgress != null -> {
+            WeeklyPlanProgressDialog(content.progress.planProgress) {
+                viewModel.perform(RoomViewEvent.ClosePlanSummary)
+            }
+        }
+        content?.weekResult != null && canShowDialogs -> {
+            WeeklyPlanProgressDialog(
+                progress = content.weekResult,
+                isWeekResult = true,
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
+            )
+        }
+        content?.isAchievementsVisible == true && canShowDialogs -> {
+            AchievementsDialog(
+                achievements = content.achievements,
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseAchievements) },
+            )
+        }
+        content?.planDialogue is PlanDialogueState.Saved && canShowDialogs -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = content.planDialogue.cards(),
+                portrait = petPortrait,
+                topInset = 0.dp,
+                onFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
+            )
+        }
+        visibleOnboarding != null -> {
+            FirstRunOnboardingDialog(
+                state = visibleOnboarding,
+                selectedZone = content.zones.firstOrNull { it.id == visibleOnboarding.suggestedGoalZoneId },
+                petName = petName,
+                petPortrait = petPortrait,
+                topInset = 0.dp,
+                onContinue = { viewModel.perform(RoomViewEvent.FirstRunOnboardingContinue) },
+                onPageChanged = { page ->
+                    if (visibleOnboarding.step == FirstRunOnboardingStep.INTRODUCTION && page == 2) {
+                        petLookingAround = true
+                    }
+                },
+                onDepositSelected = {
+                    viewModel.perform(RoomViewEvent.FirstRunDepositSelected(it))
+                },
+            )
+        }
+        showPhoneNotificationPrompt -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(checkNotNull(phoneNotificationPrompt)),
+                portrait = petPortrait,
+                advanceOnTap = false,
+                actions = listOf(
+                    FinPetDialogueAction(id = "open", label = "Посмотреть"),
+                    FinPetDialogueAction(id = "later", label = "Позже"),
+                ),
+                onActionSelected = { action ->
+                    onPhonePromptDismiss()
+                    if (action.id == "open") onPhonePromptOpen()
+                },
+                onFinished = onPhonePromptDismiss,
+            )
+        }
     }
     LaunchedEffect(zone?.access, content != null) {
         if (content != null && zone?.access !is RoomZoneAccess.Buyable) dialogZoneId = null
     }
 }
 
+@Composable
+private fun RoomTopStatus(
+    progress: RoomProgress,
+    showDay: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.fillMaxWidth()) {
+        val balanceDescription = stringResource(R.string.house_balance_accessibility, progress.balanceRub)
+        FinPetStorefrontBalanceBadge(
+            balanceRub = progress.balanceRub.toLong(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(AppTheme.spacing.md)
+                .semantics { contentDescription = balanceDescription }
+                .testTag("house_balance"),
+        )
+        if (showDay) {
+            FinPetCard(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(AppTheme.spacing.md)
+                    .testTag("house_day_counter"),
+            ) {
+                Text(
+                    text = stringResource(R.string.house_current_day, progress.dayOfWeek),
+                    modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
+                    style = AppTheme.typography.bodyStrong,
+                )
+            }
+        }
+    }
+}
+
+@Preview(name = "Баланс и день комнаты", widthDp = 360, heightDp = 120, showBackground = true)
+@Composable
+private fun RoomTopStatusPreview() {
+    FinPetTheme {
+        RoomTopStatus(RoomPreviewData.state.progress)
+    }
+}
+
 private val spotlightSteps = setOf(
     FirstRunOnboardingStep.GAME_DISCOVERY,
-    FirstRunOnboardingStep.GAME_SELECTION,
+    FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS,
+    FirstRunOnboardingStep.GAME_SELECTED,
     FirstRunOnboardingStep.PIGGY_BANK,
     FirstRunOnboardingStep.PIGGY_TAP,
+    FirstRunOnboardingStep.WAITING_FOR_PIGGY,
 )
 
 @Composable
@@ -304,7 +449,9 @@ private fun PlanDialogueState.cards(): List<String> = when (this) {
             )
         },
     )
-    is PlanDialogueState.Saved -> listOf(stringResource(R.string.plan_feedback_success))
+    is PlanDialogueState.Saved -> listOf(stringResource(
+        if (hasSavings) R.string.plan_feedback_success else R.string.plan_feedback_success_no_savings,
+    ))
 }
 
 @Preview(name = "Обучение плану", widthDp = 360, heightDp = 740, showBackground = true)

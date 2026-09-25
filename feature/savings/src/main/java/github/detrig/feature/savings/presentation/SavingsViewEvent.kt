@@ -7,6 +7,8 @@ internal sealed interface SavingsViewEvent : CoreViewEvent {
     data object Load : SavingsViewEvent
     data object Back : SavingsViewEvent
     data class GoalSelected(val goal: SavingsGoalDraft) : SavingsViewEvent
+    data object GoalConfirmed : SavingsViewEvent
+    data object GoalChangeRequested : SavingsViewEvent
     data class TransferOpened(val direction: SavingsTransferDirection) : SavingsViewEvent
     data object TransferDismissed : SavingsViewEvent
     data class TransferConfirmed(val amountRub: Long) : SavingsViewEvent

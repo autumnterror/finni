@@ -7,9 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import github.detrig.core.mvvm.command.CommandsQueueEffect
+import github.detrig.core.mvvm.command.ImmutableCommandsQueue
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.ShopFeature
@@ -26,17 +29,28 @@ internal fun ShopCartScreen(
     onCheckoutCompleted: (() -> Unit)? = null,
 ) {
     val component = ShopFeature.component()
-    val viewModel: ShopCartViewModel = viewModel(key = "cart:${storeId.value}:${onBack != null}") {
+    val viewModel: ShopCartViewModel = viewModel(
+        key = "cart:${storeId.value}:${onBack != null}:${onCheckoutCompleted != null}",
+    ) {
         component.cartViewModel(
             storeId = storeId,
-            onBack = onBack,
-            onCheckoutCompleted = onCheckoutCompleted,
+            useHostBack = onBack != null,
+            useHostCheckoutCompleted = onCheckoutCompleted != null,
         )
     }
     val state by viewModel.state().observeAsState(ShopCartViewState())
+    val commands = remember(viewModel) {
+        ImmutableCommandsQueue(viewModel.commands<ShopCartCommand>())
+    }
+    CommandsQueueEffect(commands) { command ->
+        when (command) {
+            ShopCartCommand.Back -> onBack?.invoke()
+            ShopCartCommand.CheckoutCompleted -> onCheckoutCompleted?.invoke()
+        }
+    }
 
     LaunchedEffect(viewModel) { viewModel.perform(ShopCartViewEvent.Load) }
-    val handleBack = { onBack?.invoke() ?: viewModel.perform(ShopCartViewEvent.Back) }
+    val handleBack = { viewModel.perform(ShopCartViewEvent.Back) }
     BackHandler { handleBack() }
 
     Scaffold(

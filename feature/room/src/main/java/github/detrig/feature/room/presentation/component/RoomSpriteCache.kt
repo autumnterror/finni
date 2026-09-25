@@ -58,7 +58,7 @@ internal object RoomSpriteCache {
         val metrics = resources.displayMetrics
         val sceneWidth = (metrics.widthPixels.coerceAtLeast(1) * HouseLayout.WORLD_WIDTH).roundToInt()
         val sceneHeight = metrics.heightPixels.coerceAtLeast(1)
-        return HouseLayout.objects.associate { placement ->
+        val sprites = HouseLayout.objects.associate { placement ->
             val bounds = requireNotNull(placement.bounds)
             val destination = Rect(
                 bounds.left * sceneWidth,
@@ -73,5 +73,13 @@ internal object RoomSpriteCache {
                 height = destination.height.roundToInt(),
             )
         }
+        val windowPlacement = HouseLayout.objects.first { it.id == "decor_window" }
+        val windowBounds = requireNotNull(windowPlacement.bounds)
+        return sprites + ("decor_window_night" to RoomSprite.load(
+            resources = resources,
+            resource = roomObjectAsset("decor_window_night"),
+            width = (windowBounds.width * sceneWidth).roundToInt(),
+            height = (windowBounds.height * sceneHeight).roundToInt(),
+        ))
     }
 }

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="messages_app_name">Сообщения</string>
+    <string name="messages_first_room_prompt">На телефон пришло сообщение! Давай посмотрим — вдруг там что-то важное.</string>
+    <string name="messages_back">Назад</string>
+    <string name="messages_empty_preview">Сообщений пока нет</string>
+    <string name="messages_day">День %1$d</string>
+    <string name="messages_bank">Банк</string>
+    <string name="messages_unknown_1">Неизвестный номер 1</string>
+    <string name="messages_unknown_2">Неизвестный номер 2</string>
+    <string name="messages_bank_code">Никому не сообщайте этот код. Код: %1$s</string>
+    <string name="messages_code_request">сообщи код</string>
+    <string name="messages_unknown_link">Вам подарок! Откройте ссылку: %1$s</string>
+    <string name="messages_pet_name">Финни</string>
+    <string name="messages_guidance_code">Что-то здесь подозрительно. Банк никогда не просит показывать код другому человеку.</string>
+    <string name="messages_guidance_link">Что-то здесь подозрительно. Неизвестная ссылка может вести на опасный сайт.</string>
+    <string name="messages_share_code">Показать код</string>
+    <string name="messages_open_link">Перейти по ссылке</string>
+    <string name="messages_safe_code_feedback">Верно! Код подтверждения — секрет. Его нельзя сообщать, даже если кто-то торопит или обещает подарок.</string>
+    <string name="messages_unsafe_code_feedback">Показывать код опасно: мошенники получили доступ к деньгам. С баланса списано 20%% — %1$d ₽. В следующий раз игнорируй такую просьбу.</string>
+    <string name="messages_safe_link_feedback">Верно! Незнакомую ссылку безопаснее не открывать и показать сообщение взрослому.</string>
+    <string name="messages_unsafe_link_feedback">Ссылка оказалась опасной. С баланса списано 20%% — %1$d ₽. В следующий раз игнорируй неизвестные ссылки.</string>
+    <string name="messages_no_messages">Здесь пока нет сообщений.</string>
+    <string name="messages_unread_count">Непрочитанных сообщений: %1$d</string>
+    <string name="messages_sender_avatar">Аватар отправителя %1$s</string>
+</resources>

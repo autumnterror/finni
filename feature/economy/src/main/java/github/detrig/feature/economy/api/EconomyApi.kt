@@ -22,7 +22,9 @@ interface EconomyApi {
     suspend fun getState(): EconomyState
     fun observeState(): Flow<EconomyState>
     suspend fun canDebit(amountRub: Long): Boolean
-    suspend fun provideZeroBalanceHelp(): ZeroBalanceHelpResult = ZeroBalanceHelpResult.NotNeeded(getState())
+    suspend fun provideZeroBalanceHelp(
+        minimumRequiredBalanceRub: Long = 1,
+    ): ZeroBalanceHelpResult = ZeroBalanceHelpResult.NotNeeded(getState())
     suspend fun credit(operationId: String, amountRub: Long, context: OperationContext = OperationContext()): FinancialOperationResult
     suspend fun debit(operationId: String, amountRub: Long, context: OperationContext = OperationContext()): FinancialOperationResult
     suspend fun createDebt(operationId: String, amountRub: Long, context: OperationContext = OperationContext()): FinancialOperationResult

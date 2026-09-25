@@ -68,6 +68,7 @@ internal class AppModuleImpl(
             week = weekMediator,
             pet = petMediator,
             roomApiProvider = { roomMediator.getApi() },
+            learning = learningMediator,
             gameAudio = gameAudio,
         )
     }
@@ -78,6 +79,8 @@ internal class AppModuleImpl(
             weekMediator = weekMediator,
             planningMediator = planningMediator,
             inventoryApi = inventoryMediator.getApi(),
+            learningMediator = learningMediator,
+            petMediator = petMediator,
             gameAudio = gameAudio,
         )
     }
@@ -112,6 +115,9 @@ internal class AppModuleImpl(
             roomMediator = roomMediator,
             petMediator = petMediator,
             shopMediator = shopMediator,
+            economyMediator = economyMediator,
+            weekMediator = weekMediator,
+            learningMediator = learningMediator,
         )
     }
 

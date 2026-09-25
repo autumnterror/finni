@@ -10,6 +10,8 @@ import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.feature.shop.api.ShopHost
 import github.detrig.feature.shop.domain.ShopCartStore
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
+import github.detrig.feature.shop.domain.ShopDecisionEventStore
+import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.feature.shop.navigation.ShopRouter
 import github.detrig.products.ProductId
 import github.detrig.products.SellableCatalog
@@ -25,10 +27,11 @@ internal class ShopCartViewModel(
     catalogRegistry: ShopCatalogRegistry,
     private val host: ShopHost,
     private val cartStore: ShopCartStore,
+    private val decisionEventStore: ShopDecisionEventStore,
     private val receiptStore: ShopReceiptStore,
     private val router: ShopRouter,
-    private val onBack: (() -> Unit)? = null,
-    private val onCheckoutCompleted: (() -> Unit)? = null,
+    private val useHostBack: Boolean = false,
+    private val useHostCheckoutCompleted: Boolean = false,
     private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<ShopCartViewState, ShopCartViewEvent>(ShopCartViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
@@ -38,7 +41,7 @@ internal class ShopCartViewModel(
         when (viewEvent) {
             ShopCartViewEvent.Load,
             ShopCartViewEvent.Retry -> load()
-            ShopCartViewEvent.Back -> onBack?.invoke() ?: router.back()
+            ShopCartViewEvent.Back -> navigateBack()
             is ShopCartViewEvent.Increase -> add(viewEvent.productId)
             is ShopCartViewEvent.Decrease -> removeOne(viewEvent.productId)
             ShopCartViewEvent.PayClicked -> checkout()
@@ -72,17 +75,20 @@ internal class ShopCartViewModel(
             combine(
                 host.observeBalanceRub(),
                 cartStore.observe(storeId),
-            ) { balance, cart -> balance to cart }.collect { (balance, cart) ->
-                updateState {
-                    copy(
-                        storefront = resolvedCatalog.storefront,
-                        cart = cart,
-                        balanceRub = balance,
-                        loading = false,
-                        error = null,
-                    )
+                decisionEventStore.observe(storeId),
+            ) { balance, cart, decisionEvent -> Triple(balance, cart, decisionEvent) }
+                .collect { (balance, cart, decisionEvent) ->
+                    updateState {
+                        copy(
+                            storefront = resolvedCatalog.storefront,
+                            cart = cart,
+                            balanceRub = balance,
+                            decisionEvent = decisionEvent,
+                            loading = false,
+                            error = null,
+                        )
+                    }
                 }
-            }
         }
     }
 
@@ -127,6 +133,7 @@ internal class ShopCartViewModel(
                         operationId = operationId,
                         storeId = storeId,
                         lines = pendingCart.lines,
+                        decisionEvent = currentState.decisionEvent,
                     ),
                 )
             ) {
@@ -134,9 +141,13 @@ internal class ShopCartViewModel(
                     val receipt = stateData.createReceipt(
                         cart = pendingCart,
                         receiptNumber = result.receiptNumber,
+                        feedback = result.feedback,
                     )
                     receiptStore.show(storeId, receipt)
                     cartStore.removePurchased(storeId, pendingCart)
+                    if (currentState.decisionEvent?.type != ShopDecisionEventType.PROMOTION) {
+                        decisionEventStore.clear(storeId)
+                    }
                     updateState {
                         copy(
                             balanceRub = result.balanceRub,
@@ -144,7 +155,7 @@ internal class ShopCartViewModel(
                             checkoutRejection = null,
                         )
                     }
-                    onCheckoutCompleted?.invoke() ?: router.back()
+                    finishCheckout()
                 }
 
                 is ShopCheckoutResult.Rejected -> {
@@ -161,24 +172,44 @@ internal class ShopCartViewModel(
         }
     }
 
+    private fun navigateBack() {
+        if (useHostBack) {
+            commands.onNext(ShopCartCommand.Back)
+        } else {
+            router.back()
+        }
+    }
+
+    private fun finishCheckout() {
+        if (useHostCheckoutCompleted) {
+            commands.onNext(ShopCartCommand.CheckoutCompleted)
+        } else {
+            router.back()
+        }
+    }
+
     private fun ShopCartViewState.createReceipt(
         cart: StoreCart,
         receiptNumber: String,
+        feedback: github.detrig.feature.shop.api.ShopPurchaseFeedback?,
     ): ShopReceipt {
         val receiptStorefront = requireNotNull(storefront)
         val itemsById = receiptStorefront.items.associateBy { it.id }
         val receiptLines = cart.lines.map { line ->
             val item = requireNotNull(itemsById[line.itemId])
+            val price = requireNotNull(priceLine(item.id, line.quantity))
             ShopReceiptLine(
                 title = item.title,
                 unitPriceRub = item.priceRub,
                 quantity = line.quantity,
+                totalRub = price.chargedTotalRub,
             )
         }
         return ShopReceipt(
             number = receiptNumber,
             storeTitle = receiptStorefront.title,
             lines = receiptLines,
+            feedback = feedback,
         )
     }
 }

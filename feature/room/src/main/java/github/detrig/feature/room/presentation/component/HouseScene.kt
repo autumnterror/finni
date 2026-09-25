@@ -12,15 +12,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
@@ -48,6 +54,7 @@ internal fun HouseScene(
     initialPosition: HousePosition,
     active: Boolean,
     buyingZoneId: String?,
+    nightMode: Boolean = false,
     onZoneClick: (String) -> Unit,
     onPhoneClick: () -> Unit,
     onBedClick: () -> Unit,
@@ -72,6 +79,8 @@ internal fun HouseScene(
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier) -> Unit = {},
     tableFoodContent: @Composable (Modifier) -> Unit = {},
+    petLookingAround: Boolean = false,
+    phoneUnreadCount: Int = 0,
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
     val appMotion = AppTheme.motion
@@ -142,6 +151,7 @@ internal fun HouseScene(
         val sceneHeightDp = maxHeight
         val unitPx = with(LocalDensity.current) { unitDp.toPx() }
         val heightPx = with(LocalDensity.current) { sceneHeightDp.toPx() }
+        val density = LocalDensity.current
         // Первая отрисовка уже в сохранённой точке, без кадра с левой границей дома.
         val scroll = remember(unitPx, focusObjectId, sceneZoom) {
             ScrollState((initialCameraLeftX * unitPx).roundToInt())
@@ -270,13 +280,14 @@ internal fun HouseScene(
                             placements = feedingRoomObjects,
                             drawObjectIds = ROOM_OBJECTS_BEHIND_PET,
                             exposeInteractions = false,
+                            nightMode = nightMode,
                             rotationByObjectId = mapOf("decor_chair" to FEEDING_CHAIR_ROTATION),
                         )
 
                         petContent(
                             petModifier(
                                 unitDp, unitPx, heightPx, petAnchorX, petBaselineFraction ?: 0.742f,
-                                petZIndex, motion, active,
+                                petZIndex, motion, active, petLookingAround,
                             ),
                         )
 
@@ -289,6 +300,7 @@ internal fun HouseScene(
                             placements = feedingRoomObjects,
                             drawObjectIds = DINING_TABLE_OBJECT,
                             exposeInteractions = false,
+                            nightMode = nightMode,
                         )
 
                         tableFoodContent(tableFoodModifier)
@@ -319,17 +331,48 @@ internal fun HouseScene(
                                     else -> onZoneClick(id)
                                 }
                             },
+                            nightMode = nightMode,
                             modifier = Modifier.fillMaxSize(),
                         )
                         petContent(
                             petModifier(
                                 unitDp, unitPx, heightPx, null, HouseLayout.PET_FLOOR_BASELINE,
-                                petZIndex, motion, active,
+                                petZIndex, motion, active, petLookingAround,
                             ),
                         )
                         // The groceries rest on the tabletop behind a pet walking
                         // in front of it; the focused feeding view keeps its own layers.
                         tableFoodContent(tableFoodModifier)
+                        if (phoneUnreadCount > 0) {
+                            val phoneBounds = requireNotNull(
+                                HouseLayout.objects.first { it.id == "phone" }.bounds,
+                            )
+                            val badgeSizePx = with(density) { PHONE_BADGE_SIZE.toPx() }
+                            Box(
+                                modifier = Modifier
+                                    .offset {
+                                        IntOffset(
+                                            x = (phoneBounds.right * HouseLayout.WORLD_WIDTH * unitPx -
+                                                badgeSizePx * 0.45f).roundToInt(),
+                                            y = (phoneBounds.top * heightPx - badgeSizePx * 0.45f).roundToInt(),
+                                        )
+                                    }
+                                    .size(PHONE_BADGE_SIZE)
+                                    .zIndex(PHONE_BADGE_Z_INDEX)
+                                    .clip(CircleShape)
+                                    .background(AppTheme.colors.statusCritical.accent)
+                                    .semantics {
+                                        contentDescription = "Новых сообщений: $phoneUnreadCount"
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = phoneUnreadCount.coerceAtMost(9).toString(),
+                                    color = AppTheme.colors.statusCritical.onContainer,
+                                    style = AppTheme.typography.label,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -340,6 +383,8 @@ internal fun HouseScene(
 private const val FEEDING_TABLETOP_DEPTH_FRACTION = 0.42f
 private const val ROOM_TABLETOP_DEPTH_FRACTION = 0.34f
 private const val ROOM_TABLE_FOOD_Z_INDEX = 2f
+private const val PHONE_BADGE_Z_INDEX = 8f
+private val PHONE_BADGE_SIZE = 28.dp
 private const val ROOM_TABLE_FOOD_RAISE_FRACTION = 0.02f
 private const val FEEDING_SCENE_ZOOM = 1.32f
 private const val HOUSE_REFERENCE_WIDTH = 2048f
@@ -364,6 +409,7 @@ private fun petModifier(
     zIndex: Float,
     motion: HouseMotionState,
     active: Boolean,
+    petLookingAround: Boolean,
 ): Modifier = Modifier.offset {
     val petX = anchorX ?: motion.petX
     IntOffset(
@@ -371,7 +417,7 @@ private fun petModifier(
         (baseline * heightPx - HouseLayout.PET_WIDTH * unitPx).roundToInt(),
     )
 }.size(unitDp * HouseLayout.PET_WIDTH).zIndex(zIndex).graphicsLayer {
-    scaleX = if (motion.facingRight) 1f else -1f
+    scaleX = if (motion.facingRight == petLookingAround) -1f else 1f
     val step = if (active && motion.isWalking) sin(motion.walkPhase * PI * 2).toFloat() else 0f
     translationY = -kotlin.math.abs(step) * size.height * 0.035f
     rotationZ = step * 2f

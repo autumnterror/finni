@@ -10,6 +10,7 @@ interface SavingsApi {
     fun entries(): EntryHostProviderInstaller
     suspend fun createGoal(draft: SavingsGoalDraft): SavingsGoal
     suspend fun getActiveGoalProgress(): SavingsGoalProgress?
+    suspend fun reconcileLearning()
     suspend fun transferToActiveGoal(operationId: String, amountRub: Long): SavingsTransferResult
     suspend fun transferFromActiveGoal(operationId: String, amountRub: Long): SavingsTransferResult
 }

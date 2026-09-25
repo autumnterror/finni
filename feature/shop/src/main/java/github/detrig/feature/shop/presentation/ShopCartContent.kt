@@ -45,6 +45,7 @@ import github.detrig.feature.shop.api.ShopArtworkResolver
 import github.detrig.feature.shop.api.ShopItemDetail
 import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
+import github.detrig.feature.shop.domain.ShopPromotionKind
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.StoreCart
@@ -240,6 +241,29 @@ private fun ShopCartLineCard(
                     style = AppTheme.typography.bodyStrong,
                     coinSize = 24.dp,
                 )
+                val promotionText = when {
+                    line.freeQuantity > 0 -> stringResource(
+                        R.string.shop_cart_free_items,
+                        line.freeQuantity,
+                    )
+                    line.promotionKind == ShopPromotionKind.BUY_TWO_GET_ONE_FREE -> stringResource(
+                        R.string.shop_cart_items_until_free,
+                        3 - line.quantity % 3,
+                    )
+                    line.savingRub > 0 -> stringResource(
+                        R.string.shop_cart_discount,
+                        line.savingRub,
+                    )
+                    else -> null
+                }
+                if (promotionText != null) {
+                    Text(
+                        text = promotionText,
+                        style = AppTheme.typography.caption,
+                        color = AppTheme.colors.actionPrimary,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

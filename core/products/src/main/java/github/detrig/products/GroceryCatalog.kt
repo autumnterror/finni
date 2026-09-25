@@ -74,7 +74,7 @@ class GroceryCatalog : SellableCatalog<FoodItem> {
             StoreCategory(GroceryCategoryIds.Drinks, "Напитки"),
         ),
         items = PRODUCTS + MEALS + DRINKS,
-        gridLayout = StoreGridLayout(columns = 3),
+        gridLayout = StoreGridLayout(columns = 2),
         receiptTypeCode = StoreReceiptTypeCodes.Grocery,
     )
 

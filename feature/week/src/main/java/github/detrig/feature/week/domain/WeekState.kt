@@ -22,3 +22,18 @@ sealed interface EndDayResult {
     ) : EndDayResult
     data class AlreadyAdvanced(override val state: WeekState) : EndDayResult
 }
+
+sealed interface EarlyWeekEndResult {
+    val state: WeekState
+
+    data class Completed(
+        override val state: WeekState,
+        val skippedDays: Int,
+        val allowanceReceivedRub: Long,
+        val allowanceGrossRub: Long,
+        val parentHelpRepaidRub: Long,
+    ) : EarlyWeekEndResult
+
+    data class AlreadyCompleted(override val state: WeekState) : EarlyWeekEndResult
+    data class NotNeeded(override val state: WeekState) : EarlyWeekEndResult
+}

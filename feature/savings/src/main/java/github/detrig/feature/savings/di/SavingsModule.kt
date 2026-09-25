@@ -6,14 +6,18 @@ import github.detrig.feature.savings.api.SavingsApiImpl
 import github.detrig.feature.savings.domain.CreateSavingsGoalInteractor
 import github.detrig.feature.savings.domain.TransferFromSavingsInteractor
 import github.detrig.feature.savings.domain.TransferToSavingsInteractor
+import github.detrig.feature.savings.domain.SavingsLearningInteractor
 import github.detrig.feature.savings.navigation.SavingsRouterImpl
 import github.detrig.feature.savings.presentation.SavingsViewModel
 
 internal class SavingsModule(private val dependencies: SavingsDependencies) : SavingsComponent {
     private val router by lazy { SavingsRouterImpl(dependencies.globalNavigator()) }
-    private val createGoal by lazy { CreateSavingsGoalInteractor(dependencies.economyApi()) }
+    private val learning by lazy {
+        SavingsLearningInteractor(dependencies.economyApi(), dependencies.weekApi(), dependencies.learningApi())
+    }
+    private val createGoal by lazy { CreateSavingsGoalInteractor(dependencies.economyApi(), learning) }
     private val transferTo by lazy {
-        TransferToSavingsInteractor(dependencies.economyApi(), dependencies.planningApi(), dependencies.weekApi())
+        TransferToSavingsInteractor(dependencies.economyApi(), dependencies.planningApi(), learning)
     }
     private val transferFrom by lazy { TransferFromSavingsInteractor(dependencies.economyApi()) }
 
@@ -24,6 +28,7 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
             dependencies.economyApi(),
             transferTo,
             transferFrom,
+            learning,
             dependencies.petApi(),
             dependencies.roomBackdrop(),
         )
@@ -34,6 +39,7 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
         createGoal = createGoal,
         transferTo = transferTo,
         transferFrom = transferFrom,
+        learning = learning,
         router = router,
         firstRunOnboarding = firstRunOnboarding,
         suggestedGoalId = suggestedGoalId,

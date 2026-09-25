@@ -46,18 +46,21 @@ internal class PlanningRepository(
         SavePlanResult.Saved(entity.toProgress(dao.getActualOperations(weekNumber)))
     }
 
-    override suspend fun recordActual(
-        operationId: String,
-        weekNumber: Long,
-        category: PlanCategory,
-        amountRub: Long,
-    ): RecordActualResult = transactionRunner.runInTransaction {
-        if (operationId.isBlank() || amountRub <= 0) throw IllegalArgumentException("Operation ID and amount must be positive")
-        val incoming = PlanActualOperationEntity(operationId, weekNumber, category.code, amountRub)
-        dao.getActualOperation(operationId)?.let { current ->
+    override suspend fun recordActual(operation: PlanActualOperation): RecordActualResult = transactionRunner.runInTransaction {
+        if (operation.operationId.isBlank() || operation.amountRub <= 0) {
+            throw IllegalArgumentException("Operation ID and amount must be positive")
+        }
+        require(operation.weekNumber >= 1) { "The game week must be positive" }
+        val incoming = PlanActualOperationEntity(
+            operationId = operation.operationId,
+            weekNumber = operation.weekNumber,
+            categoryCode = operation.planCategory.code,
+            amountRub = operation.amountRub,
+        )
+        dao.getActualOperation(operation.operationId)?.let { current ->
             return@runInTransaction if (current == incoming) RecordActualResult.AlreadyRecorded else RecordActualResult.OperationIdConflict
         }
-        requireNotNull(dao.getPlan(weekNumber)) { "A plan must be saved before recording its result" }
+        requireNotNull(dao.getPlan(operation.weekNumber)) { "A plan must be saved before recording its result" }
         dao.insertActualOperation(incoming)
         RecordActualResult.Recorded
     }

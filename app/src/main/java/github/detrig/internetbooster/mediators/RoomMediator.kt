@@ -13,6 +13,8 @@ import github.detrig.feature.room.api.RoomApi
 import github.detrig.feature.room.api.RoomGameLauncher
 import github.detrig.internetbooster.navigation.RoomGameLauncherImpl
 import github.detrig.feature.economy.api.EconomyApi
+import github.detrig.feature.room.domain.model.RoomImpulseWish
+import github.detrig.feature.room.domain.model.RoomImpulseWishSource
 
 internal class RoomMediator(
     private val coreComponent: CoreComponent,
@@ -38,9 +40,20 @@ internal class RoomMediator(
                 override fun marketLauncher() = github.detrig.feature.room.api.RoomMarketLauncher {
                     shopMediator.getApi().open(github.detrig.products.GroceryStoreIds.Store)
                 }
+                override fun impulseWishSource() = RoomImpulseWishSource {
+                    shopMediator.claimRoomImpulseWish()?.let { wish ->
+                        RoomImpulseWish(
+                            eventId = wish.eventId,
+                            productTitle = wish.productTitle,
+                            phraseVariant = wish.phraseVariant,
+                            showIntroduction = wish.showIntroduction,
+                        )
+                    }
+                }
                 override fun globalMessageController(): GlobalMessageController = coreComponent.globalMessageController
                 override fun resources(): Resources = coreComponent.resources
                 override fun gameAudio() = gameAudio
+                override fun minimumProductPriceRub(): Long = shopMediator.minimumGroceryPriceRub()
                 override fun gameLauncher(): RoomGameLauncher =
                     RoomGameLauncherImpl(coreComponent.globalMessageController, coreComponent.resources)
             }

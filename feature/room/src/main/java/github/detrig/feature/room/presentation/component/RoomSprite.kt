@@ -111,6 +111,7 @@ internal fun roomObjectAsset(id: String): Int = when (id) {
     "decor_rug_living" -> R.drawable.room_rug_living
     "decor_rug_kitchen" -> R.drawable.room_rug_kitchen
     "decor_window" -> R.drawable.room_window
+    "decor_window_night" -> R.drawable.room_window_night
     "decor_bedside_table" -> R.drawable.room_bedside_table
     "decor_lamp" -> R.drawable.room_lamp
     "decor_mirror" -> R.drawable.room_standing_mirror

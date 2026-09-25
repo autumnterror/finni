@@ -14,14 +14,17 @@ import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.interactor.ResolveRoomZoneAccessInteractor
 import github.detrig.feature.room.domain.interactor.OpenSavingsInteractor
 import github.detrig.feature.room.domain.interactor.LoadActiveSavingsGoalInteractor
+import github.detrig.feature.room.domain.interactor.ReconcileSavingsLearningInteractor
 import github.detrig.feature.room.domain.interactor.SaveZoneAsSavingsGoalInteractor
 import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
-import github.detrig.feature.room.domain.interactor.ProvideZeroBalanceHelpInteractor
+import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
+import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
 import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
 
 internal class RoomModule(private val dependencies: RoomDependencies) : RoomComponent {
+    private val minimumProductPriceRub = dependencies.minimumProductPriceRub()
     private val positions by lazy { github.detrig.feature.room.data.local.HousePositionStorage(dependencies.housePreferences()) }
     private val onboarding by lazy {
         github.detrig.feature.room.data.local.FirstRunOnboardingStorage(dependencies.housePreferences())
@@ -48,14 +51,17 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     private val saveWeeklyPlan by lazy { SaveWeeklyPlanInteractor(repository, weeklyPlanLearning) }
     private val openSavings by lazy { OpenSavingsInteractor(dependencies.savingsApi()) }
     private val loadActiveSavingsGoal by lazy { LoadActiveSavingsGoalInteractor(dependencies.savingsApi()) }
+    private val reconcileSavingsLearning by lazy { ReconcileSavingsLearningInteractor(dependencies.savingsApi()) }
     private val saveZoneAsGoal by lazy { SaveZoneAsSavingsGoalInteractor(repository, dependencies.savingsApi()) }
     private val loadParentHelp by lazy { LoadParentHelpInteractor(repository) }
     private val requestParentHelp by lazy { RequestParentHelpInteractor(repository) }
-    private val provideZeroBalanceHelp by lazy { ProvideZeroBalanceHelpInteractor(repository) }
+    private val endWeekEarlyWithParentHelp by lazy { EndWeekEarlyWithParentHelpInteractor(repository) }
+    private val loadImpulseWish by lazy { LoadRoomImpulseWishInteractor(dependencies.impulseWishSource()) }
 
     override fun getRoomViewModel() = RoomViewModel(
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
-        loadActiveSavingsGoal, loadParentHelp, requestParentHelp, provideZeroBalanceHelp, router, positions, onboarding,
+        loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
+        endWeekEarlyWithParentHelp, minimumProductPriceRub, loadImpulseWish, router, positions, onboarding,
         dependencies.gameAudio(),
     )
 }

@@ -21,7 +21,8 @@ import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.SavePlanResult
-import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PaymentClassification
+import github.detrig.feature.planning.domain.PlanActualOperation
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.ParentHelpState
@@ -58,10 +59,12 @@ internal class RoomRepositoryImpl(
             val week = weekApi.observeState().first()
             if (planningApi.getPlanProgress(week.weekNumber) != null) {
                 planningApi.recordActual(
-                    operationId = "room-zone:${zone.id}",
-                    weekNumber = week.weekNumber,
-                    category = PlanCategory.WANTS,
-                    amountRub = zone.priceRub.toLong(),
+                    PlanActualOperation.Payment(
+                        operationId = "room-zone:${zone.id}",
+                        weekNumber = week.weekNumber,
+                        amountRub = zone.priceRub.toLong(),
+                        classification = PaymentClassification.OPTIONAL,
+                    ),
                 )
             }
         }
@@ -90,5 +93,8 @@ internal class RoomRepositoryImpl(
         )
     }
 
-    override suspend fun provideZeroBalanceHelp() = economyApi.provideZeroBalanceHelp()
+    override suspend fun endWeekEarlyWithParentHelp(
+        expectedAbsoluteDay: Long,
+        minimumProductPriceRub: Long,
+    ) = weekApi.endWeekEarlyWithParentHelp(expectedAbsoluteDay, minimumProductPriceRub)
 }

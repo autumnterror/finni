@@ -69,6 +69,7 @@ import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetModalSectionTone
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.component.FinPetStorefrontSlider
 import github.detrig.designsystem.theme.AppTheme
@@ -76,15 +77,22 @@ import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.planning.domain.CategoryPlanProgress
 import github.detrig.feature.planning.domain.PlanCategory
 import github.detrig.feature.planning.domain.PlanProgressTone
+import github.detrig.feature.planning.domain.PlanPercentages
+import github.detrig.feature.planning.domain.WeeklyPlan
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.PlanEditorState
 import github.detrig.feature.room.presentation.PlanTutorialStep
+import github.detrig.feature.room.presentation.WeekPlanAssessment
+import github.detrig.feature.room.presentation.WeekPlanItem
+import github.detrig.feature.room.presentation.WeekPlanOutcome
+import github.detrig.feature.room.presentation.assessWeek
 import kotlin.math.roundToInt
 
 @Composable
 internal fun WeeklyPlanEditorDialog(
     editor: PlanEditorState,
+    weekNumber: Long,
     availableRub: Long,
     isSaving: Boolean,
     petName: String,
@@ -106,6 +114,7 @@ internal fun WeeklyPlanEditorDialog(
     var wantsBounds by remember { mutableStateOf<Rect?>(null) }
     var savingsBounds by remember { mutableStateOf<Rect?>(null) }
     var reserveBounds by remember { mutableStateOf<Rect?>(null) }
+    var totalBounds by remember { mutableStateOf<Rect?>(null) }
 
     LaunchedEffect(tutorialStep) {
         val requester = when (tutorialStep) {
@@ -125,7 +134,7 @@ internal fun WeeklyPlanEditorDialog(
     }
 
     WeeklyPlanNotebookDialog(
-        title = stringResource(R.string.plan_title),
+        title = stringResource(R.string.plan_title, weekNumber),
         onDismissRequest = null,
         modifier = Modifier.testTag("weekly_plan_editor"),
         actions = {
@@ -138,7 +147,10 @@ internal fun WeeklyPlanEditorDialog(
             )
         },
     ) {
-        NotebookSection(modifier = Modifier.fillMaxWidth()) {
+        NotebookSection(
+            modifier = Modifier.fillMaxWidth()
+                .onGloballyPositioned { totalBounds = it.boundsInWindow() },
+        ) {
             Text(
                 text = stringResource(R.string.plan_description, availableRub),
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -202,7 +214,7 @@ internal fun WeeklyPlanEditorDialog(
         if (tutorialStep != null) {
             FinPetDialogueDialog(
                 speakerName = petName,
-                cards = PlanTutorialStep.entries.map { it.message() },
+                cards = listOf(tutorialStep.message()),
                 portrait = petPortrait,
                 underlay = {
                     TutorialSpotlight(
@@ -211,15 +223,23 @@ internal fun WeeklyPlanEditorDialog(
                             PlanTutorialStep.WANTS -> wantsBounds
                             PlanTutorialStep.SAVINGS -> savingsBounds
                             PlanTutorialStep.RESERVE -> reserveBounds
-                            PlanTutorialStep.INTRODUCTION,
-                            PlanTutorialStep.PRACTICE,
-                            -> null
+                            PlanTutorialStep.INTRODUCTION -> totalBounds
+                            PlanTutorialStep.PRACTICE -> null
                         },
                     )
                 },
-                onPageChanged = { onTutorialNext() },
+                advanceOnTap = false,
                 dismissOnBackPress = false,
                 topInset = dialogueTopInset,
+                actions = listOf(FinPetDialogueAction(
+                    id = "next",
+                    label = stringResource(if (tutorialStep == PlanTutorialStep.RESERVE) {
+                        R.string.plan_tutorial_practice
+                    } else {
+                        R.string.plan_tutorial_next
+                    }),
+                )),
+                onActionSelected = { onTutorialNext() },
                 onFinished = onTutorialNext,
             )
         } else if (feedbackCards != null) {
@@ -230,27 +250,18 @@ internal fun WeeklyPlanEditorDialog(
                 dismissOnBackPress = false,
                 advanceOnTap = false,
                 topInset = dialogueTopInset,
-                actions = listOf(
-                    FinPetDialogueAction(
-                        id = PLAN_EDIT_ACTION_ID,
-                        label = stringResource(R.string.plan_feedback_edit),
-                    ),
-                    FinPetDialogueAction(
-                        id = PLAN_SAVE_ACTION_ID,
-                        label = stringResource(R.string.plan_feedback_save_anyway),
-                    ),
-                ),
-                onActionSelected = { action ->
-                    if (action.id == PLAN_EDIT_ACTION_ID) onFeedbackEdit() else onFeedbackFinished()
-                },
-                onFinished = onFeedbackFinished,
+                actions = listOf(FinPetDialogueAction(
+                    id = PLAN_EDIT_ACTION_ID,
+                    label = stringResource(R.string.plan_feedback_edit),
+                )),
+                onActionSelected = { onFeedbackEdit() },
+                onFinished = onFeedbackEdit,
             )
         }
     }
 }
 
 private const val PLAN_EDIT_ACTION_ID = "edit_plan"
-private const val PLAN_SAVE_ACTION_ID = "save_plan"
 
 @Composable
 private fun WeeklyPlanNotebookDialog(
@@ -260,6 +271,7 @@ private fun WeeklyPlanNotebookDialog(
     actions: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    FinPetModalVisibilityEffect()
     val canDismiss = onDismissRequest != null
     Dialog(
         onDismissRequest = { if (canDismiss) onDismissRequest() },
@@ -494,21 +506,33 @@ private fun PercentageSlider(
 @Composable
 internal fun WeeklyPlanProgressDialog(
     progress: WeeklyPlanProgress,
+    isWeekResult: Boolean = false,
     onDismiss: () -> Unit,
 ) {
+    val assessment = remember(progress, isWeekResult) {
+        if (isWeekResult) progress.assessWeek() else null
+    }
     WeeklyPlanNotebookDialog(
-        title = stringResource(R.string.plan_progress_title, progress.plan.weekNumber),
+        title = stringResource(
+            if (isWeekResult) R.string.plan_result_title else R.string.plan_progress_title,
+            progress.plan.weekNumber,
+        ),
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag("weekly_plan_progress"),
         actions = {
             FinPetButton(
-                text = stringResource(R.string.plan_close),
+                text = stringResource(
+                    if (isWeekResult) R.string.plan_result_continue else R.string.plan_close,
+                ),
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
         },
     ) {
+        if (assessment != null) {
+            WeekResultFeedback(assessment)
+        }
         NotebookSection(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = stringResource(R.string.plan_progress_description),
@@ -517,13 +541,30 @@ internal fun WeeklyPlanProgressDialog(
                 color = AppTheme.colors.storefront.onSurface,
             )
         }
-        progress.categories.forEach { CategoryProgressRow(it) }
+        progress.categories.forEach { category ->
+            CategoryProgressRow(
+                progress = category,
+                matched = assessment?.matches(category.category),
+            )
+        }
         NotebookSection(
             modifier = Modifier.fillMaxWidth(),
-            tone = FinPetModalSectionTone.Highlighted,
+            tone = if (assessment?.matchedItems?.contains(WeekPlanItem.RESERVE) == false) {
+                FinPetModalSectionTone.Warning
+            } else {
+                FinPetModalSectionTone.Highlighted
+            },
         ) {
             Text(
-                text = stringResource(R.string.plan_progress_reserve, progress.plan.reserveRub),
+                text = if (assessment == null) {
+                    stringResource(R.string.plan_progress_reserve, progress.plan.reserveRub)
+                } else {
+                    stringResource(
+                        R.string.plan_result_reserve,
+                        assessment.actualReserveRub,
+                        progress.plan.reserveRub,
+                    )
+                },
                 modifier = Modifier.padding(AppTheme.spacing.md),
                 style = AppTheme.typography.bodyStrong,
             )
@@ -532,8 +573,51 @@ internal fun WeeklyPlanProgressDialog(
 }
 
 @Composable
-private fun CategoryProgressRow(progress: CategoryPlanProgress) {
-    val color = progress.tone.color()
+private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
+    val missedItems = listOfNotNull(
+        stringResource(R.string.plan_mandatory)
+            .takeIf { WeekPlanItem.MANDATORY in assessment.missedItems },
+        stringResource(R.string.plan_wants)
+            .takeIf { WeekPlanItem.WANTS in assessment.missedItems },
+        stringResource(R.string.plan_savings)
+            .takeIf { WeekPlanItem.SAVINGS in assessment.missedItems },
+        stringResource(R.string.plan_result_reserve_name)
+            .takeIf { WeekPlanItem.RESERVE in assessment.missedItems },
+    ).joinToString(", ")
+    NotebookSection(
+        modifier = Modifier.fillMaxWidth(),
+        tone = when (assessment.outcome) {
+            WeekPlanOutcome.ALL_MATCHED -> FinPetModalSectionTone.Highlighted
+            WeekPlanOutcome.PARTIALLY_MATCHED,
+            WeekPlanOutcome.TRY_AGAIN,
+            -> FinPetModalSectionTone.Warning
+        },
+    ) {
+        Text(
+            text = when (assessment.outcome) {
+                WeekPlanOutcome.ALL_MATCHED -> stringResource(R.string.plan_result_all_matched)
+                WeekPlanOutcome.PARTIALLY_MATCHED -> stringResource(
+                    R.string.plan_result_partially_matched,
+                    missedItems,
+                )
+                WeekPlanOutcome.TRY_AGAIN -> stringResource(R.string.plan_result_try_again)
+            },
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            style = AppTheme.typography.bodyStrong,
+        )
+    }
+}
+
+@Composable
+private fun CategoryProgressRow(
+    progress: CategoryPlanProgress,
+    matched: Boolean? = null,
+) {
+    val color = when (matched) {
+        true -> AppTheme.colors.statusPositive.accent
+        false -> AppTheme.colors.statusWarning.accent
+        null -> progress.tone.color()
+    }
     NotebookSection(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(AppTheme.spacing.md),
@@ -569,7 +653,15 @@ private fun CategoryProgressRow(progress: CategoryPlanProgress) {
                         .fillMaxWidth()
                         .testTag("plan_progress_${progress.category.code}"),
                 )
-                Text(progress.tone.label(), style = AppTheme.typography.caption, color = color)
+                Text(
+                    text = when (matched) {
+                        true -> stringResource(R.string.plan_result_matched)
+                        false -> stringResource(R.string.plan_result_needs_attention)
+                        null -> progress.tone.label()
+                    },
+                    style = AppTheme.typography.caption,
+                    color = color,
+                )
             }
         }
     }
@@ -608,6 +700,7 @@ private fun WeeklyPlanDialogPreview() {
     FinPetTheme {
         WeeklyPlanEditorDialog(
             editor = PlanEditorState(mandatory = 50, wants = 30, savings = 20),
+            weekNumber = 2,
             availableRub = 500,
             isSaving = false,
             petName = "Барсик",
@@ -621,6 +714,29 @@ private fun WeeklyPlanDialogPreview() {
             onFeedbackFinished = {},
             onPercentChanged = { _, _ -> },
             onSave = {},
+        )
+    }
+}
+
+@Preview(name = "Итоги недели", widthDp = 360, heightDp = 760, showBackground = true)
+@Composable
+private fun WeeklyPlanResultPreview() {
+    FinPetTheme {
+        WeeklyPlanProgressDialog(
+            progress = WeeklyPlanProgress(
+                plan = WeeklyPlan(
+                    weekNumber = 2,
+                    availableRub = 500,
+                    percentages = PlanPercentages(mandatory = 40, wants = 25, savings = 20),
+                ),
+                categories = listOf(
+                    CategoryPlanProgress(PlanCategory.MANDATORY, 200, 190, PlanProgressTone.ON_TRACK),
+                    CategoryPlanProgress(PlanCategory.WANTS, 125, 150, PlanProgressTone.WARNING),
+                    CategoryPlanProgress(PlanCategory.SAVINGS, 100, 80, PlanProgressTone.ON_TRACK),
+                ),
+            ),
+            isWeekResult = true,
+            onDismiss = {},
         )
     }
 }

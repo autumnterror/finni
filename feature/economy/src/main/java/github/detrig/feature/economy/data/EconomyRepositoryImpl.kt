@@ -48,9 +48,14 @@ internal class EconomyRepositoryImpl(
 
     override suspend fun canDebit(amountRub: Long): Boolean = amountRub > 0 && state().availableRub >= amountRub
 
-    override suspend fun provideZeroBalanceHelp(): ZeroBalanceHelpResult = atomic {
+    override suspend fun provideZeroBalanceHelp(
+        minimumRequiredBalanceRub: Long,
+    ): ZeroBalanceHelpResult = atomic {
+        require(minimumRequiredBalanceRub > 0)
         val state = ensureState()
-        if (state.availableRub != 0L) return@atomic ZeroBalanceHelpResult.NotNeeded(state)
+        if (state.availableRub >= minimumRequiredBalanceRub) {
+            return@atomic ZeroBalanceHelpResult.NotNeeded(state)
+        }
 
         val number = Math.incrementExact(
             dao.getOperations().count { it.typeCode == FinancialOperationType.ZERO_BALANCE_HELP.code },
@@ -61,7 +66,10 @@ internal class EconomyRepositoryImpl(
             id = "zero-balance-help:$number",
             amountRub = config.zeroBalanceHelpRub,
             type = FinancialOperationType.ZERO_BALANCE_HELP,
-            context = OperationContext(reasonId = "zero-balance", metadata = "source=parents"),
+            context = OperationContext(
+                reasonId = "cannot-afford-cheapest-product",
+                metadata = "source=parents;minimumRequiredBalanceRub=$minimumRequiredBalanceRub",
+            ),
             before = state,
             after = updated,
             timestamp = currentTimeMillis(),

@@ -11,6 +11,7 @@ internal class RequestParentHelpInteractor(private val repository: RoomRepositor
     suspend operator fun invoke(offerId: String) = repository.requestParentHelp(offerId)
 }
 
-internal class ProvideZeroBalanceHelpInteractor(private val repository: RoomRepository) {
-    suspend operator fun invoke() = repository.provideZeroBalanceHelp()
+internal class EndWeekEarlyWithParentHelpInteractor(private val repository: RoomRepository) {
+    suspend operator fun invoke(expectedAbsoluteDay: Long, minimumProductPriceRub: Long) =
+        repository.endWeekEarlyWithParentHelp(expectedAbsoluteDay, minimumProductPriceRub)
 }

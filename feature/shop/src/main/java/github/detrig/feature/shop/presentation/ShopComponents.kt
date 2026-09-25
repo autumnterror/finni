@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.ImageBitmap
@@ -36,6 +39,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
@@ -46,6 +50,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -67,6 +72,9 @@ import github.detrig.feature.shop.api.ShopArtwork
 import github.detrig.feature.shop.api.ShopArtworkResolver
 import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
+import github.detrig.feature.shop.domain.ShopDecisionEvent
+import github.detrig.feature.shop.domain.ShopDecisionEventType
+import github.detrig.feature.shop.domain.ShopPromotionKind
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
@@ -75,11 +83,12 @@ import github.detrig.products.StoreCategory
 import github.detrig.products.StoreCategoryId
 import github.detrig.products.StorefrontDefinition
 
-private val ProductCardHeight = 172.dp
-private val ProductArtworkHeight = 56.dp
-private val ProductTitleHeight = 40.dp
-private val ProductDetailHeight = 24.dp
-private val ProductPriceHeight = 32.dp
+private val ProductCardHeight = 198.dp
+private val ProductArtworkHeight = 82.dp
+private val ProductTitleHeight = 36.dp
+private val ProductDetailHeight = 22.dp
+private val ProductPriceHeight = 34.dp
+private val PromotionBadgeSize = 64.dp
 
 /** Applies Android display-cutout and navigation safe areas only to storefront screens. */
 @Composable
@@ -210,6 +219,10 @@ internal fun ShopProductGrid(
     onItemClick: (ProductId) -> Unit,
     artworkResolver: ShopArtworkResolver,
     itemDetailsResolver: ShopItemDetailsResolver,
+    unitPriceRub: (ProductId) -> Long = { productId ->
+        items.first { it.id == productId }.priceRub
+    },
+    decisionEvent: ShopDecisionEvent? = null,
     modifier: Modifier = Modifier,
 ) {
     FinPetLazyGrid(
@@ -227,6 +240,8 @@ internal fun ShopProductGrid(
             onClick = { onItemClick(item.id) },
             artworkResolver = artworkResolver,
             itemDetailsResolver = itemDetailsResolver,
+            unitPriceRub = unitPriceRub(item.id),
+            decisionEvent = decisionEvent?.takeIf { it.productId == item.id },
         )
     }
 }
@@ -238,14 +253,17 @@ private fun ShopProductCard(
     onClick: () -> Unit,
     artworkResolver: ShopArtworkResolver,
     itemDetailsResolver: ShopItemDetailsResolver,
+    unitPriceRub: Long,
+    decisionEvent: ShopDecisionEvent?,
 ) {
     val itemDescription = stringResource(
         R.string.shop_item_accessibility,
         item.title,
-        item.priceRub,
+        unitPriceRub,
     )
     val quantityDescription = stringResource(R.string.shop_item_cart_quantity, quantity)
     val isInCart = quantity > 0
+    val promotionEvent = decisionEvent?.takeIf { it.type == ShopDecisionEventType.PROMOTION }
     FinPetCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -271,21 +289,28 @@ private fun ShopProductCard(
         } else {
             AppTheme.colors.storefront.surface
         },
-        borderColor = if (isInCart) {
-            AppTheme.colors.actionPrimary
-        } else {
-            AppTheme.colors.storefront.outline
+        borderColor = when {
+            promotionEvent != null -> AppTheme.colors.currencyAccent
+            isInCart -> AppTheme.colors.actionPrimary
+            else -> AppTheme.colors.storefront.outline
         },
         borderWidth = AppTheme.sizes.borderStrong,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            if (promotionEvent != null) {
+                ShopPromotionBackground(modifier = Modifier.fillMaxSize())
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(AppTheme.spacing.sm),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                ShopProductArtwork(item, artworkResolver)
+                ShopProductArtwork(
+                    item = item,
+                    artworkResolver = artworkResolver,
+                    blendWithBackground = promotionEvent != null,
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -334,10 +359,37 @@ private fun ShopProductCard(
                     contentColor = AppTheme.colors.storefront.onSurface,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
-                            Text(item.priceRub.toString(), style = AppTheme.typography.metricValue, maxLines = 1)
-                            FinPetCoinIcon(size = AppTheme.sizes.iconSmall)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (unitPriceRub != item.priceRub) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xxs),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = item.priceRub.toString(),
+                                        style = AppTheme.typography.caption,
+                                        color = AppTheme.colors.textSecondary,
+                                        textDecoration = TextDecoration.LineThrough,
+                                        maxLines = 1,
+                                    )
+                                    FinPetCoinIcon(size = AppTheme.sizes.iconSmall)
+                                }
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xxs),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = unitPriceRub.toString(),
+                                    style = AppTheme.typography.metricValue,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                )
+                                FinPetCoinIcon(size = AppTheme.sizes.iconSmall)
+                            }
                         }
                     }
                 }
@@ -351,7 +403,95 @@ private fun ShopProductCard(
                         .testTag("shop_item_quantity_${item.id.value}"),
                 )
             }
+            if (promotionEvent != null) {
+                ShopPromotionBadge(
+                    event = promotionEvent,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(AppTheme.spacing.xs),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ShopPromotionBadge(
+    event: ShopDecisionEvent,
+    modifier: Modifier = Modifier,
+) {
+    val percent = (event.discountRub * 100 / event.regularPriceRub).toInt()
+    val region = when (event.promotionKind) {
+        ShopPromotionKind.BUY_TWO_GET_ONE_FREE -> PromotionAtlasRegion.TWO_PLUS_ONE
+        ShopPromotionKind.PERCENT_DISCOUNT -> when (percent) {
+            30 -> PromotionAtlasRegion.DISCOUNT_30
+            50 -> PromotionAtlasRegion.DISCOUNT_50
+            else -> null
+        }
+    }
+    val description = when (event.promotionKind) {
+        ShopPromotionKind.BUY_TWO_GET_ONE_FREE -> stringResource(R.string.shop_promotion_badge_two_plus_one)
+        ShopPromotionKind.PERCENT_DISCOUNT -> stringResource(R.string.shop_promotion_badge, percent)
+    }
+    if (region != null) {
+        Image(
+            painter = promotionPainter(region),
+            contentDescription = description,
+            modifier = modifier.size(PromotionBadgeSize),
+            contentScale = ContentScale.Fit,
+        )
+        return
+    }
+    Surface(
+        modifier = modifier,
+        shape = AppTheme.shapes.badge,
+        color = AppTheme.colors.storefront.primaryAction,
+        contentColor = AppTheme.colors.storefront.onSurface,
+        border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
+    ) {
+        Text(
+            text = description,
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
+            style = AppTheme.typography.caption,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun ShopPromotionBackground(modifier: Modifier = Modifier) {
+    Image(
+        painter = promotionPainter(PromotionAtlasRegion.CARD_BACKGROUND),
+        contentDescription = null,
+        modifier = modifier,
+        contentScale = ContentScale.FillBounds,
+    )
+}
+
+private enum class PromotionAtlasRegion(
+    val leftPx: Int,
+    val topPx: Int,
+    val widthPx: Int,
+    val heightPx: Int,
+) {
+    TWO_PLUS_ONE(leftPx = 8, topPx = 24, widthPx = 354, heightPx = 340),
+    DISCOUNT_30(leftPx = 370, topPx = 30, widthPx = 316, heightPx = 326),
+    DISCOUNT_50(leftPx = 684, topPx = 32, widthPx = 303, heightPx = 324),
+    CARD_BACKGROUND(leftPx = 1_012, topPx = 48, widthPx = 480, heightPx = 276),
+}
+
+@Composable
+private fun promotionPainter(region: PromotionAtlasRegion): Painter {
+    val resources = LocalContext.current.resources
+    val atlas = remember(resources) {
+        ShopArtworkBitmapCache.load(resources, R.drawable.shop_promotion_atlas)
+    }
+    return remember(atlas, region) {
+        BitmapPainter(
+            image = atlas,
+            srcOffset = androidx.compose.ui.unit.IntOffset(region.leftPx, region.topPx),
+            srcSize = androidx.compose.ui.unit.IntSize(region.widthPx, region.heightPx),
+        )
     }
 }
 
@@ -473,6 +613,7 @@ internal fun ShopProductArtwork(
     artworkResolver: ShopArtworkResolver,
     artworkSize: androidx.compose.ui.unit.Dp = ProductArtworkHeight,
     modifier: Modifier = Modifier.fillMaxWidth(),
+    blendWithBackground: Boolean = false,
 ) {
     val artwork = artworkResolver.resolve(item.imageKey)
     val placeholderDescription = stringResource(R.string.shop_product_image_placeholder)
@@ -484,7 +625,18 @@ internal fun ShopProductArtwork(
             Image(
                 painter = artworkPainter(artwork),
                 contentDescription = item.title,
-                modifier = Modifier.size(artworkSize),
+                modifier = Modifier
+                    .size(artworkSize)
+                    .then(
+                        if (blendWithBackground) {
+                            Modifier.graphicsLayer {
+                                compositingStrategy = CompositingStrategy.Offscreen
+                                blendMode = BlendMode.Darken
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
                 contentScale = ContentScale.Fit,
             )
         } else {
@@ -562,33 +714,90 @@ private object ShopArtworkBitmapCache {
     }
 }
 
-@Preview(name = "Product card", widthDp = 150, heightDp = 220, showBackground = true)
+@Preview(name = "Product card states", widthDp = 432, heightDp = 440, showBackground = true)
 @Composable
 private fun ShopProductCardPreview() {
-    val item = GroceryCatalog().storefront.items.first()
-    FinPetTheme {
-        Box(
-            modifier = Modifier.padding(AppTheme.spacing.md),
-        ) {
-            ShopProductCard(
-                item = item,
-                quantity = 2,
-                onClick = {},
-                artworkResolver = ShopArtworkResolver.Empty,
-                itemDetailsResolver = ShopItemDetailsResolver { sellable ->
-                    val food = sellable as? FoodItem
-                    if (food == null) {
-                        emptyList()
-                    } else {
-                        listOf(
-                            github.detrig.feature.shop.api.ShopItemDetail(
-                                text = "+${food.effects.satietyPercent}%",
-                                icon = ShopItemDetailIcon.SATIETY,
-                            ),
-                        )
-                    }
-                },
+    val items = GroceryCatalog().storefront.items.take(3)
+    val detailsResolver = ShopItemDetailsResolver { sellable ->
+        val food = sellable as? FoodItem
+        if (food == null) {
+            emptyList()
+        } else {
+            listOf(
+                github.detrig.feature.shop.api.ShopItemDetail(
+                    text = "+${food.effects.satietyPercent}%",
+                    icon = ShopItemDetailIcon.SATIETY,
+                ),
             )
+        }
+    }
+    val discountEvent = ShopDecisionEvent(
+        eventId = "preview-discount",
+        type = ShopDecisionEventType.PROMOTION,
+        gamePeriod = 1,
+        eventPeriod = 1,
+        storeId = GroceryCatalog().storefront.storeId,
+        productId = items[1].id,
+        productTitle = items[1].title,
+        regularPriceRub = items[1].priceRub,
+        offeredPriceRub = items[1].priceRub * 70 / 100,
+        promotionKind = ShopPromotionKind.PERCENT_DISCOUNT,
+    )
+    val bundleEvent = ShopDecisionEvent(
+        eventId = "preview-bundle",
+        type = ShopDecisionEventType.PROMOTION,
+        gamePeriod = 1,
+        eventPeriod = 1,
+        storeId = GroceryCatalog().storefront.storeId,
+        productId = items[2].id,
+        productTitle = items[2].title,
+        regularPriceRub = items[2].priceRub,
+        offeredPriceRub = items[2].priceRub,
+        promotionKind = ShopPromotionKind.BUY_TWO_GET_ONE_FREE,
+    )
+    FinPetTheme {
+        Column(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ShopProductCard(
+                        item = items[0],
+                        quantity = 0,
+                        onClick = {},
+                        artworkResolver = ShopArtworkResolver.Empty,
+                        unitPriceRub = items[0].priceRub,
+                        decisionEvent = null,
+                        itemDetailsResolver = detailsResolver,
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ShopProductCard(
+                        item = items[1],
+                        quantity = 0,
+                        onClick = {},
+                        artworkResolver = ShopArtworkResolver.Empty,
+                        unitPriceRub = discountEvent.offeredPriceRub,
+                        decisionEvent = discountEvent,
+                        itemDetailsResolver = detailsResolver,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)) {
+                Box(modifier = Modifier.weight(1f)) {
+                    ShopProductCard(
+                        item = items[2],
+                        quantity = 3,
+                        onClick = {},
+                        artworkResolver = ShopArtworkResolver.Empty,
+                        unitPriceRub = items[2].priceRub,
+                        decisionEvent = bundleEvent,
+                        itemDetailsResolver = detailsResolver,
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+            }
         }
     }
 }

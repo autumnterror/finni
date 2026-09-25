@@ -12,10 +12,6 @@ internal object PlanningCalculator {
             reason = PlanAdjustmentReason.RESERVE_TOO_LOW,
             recommendedPercent = config.minimumReservePercent,
         )
-        percentages.savings < config.minimumSavingsPercent -> PlanAssessment.NeedsChanges(
-            reason = PlanAdjustmentReason.SAVINGS_TOO_LOW,
-            recommendedPercent = config.minimumSavingsPercent,
-        )
         else -> PlanAssessment.Adequate
     }
 

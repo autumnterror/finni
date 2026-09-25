@@ -9,6 +9,7 @@ import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.savings.domain.SavingsConfiguration
 import github.detrig.feature.week.api.WeekApi
 import github.detrig.feature.pet.api.PetApi
+import github.detrig.feature.learning.api.LearningApi
 
 interface SavingsDependencies {
     fun economyApi(): EconomyApi
@@ -16,6 +17,7 @@ interface SavingsDependencies {
     fun weekApi(): WeekApi
     fun petApi(): PetApi
     fun roomBackdrop(): SavingsRoomBackdrop
+    fun learningApi(): LearningApi
     fun globalNavigator(): GlobalNavigator
     fun configuration(): SavingsConfiguration
     fun gameAudio(): GameAudio
