@@ -4,6 +4,7 @@ import androidx.annotation.MainThread
 import github.detrig.core.Mediator
 import github.detrig.core.di.CoreComponent
 import github.detrig.core.di.ModuleDependenciesProvider
+import github.detrig.core.audio.GameAudio
 import github.detrig.feature.fridge.FridgeDependencies
 import github.detrig.feature.fridge.FridgeFeature
 import github.detrig.feature.fridge.api.FridgeApi
@@ -15,6 +16,7 @@ internal class FridgeMediator(
     private val inventoryMediator: InventoryMediator,
     private val gameStateMediator: GameStateMediator,
     private val shopMediator: ShopMediator,
+    private val gameAudio: GameAudio,
 ) : Mediator<FridgeApi> {
     @MainThread
     fun init() {
@@ -26,6 +28,7 @@ internal class FridgeMediator(
                 override fun inventoryApi() = inventoryMediator.getApi()
                 override fun gameStateApi() = gameStateMediator.getApi()
                 override fun artworkResolver() = shopMediator.artworkResolver()
+                override fun gameAudio() = gameAudio
             }
         }
     }

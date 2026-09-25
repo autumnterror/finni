@@ -10,9 +10,9 @@ import org.junit.Test
 class GameStateInitialConfigTest {
 
     @Test
-    fun defaultsPreserveExistingPrototypeValues() {
+    fun newPetStartsWithEnoughSatietyForTheFirstDay() {
         val session = GameStateInitialConfig().createState()
-        assertEquals(20, session.pet.hunger)
+        assertEquals(100, session.pet.hunger)
         assertEquals(80, session.pet.thirst)
         assertEquals(70, session.pet.happiness)
         assertEquals(100, session.pet.health)

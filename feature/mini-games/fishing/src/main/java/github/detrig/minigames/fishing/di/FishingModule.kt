@@ -22,5 +22,6 @@ internal class FishingModule(private val dependencies: FishingDependencies) : Fi
     private val router by lazy { FishingRouterImpl(dependencies.globalNavigator()) }
     override val api: FishingApi by lazy { FishingApiImpl(router) }
     override val petApi by lazy { dependencies.petApi() }
+    override val gameAudio by lazy { dependencies.gameAudio() }
     override fun viewModel() = FishingViewModel(interactor, router, dependencies::currentTimeMillis)
 }

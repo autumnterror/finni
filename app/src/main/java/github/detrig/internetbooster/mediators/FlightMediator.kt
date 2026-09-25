@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import github.detrig.core.di.CoreComponent
 import github.detrig.core.di.ModuleDependenciesProvider
+import github.detrig.core.audio.GameAudio
 import github.detrig.core.infrastructure.preferences.SharedStorage
 import github.detrig.feature.gamestate.data.local.GameStateEntity
 import github.detrig.feature.gamestate.domain.model.PetPlayCompletion
@@ -18,6 +19,7 @@ internal class FlightMediator(
     private val core: CoreComponent,
     private val gameState: GameStateMediator,
     private val pet: PetMediator,
+    private val gameAudio: GameAudio,
 ) {
     private val flightDatabase by lazy { FlightDatabaseModule(core.context) }
     private val feedback by lazy {
@@ -54,6 +56,7 @@ internal class FlightMediator(
                 override fun configurationJson() = core.context.assets.open("flight_balance.json").bufferedReader().use { it.readText() }
                 override fun currentTimeMillis() = System.currentTimeMillis()
                 override fun petApi() = pet.getApi()
+                override fun gameAudio() = gameAudio
             }
         }
     }

@@ -11,6 +11,10 @@ data class GameStateEntity(
     val happiness: Int,
     val health: Int,
     val playerLevel: Int,
+    val hungerCheckpointMillis: Long = 0,
+    val happinessCheckpointMillis: Long = 0,
+    val hungerAlertEpisode: Long = 0,
+    val hungerAlertDeliveredEpisode: Long = 0,
 ) {
     companion object {
         const val CURRENT_STATE_ID = "current"

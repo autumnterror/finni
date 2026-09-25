@@ -3,6 +3,8 @@ package github.detrig.internetbooster.mediators
 import github.detrig.core.Mediator
 import github.detrig.core.di.CoreComponent
 import github.detrig.core.di.ModuleDependenciesProvider
+import github.detrig.core.audio.GameAudio
+import github.detrig.internetbooster.audio.AppAudioCues
 import github.detrig.internetbooster.R
 import github.detrig.feature.shop.ShopDependencies
 import github.detrig.feature.shop.ShopFeature
@@ -30,6 +32,7 @@ internal class ShopMediator(
     private val weekMediator: WeekMediator,
     private val planningMediator: PlanningMediator,
     private val inventoryApi: InventoryApi,
+    private val gameAudio: GameAudio,
 ) : Mediator<ShopApi> {
     private val groceryCatalog = GroceryCatalog()
     private val artworkResolver = GroceryArtworkResolver(R.drawable.grocery_product_atlas)
@@ -88,7 +91,11 @@ internal class ShopMediator(
             .distinctUntilChanged()
 
         override suspend fun checkout(request: github.detrig.feature.shop.api.ShopCheckoutRequest) =
-            checkoutGateway.checkout(request)
+            checkoutGateway.checkout(request).also { result ->
+                if (result is github.detrig.feature.shop.api.ShopCheckoutResult.Completed && !result.alreadyApplied) {
+                    gameAudio.play(AppAudioCues.Purchase)
+                }
+            }
     }
 
     fun init() {
@@ -99,6 +106,7 @@ internal class ShopMediator(
                 override fun artworkResolver(): ShopArtworkResolver = artworkResolver
                 override fun itemDetailsResolver(): ShopItemDetailsResolver = detailsResolver
                 override fun globalNavigator() = coreComponent.globalNavigator
+                override fun gameAudio() = gameAudio
             }
         }
     }

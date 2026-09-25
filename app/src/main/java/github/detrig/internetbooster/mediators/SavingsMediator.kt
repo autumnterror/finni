@@ -3,6 +3,7 @@ package github.detrig.internetbooster.mediators
 import github.detrig.core.Mediator
 import github.detrig.core.di.CoreComponent
 import github.detrig.core.di.ModuleDependenciesProvider
+import github.detrig.core.audio.GameAudio
 import github.detrig.feature.savings.SavingsDependencies
 import github.detrig.feature.savings.SavingsFeature
 import github.detrig.feature.savings.SavingsRoomBackdrop
@@ -16,6 +17,7 @@ internal class SavingsMediator(
     private val week: WeekMediator,
     private val pet: PetMediator,
     private val roomApiProvider: () -> github.detrig.feature.room.api.RoomApi,
+    private val gameAudio: GameAudio,
 ) : Mediator<SavingsApi> {
     fun init() {
         SavingsFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -34,6 +36,7 @@ internal class SavingsMediator(
                 }
                 override fun globalNavigator() = core.globalNavigator
                 override fun configuration() = SavingsConfiguration()
+                override fun gameAudio() = gameAudio
             }
         }
     }

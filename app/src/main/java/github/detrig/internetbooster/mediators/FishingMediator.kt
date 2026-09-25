@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import github.detrig.core.di.CoreComponent
 import github.detrig.core.di.ModuleDependenciesProvider
+import github.detrig.core.audio.GameAudio
 import github.detrig.core.infrastructure.preferences.SharedStorage
 import github.detrig.feature.gamestate.data.local.GameStateEntity
 import github.detrig.feature.gamestate.domain.model.PetPlayCompletion
@@ -17,6 +18,7 @@ internal class FishingMediator(
     private val database: AppDatabaseModule,
     private val gameState: GameStateMediator,
     private val pet: PetMediator,
+    private val gameAudio: GameAudio,
 ) {
     private val feedback by lazy {
         GameFeedbackPreferences(core.context.getSharedPreferences("finpet_feedback", Context.MODE_PRIVATE))
@@ -50,6 +52,7 @@ internal class FishingMediator(
                 override fun configurationJson() = core.context.assets.open("fishing_balance.json").bufferedReader().use { it.readText() }
                 override fun currentTimeMillis() = System.currentTimeMillis()
                 override fun petApi() = pet.getApi()
+                override fun gameAudio() = gameAudio
             }
         }
     }

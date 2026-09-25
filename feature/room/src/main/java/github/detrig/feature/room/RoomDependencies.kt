@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.content.res.Resources
 
 import github.detrig.core.presentation.message.GlobalMessageController
+import github.detrig.core.audio.GameAudio
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.week.api.WeekApi
@@ -24,4 +25,5 @@ interface RoomDependencies {
     fun marketLauncher(): github.detrig.feature.room.api.RoomMarketLauncher
     fun globalMessageController(): GlobalMessageController
     fun resources(): Resources
+    fun gameAudio(): GameAudio
 }

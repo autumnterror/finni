@@ -16,6 +16,7 @@ nav3 = "1.1.5"
 kotlinxSerialization = "1.9.0"
 retrofit = "2.11.0"
 room = "2.8.4"
+work = "2.11.2"
 ksp = "2.3.11"
 sceneView = "4.34.0"
 
@@ -60,6 +61,7 @@ network-retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 sceneview = { module = "io.github.sceneview:sceneview", version.ref = "sceneView" }
 
 [plugins]

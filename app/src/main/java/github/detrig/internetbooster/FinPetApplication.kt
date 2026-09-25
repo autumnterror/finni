@@ -4,11 +4,19 @@ import github.detrig.core.CoreApplication
 import github.detrig.core.di.CoreComponentDependencies
 import github.detrig.core.exception.CoreErrorHandler
 import github.detrig.internetbooster.di.AppComponent
+import github.detrig.internetbooster.time.TimeWorkScheduler
+import github.detrig.internetbooster.time.HungerNotificationDispatcher
 
 class FinPetApplication : CoreApplication() {
 
     lateinit var appComponent: AppComponent
         private set
+
+    override fun onCreate() {
+        super.onCreate()
+        HungerNotificationDispatcher.createChannel(this)
+        TimeWorkScheduler.schedule(this)
+    }
 
     override fun initCoreComponent() {
         super.initCoreComponent()

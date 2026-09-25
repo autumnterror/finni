@@ -1,6 +1,7 @@
 package github.detrig.feature.fridge
 
 import github.detrig.core.presentation.navigation.GlobalNavigator
+import github.detrig.core.audio.GameAudio
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.inventory.api.InventoryApi
 import github.detrig.feature.pet.api.PetApi
@@ -14,4 +15,5 @@ interface FridgeDependencies {
     fun inventoryApi(): InventoryApi
     fun gameStateApi(): GameStateApi
     fun artworkResolver(): ShopArtworkResolver
+    fun gameAudio(): GameAudio
 }

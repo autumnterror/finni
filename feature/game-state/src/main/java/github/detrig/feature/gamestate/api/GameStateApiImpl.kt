@@ -25,4 +25,13 @@ internal class GameStateApiImpl(
 
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         repository.feedPet(completion)
+
+    override suspend fun consumeHungerForSleep(): Int = repository.consumeHungerForSleep()
+
+    override suspend fun reconcileTimedNeeds(nowMillis: Long) = repository.reconcileTimedNeeds(nowMillis)
+
+    override suspend fun hungerAlertState() = repository.hungerAlertState()
+
+    override suspend fun markHungerAlertDelivered(episode: Long): Boolean =
+        repository.markHungerAlertDelivered(episode)
 }

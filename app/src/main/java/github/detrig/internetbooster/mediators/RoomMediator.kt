@@ -4,6 +4,7 @@ import android.content.res.Resources
 import github.detrig.core.Mediator
 import github.detrig.core.di.CoreComponent
 import github.detrig.core.di.ModuleDependenciesProvider
+import github.detrig.core.audio.GameAudio
 import github.detrig.core.presentation.message.GlobalMessageController
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.room.RoomDependencies
@@ -22,6 +23,7 @@ internal class RoomMediator(
     private val learningMediator: LearningMediator,
     private val savingsMediator: SavingsMediator,
     private val shopMediator: ShopMediator,
+    private val gameAudio: GameAudio,
 ) : Mediator<RoomApi> {
     fun init() {
         RoomFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -38,6 +40,7 @@ internal class RoomMediator(
                 }
                 override fun globalMessageController(): GlobalMessageController = coreComponent.globalMessageController
                 override fun resources(): Resources = coreComponent.resources
+                override fun gameAudio() = gameAudio
                 override fun gameLauncher(): RoomGameLauncher =
                     RoomGameLauncherImpl(coreComponent.globalMessageController, coreComponent.resources)
             }

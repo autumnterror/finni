@@ -24,4 +24,13 @@ internal class GameStateRepositoryImpl(
 
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         localDataSource.feedPet(completion)
+
+    override suspend fun consumeHungerForSleep(): Int = localDataSource.consumeHungerForSleep()
+
+    override suspend fun reconcileTimedNeeds(nowMillis: Long) = localDataSource.reconcileTimedNeeds(nowMillis)
+
+    override suspend fun hungerAlertState() = localDataSource.hungerAlertState()
+
+    override suspend fun markHungerAlertDelivered(episode: Long): Boolean =
+        localDataSource.markHungerAlertDelivered(episode)
 }

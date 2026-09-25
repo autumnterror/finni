@@ -17,11 +17,14 @@ internal fun GameStateEntity.toDomain(): GameState = GameState(
     playerLevel = playerLevel,
 )
 
-internal fun GameState.toEntity(): GameStateEntity = GameStateEntity(
+internal fun GameState.toEntity(nowMillis: Long = 0): GameStateEntity = GameStateEntity(
     id = GameStateEntity.CURRENT_STATE_ID,
     hunger = pet.hunger,
     thirst = pet.thirst,
     happiness = pet.happiness,
     health = pet.health,
     playerLevel = playerLevel,
+    hungerCheckpointMillis = nowMillis,
+    happinessCheckpointMillis = nowMillis,
+    hungerAlertEpisode = if (pet.hunger == 0) 1 else 0,
 )

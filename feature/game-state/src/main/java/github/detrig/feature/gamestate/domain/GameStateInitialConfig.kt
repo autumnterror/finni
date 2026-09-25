@@ -1,8 +1,10 @@
 package github.detrig.feature.gamestate.domain
 
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
+
 /** Стартовые настройки прототипа. Применяются только к новой игре. */
 data class GameStateInitialConfig(
-    val hunger: Int = 20,
+    val hunger: Int = PetSatietyRules.INITIAL,
     val thirst: Int = 80,
     val happiness: Int = 70,
     val health: Int = 100,

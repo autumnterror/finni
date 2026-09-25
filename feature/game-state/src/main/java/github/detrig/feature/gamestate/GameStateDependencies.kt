@@ -5,6 +5,7 @@ import github.detrig.feature.gamestate.data.local.GameStateDao
 import github.detrig.feature.gamestate.data.local.RoomZoneDao
 import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.feature.economy.api.EconomyApi
+import github.detrig.feature.gamestate.domain.model.PetNeedDecayConfig
 
 interface GameStateDependencies {
 
@@ -21,4 +22,6 @@ interface GameStateDependencies {
     fun initialConfig(): GameStateInitialConfig
 
     fun currentTimeMillis(): Long
+
+    fun needDecayConfig(): PetNeedDecayConfig = PetNeedDecayConfig()
 }

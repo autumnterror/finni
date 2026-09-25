@@ -23,4 +23,15 @@ interface GameStateApi {
 
     /** Applies a concrete food portion only once, even after process restoration. */
     suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult
+
+    /** Вызывается при успешном End day внутри общей транзакции Week. */
+    suspend fun consumeHungerForSleep(): Int
+
+    /** Safe to call repeatedly from foreground or background; does not create a pet. */
+    suspend fun reconcileTimedNeeds(nowMillis: Long)
+
+    /** Read-only notification outbox state; null before the game is created. */
+    suspend fun hungerAlertState(): github.detrig.feature.gamestate.domain.model.HungerAlertState?
+
+    suspend fun markHungerAlertDelivered(episode: Long): Boolean
 }

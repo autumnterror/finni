@@ -7,6 +7,7 @@ import github.detrig.feature.week.data.local.WeekDao
 import github.detrig.feature.week.data.local.WeekStateEntity
 import github.detrig.feature.week.domain.EndDayResult
 import github.detrig.feature.week.domain.WeekState
+import github.detrig.feature.week.domain.PetDayEffects
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -15,6 +16,7 @@ internal class WeekRepository(
     private val dao: WeekDao,
     private val economyApi: EconomyApi,
     private val transactionRunner: RoomTransactionRunner,
+    private val petDayEffects: PetDayEffects = PetDayEffects {},
 ) : WeekApi {
     override suspend fun initialize(): WeekState = transactionRunner.runInTransaction { ensureState() }
 
@@ -27,6 +29,7 @@ internal class WeekRepository(
         val allowance = if (next.dayOfWeek == 1) {
             economyApi.grantWeeklyAllowance(next.weekNumber)
         } else null
+        petDayEffects.afterSleep()
         check(dao.advance(expectedAbsoluteDay, next.absoluteDay) == 1)
         EndDayResult.Advanced(
             state = next,

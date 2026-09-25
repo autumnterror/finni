@@ -332,7 +332,14 @@ Suggested domain range:
 
 Rules:
 - feeding raises hunger/satiety;
-- advancing the day may lower it;
+- confirming **End day** lowers it by 30 points once as part of the saved day transition, including Sunday to Monday;
+- real elapsed time lowers hunger by ten points per hour, including while the app is closed;
+- time-based changes are calculated from persisted checkpoints on foreground return and by an inexact background worker;
+- the game day and week still advance only through **End day**, never from the wall clock;
+- repeated operation IDs and repeated end-day requests do not lower it twice;
+- the value never drops below zero;
+- reaching zero hunger schedules one short, neutral local notification per zero-hunger episode;
+- if notification permission is unavailable, the alert remains pending until permission is granted while the pet is still hungry;
 - the exact decay is configurable;
 - the pet does not die;
 - low hunger does not delete progression.
@@ -354,6 +361,10 @@ Meaningful free sources must exist:
 - normal care.
 
 Optional purchases may add happiness.
+
+Real elapsed time lowers happiness by two points per eight hours, including while
+the app is closed. Free play and normal care remain available to restore it.
+Time-based changes never reduce XP or educational progress.
 
 Refusing an optional purchase must not automatically reduce happiness.
 
@@ -939,6 +950,8 @@ At minimum:
 - pet identity/customization;
 - hunger;
 - happiness if enabled;
+- last processed real-time checkpoint for each time-based pet need;
+- the current zero-hunger alert episode and last delivered episode;
 - current week;
 - current day;
 - wallet balance;
@@ -962,11 +975,11 @@ At minimum:
 - pet stage;
 - unlocked mini-games/content.
 
-During the current pre-release development stage, schema changes do not require database migrations. Do not add manual migrations, auto-migrations, or compatibility code for old development schemas unless explicitly requested.
+During the current pre-release development stage, schema changes do not require database migrations. The app database uses destructive recreation when its schema version changes; local development progress in that database is discarded. Do not add manual migrations, auto-migrations, or compatibility code for old development schemas unless explicitly requested.
 
-If a local development database needs to be recreated after a schema change, use an explicitly agreed development-only reset. This rule does not authorize deleting existing migration code or silently clearing data, and does not apply automatically to released applications with user data to preserve.
+This destructive fallback is authorized only while there are no released users whose data must be preserved. Revisit the policy before a public release with user data. Disclose local development data loss when the fallback is used. Do not delete historical migration code solely as part of a schema change.
 
-Do not silently reset progress.
+Do not silently reset progress outside the explicitly authorized pre-release schema fallback.
 
 ---
 
@@ -1000,6 +1013,14 @@ Do not add Hilt, Dagger, or Koin unless explicitly approved.
 Do not introduce a full game engine for simple room interactions or mini-games unless a concrete requirement justifies it.
 
 Prefer Compose / Canvas for simple interactive content.
+
+Short game effects use the application-wide `GameAudio` contract in `:core`, supplied
+through feature dependencies. Feature screens and ViewModels must not create their
+own `SoundPool`, `ToneGenerator`, or independent audio-focus owner. The shared
+service plays at most one game effect at a time, respects the shared sound setting,
+and stops when the app leaves the foreground. Sound supplements visible feedback;
+it must never be the only way to understand an action. Keep the provenance and
+license of imported sound assets in the audio research/credits document.
 
 ---
 
@@ -1258,6 +1279,7 @@ Values likely to change in balancing must be configurable:
 - item prices;
 - food effects;
 - hunger change per day;
+- hunger and happiness intervals based on real elapsed time;
 - happiness effects;
 - side-job limits;
 - side-job rewards;

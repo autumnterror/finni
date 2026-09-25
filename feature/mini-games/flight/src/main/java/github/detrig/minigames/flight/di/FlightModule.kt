@@ -16,5 +16,6 @@ internal class FlightModule(private val dependencies: FlightDependencies) : Flig
     private val interactor by lazy { FlightInteractor(repository, dependencies.host()) }
     override val api by lazy { FlightApiImpl(router) }
     override val petApi by lazy { dependencies.petApi() }
+    override val gameAudio by lazy { dependencies.gameAudio() }
     override fun viewModel() = FlightViewModel(FlightEngine(config), interactor, router, dependencies::currentTimeMillis)
 }

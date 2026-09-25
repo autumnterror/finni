@@ -8,6 +8,11 @@ import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.gamestate.domain.model.MiniGameAccess
 import github.detrig.feature.gamestate.domain.model.PetFeedingCompletion
 import github.detrig.feature.gamestate.domain.model.PetFeedingResult
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
+import github.detrig.feature.gamestate.domain.model.PetNeedDecayConfig
+import github.detrig.feature.gamestate.domain.model.TimedPetNeeds
+import github.detrig.feature.gamestate.domain.model.reconcilePetNeeds
+import github.detrig.feature.gamestate.domain.model.HungerAlertState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -24,13 +29,17 @@ internal class GameStateLocalDataSource(
     private val transactionRunner: RoomTransactionRunner,
     private val initialConfig: GameStateInitialConfig,
     private val currentTimeMillis: () -> Long,
+    private val needDecayConfig: PetNeedDecayConfig,
 ) {
 
     suspend fun initialize(): GameState = transactionRunner.runInTransaction {
         val stored = dao.getCurrentStateWithZones()
-        if (stored != null) return@runInTransaction stored.toDomain()
+        if (stored != null) {
+            reconcileTimedNeeds(currentTimeMillis())
+            return@runInTransaction checkNotNull(dao.getCurrentStateWithZones()).toDomain()
+        }
 
-        dao.insertInitialState(initialConfig.createState().toEntity())
+        dao.insertInitialState(initialConfig.createState().toEntity(currentTimeMillis()))
         // Возвращаем сохранённую запись; конфликт вставки не перезаписывает прогресс.
         checkNotNull(dao.getCurrentStateWithZones()).toDomain()
     }
@@ -40,6 +49,29 @@ internal class GameStateLocalDataSource(
             .map { it?.toDomain() }
             .distinctUntilChanged()
     }
+
+    suspend fun reconcileTimedNeeds(nowMillis: Long): Unit = transactionRunner.runInTransaction {
+        val state = dao.getCurrentState() ?: return@runInTransaction
+        if (state.hunger == 0 && state.hungerAlertEpisode == 0L) {
+            dao.seedZeroHungerAlertEpisode()
+        }
+        val current = TimedPetNeeds(
+            state.hunger, state.happiness,
+            state.hungerCheckpointMillis, state.happinessCheckpointMillis,
+        )
+        val updated = reconcilePetNeeds(current, nowMillis, needDecayConfig)
+        if (updated != current) {
+            check(dao.updateTimedNeeds(
+                updated.hunger, updated.happiness,
+                updated.hungerCheckpointMillis, updated.happinessCheckpointMillis,
+            ) == 1)
+        }
+    }
+
+    suspend fun hungerAlertState(): HungerAlertState? = dao.hungerAlertState()
+
+    suspend fun markHungerAlertDelivered(episode: Long): Boolean =
+        dao.markHungerAlertDelivered(episode) == 1
 
     suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int =
         transactionRunner.runInTransaction {
@@ -57,11 +89,17 @@ internal class GameStateLocalDataSource(
             val delta = github.detrig.feature.gamestate.domain.model.PetPlayReward.delta(
                 current.pet.happiness, completion,
             )
-            check(dao.increaseHappiness(delta) == 1)
+            check(dao.increaseHappiness(delta, currentTimeMillis()) == 1)
             petPlayEffectDao.insert(PetPlayEffectEntity(operationId, completion.profileId, completion.sessionId,
                 completion.gameId, delta, currentTimeMillis()))
             delta
         }
+
+    suspend fun consumeHungerForSleep(): Int = transactionRunner.runInTransaction {
+        val current = initialize()
+        check(dao.decreaseHunger(PetSatietyRules.SLEEP_COST) == 1)
+        PetSatietyRules.afterCost(current.pet.hunger, PetSatietyRules.SLEEP_COST)
+    }
 
     /**
      * Reuses the existing idempotent pet-effect outbox. It lives in the same Room
@@ -82,8 +120,9 @@ internal class GameStateLocalDataSource(
 
             val hungerDelta = minOf(completion.satietyPercent, 100 - current.pet.hunger)
             val happinessDelta = minOf(completion.happinessPoints, 100 - current.pet.happiness)
-            check(dao.increaseHunger(hungerDelta) == 1)
-            check(dao.increaseHappiness(happinessDelta) == 1)
+            val nowMillis = currentTimeMillis()
+            check(dao.increaseHunger(hungerDelta, nowMillis) == 1)
+            check(dao.increaseHappiness(happinessDelta, nowMillis) == 1)
             petPlayEffectDao.insert(
                 PetPlayEffectEntity(
                     operationId = operationId,

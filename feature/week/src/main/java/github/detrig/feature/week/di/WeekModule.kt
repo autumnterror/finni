@@ -6,6 +6,9 @@ import github.detrig.feature.week.data.WeekRepository
 
 internal class WeekModule(private val dependencies: WeekDependencies) : WeekComponent {
     override val api: WeekApi by lazy {
-        WeekRepository(dependencies.weekDao(), dependencies.economyApi(), dependencies.transactionRunner())
+        WeekRepository(
+            dependencies.weekDao(), dependencies.economyApi(),
+            dependencies.transactionRunner(), dependencies.petDayEffects(),
+        )
     }
 }

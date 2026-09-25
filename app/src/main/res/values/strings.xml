@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">FinPet</string>
+    <string name="pet_care_channel">Забота о питомце</string>
+    <string name="pet_hungry_title">Питомец проголодался</string>
+    <string name="pet_hungry_message">Покорми питомца, когда сможешь.</string>
 </resources>
