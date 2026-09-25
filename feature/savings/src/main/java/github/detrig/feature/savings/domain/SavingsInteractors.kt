@@ -13,6 +13,7 @@ internal class CreateSavingsGoalInteractor(
     private val learning: SavingsLearningInteractor,
 ) {
     suspend operator fun invoke(draft: SavingsGoalDraft): SavingsGoal {
+        economy.initialize()
         val existing = economy.getGoals().firstOrNull { it.id == draft.id }
         val metadata = existing?.metadata ?: listOfNotNull(
             draft.metadata,

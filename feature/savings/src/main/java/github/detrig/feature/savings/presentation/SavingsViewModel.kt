@@ -30,9 +30,9 @@ internal class SavingsViewModel(
     private val gameAudio: GameAudio = SilentGameAudio,
 ) : CoreViewModel<SavingsViewState, SavingsViewEvent>(
     SavingsViewState(
-        starterGoals = configuration.starterGoals.prioritize(suggestedGoalId),
+        starterGoals = configuration.starterGoals.selected(suggestedGoalId),
         suggestedGoalId = suggestedGoalId,
-        onboardingStep = SavingsOnboardingStep.INTRODUCTION.takeIf { firstRunOnboarding },
+        onboardingStep = SavingsOnboardingStep.FIRST_DEPOSIT.takeIf { firstRunOnboarding },
     ),
 ) {
     private var loadingJob: Job? = null
@@ -48,9 +48,6 @@ internal class SavingsViewModel(
                 } else if (stateData.onboardingStep == null) selectGoal(viewEvent.goal)
             }
             SavingsViewEvent.GoalConfirmed -> stateData.pendingGoal?.let(::selectGoal)
-            SavingsViewEvent.GoalChangeRequested -> updateState {
-                copy(pendingGoal = null, onboardingStep = SavingsOnboardingStep.SELECT_GOAL)
-            }
             is SavingsViewEvent.TransferOpened -> updateState { copy(transferDirection = viewEvent.direction, notice = null) }
             SavingsViewEvent.TransferDismissed -> if (!stateData.busy) updateState {
                 copy(
@@ -88,7 +85,18 @@ internal class SavingsViewModel(
 
     private suspend fun refreshGoal() {
         val goal = economy.getActiveGoal()?.let { economy.getGoalProgress(it.id) }
-        updateState { copy(goal = goal, loading = false) }
+        updateState {
+            copy(
+                goal = goal,
+                loading = false,
+                onboardingStep = when {
+                    onboardingStep != SavingsOnboardingStep.FIRST_DEPOSIT -> onboardingStep
+                    goal == null -> SavingsOnboardingStep.SELECT_GOAL
+                    goal.savedRub > 0 -> SavingsOnboardingStep.DEPOSIT_DONE
+                    else -> SavingsOnboardingStep.FIRST_DEPOSIT
+                },
+            )
+        }
     }
 
     private fun selectGoal(draft: SavingsGoalDraft) {
@@ -103,7 +111,7 @@ internal class SavingsViewModel(
                 copy(
                     busy = false,
                     notice = SavingsNotice.GoalSaved.takeUnless { isOnboarding },
-                    onboardingStep = SavingsOnboardingStep.GOAL_CREATED.takeIf { isOnboarding },
+                    onboardingStep = SavingsOnboardingStep.FIRST_DEPOSIT.takeIf { isOnboarding },
                     pendingGoal = null,
                 )
             }
@@ -192,22 +200,6 @@ internal class SavingsViewModel(
 
     private fun continueOnboarding() {
         when (stateData.onboardingStep) {
-            SavingsOnboardingStep.INTRODUCTION -> updateState {
-                copy(
-                    onboardingStep = if (goal == null) {
-                        SavingsOnboardingStep.SELECT_GOAL
-                    } else {
-                        SavingsOnboardingStep.GOAL_CREATED
-                    },
-                )
-            }
-            SavingsOnboardingStep.GOAL_CREATED -> updateState {
-                copy(onboardingStep = if ((goal?.savedRub ?: 0) > 0) {
-                    SavingsOnboardingStep.DEPOSIT_DONE
-                } else {
-                    SavingsOnboardingStep.FIRST_DEPOSIT
-                })
-            }
             SavingsOnboardingStep.DEPOSIT_DONE,
             SavingsOnboardingStep.DEPOSIT_SKIPPED,
             -> router.back()
@@ -236,7 +228,5 @@ internal class SavingsViewModel(
     }
 }
 
-internal fun List<SavingsGoalDraft>.prioritize(suggestedGoalId: String?): List<SavingsGoalDraft> {
-    val suggested = firstOrNull { it.id == suggestedGoalId } ?: return this
-    return listOf(suggested) + filterNot { it.id == suggested.id }
-}
+internal fun List<SavingsGoalDraft>.selected(suggestedGoalId: String?): List<SavingsGoalDraft> =
+    suggestedGoalId?.let { goalId -> filter { it.id == goalId } }.orEmpty()

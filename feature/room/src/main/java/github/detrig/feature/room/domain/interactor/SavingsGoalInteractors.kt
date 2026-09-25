@@ -23,15 +23,16 @@ internal class SaveZoneAsSavingsGoalInteractor(
     private val repository: RoomRepository,
     private val savings: SavingsApi,
 ) {
-    suspend operator fun invoke(zoneId: String, title: String) {
+    suspend operator fun invoke(zoneId: String, title: String): SavingsGoalDraft {
         val zone = requireNotNull(repository.zones().find { it.id == zoneId })
         require(zone.priceRub > 0)
-        savings.createGoal(SavingsGoalDraft(
+        val goal = SavingsGoalDraft(
             id = "room-zone:${zone.id}",
             title = title,
             targetRub = zone.priceRub.toLong(),
             metadata = "source=room-zone;zoneId=${zone.id}",
-        ))
-        savings.open()
+        )
+        savings.createGoal(goal)
+        return goal
     }
 }

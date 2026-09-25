@@ -37,9 +37,9 @@ internal class WeeklyPlanLearningInteractor(
             }
         }
 
-    suspend fun claimIntroduction(weekNumber: Long): Boolean = learningApi.claimFirstExplanation(
+    suspend fun claimIntroduction(): Boolean = learningApi.claimFirstExplanation(
         profileId = CURRENT_PROFILE_ID,
-        explanationId = "budget-plan:$weekNumber:introduction",
+        explanationId = INTRODUCTION_EXPLANATION_ID,
     )
 
     suspend fun recordConfirmed(plan: WeeklyPlan): WeeklyPlanLearningFeedback {
@@ -101,6 +101,7 @@ internal class WeeklyPlanLearningInteractor(
 
     private companion object {
         const val CURRENT_PROFILE_ID = "current"
+        const val INTRODUCTION_EXPLANATION_ID = "budget-plan:introduction"
         const val SUCCESS_EXPLANATION_ID = "budget-plan:adequate:first-explanation"
     }
 }

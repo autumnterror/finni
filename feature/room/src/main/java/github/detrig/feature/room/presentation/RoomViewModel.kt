@@ -144,6 +144,7 @@ internal class RoomViewModel(
             }
             RoomViewEvent.CloseWeekResult -> closeWeekResult()
             is RoomViewEvent.PlanPercentChanged -> updatePlanPercent(viewEvent.category, viewEvent.percent)
+            is RoomViewEvent.PlanReserveChanged -> updatePlanReserve(viewEvent.percent)
             is RoomViewEvent.SavePosition -> {
                 savedPosition = viewEvent.position
                 positions.save(savedPosition)
@@ -184,7 +185,10 @@ internal class RoomViewModel(
                     val current = nullableState<RoomViewState.Content>()
                     if (onboardingProgress.currentChapter == FirstRunOnboardingChapter.BUDGET_PLANNING &&
                         onboardingStep == FirstRunOnboardingStep.PLAN &&
-                        roomData.progress.planProgress != null
+                        roomData.progress.planProgress != null &&
+                        savePlanJob?.isActive != true &&
+                        current?.isSavingPlan != true &&
+                        current?.planDialogue !is PlanDialogueState.Saved
                     ) {
                         completeOnboardingChapter(FirstRunOnboardingChapter.BUDGET_PLANNING)
                     }
@@ -197,14 +201,10 @@ internal class RoomViewModel(
                         else -> null
                     }
                     val startsPlanning = editor != null && current?.planEditor == null
-                    if (onboardingStep == FirstRunOnboardingStep.PLAN && startsPlanning) {
-                        weeklyPlanLearning.claimIntroduction(roomData.progress.weekNumber)
-                    }
+                    val shouldStartPlanTutorial = startsPlanning && weeklyPlanLearning.claimIntroduction()
                     val tutorialStep = when {
-                        onboardingStep == FirstRunOnboardingStep.PLAN && startsPlanning ->
-                            PlanTutorialStep.INTRODUCTION
-                        startsPlanning && weeklyPlanLearning.claimIntroduction(roomData.progress.weekNumber) ->
-                            PlanTutorialStep.INTRODUCTION
+                        shouldStartPlanTutorial ->
+                            PlanTutorialStep.MANDATORY
                         editor == null -> null
                         else -> current?.planTutorialStep
                     }
@@ -309,7 +309,6 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.MONEY_EXPLANATION ->
                 transitionOnboarding(FirstRunOnboardingStep.PLAN_TRANSITION)
             FirstRunOnboardingStep.PLAN_TRANSITION -> startFirstPlan()
-            FirstRunOnboardingStep.PLAN_SAVED -> transitionOnboarding(onboardingProgress.firstStep)
             FirstRunOnboardingStep.GAME_DISCOVERY ->
                 transitionOnboarding(FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS)
             FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS ->
@@ -358,19 +357,20 @@ internal class RoomViewModel(
             nextStep = FirstRunOnboardingStep.PLAN,
         )
         if (content.progress.planProgress != null) {
-            completeOnboardingChapter(
-                chapter = FirstRunOnboardingChapter.BUDGET_PLANNING,
-                nextStep = FirstRunOnboardingStep.PLAN_SAVED,
-            )
-            transitionOnboarding(FirstRunOnboardingStep.PLAN_SAVED)
+            completeOnboardingChapter(FirstRunOnboardingChapter.BUDGET_PLANNING)
+            transitionOnboarding(onboardingProgress.firstStep)
             return
         }
-        updateState(content.copy(
-            onboarding = onboardingUiState(),
-            planEditor = content.planEditor ?: PlanEditorState(),
-            planTutorialStep = PlanTutorialStep.INTRODUCTION,
-        ))
-        launchCoroutine { weeklyPlanLearning.claimIntroduction(content.progress.weekNumber) }
+        launchCoroutine {
+            val shouldStartTutorial = weeklyPlanLearning.claimIntroduction()
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    onboarding = onboardingUiState(),
+                    planEditor = latest.planEditor ?: PlanEditorState(),
+                    planTutorialStep = PlanTutorialStep.MANDATORY.takeIf { shouldStartTutorial },
+                ))
+            }
+        }
     }
 
     private fun openPiggyBank() {
@@ -437,7 +437,7 @@ internal class RoomViewModel(
             if (zoneId !in FIRST_SAVINGS_GOAL_ZONE_IDS || zone.access !is RoomZoneAccess.Buyable) return
             onboardingSuggestedGoalZoneId = zoneId
             onboardingRepository.saveSuggestedGoalZoneId(zoneId)
-            transitionOnboarding(FirstRunOnboardingStep.GAME_SELECTED)
+            commands.onNext(RoomCommand.ShowBuyConfirmation(zoneId))
             return
         }
         if (onboardingStep != FirstRunOnboardingStep.COMPLETED) return
@@ -489,16 +489,24 @@ internal class RoomViewModel(
     private fun saveZoneAsGoal(zoneId: String, title: String) {
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.savingGoalZoneId != null || content.buyingZoneId != null) return
+        val isFirstRunGoal = onboardingStep == FirstRunOnboardingStep.GAME_SELECTION
         updateState(content.copy(savingGoalZoneId = zoneId))
         launchCoroutine(
             handleAction = ExceptionConsumer {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(savingGoalZoneId = null)) }
-                router.showBuyError()
+                router.showSavingsGoalError()
                 true
             },
         ) {
             try {
                 saveZoneGoal(zoneId, title)
+                commands.onNext(RoomCommand.CloseBuyConfirmation(zoneId))
+                if (isFirstRunGoal) {
+                    completeOnboardingChapter(FirstRunOnboardingChapter.MINI_GAMES_DISCOVERY)
+                    transitionOnboarding(onboardingProgress.firstStep)
+                } else {
+                    openSavings()
+                }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(savingGoalZoneId = null)) }
             }
@@ -588,6 +596,13 @@ internal class RoomViewModel(
         updateState(content.copy(planEditor = editor.update(category, percent)))
     }
 
+    private fun updatePlanReserve(percent: Int) {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val editor = content.planEditor ?: return
+        if (content.isSavingPlan || content.planTutorialStep != null) return
+        updateState(content.copy(planEditor = editor.updateReserve(percent)))
+    }
+
     private fun advancePlanTutorial() {
         val content = nullableState<RoomViewState.Content>() ?: return
         val step = content.planTutorialStep ?: return
@@ -601,7 +616,17 @@ internal class RoomViewModel(
             updateState(content.copy(planDialogue = null))
             return
         }
-        updateState(content.copy(planDialogue = null))
+        if (content.planDialogue is PlanDialogueState.Saved &&
+            onboardingStep == FirstRunOnboardingStep.PLAN
+        ) {
+            completeOnboardingChapter(
+                chapter = FirstRunOnboardingChapter.BUDGET_PLANNING,
+            )
+        }
+        updateState(content.copy(
+            planDialogue = null,
+            onboarding = onboardingUiState(),
+        ))
     }
 
     private fun savePlan() {
@@ -650,18 +675,16 @@ internal class RoomViewModel(
             ).takeIf { it.showSuccessExplanation }
             nullableState<RoomViewState.Content>()?.let { latest ->
                 val isFirstRunPlan = onboardingStep == FirstRunOnboardingStep.PLAN
-                if (isFirstRunPlan) {
+                if (isFirstRunPlan && regularDialogue == null) {
                     completeOnboardingChapter(
                         chapter = FirstRunOnboardingChapter.BUDGET_PLANNING,
-                        nextStep = FirstRunOnboardingStep.PLAN_SAVED,
                     )
                 }
-                val dialogue = regularDialogue.takeUnless { isFirstRunPlan }
                 updateState(latest.copy(
                     progress = latest.progress.copy(planProgress = plan, requiresPlan = false),
                     planEditor = null,
                     planTutorialStep = null,
-                    planDialogue = dialogue,
+                    planDialogue = regularDialogue,
                     onboarding = onboardingUiState(),
                     isSavingPlan = false,
                 ))

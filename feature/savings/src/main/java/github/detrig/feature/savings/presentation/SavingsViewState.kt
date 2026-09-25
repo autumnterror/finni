@@ -9,10 +9,8 @@ import github.detrig.feature.savings.api.SavingsGoalDraft
 internal enum class SavingsTransferDirection { DEPOSIT, WITHDRAW }
 
 internal enum class SavingsOnboardingStep {
-    INTRODUCTION,
     SELECT_GOAL,
     CONFIRM_GOAL,
-    GOAL_CREATED,
     FIRST_DEPOSIT,
     WAITING_FOR_DEPOSIT,
     DEPOSIT_DONE,

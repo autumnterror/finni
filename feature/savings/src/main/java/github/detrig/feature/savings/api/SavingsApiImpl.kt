@@ -17,7 +17,7 @@ import github.detrig.feature.pet.api.PetApi
 
 internal class SavingsApiImpl(
     private val router: SavingsRouter,
-    private val createGoal: CreateSavingsGoalInteractor,
+    private val createGoalInteractor: CreateSavingsGoalInteractor,
     private val economy: EconomyApi,
     private val transferTo: TransferToSavingsInteractor,
     private val transferFrom: TransferFromSavingsInteractor,
@@ -38,7 +38,7 @@ internal class SavingsApiImpl(
             )
         }
     }
-    override suspend fun createGoal(draft: SavingsGoalDraft): SavingsGoal = createGoal(draft)
+    override suspend fun createGoal(draft: SavingsGoalDraft): SavingsGoal = createGoalInteractor(draft)
     override suspend fun getActiveGoalProgress(): SavingsGoalProgress? =
         economy.getActiveGoal()?.let { economy.getGoalProgress(it.id) }
     override suspend fun reconcileLearning() = learning.reconcile()

@@ -6,15 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.Image
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -29,13 +24,10 @@ import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.FirstRunOnboardingStep
 import github.detrig.feature.room.presentation.FirstRunOnboardingState
-import github.detrig.feature.room.presentation.model.RoomZoneUiModel
-import github.detrig.feature.room.domain.model.RoomZoneAccess
 
 @Composable
 internal fun FirstRunOnboardingDialog(
     state: FirstRunOnboardingState,
-    selectedZone: RoomZoneUiModel? = null,
     petName: String,
     petPortrait: @Composable (Modifier) -> Unit,
     topInset: Dp = 0.dp,
@@ -43,7 +35,7 @@ internal fun FirstRunOnboardingDialog(
     onDepositSelected: (Boolean) -> Unit,
     onPageChanged: (Int) -> Unit = {},
 ) {
-    val cards = state.cards(petName, selectedZone) ?: return
+    val cards = state.cards(petName) ?: return
     val isDepositChoice = state.step == FirstRunOnboardingStep.FIRST_DEPOSIT
     FinPetDialogueDialog(
         speakerName = petName,
@@ -53,8 +45,8 @@ internal fun FirstRunOnboardingDialog(
         onPageChanged = onPageChanged,
         dismissOnBackPress = false,
         advanceOnTap = !isDepositChoice,
-        actions = if (isDepositChoice) {
-            listOf(
+        actions = when {
+            isDepositChoice -> listOf(
                 FinPetDialogueAction(
                     id = DEPOSIT_NOW_ACTION_ID,
                     label = stringResource(R.string.onboarding_deposit_now),
@@ -64,16 +56,12 @@ internal fun FirstRunOnboardingDialog(
                     label = stringResource(R.string.onboarding_deposit_later),
                 ),
             )
-        } else {
-            emptyList()
+            else -> emptyList()
         },
         onActionSelected = { action -> onDepositSelected(action.id == DEPOSIT_NOW_ACTION_ID) },
         additionalContent = {
             if (state.step == FirstRunOnboardingStep.GOAL_CREATED) {
                 GoalProgressCard(state)
-            }
-            if (state.step == FirstRunOnboardingStep.GAME_SELECTED && selectedZone != null) {
-                SelectedGameCard(selectedZone)
             }
         },
         onFinished = onContinue,
@@ -84,34 +72,7 @@ private const val DEPOSIT_NOW_ACTION_ID = "deposit_now"
 private const val DEPOSIT_LATER_ACTION_ID = "deposit_later"
 
 @Composable
-private fun SelectedGameCard(zone: RoomZoneUiModel) {
-    val imageRes = when (zone.id) {
-        "music" -> R.drawable.room_toy_keyboard
-        "fishing" -> R.drawable.room_toy_fishing
-        else -> R.drawable.room_easel
-    }
-    val price = (zone.access as? RoomZoneAccess.Buyable)?.priceRub ?: 0
-    FinPetModalSection(Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
-        Row(
-            modifier = Modifier.padding(AppTheme.spacing.md),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                painter = painterResource(imageRes),
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                contentScale = ContentScale.Fit,
-            )
-            Column(Modifier.padding(start = AppTheme.spacing.md)) {
-                Text(stringResource(zone.appearance.titleRes), style = AppTheme.typography.bodyStrong)
-                Text(stringResource(R.string.onboarding_game_price, price), style = AppTheme.typography.body)
-            }
-        }
-    }
-}
-
-@Composable
-private fun FirstRunOnboardingState.cards(petName: String, selectedZone: RoomZoneUiModel?): List<String>? = when (step) {
+private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when (step) {
     FirstRunOnboardingStep.INTRODUCTION -> listOf(
         stringResource(R.string.onboarding_intro_1, petName),
         stringResource(R.string.onboarding_intro_2),
@@ -124,29 +85,19 @@ private fun FirstRunOnboardingState.cards(petName: String, selectedZone: RoomZon
     FirstRunOnboardingStep.PLAN_TRANSITION -> listOf(
         stringResource(R.string.onboarding_plan_transition_1),
     )
-    FirstRunOnboardingStep.PLAN_SAVED -> listOf(
-        stringResource(R.string.onboarding_plan_saved_1),
-        stringResource(R.string.onboarding_plan_saved_2),
-    )
     FirstRunOnboardingStep.GAME_DISCOVERY -> listOf(
         stringResource(R.string.onboarding_games_discovery_1),
     )
     FirstRunOnboardingStep.GAME_DISCOVERY_DETAILS -> listOf(
         stringResource(R.string.onboarding_games_discovery_2),
-    )
-    FirstRunOnboardingStep.GAME_SELECTED -> listOf(
         stringResource(R.string.onboarding_game_selected_1),
-        stringResource(
-            R.string.onboarding_game_selected_2,
-            (selectedZone?.access as? RoomZoneAccess.Buyable)?.priceRub ?: 0,
-        ),
+        stringResource(R.string.onboarding_game_selected_2),
         stringResource(R.string.onboarding_game_selected_3),
     )
     FirstRunOnboardingStep.PIGGY_BANK -> listOf(
         stringResource(R.string.onboarding_piggy_1),
     )
     FirstRunOnboardingStep.PIGGY_TAP -> listOf(
-        stringResource(R.string.onboarding_piggy_2),
         stringResource(R.string.onboarding_piggy_5),
     )
     FirstRunOnboardingStep.GOAL_CREATED -> listOf(
@@ -173,6 +124,7 @@ private fun FirstRunOnboardingState.cards(petName: String, selectedZone: RoomZon
     FirstRunOnboardingStep.FIRST_MONEY,
     FirstRunOnboardingStep.PLAN,
     FirstRunOnboardingStep.GAME_SELECTION,
+    FirstRunOnboardingStep.GAME_SELECTED,
     FirstRunOnboardingStep.WAITING_FOR_PIGGY,
     FirstRunOnboardingStep.WAITING_FOR_GOAL,
     FirstRunOnboardingStep.WAITING_FOR_DEPOSIT,
