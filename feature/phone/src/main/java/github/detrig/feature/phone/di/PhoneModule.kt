@@ -38,6 +38,7 @@ internal class PhoneModule(
             eventConfig = SecurityEventConfig(
                 dailyProbability = dependencies.dailySecurityEventProbability(),
             ),
+            onParentHelpSettled = roomApi::notifyParentHelpSettled,
         )
     }
 

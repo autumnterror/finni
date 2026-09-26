@@ -540,8 +540,10 @@ Rules:
 - debt cannot be used for cosmetics, room luxuries, or optional wants;
 - parent-help offers may include a small, clearly shown extra repayment amount;
 - the extra repayment percentage decreases as the repayment period gets longer.
-- the automatic offer is shown once in a game week when its conditions are met;
-  closing it prompts the child to speak with Mom through the phone;
+- the automatic offer is shown at most once per game week for the same unpaid-help
+  cycle; fully settling the help makes it eligible again at the next low-balance
+  episode, even within that week. Closing it without accepting prompts the child
+  to speak with Mom through the phone;
 - the Mom message keeps one stable identity while its content changes with the
   help state. The food table is not an entry point for parent help;
 - child-facing text does not use the word "долг".

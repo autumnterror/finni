@@ -18,9 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -50,10 +47,7 @@ import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
 import github.detrig.feature.room.presentation.component.DayTransitionDialog
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetDialogueAction
-import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
-import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetStorefrontCard
-import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.room.presentation.preview.RoomPreviewData
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.room.api.RoomPetInteraction
@@ -190,7 +184,6 @@ internal fun RoomScreen(
                 content?.firstWeekNeedHint == null &&
                 content?.firstWeekGoalHint == null &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
-                content?.dayTransitionNotice == null &&
                 content?.savingsRecoveryPrompt == null &&
                 content?.parentHelpPhonePrompt == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
@@ -338,17 +331,19 @@ internal fun RoomScreen(
         }
         content?.parentHelpDialog != null && canShowDialogs && externalActive && resumed &&
             onboarding == null && content.planEditor == null && content.planDialogue == null &&
-            content.weekResult == null && content.dayTransitionNotice == null &&
+            content.weekResult == null &&
             content.menuDestination == RoomMenuDestination.NONE && !showPhoneNotificationPrompt -> {
             LaunchedEffect(content.progress.weekNumber) {
-                viewModel.perform(RoomViewEvent.ParentHelpDialogShown)
+                viewModel.perform(RoomViewEvent.ClaimParentHelpDialog)
             }
-            ParentHelpDialog(
-                state = content.parentHelpDialog,
-                isRequesting = content.isRequestingParentHelp,
-                onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
-                onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
-            )
+            if (content.isParentHelpDialogClaimed) {
+                ParentHelpDialog(
+                    state = content.parentHelpDialog,
+                    isRequesting = content.isRequestingParentHelp,
+                    onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
+                    onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
+                )
+            }
         }
         content?.parentHelpPhonePrompt != null && canShowDialogs -> {
             FinPetDialogueDialog(
@@ -542,7 +537,7 @@ internal fun RoomScreen(
             )
         }
     }
-    if (content?.dayTransitionNotice != null && canShowDialogs) {
+    if (content?.dayTransitionNotice != null && externalActive) {
         DayTransitionDialog(content.dayTransitionNotice) {
             viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
         }
@@ -569,49 +564,6 @@ internal fun RoomScreen(
     }
     LaunchedEffect(zone?.access, content != null) {
         if (content != null && zone?.access !is RoomZoneAccess.Buyable) dialogZoneId = null
-    }
-}
-
-@Composable
-private fun RoomTopStatus(
-    progress: RoomProgress,
-    showDay: Boolean = true,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier.fillMaxWidth()) {
-        val balanceDescription = stringResource(R.string.house_balance_accessibility, progress.balanceRub)
-        FinPetStorefrontBalanceBadge(
-            balanceRub = progress.balanceRub.toLong(),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(AppTheme.spacing.md)
-                .semantics { contentDescription = balanceDescription }
-                .testTag("house_balance"),
-        )
-        if (showDay) {
-            FinPetCard(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(AppTheme.spacing.md)
-                    .testTag("house_day_counter"),
-            ) {
-                Text(
-                    text = stringResource(R.string.house_current_day, progress.dayOfWeek),
-                    modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
-                    style = AppTheme.typography.bodyStrong,
-                )
-            }
-        }
-    }
-}
-
-@Preview(name = "Баланс и день комнаты", widthDp = 360, heightDp = 120, showBackground = true)
-@Composable
-private fun RoomTopStatusPreview() {
-    FinPetTheme {
-        RoomTopStatus(RoomPreviewData.state.progress)
     }
 }
 

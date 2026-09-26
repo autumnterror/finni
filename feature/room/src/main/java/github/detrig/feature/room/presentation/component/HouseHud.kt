@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -102,28 +100,8 @@ internal fun HouseHud(
                     transparent = true,
                     modifier = Modifier.semantics { contentDescription = balanceDescription }.testTag("house_balance"),
                 )
-                if (showDetails) {
-                    Spacer(Modifier.height(AppTheme.spacing.sm))
-                    HouseDayBadge(progress.weekNumber, progress.dayOfWeek, Modifier.testTag("hud_day"))
-                }
             }
         }
-    }
-}
-
-@Composable
-private fun HouseDayBadge(weekNumber: Long, dayOfWeek: Int, modifier: Modifier = Modifier) {
-    FinPetCard(
-        modifier = modifier,
-        containerColor = AppTheme.colors.roomBackground.copy(alpha = .62f),
-        contentColor = AppTheme.colors.onRoomBackground,
-        borderColor = AppTheme.colors.onRoomBackground.copy(alpha = .75f),
-    ) {
-        Text(
-            text = stringResource(R.string.house_day_counter, weekNumber, dayOfWeek),
-            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
-            style = AppTheme.typography.caption,
-        )
     }
 }
 

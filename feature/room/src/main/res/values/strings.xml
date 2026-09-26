@@ -90,13 +90,10 @@
     <string name="house_swipe_hint">Проведи в сторону</string>
     <string name="house_hunger">Голод</string>
     <string name="house_happiness">Счастье</string>
-    <string name="house_day_counter">Неделя %1$d · день %2$d/7</string>
-    <string name="house_current_day">День %1$d/7</string>
     <string name="house_money_in_days">Деньги через %1$d игровых дн.</string>
     <string name="house_balance_accessibility">Баланс: %1$d монет</string>
     <string name="hud_satiety">Сытость</string>
     <string name="hud_metric_description">%1$s: %2$d из 100</string>
-    <string name="hud_day">День %1$d/7</string>
     <string name="hud_week">Неделя %1$d</string>
     <string-array name="house_weekdays_short">
         <item>Пн</item><item>Вт</item><item>Ср</item><item>Чт</item><item>Пт</item><item>Сб</item><item>Вс</item>

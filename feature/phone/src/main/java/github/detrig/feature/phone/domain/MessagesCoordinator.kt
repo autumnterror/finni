@@ -35,6 +35,7 @@ internal class MessagesCoordinator(
     private val economyApi: EconomyApi,
     private val minimumHelpBalanceRub: Long,
     private val eventConfig: SecurityEventConfig,
+    private val onParentHelpSettled: () -> Unit = {},
 ) {
     private var observationJob: Job? = null
     private val parentHelpMutex = Mutex()
@@ -133,6 +134,7 @@ internal class MessagesCoordinator(
             ),
         )
         if (result is FinancialOperationResult.Applied || result is FinancialOperationResult.AlreadyApplied) {
+            onParentHelpSettled()
             repository.upsertParentHelpMessage(weekApi.initialize().absoluteDay, activeHelp = null)
         }
         result

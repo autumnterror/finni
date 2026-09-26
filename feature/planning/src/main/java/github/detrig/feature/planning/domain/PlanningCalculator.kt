@@ -29,7 +29,7 @@ internal object PlanningCalculator {
     }
 
     private fun tone(plannedRub: Long, actualRub: Long): PlanProgressTone = when {
-        actualRub <= plannedRub -> PlanProgressTone.ON_TRACK
+        actualRub == plannedRub -> PlanProgressTone.ON_TRACK
         plannedRub == 0L || actualRub > (plannedRub * WARNING_MULTIPLIER).toLong() -> PlanProgressTone.OVER_LIMIT
         else -> PlanProgressTone.WARNING
     }
