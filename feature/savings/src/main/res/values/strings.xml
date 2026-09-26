@@ -1,6 +1,10 @@
 <resources>
     <string name="savings_title">Копилка</string>
     <string name="savings_back">Назад</string>
+    <string name="savings_help_button">Подсказка о копилке</string>
+    <string name="savings_help_title">Копилка</string>
+    <string name="savings_help_message">Выбери цель и откладывай деньги из кошелька. Накопленное можно вернуть в кошелёк.</string>
+    <string name="savings_help_dismiss">Понятно</string>
     <string name="savings_wallet">В кошельке: %1$d ₽</string>
     <string name="savings_total">В копилке: %1$d ₽</string>
     <string name="savings_total_label">В копилке</string>
