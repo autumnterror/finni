@@ -2,14 +2,24 @@ package github.detrig.feature.planning.domain
 
 /** Балансировочные правила недельного плана. */
 data class PlanningConfig(
-    val minimumMandatoryPercent: Int = 40,
-    val minimumSavingsPercent: Int = 10,
-    val minimumReservePercent: Int = 10,
+    val minimumFoodBudgetRub: Long = 400,
+    val smallReserveRub: Long = 50,
+    val minimumReserveRub: Long = 100,
+    val strongReserveRub: Long = 150,
 ) {
     init {
-        require(minimumMandatoryPercent in 0..PlanPercentages.TOTAL_PERCENT)
-        require(minimumSavingsPercent in 0..PlanPercentages.TOTAL_PERCENT)
-        require(minimumReservePercent in 0..PlanPercentages.TOTAL_PERCENT)
-        require(minimumMandatoryPercent + minimumSavingsPercent + minimumReservePercent <= PlanPercentages.TOTAL_PERCENT)
+        require(minimumFoodBudgetRub > 0)
+        require(smallReserveRub > 0)
+        require(minimumReserveRub > smallReserveRub)
+        require(strongReserveRub > minimumReserveRub)
+    }
+
+    fun reserveLevel(amountRub: Long): ReserveLevel = when {
+        amountRub < smallReserveRub -> ReserveLevel.ALMOST_NONE
+        amountRub < minimumReserveRub -> ReserveLevel.SMALL
+        amountRub < strongReserveRub -> ReserveLevel.ADEQUATE
+        else -> ReserveLevel.STRONG
     }
 }
+
+enum class ReserveLevel { ALMOST_NONE, SMALL, ADEQUATE, STRONG }

@@ -33,7 +33,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object FirstRunOpenFridge : RoomViewEvent
     data object FirstRunOpenTable : RoomViewEvent
     data object FirstRunShowWeekSummary : RoomViewEvent
-    data object FirstRunStartNewWeekPlan : RoomViewEvent
+    data object DismissNewWeekPlanPrompt : RoomViewEvent
     data object FirstRunMoneyNoticeClosed : RoomViewEvent
     data class FirstRunDepositSelected(val depositNow: Boolean) : RoomViewEvent
     data object Resumed : RoomViewEvent

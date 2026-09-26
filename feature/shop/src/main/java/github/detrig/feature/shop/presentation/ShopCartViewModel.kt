@@ -36,15 +36,21 @@ internal class ShopCartViewModel(
 ) : CoreViewModel<ShopCartViewState, ShopCartViewEvent>(ShopCartViewState()) {
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
+    private var pendingCheckout: ShopCheckoutRequest? = null
 
     override fun perform(viewEvent: ShopCartViewEvent) {
         when (viewEvent) {
             ShopCartViewEvent.Load,
             ShopCartViewEvent.Retry -> load()
-            ShopCartViewEvent.Back -> navigateBack()
+            ShopCartViewEvent.Back -> if (stateData.purchaseConfirmation != null) {
+                dismissConsequenceWarning()
+            } else {
+                navigateBack()
+            }
             is ShopCartViewEvent.Increase -> add(viewEvent.productId)
             is ShopCartViewEvent.Decrease -> removeOne(viewEvent.productId)
             ShopCartViewEvent.PayClicked -> checkout()
+            ShopCartViewEvent.ConsequenceWarningDismissed -> dismissConsequenceWarning()
             ShopCartViewEvent.CheckoutRejectionDismissed -> {
                 updateState { copy(checkoutRejection = null) }
             }
@@ -74,16 +80,24 @@ internal class ShopCartViewModel(
             host.preparePlayer()
             combine(
                 host.observeBalanceRub(),
+                host.observePetName(),
                 cartStore.observe(storeId),
                 decisionEventStore.observe(storeId),
-            ) { balance, cart, decisionEvent -> Triple(balance, cart, decisionEvent) }
-                .collect { (balance, cart, decisionEvent) ->
+            ) { balance, petName, cart, decisionEvent ->
+                CartObservation(balance, petName, cart, decisionEvent)
+            }.collect { (balance, petName, cart, decisionEvent) ->
+                    val warningStillApplies = pendingCheckout?.let {
+                        it.lines == cart.lines && it.decisionEvent == decisionEvent
+                    } != false
+                    if (!warningStillApplies) pendingCheckout = null
                     updateState {
                         copy(
                             storefront = resolvedCatalog.storefront,
                             cart = cart,
                             balanceRub = balance,
                             decisionEvent = decisionEvent,
+                            petName = petName,
+                            purchaseConfirmation = purchaseConfirmation.takeIf { warningStillApplies },
                             loading = false,
                             error = null,
                         )
@@ -94,12 +108,16 @@ internal class ShopCartViewModel(
 
     private fun add(productId: ProductId) {
         if (stateData.storefront?.items?.none { it.id == productId } != false) return
+        pendingCheckout = null
+        updateState { copy(purchaseConfirmation = null) }
         cartStore.add(storeId, productId)
         gameAudio.play(ShopAudioCues.Select)
     }
 
     private fun removeOne(productId: ProductId) {
         if (stateData.cart.quantityOf(productId) == 0) return
+        pendingCheckout = null
+        updateState { copy(purchaseConfirmation = null) }
         cartStore.removeOne(storeId, productId)
         gameAudio.play(ShopAudioCues.Select)
     }
@@ -107,17 +125,48 @@ internal class ShopCartViewModel(
     private fun checkout() {
         val currentState = stateData
         val pendingCart = currentState.cart
-        if (currentState.paymentInProgress || pendingCart.isEmpty) return
+        if (currentState.paymentInProgress || currentState.purchaseConfirmation != null || pendingCart.isEmpty) return
         if (!currentState.canPay) {
             updateState { copy(checkoutRejection = ShopCheckoutRejection.INSUFFICIENT_FUNDS) }
             gameAudio.play(ShopAudioCues.Rejected)
             return
         }
-        val operationId = "shop-checkout:${storeId.value}:${UUID.randomUUID()}"
+        val warnedRequest = pendingCheckout?.takeIf {
+            it.lines == pendingCart.lines && it.decisionEvent == currentState.decisionEvent
+        }
+        val request = warnedRequest?.copy(confirmedConsequence = true) ?: ShopCheckoutRequest(
+            operationId = "shop-checkout:${storeId.value}:${UUID.randomUUID()}",
+            storeId = storeId,
+            lines = pendingCart.lines,
+            decisionEvent = currentState.decisionEvent,
+        )
+        pendingCheckout = request
+        completeCheckout(request)
+    }
 
-        updateState { copy(paymentInProgress = true, checkoutRejection = null) }
+    private fun dismissConsequenceWarning() {
+        updateState { copy(purchaseConfirmation = null) }
+    }
+
+    private fun completeCheckout(request: ShopCheckoutRequest) {
+        val currentState = stateData
+        val pendingCart = currentState.cart
+        if (currentState.paymentInProgress || pendingCart.isEmpty) return
+        if (pendingCart.lines != request.lines || currentState.decisionEvent != request.decisionEvent) {
+            pendingCheckout = null
+            updateState { copy(purchaseConfirmation = null) }
+            return
+        }
+        if (!currentState.canPay) {
+            pendingCheckout = null
+            updateState { copy(purchaseConfirmation = null, checkoutRejection = ShopCheckoutRejection.INSUFFICIENT_FUNDS) }
+            return
+        }
+
+        updateState { copy(paymentInProgress = true, purchaseConfirmation = null, checkoutRejection = null) }
         launchCoroutine(
             handleAction = ExceptionConsumer {
+                pendingCheckout = null
                 updateState {
                     copy(
                         paymentInProgress = false,
@@ -128,16 +177,10 @@ internal class ShopCartViewModel(
             },
         ) {
             when (
-                val result = host.checkout(
-                    ShopCheckoutRequest(
-                        operationId = operationId,
-                        storeId = storeId,
-                        lines = pendingCart.lines,
-                        decisionEvent = currentState.decisionEvent,
-                    ),
-                )
+                val result = host.checkout(request)
             ) {
                 is ShopCheckoutResult.Completed -> {
+                    pendingCheckout = null
                     val receipt = stateData.createReceipt(
                         cart = pendingCart,
                         receiptNumber = result.receiptNumber,
@@ -159,12 +202,22 @@ internal class ShopCartViewModel(
                 }
 
                 is ShopCheckoutResult.Rejected -> {
+                    pendingCheckout = null
                     gameAudio.play(ShopAudioCues.Rejected)
                     updateState {
                         copy(
                             balanceRub = result.balanceRub,
                             paymentInProgress = false,
                             checkoutRejection = result.reason,
+                        )
+                    }
+                }
+                is ShopCheckoutResult.RequiresConfirmation -> {
+                    updateState {
+                        copy(
+                            balanceRub = result.balanceRub,
+                            paymentInProgress = false,
+                            purchaseConfirmation = result,
                         )
                     }
                 }
@@ -213,3 +266,10 @@ internal class ShopCartViewModel(
         )
     }
 }
+
+private data class CartObservation(
+    val balanceRub: Long,
+    val petName: String,
+    val cart: StoreCart,
+    val decisionEvent: github.detrig.feature.shop.domain.ShopDecisionEvent?,
+)

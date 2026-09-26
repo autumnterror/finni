@@ -17,7 +17,7 @@ class MvpAchievementCatalogTest {
         assertTrue(catalog.definitions.all { it.xpReward > 0 })
         assertTrue(catalog.definitions
             .filter { it.stage == AchievementStage.INTRODUCTION }
-            .all { it.xpReward == 50 })
+            .all { it.xpReward == 10 })
         assertTrue(catalog.definitions
             .filter { it.stage == AchievementStage.LEARNED }
             .all { it.xpReward == 20 })

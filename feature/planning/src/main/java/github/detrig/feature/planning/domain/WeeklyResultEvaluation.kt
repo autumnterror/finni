@@ -10,7 +10,7 @@ fun WeeklyPlanProgress.isGoodWeeklyResult(): Boolean {
         abs(category.actualRub - category.plannedRub) <= toleranceRub
     }
     val plannedReserve = plan.reserveRub
-    val actualReserve = (plan.availableRub - categories.sumOf { it.actualRub }).coerceAtLeast(0)
+    val actualReserve = controlledReserveRub
     val reserveToleranceRub = max(MINIMUM_TOLERANCE_RUB, plannedReserve / 4)
     return categoriesMatch && abs(actualReserve - plannedReserve) <= reserveToleranceRub
 }

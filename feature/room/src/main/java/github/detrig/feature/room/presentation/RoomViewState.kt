@@ -156,7 +156,7 @@ internal enum class PlanTutorialStep {
 internal sealed interface PlanDialogueState {
     data class NeedsChanges(
         val reason: PlanAdjustmentReason,
-        val recommendedPercent: Int,
+        val requiredRub: Long,
     ) : PlanDialogueState
 
     data class Saved(
@@ -176,6 +176,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val sleepConfirmationVisible: Boolean = false,
         val sleeping: Boolean = false,
         val planEditor: PlanEditorState? = null,
+        val newWeekPlanPromptVisible: Boolean = false,
         val planTutorialStep: PlanTutorialStep? = null,
         val planDialogue: PlanDialogueState? = null,
         val isSavingPlan: Boolean = false,

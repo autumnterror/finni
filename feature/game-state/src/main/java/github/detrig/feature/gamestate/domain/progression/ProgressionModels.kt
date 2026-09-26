@@ -63,15 +63,14 @@ object ProgressionRules {
 }
 
 object XpRewards {
-    const val WEEK_COMPLETED = 80
-    const val GOOD_WEEK_RESULT = 40
-    const val SAVINGS_GOAL_REACHED = 100
-    const val FINANCIAL_TASK_COMPLETED = 20
-    const val ACHIEVEMENT_INTRODUCTION = 50
+    const val WEEK_COMPLETED = 40
+    const val GOOD_WEEK_RESULT = 20
+    const val SAVINGS_GOAL_REACHED = 40
+    const val FINANCIAL_TASK_GUIDED = 5
+    const val FINANCIAL_TASK_INDEPENDENT = 10
+    const val ACHIEVEMENT_INTRODUCTION = 10
     const val ACHIEVEMENT_LEARNED = 20
-    const val CONTENT_UNLOCKED = 50
-    const val MINI_GAME = 5
-    const val MINI_GAME_HIGH_ENGAGEMENT = 10
+    const val MINI_GAME = 2
 }
 
 object XpSources {
@@ -80,18 +79,19 @@ object XpSources {
     const val SAVINGS_GOAL_REACHED = "savings_goal_reached"
     const val FINANCIAL_TASK_COMPLETED = "financial_task_completed"
     const val ACHIEVEMENT = "achievement"
-    const val CONTENT_UNLOCKED = "content_unlocked"
     const val MINI_GAME = "mini_game"
 }
 
 object MiniGameXpPolicy {
-    private const val HIGH_ENGAGEMENT_MILLIS = 60_000L
+    const val WEEKLY_CAP = 10
 
     fun reward(completedNaturally: Boolean, validActionCount: Int, activePlayMillis: Long): Int = when {
         !completedNaturally || validActionCount <= 0 || activePlayMillis <= 0 -> 0
-        activePlayMillis >= HIGH_ENGAGEMENT_MILLIS -> XpRewards.MINI_GAME_HIGH_ENGAGEMENT
         else -> XpRewards.MINI_GAME
     }
+
+    fun rewardWithinWeek(earnedThisWeek: Int): Int =
+        if (earnedThisWeek + XpRewards.MINI_GAME <= WEEKLY_CAP) XpRewards.MINI_GAME else 0
 }
 
 sealed interface GrantXpResult {

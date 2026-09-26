@@ -21,9 +21,6 @@ import github.detrig.internetbooster.mediators.FridgeMediator
 import github.detrig.internetbooster.mediators.WardrobeMediator
 import github.detrig.internetbooster.mediators.LearningMediator
 import github.detrig.internetbooster.network.AppNetworkModule
-import github.detrig.core.time.SystemWallClock
-import github.detrig.core.time.TimeDrivenTask
-import github.detrig.core.time.TimedEventProcessor
 import github.detrig.internetbooster.time.HungerNotificationDispatcher
 import github.detrig.internetbooster.audio.AppAudioCues
 import kotlinx.coroutines.flow.first
@@ -85,6 +82,7 @@ internal class AppModuleImpl(
             inventoryApi = inventoryMediator.getApi(),
             learningMediator = learningMediator,
             petMediator = petMediator,
+            gameStateMediator = gameStateMediator,
             gameAudio = gameAudio,
         )
     }
@@ -93,21 +91,11 @@ internal class AppModuleImpl(
         GameStateMediator(databaseModule, economyMediator)
     }
 
-    private val timedEventProcessor: TimedEventProcessor by lazy {
-        TimedEventProcessor(
-            SystemWallClock,
-            listOf(TimeDrivenTask { nowMillis ->
-                gameStateMediator.getApi().reconcileTimedNeeds(nowMillis)
-            }),
-        )
-    }
-
     private val hungerNotifications: HungerNotificationDispatcher by lazy {
         HungerNotificationDispatcher(coreComponent.context, gameStateMediator.getApi())
     }
 
     override suspend fun reconcileTimedEvents() {
-        timedEventProcessor.reconcile()
         learningMediator.getApi().deliverPendingXpRewards("current")
         hungerNotifications.dispatch()
     }
@@ -143,7 +131,7 @@ internal class AppModuleImpl(
         PetMediator(coreComponent)
     }
     private val wardrobeMediator: WardrobeMediator by lazy {
-        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator)
+        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator, gameStateMediator)
     }
 
     private val gameSessionMediator: GameSessionMediator by lazy {
@@ -204,6 +192,7 @@ internal class AppModuleImpl(
             coreComponent,
             databaseModule,
             gameStateMediator,
+            weekMediator,
             petMediator,
             gameAudio,
         ).init()

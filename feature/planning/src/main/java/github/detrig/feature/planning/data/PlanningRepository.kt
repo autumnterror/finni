@@ -16,8 +16,8 @@ internal class PlanningRepository(
     private val transactionRunner: RoomTransactionRunner,
     private val config: PlanningConfig,
 ) : PlanningApi {
-    override fun assessPlan(percentages: PlanPercentages): PlanAssessment =
-        PlanningCalculator.assess(percentages, config)
+    override fun assessPlan(plan: WeeklyPlan): PlanAssessment =
+        PlanningCalculator.assess(plan, config)
 
     override suspend fun getPlanProgress(weekNumber: Long): WeeklyPlanProgress? = transactionRunner.runInTransaction {
         dao.deleteLegacyDemoActualOperations()
@@ -36,12 +36,16 @@ internal class PlanningRepository(
         weekNumber: Long,
         availableRub: Long,
         percentages: PlanPercentages,
+        context: PlanWeekContext,
     ): SavePlanResult = transactionRunner.runInTransaction {
         require(weekNumber >= 1) { "The game week must be positive" }
         require(availableRub >= 0)
         dao.deleteLegacyDemoActualOperations()
         dao.getPlan(weekNumber)?.let { return@runInTransaction SavePlanResult.AlreadySaved(it.toProgress(dao.getActualOperations(weekNumber))) }
-        val entity = WeeklyPlanEntity(weekNumber, availableRub, percentages.mandatory, percentages.wants, percentages.savings)
+        val entity = WeeklyPlanEntity(
+            weekNumber, availableRub, percentages.mandatory, percentages.wants, percentages.savings,
+            context.knownMandatoryExpenseRub, context.hasActiveGoal,
+        )
         dao.insertPlan(entity)
         SavePlanResult.Saved(entity.toProgress(dao.getActualOperations(weekNumber)))
     }
@@ -54,7 +58,7 @@ internal class PlanningRepository(
         val incoming = PlanActualOperationEntity(
             operationId = operation.operationId,
             weekNumber = operation.weekNumber,
-            categoryCode = operation.planCategory.code,
+            categoryCode = operation.categoryCode,
             amountRub = operation.signedAmountRub,
         )
         dao.getActualOperation(operation.operationId)?.let { current ->
@@ -66,9 +70,17 @@ internal class PlanningRepository(
     }
 
     private fun WeeklyPlanEntity.toProgress(actuals: List<PlanActualOperationEntity>): WeeklyPlanProgress {
-        val plan = WeeklyPlan(weekNumber, availableRub, PlanPercentages(mandatoryPercent, wantsPercent, savingsPercent))
-        val totals = actuals.groupBy { PlanCategory.entries.first { category -> category.code == it.categoryCode } }
+        val plan = WeeklyPlan(
+            weekNumber, availableRub, PlanPercentages(mandatoryPercent, wantsPercent, savingsPercent),
+            PlanWeekContext(knownMandatoryExpenseRub, hasActiveGoal),
+        )
+        val controlledActuals = actuals.filter { it.categoryCode != UNEXPECTED_MANDATORY_CATEGORY_CODE }
+        val totals = controlledActuals.groupBy { PlanCategory.entries.first { category -> category.code == it.categoryCode } }
             .mapValues { (_, operations) -> operations.sumOf { it.amountRub } }
+        val unexpectedMandatoryRub = actuals.asSequence()
+            .filter { it.categoryCode == UNEXPECTED_MANDATORY_CATEGORY_CODE }
+            .sumOf { it.amountRub }
         return PlanningCalculator.progress(plan, totals, config)
+            .copy(unexpectedMandatoryRub = unexpectedMandatoryRub)
     }
 }

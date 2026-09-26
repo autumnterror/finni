@@ -24,6 +24,7 @@ internal data class ShopViewState(
     val receipt: ShopReceipt? = null,
     val decisionEvent: ShopDecisionEvent? = null,
     val eventDialogueVisible: Boolean = false,
+    val seenPromotionEventId: String? = null,
     val purchaseFeedback: ShopPurchaseFeedback? = null,
     val petName: String = "Питомец",
 ) : CoreViewState {

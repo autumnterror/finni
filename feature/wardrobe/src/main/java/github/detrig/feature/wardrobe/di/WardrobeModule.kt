@@ -13,7 +13,7 @@ internal class WardrobeModule(private val dependencies: WardrobeDependencies) : 
     private val purchase by lazy {
         ClothingPurchaseInteractor(
             dependencies.petApi(), dependencies.economyApi(),
-            dependencies.planningApi(), dependencies.weekApi(),
+            dependencies.planningApi(), dependencies.weekApi(), dependencies.gameStateApi(),
         )
     }
     override val api: WardrobeApi by lazy { WardrobeApiImpl(router) }

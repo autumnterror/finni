@@ -41,7 +41,7 @@ data class MetricRuleDefinition(
 
 data class LearningConfig(
     val catalogVersion: Int = 1,
-    val defaultAchievementXp: Int = 50,
+    val defaultAchievementXp: Int = 10,
     val defaultLearnedAchievementXp: Int = 20,
     val achievementXpOverrides: Map<String, Int> = emptyMap(),
     val metricRules: List<MetricRuleDefinition> = emptyList(),

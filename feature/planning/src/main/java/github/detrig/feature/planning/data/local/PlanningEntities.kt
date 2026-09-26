@@ -10,6 +10,8 @@ data class WeeklyPlanEntity(
     val mandatoryPercent: Int,
     val wantsPercent: Int,
     val savingsPercent: Int,
+    val knownMandatoryExpenseRub: Long = 0,
+    val hasActiveGoal: Boolean = false,
 )
 
 @Entity(tableName = "plan_actual_operations")

@@ -20,6 +20,8 @@ internal enum class WeekPlanOutcome {
 
 internal enum class WeekPlanFeedbackReason {
     WEAK_PLAN,
+    UNEXPECTED_EXPENSE_COVERED,
+    UNEXPECTED_EXPENSE_BEYOND_RESERVE,
     ADAPTED_TO_MANDATORY_COST,
     CLOSE_TO_PLAN,
     MANDATORY_COST_INCREASED,
@@ -30,6 +32,8 @@ internal data class WeekPlanAssessment(
     val matchedItems: Set<WeekPlanItem>,
     val missedItems: Set<WeekPlanItem>,
     val actualReserveRub: Long,
+    val remainingReserveRub: Long,
+    val uncoveredEventRub: Long,
     val feedbackReason: WeekPlanFeedbackReason,
 ) {
     val outcome: WeekPlanOutcome = when (matchedItems.size) {
@@ -47,7 +51,7 @@ internal data class WeekPlanAssessment(
 
 internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
     val categorizedActualRub = categories.sumOf { it.actualRub }
-    val actualReserveRub = (plan.availableRub - categorizedActualRub).coerceAtLeast(0)
+    val actualReserveRub = controlledReserveRub
     val mandatory = category(PlanCategory.MANDATORY)
     val wants = category(PlanCategory.WANTS)
     val mandatoryIncreased = mandatory.actualRub > mandatory.plannedRub
@@ -67,6 +71,12 @@ internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
     }
     val feedbackReason = when {
         planAssessment != PlanAssessment.Adequate -> WeekPlanFeedbackReason.WEAK_PLAN
+        unexpectedMandatoryRub > 0 && isGoodWeeklyResult() ->
+            if (unexpectedMandatoryRub <= actualReserveRub) {
+                WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_COVERED
+            } else {
+                WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_BEYOND_RESERVE
+            }
         mandatoryIncreased && wants.actualRub <= wants.plannedRub &&
             categorizedActualRub <= plan.availableRub -> WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST
         matched.size < WeekPlanItem.entries.size && isGoodWeeklyResult() -> WeekPlanFeedbackReason.CLOSE_TO_PLAN
@@ -77,6 +87,8 @@ internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
         matchedItems = matched,
         missedItems = WeekPlanItem.entries.toSet() - matched,
         actualReserveRub = actualReserveRub,
+        remainingReserveRub = remainingReserveRub,
+        uncoveredEventRub = (unexpectedMandatoryRub - actualReserveRub).coerceAtLeast(0),
         feedbackReason = feedbackReason,
     )
 }

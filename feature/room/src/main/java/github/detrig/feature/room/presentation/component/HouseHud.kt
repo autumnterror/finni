@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
+import github.detrig.designsystem.component.FinPetSunIcon
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
@@ -149,9 +150,12 @@ private fun HouseNeedRing(
 
 @Composable
 private fun HouseNeedArtwork(icon: HouseNeedIcon, modifier: Modifier = Modifier) {
+    if (icon == HouseNeedIcon.SUN) {
+        FinPetSunIcon(modifier)
+        return
+    }
     val outline = AppTheme.colors.house.outline
     val leaf = AppTheme.colors.house.leaf
-    val sun = AppTheme.colors.house.sunnyAccent
     Canvas(modifier) {
         val w = size.width
         val h = size.height
@@ -171,30 +175,7 @@ private fun HouseNeedArtwork(icon: HouseNeedIcon, modifier: Modifier = Modifier)
                 drawLine(outline, Offset(w * .5f, h * .3f), Offset(w * .54f, h * .1f), stroke)
                 drawOval(leaf, Offset(w * .57f, h * .1f), Size(w * .25f, h * .13f))
             }
-            HouseNeedIcon.SUN -> {
-                val center = Offset(w / 2f, h / 2f)
-                repeat(8) { index ->
-                    val angle = Math.PI * index / 4.0
-                    val dx = kotlin.math.cos(angle).toFloat()
-                    val dy = kotlin.math.sin(angle).toFloat()
-                    drawLine(
-                        outline,
-                        center + Offset(dx * w * .36f, dy * h * .36f),
-                        center + Offset(dx * w * .47f, dy * h * .47f),
-                        stroke,
-                        cap = StrokeCap.Round,
-                    )
-                }
-                drawCircle(sun, w * .29f, center)
-                drawCircle(outline, w * .29f, center, style = Stroke(stroke))
-                drawCircle(outline, w * .023f, Offset(w * .41f, h * .46f))
-                drawCircle(outline, w * .023f, Offset(w * .59f, h * .46f))
-                drawArc(
-                    outline, 15f, 150f, false,
-                    Offset(w * .39f, h * .48f), Size(w * .22f, h * .2f),
-                    style = Stroke(stroke * .75f),
-                )
-            }
+            HouseNeedIcon.SUN -> Unit
         }
     }
 }

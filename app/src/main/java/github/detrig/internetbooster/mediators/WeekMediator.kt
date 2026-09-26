@@ -24,12 +24,13 @@ internal class WeekMediator(
                 override fun weekDao(): WeekDao = databaseModule.weekDao
                 override fun economyApi(): EconomyApi = economyMediator.getApi()
                 override fun petDayEffects(): PetDayEffects = PetDayEffects {
-                    gameStateMediator.getApi().consumeHungerForSleep()
+                    gameStateMediator.getApi().applyDayNeeds()
                 }
                 override fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
                 override fun progressionApi() = gameStateMediator.getProgressionApi()
                 override fun planningApi() = planningMediator.getApi()
                 override fun learningApi() = learningMediator.getApi()
+                override suspend fun currentPlayerLevel() = gameStateMediator.getApi().initialize().playerLevel
             }
         }
     }

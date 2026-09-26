@@ -286,6 +286,7 @@ internal fun RoomScreen(
             (tableTapInstruction || !spotlightRequired || spotlightBounds != null)
     }
     when {
+        content?.weekResult != null -> Unit
         content?.sleepConfirmationVisible == true && canShowDialogs -> {
             SleepConfirmationDialog(
                 canSleep = content.progress.petHunger > 0,
@@ -446,12 +447,12 @@ internal fun RoomScreen(
                 isSaving = content.isSavingPlan,
                 petName = petName,
                 petPortrait = petPortrait,
+                newWeekPromptVisible = content.newWeekPlanPromptVisible,
                 tutorialStep = content.planTutorialStep,
-                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(
-                    availableRub = content.progress.balanceRub.toLong(),
-                ),
+                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
                 dialogueTopInset = 0.dp,
                 onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
+                onNewWeekPromptDismiss = { viewModel.perform(RoomViewEvent.DismissNewWeekPlanPrompt) },
                 onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
                 onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
                 onPercentChanged = { category, percent ->
@@ -467,13 +468,6 @@ internal fun RoomScreen(
             WeeklyPlanProgressDialog(content.progress.planProgress) {
                 viewModel.perform(RoomViewEvent.ClosePlanSummary)
             }
-        }
-        content?.weekResult != null && canShowDialogs -> {
-            WeeklyPlanProgressDialog(
-                progress = content.weekResult,
-                isWeekResult = true,
-                onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
-            )
         }
         content?.menuDestination == RoomMenuDestination.MENU && canShowDialogs -> {
             RoomMenuDialog(
@@ -542,9 +536,6 @@ internal fun RoomScreen(
                 onShowWeekSummary = {
                     viewModel.perform(RoomViewEvent.FirstRunShowWeekSummary)
                 },
-                onStartNewWeekPlan = {
-                    viewModel.perform(RoomViewEvent.FirstRunStartNewWeekPlan)
-                },
             )
         }
         showPhoneNotificationPrompt -> {
@@ -565,29 +556,20 @@ internal fun RoomScreen(
             )
         }
     }
-    if (content?.dayTransitionNotice != null && externalActive) {
+    if (content?.dayTransitionNotice != null && content.weekResult == null &&
+        externalActive && canShowDialogs) {
         DayTransitionDialog(content.dayTransitionNotice) {
             viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
         }
     }
-    if (content?.weekSummaryTutorialStep != null && canShowDialogs) {
-        FinPetDialogueDialog(
-            speakerName = petName,
-            cards = listOf(stringResource(when (content.weekSummaryTutorialStep) {
-                WeekSummaryTutorialStep.INCOME -> R.string.onboarding_week_summary_income
-                WeekSummaryTutorialStep.EXPENSES -> R.string.onboarding_week_summary_expenses
-                WeekSummaryTutorialStep.REMAINDER -> R.string.onboarding_week_summary_remainder
-            })),
-            portrait = petPortrait,
-            advanceOnTap = false,
-            actions = listOf(FinPetDialogueAction(
-                id = "next",
-                label = stringResource(R.string.onboarding_next),
-            )),
-            onActionSelected = {
-                viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext)
-            },
-            onFinished = { viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext) },
+    if (content?.weekResult != null && canShowDialogs) {
+        WeeklyPlanProgressDialog(
+            progress = content.weekResult,
+            isWeekResult = true,
+            remainingRub = content.progress.balanceRub.toLong(),
+            tutorialStep = content.weekSummaryTutorialStep,
+            onTutorialNext = { viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext) },
+            onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
         )
     }
     LaunchedEffect(zone?.access, content != null) {
@@ -614,21 +596,18 @@ private val spotlightSteps = setOf(
 )
 
 @Composable
-private fun PlanDialogueState.cards(availableRub: Long = 0): List<String> = when (this) {
+private fun PlanDialogueState.cards(): List<String> = when (this) {
     is PlanDialogueState.NeedsChanges -> listOf(
         when (reason) {
             PlanAdjustmentReason.MANDATORY_TOO_LOW -> stringResource(
                 R.string.plan_feedback_mandatory,
-                recommendedPercent,
+                requiredRub,
             )
             PlanAdjustmentReason.RESERVE_TOO_LOW -> stringResource(
                 R.string.plan_feedback_reserve,
-                availableRub * recommendedPercent / 100,
+                requiredRub,
             )
-            PlanAdjustmentReason.SAVINGS_TOO_LOW -> stringResource(
-                R.string.plan_feedback_savings,
-                availableRub * recommendedPercent / 100,
-            )
+            PlanAdjustmentReason.SAVINGS_TOO_LOW -> stringResource(R.string.plan_feedback_savings)
         },
     )
     is PlanDialogueState.Saved -> listOf(stringResource(
@@ -644,8 +623,8 @@ private fun PlanDialoguePreview() {
             speakerName = "Барсик",
             cards = PlanDialogueState.NeedsChanges(
                 reason = PlanAdjustmentReason.MANDATORY_TOO_LOW,
-                recommendedPercent = 40,
-            ).cards(availableRub = 500),
+                requiredRub = 400,
+            ).cards(),
             portrait = { modifier ->
                 Box(
                     modifier = modifier.background(AppTheme.colors.actionSecondary),

@@ -16,4 +16,5 @@ interface WeekDependencies {
     fun progressionApi(): ProgressionApi
     fun planningApi(): PlanningApi
     fun learningApi(): LearningApi
+    suspend fun currentPlayerLevel(): Int
 }

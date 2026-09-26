@@ -17,7 +17,7 @@ class GroceryCatalogTest {
         assertEquals(2, cart.quantityOf(GroceryItemIds.Apple))
         assertEquals(1, cart.quantityOf(GroceryItemIds.Soup))
         assertEquals(3, cart.totalQuantity)
-        assertEquals(75L, GroceryCatalog().quote(cart.lines).totalRub)
+        assertEquals(120L, GroceryCatalog().quote(cart.lines).totalRub)
 
         val decremented = cart.removeOne(GroceryItemIds.Apple)
         assertEquals(1, decremented.quantityOf(GroceryItemIds.Apple))
@@ -69,8 +69,8 @@ class GroceryCatalogTest {
             ),
         )
 
-        assertEquals(listOf(30L, 45L, 45L), quote.lines.map { it.totalRub })
-        assertEquals(120L, quote.totalRub)
+        assertEquals(listOf(60L, 60L, 60L), quote.lines.map { it.totalRub })
+        assertEquals(180L, quote.totalRub)
     }
 
     @Test
@@ -84,7 +84,7 @@ class GroceryCatalogTest {
 
         assertEquals(1, quote.lines.size)
         assertEquals(3, quote.lines.single().quantity)
-        assertEquals(45L, quote.totalRub)
+        assertEquals(90L, quote.totalRub)
     }
 
     @Test

@@ -20,10 +20,14 @@ internal fun ShopPurchaseFeedbackDialog(
 ) {
     FinPetModalVisibilityEffect()
     val message = when (feedback) {
+        ShopPurchaseFeedback.PLAN_CHANGED ->
+            stringResource(R.string.shop_feedback_plan_changed)
         ShopPurchaseFeedback.REQUIRED_FOOD_MISSING ->
             stringResource(R.string.shop_feedback_food_missing)
         ShopPurchaseFeedback.MANDATORY_MONEY_AT_RISK ->
             stringResource(R.string.shop_feedback_mandatory_money)
+        ShopPurchaseFeedback.RESERVE_AT_RISK ->
+            stringResource(R.string.shop_feedback_reserve_risk)
         ShopPurchaseFeedback.PROMOTION_OVERBUY ->
             stringResource(R.string.shop_feedback_promotion_overbuy)
         ShopPurchaseFeedback.TOO_MANY_EXTRAS ->

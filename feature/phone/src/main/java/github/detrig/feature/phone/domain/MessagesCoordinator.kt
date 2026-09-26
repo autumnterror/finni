@@ -183,7 +183,8 @@ internal class MessagesCoordinator(
             when (progressionApi.grantXp(
                 grantId = "financial-task:${event.id}",
                 profileId = CURRENT_PROFILE_ID,
-                amount = XpRewards.FINANCIAL_TASK_COMPLETED,
+                amount = if (event.guidanceVisible) XpRewards.FINANCIAL_TASK_GUIDED
+                    else XpRewards.FINANCIAL_TASK_INDEPENDENT,
                 source = XpSources.FINANCIAL_TASK_COMPLETED,
             )) {
                 is GrantXpResult.Granted,

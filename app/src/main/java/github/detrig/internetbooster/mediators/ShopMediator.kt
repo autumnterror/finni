@@ -15,9 +15,8 @@ import github.detrig.feature.shop.ShopFeature
 import github.detrig.feature.shop.api.ShopApi
 import github.detrig.feature.shop.api.ShopArtworkResolver
 import github.detrig.feature.shop.api.ShopHost
-import github.detrig.feature.shop.api.ShopItemDetail
-import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
+import github.detrig.feature.shop.api.foodEffectDetails
 import github.detrig.feature.shop.api.ShopPetPortrait
 import github.detrig.feature.shop.api.ShopPurchaseFeedback
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
@@ -26,7 +25,7 @@ import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.feature.shop.domain.ShopLearningEventConfig
 import github.detrig.feature.shop.domain.ShopLearningEventGenerator
 import github.detrig.feature.learning.domain.PurchaseProblem
-import github.detrig.products.FoodItem
+import github.detrig.feature.learning.domain.PurchaseOutcome
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.ProductQuantity
@@ -44,6 +43,7 @@ internal class ShopMediator(
     private val gameAudio: GameAudio,
     private val learningMediator: LearningMediator,
     private val petMediator: PetMediator,
+    private val gameStateMediator: GameStateMediator,
 ) : Mediator<ShopApi> {
     private val groceryCatalog = GroceryCatalog()
     private val artworkResolver = GroceryArtworkResolver(R.drawable.grocery_product_atlas)
@@ -84,18 +84,13 @@ internal class ShopMediator(
             inventoryApi = inventoryApi,
             learningApi = learningMediator.getApi(),
             catalogRegistry = catalogRegistry,
+            petNeeds = {
+                gameStateMediator.getApi().initialize().pet.let { it.hunger to it.happiness }
+            },
         )
     }
 
-    private val detailsResolver = ShopItemDetailsResolver { item ->
-        val food = item as? FoodItem ?: return@ShopItemDetailsResolver emptyList()
-        listOf(
-            ShopItemDetail(
-                text = "+${food.effects.satietyPercent}%",
-                icon = ShopItemDetailIcon.SATIETY,
-            ),
-        )
-    }
+    private val detailsResolver = ShopItemDetailsResolver(::foodEffectDetails)
     private val petPortrait = ShopPetPortrait { modifier ->
         CurrentPetPortrait(modifier)
     }
@@ -134,6 +129,21 @@ internal class ShopMediator(
         override suspend fun checkout(request: github.detrig.feature.shop.api.ShopCheckoutRequest):
             github.detrig.feature.shop.api.ShopCheckoutResult {
             val prepared = learningCoordinator.prepareCheckout(request)
+            val currentBalance = economyMediator.getApi().getState().availableRub
+            val alreadyPurchased = economyMediator.getApi().getExpenseHistory()
+                .any { it.id == request.operationId }
+            if (!request.confirmedConsequence && !alreadyPurchased &&
+                currentBalance >= prepared.totalRub &&
+                prepared.assessment.outcome != PurchaseOutcome.GOOD
+            ) {
+                return github.detrig.feature.shop.api.ShopCheckoutResult.RequiresConfirmation(
+                    balanceRub = currentBalance,
+                    consequence = prepared.assessment.problem.toShopFeedback()
+                        ?: ShopPurchaseFeedback.PLAN_CHANGED,
+                    categoryOverrunRub = prepared.assessment.categoryOverrunRub,
+                    savingsPlanReductionRub = prepared.assessment.savingsPlanReductionRub,
+                )
+            }
             val result = checkoutGateway.checkout(
                 request = request,
                 lineTotalOverrides = prepared.lineTotalOverrides,
@@ -150,7 +160,12 @@ internal class ShopMediator(
                 }
             }
             return if (result is github.detrig.feature.shop.api.ShopCheckoutResult.Completed) {
-                result.copy(feedback = prepared.purchaseProblem.toShopFeedback())
+                result.copy(feedback = if (request.confirmedConsequence) null else {
+                    prepared.assessment.problem.toShopFeedback()
+                        ?: ShopPurchaseFeedback.PLAN_CHANGED.takeIf {
+                            prepared.assessment.outcome == PurchaseOutcome.PLAN_ADJUSTMENT
+                        }
+                })
             } else {
                 result
             }
@@ -244,6 +259,7 @@ internal data class PendingImpulseWish(
 private fun PurchaseProblem?.toShopFeedback(): ShopPurchaseFeedback? = when (this) {
     PurchaseProblem.REQUIRED_FOOD_MISSING -> ShopPurchaseFeedback.REQUIRED_FOOD_MISSING
     PurchaseProblem.MANDATORY_MONEY_AT_RISK -> ShopPurchaseFeedback.MANDATORY_MONEY_AT_RISK
+    PurchaseProblem.RESERVE_AT_RISK -> ShopPurchaseFeedback.RESERVE_AT_RISK
     PurchaseProblem.PROMOTION_OVERBUY -> ShopPurchaseFeedback.PROMOTION_OVERBUY
     PurchaseProblem.TOO_MANY_EXTRAS -> ShopPurchaseFeedback.TOO_MANY_EXTRAS
     null -> null

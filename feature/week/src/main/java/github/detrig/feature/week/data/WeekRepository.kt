@@ -34,6 +34,7 @@ internal class WeekRepository(
     private val progressionApi: ProgressionApi,
     private val planningApi: PlanningApi,
     private val learningApi: LearningApi,
+    private val currentPlayerLevel: suspend () -> Int = { 1 },
 ) : WeekApi {
     override suspend fun initialize(): WeekState = transactionRunner.runInTransaction { ensureState() }
 
@@ -45,7 +46,7 @@ internal class WeekRepository(
         val next = WeekState(Math.addExact(current.absoluteDay, 1))
         val allowance = if (next.dayOfWeek == 1) {
             rewardCompletedWeek(current.weekNumber)
-            economyApi.grantWeeklyAllowance(next.weekNumber)
+            economyApi.grantWeeklyAllowance(next.weekNumber, currentPlayerLevel())
         } else null
         petDayEffects.afterSleep()
         check(dao.advance(expectedAbsoluteDay, next.absoluteDay) == 1)
@@ -73,7 +74,7 @@ internal class WeekRepository(
         }
         val next = WeekState(current.weekNumber * WeekState.DAYS_PER_WEEK + 1)
         rewardCompletedWeek(current.weekNumber, includeGoodResult = false)
-        val allowance = economyApi.grantWeeklyAllowance(next.weekNumber)
+        val allowance = economyApi.grantWeeklyAllowance(next.weekNumber, currentPlayerLevel())
         check(dao.advance(expectedAbsoluteDay, next.absoluteDay) == 1)
         EarlyWeekEndResult.Completed(
             state = next,
@@ -107,6 +108,7 @@ internal class WeekRepository(
                 actualMandatoryRub = planProgress.category(PlanCategory.MANDATORY).actualRub,
                 actualWantsRub = planProgress.category(PlanCategory.WANTS).actualRub,
                 actualSavingsRub = planProgress.category(PlanCategory.SAVINGS).actualRub,
+                unexpectedMandatoryRub = planProgress.unexpectedMandatoryRub,
             )
             if (snapshot.planAdequate) {
                 recordLearning(BudgetPlanningLearning.confirmedPlanAction(

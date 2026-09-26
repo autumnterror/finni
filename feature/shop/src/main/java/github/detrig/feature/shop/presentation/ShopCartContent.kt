@@ -35,18 +35,21 @@ import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetCoinIcon
+import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetLazyColumn
+import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetQuantityStepper
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.R
 import github.detrig.feature.shop.api.ShopArtworkResolver
-import github.detrig.feature.shop.api.ShopItemDetail
+import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
+import github.detrig.feature.shop.api.ShopPetPortrait
+import github.detrig.feature.shop.api.ShopPurchaseFeedback
 import github.detrig.feature.shop.domain.ShopPromotionKind
-import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.StoreCart
 
@@ -58,6 +61,7 @@ internal fun ShopCartContent(
     state: ShopCartViewState,
     artworkResolver: ShopArtworkResolver,
     itemDetailsResolver: ShopItemDetailsResolver,
+    petPortrait: ShopPetPortrait = ShopPetPortrait.Empty,
     onEvent: (ShopCartViewEvent) -> Unit,
     onBack: () -> Unit = { onEvent(ShopCartViewEvent.Back) },
     modifier: Modifier = Modifier,
@@ -155,6 +159,53 @@ internal fun ShopCartContent(
         )
     }
 
+    state.purchaseConfirmation?.let { confirmation ->
+        ShopBudgetWarningDialog(
+            confirmation = confirmation,
+            totalRub = state.totalRub,
+            speakerName = state.petName,
+            portrait = petPortrait,
+            onFinished = { onEvent(ShopCartViewEvent.ConsequenceWarningDismissed) },
+        )
+    }
+
+}
+
+@Composable
+private fun ShopBudgetWarningDialog(
+    confirmation: ShopCheckoutResult.RequiresConfirmation,
+    totalRub: Long,
+    speakerName: String,
+    portrait: ShopPetPortrait,
+    onFinished: () -> Unit,
+) {
+    FinPetModalVisibilityEffect()
+    val consequence = stringResource(when (confirmation.consequence) {
+        ShopPurchaseFeedback.PLAN_CHANGED -> R.string.shop_budget_plan_change
+        ShopPurchaseFeedback.REQUIRED_FOOD_MISSING -> R.string.shop_budget_food_missing
+        ShopPurchaseFeedback.MANDATORY_MONEY_AT_RISK -> R.string.shop_budget_mandatory_risk
+        ShopPurchaseFeedback.RESERVE_AT_RISK -> R.string.shop_budget_reserve_risk
+        ShopPurchaseFeedback.PROMOTION_OVERBUY -> R.string.shop_budget_promotion_overbuy
+        ShopPurchaseFeedback.TOO_MANY_EXTRAS -> R.string.shop_budget_too_many_extras
+    })
+    val categoryOverrun = confirmation.categoryOverrunRub.takeIf { it > 0 }?.let {
+        stringResource(R.string.shop_budget_category_overrun, it)
+    }
+    val savingsChange = confirmation.savingsPlanReductionRub.takeIf { it > 0 }?.let {
+        stringResource(R.string.shop_budget_savings_change, it)
+    }
+    val balanceAfter = stringResource(
+        R.string.shop_budget_balance_after,
+        (confirmation.balanceRub - totalRub).coerceAtLeast(0),
+    )
+    val payAgain = stringResource(R.string.shop_budget_pay_again)
+    FinPetDialogueDialog(
+        speakerName = speakerName,
+        cards = listOf(listOfNotNull(consequence, categoryOverrun, savingsChange, balanceAfter, payAgain)
+            .joinToString("\n")),
+        portrait = portrait::Content,
+        onFinished = onFinished,
+    )
 }
 
 @Composable
@@ -200,19 +251,28 @@ private fun ShopCartLineCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val detail = itemDetailsResolver.details(line.item).firstOrNull()
-                if (detail != null) {
+                val details = itemDetailsResolver.details(line.item)
+                if (details.isNotEmpty()) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ShopDetailIcon(detail.icon)
-                        Text(
-                            text = detail.text,
-                            style = AppTheme.typography.bodyStrong,
-                            color = AppTheme.colors.actionPrimary,
-                            maxLines = 1,
-                        )
+                        details.forEach { detail ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                ShopDetailIcon(detail.icon)
+                                Text(
+                                    text = detail.text,
+                                    style = AppTheme.typography.bodyStrong,
+                                    color = if (detail.icon == ShopItemDetailIcon.HAPPINESS) {
+                                        AppTheme.colors.metricHappiness
+                                    } else AppTheme.colors.actionPrimary,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -380,10 +440,7 @@ private fun github.detrig.feature.shop.api.ShopCheckoutRejection.message(): Stri
         stringResource(R.string.shop_payment_error)
 }
 
-private val cartPreviewDetails = ShopItemDetailsResolver { item ->
-    val food = item as? FoodItem ?: return@ShopItemDetailsResolver emptyList()
-    listOf(ShopItemDetail("+${food.effects.satietyPercent}%", ShopItemDetailIcon.SATIETY))
-}
+private val cartPreviewDetails = ShopItemDetailsResolver { github.detrig.feature.shop.api.foodEffectDetails(it) }
 
 @Preview(name = "Cart content", widthDp = 432, heightDp = 920, showBackground = true)
 @Composable
@@ -403,6 +460,32 @@ private fun ShopCartContentPreview() {
             ),
             artworkResolver = ShopArtworkResolver.Empty,
             itemDetailsResolver = cartPreviewDetails,
+            onEvent = {},
+        )
+    }
+}
+
+@Preview(name = "Budget warning before payment", widthDp = 432, heightDp = 920, showBackground = true)
+@Composable
+private fun ShopCartBudgetConfirmationPreview() {
+    val catalog = GroceryCatalog().storefront
+    FinPetTheme {
+        ShopCartContent(
+            state = ShopCartViewState(
+                storefront = catalog,
+                cart = StoreCart.Empty.add(catalog.items.first { it.title == "Пирожное" }.id),
+                balanceRub = 500,
+                loading = false,
+                purchaseConfirmation = ShopCheckoutResult.RequiresConfirmation(
+                    balanceRub = 500,
+                    consequence = ShopPurchaseFeedback.PLAN_CHANGED,
+                    categoryOverrunRub = 15,
+                    savingsPlanReductionRub = 15,
+                ),
+            ),
+            artworkResolver = ShopArtworkResolver.Empty,
+            itemDetailsResolver = cartPreviewDetails,
+            petPortrait = ShopPetPortrait { Text("🐹") },
             onEvent = {},
         )
     }

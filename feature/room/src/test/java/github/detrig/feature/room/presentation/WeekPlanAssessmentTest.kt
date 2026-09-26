@@ -108,5 +108,6 @@ class WeekPlanAssessmentTest {
             CategoryPlanProgress(PlanCategory.WANTS, 125, wants, PlanProgressTone.ON_TRACK),
             CategoryPlanProgress(PlanCategory.SAVINGS, 100, savings, PlanProgressTone.ON_TRACK),
         ),
+        planAssessment = PlanAssessment.Adequate,
     )
 }

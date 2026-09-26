@@ -20,7 +20,9 @@ internal class EconomyMediator(private val databaseModule: AppDatabaseModule) : 
             object : EconomyDependencies {
                 override fun economyDao(): EconomyDao = databaseModule.economyDao
                 override fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
-                override fun config() = EconomyConfig()
+                override fun config() = EconomyConfig().let { config ->
+                    config.copy(initialAvailableRub = config.weeklyAllowanceForLevel(1))
+                }
                 override fun currentTimeMillis() = System.currentTimeMillis()
             }
         }

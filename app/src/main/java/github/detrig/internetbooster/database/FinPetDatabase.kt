@@ -34,7 +34,7 @@ import github.detrig.feature.learning.data.local.LearningMetricProgressEntity
         LearningActionEntity::class, LearningMetricOccurrenceEntity::class,
         LearningMetricProgressEntity::class, AchievementUnlockEntity::class,
         LearningExplanationEntity::class, AchievementXpOutboxEntity::class],
-    version = 16,
+    version = 17,
     exportSchema = false,
 )
 abstract class FinPetDatabase : RoomDatabase() {

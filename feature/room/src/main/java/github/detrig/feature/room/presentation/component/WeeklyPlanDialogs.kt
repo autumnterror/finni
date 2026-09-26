@@ -85,6 +85,7 @@ import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.PlanEditorState
 import github.detrig.feature.room.presentation.PlanTutorialStep
+import github.detrig.feature.room.presentation.WeekSummaryTutorialStep
 import github.detrig.feature.room.presentation.WeekPlanAssessment
 import github.detrig.feature.room.presentation.WeekPlanFeedbackReason
 import github.detrig.feature.room.presentation.WeekPlanItem
@@ -100,10 +101,12 @@ internal fun WeeklyPlanEditorDialog(
     isSaving: Boolean,
     petName: String,
     petPortrait: @Composable (Modifier) -> Unit,
+    newWeekPromptVisible: Boolean = false,
     tutorialStep: PlanTutorialStep?,
     feedbackCards: List<String>?,
     dialogueTopInset: Dp = 0.dp,
     onTutorialNext: () -> Unit,
+    onNewWeekPromptDismiss: () -> Unit = {},
     onFeedbackEdit: () -> Unit,
     onFeedbackFinished: () -> Unit,
     onPercentChanged: (PlanCategory, Int) -> Unit,
@@ -166,7 +169,8 @@ internal fun WeeklyPlanEditorDialog(
             FinPetButton(
                 text = if (isSaving) stringResource(R.string.plan_saving) else stringResource(R.string.plan_save),
                 onClick = onSave,
-                enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
+                enabled = !newWeekPromptVisible && tutorialStep == null &&
+                    replayTutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -176,7 +180,8 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.MANDATORY,
             valuePercent = editor.mandatory,
             availableRub = availableRub,
-            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
+            enabled = !newWeekPromptVisible && tutorialStep == null &&
+                replayTutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(mandatoryRequester)
                 .onGloballyPositioned { mandatoryBounds = it.boundsInWindow() },
@@ -186,7 +191,8 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.WANTS,
             valuePercent = editor.wants,
             availableRub = availableRub,
-            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
+            enabled = !newWeekPromptVisible && tutorialStep == null &&
+                replayTutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(wantsRequester)
                 .onGloballyPositioned { wantsBounds = it.boundsInWindow() },
@@ -196,7 +202,8 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.SAVINGS,
             valuePercent = editor.savings,
             availableRub = availableRub,
-            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
+            enabled = !newWeekPromptVisible && tutorialStep == null &&
+                replayTutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(savingsRequester)
                 .onGloballyPositioned { savingsBounds = it.boundsInWindow() },
@@ -211,14 +218,24 @@ internal fun WeeklyPlanEditorDialog(
                 editor.savings,
             ).sumOf { percent -> availableRub * percent / 100 },
             availableRub = availableRub,
-            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
+            enabled = !newWeekPromptVisible && tutorialStep == null &&
+                replayTutorialStep == null && feedbackCards == null,
             testTag = "weekly_plan_reserve",
             modifier = Modifier
                 .bringIntoViewRequester(reserveRequester)
                 .onGloballyPositioned { reserveBounds = it.boundsInWindow() },
             onPercentChanged = onReserveChanged,
         )
-        if (tutorialStep != null) {
+        if (newWeekPromptVisible) {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(stringResource(R.string.onboarding_new_week_plan_guidance)),
+                portrait = petPortrait,
+                dismissOnBackPress = false,
+                topInset = dialogueTopInset,
+                onFinished = onNewWeekPromptDismiss,
+            )
+        } else if (tutorialStep != null) {
             val tutorialDialogueTopInset = if (tutorialStep == PlanTutorialStep.MANDATORY) {
                 mandatoryBounds?.let { bounds ->
                     maxOf(
@@ -619,6 +636,9 @@ private fun MoneySlider(
 internal fun WeeklyPlanProgressDialog(
     progress: WeeklyPlanProgress,
     isWeekResult: Boolean = false,
+    remainingRub: Long? = null,
+    tutorialStep: WeekSummaryTutorialStep? = null,
+    onTutorialNext: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var isHelpVisible by remember { mutableStateOf(false) }
@@ -636,14 +656,34 @@ internal fun WeeklyPlanProgressDialog(
         actions = {
             FinPetButton(
                 text = stringResource(
-                    if (isWeekResult) R.string.plan_result_continue else R.string.plan_close,
+                    when {
+                        tutorialStep != null -> R.string.onboarding_next
+                        isWeekResult -> R.string.plan_result_continue
+                        else -> R.string.plan_close
+                    },
                 ),
-                onClick = onDismiss,
+                onClick = if (tutorialStep != null) onTutorialNext else onDismiss,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
         },
     ) {
+        if (tutorialStep != null) {
+            NotebookSection(modifier = Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
+                Text(
+                    text = stringResource(when (tutorialStep) {
+                        WeekSummaryTutorialStep.INCOME -> R.string.onboarding_week_summary_income
+                        WeekSummaryTutorialStep.EXPENSES -> R.string.onboarding_week_summary_expenses
+                        WeekSummaryTutorialStep.REMAINDER -> R.string.onboarding_week_summary_remainder
+                    }),
+                    modifier = Modifier.padding(AppTheme.spacing.md),
+                    style = AppTheme.typography.body,
+                )
+            }
+        }
+        if (isWeekResult && remainingRub != null) {
+            WeekMoneyOverview(progress, remainingRub)
+        }
         if (assessment != null) {
             WeekResultFeedback(assessment)
         }
@@ -666,7 +706,11 @@ internal fun WeeklyPlanProgressDialog(
                     stringResource(R.string.plan_progress_reserve, progress.plan.reserveRub)
                 } else {
                     stringResource(
-                        R.string.plan_result_reserve,
+                        if (progress.unexpectedMandatoryRub > 0) {
+                            R.string.plan_result_controlled_reserve
+                        } else {
+                            R.string.plan_result_reserve
+                        },
                         assessment.actualReserveRub,
                         progress.plan.reserveRub,
                     )
@@ -674,6 +718,16 @@ internal fun WeeklyPlanProgressDialog(
                 modifier = Modifier.padding(AppTheme.spacing.md),
                 style = AppTheme.typography.bodyStrong,
             )
+            if (assessment != null && progress.unexpectedMandatoryRub > 0) {
+                Text(
+                    text = stringResource(
+                        R.string.plan_result_reserve_after_event,
+                        assessment.remainingReserveRub,
+                    ),
+                    modifier = Modifier.padding(start = AppTheme.spacing.md, end = AppTheme.spacing.md, bottom = AppTheme.spacing.md),
+                    style = AppTheme.typography.body,
+                )
+            }
         }
     }
     if (isHelpVisible) {
@@ -683,6 +737,62 @@ internal fun WeeklyPlanProgressDialog(
             dismissText = stringResource(R.string.plan_help_dismiss),
             onDismissRequest = { isHelpVisible = false },
         )
+    }
+}
+
+@Composable
+private fun WeekMoneyOverview(progress: WeeklyPlanProgress, remainingRub: Long) {
+    val mandatory = progress.category(PlanCategory.MANDATORY).actualRub
+    val wants = progress.category(PlanCategory.WANTS).actualRub
+    val savings = progress.category(PlanCategory.SAVINGS).actualRub
+    NotebookSection(modifier = Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
+        Column(
+            modifier = Modifier.padding(AppTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+        ) {
+            Text(stringResource(R.string.week_summary_income_title), style = AppTheme.typography.bodyStrong)
+            SummaryMoneyRow(stringResource(R.string.week_summary_allowance), progress.plan.availableRub)
+            SummaryMoneyRow(stringResource(R.string.week_summary_jobs), 0)
+            SummaryMoneyRow(stringResource(R.string.week_summary_other_income), 0)
+            Text(stringResource(R.string.week_summary_expenses_title), style = AppTheme.typography.bodyStrong)
+            SummaryMoneyRow(stringResource(R.string.week_summary_food), mandatory)
+            SummaryMoneyRow(stringResource(R.string.week_summary_wants_and_games), wants)
+            if (progress.unexpectedMandatoryRub > 0) {
+                SummaryMoneyRow(
+                    stringResource(R.string.week_summary_unexpected_expenses),
+                    progress.unexpectedMandatoryRub,
+                )
+            }
+            Text(stringResource(R.string.week_summary_result_title), style = AppTheme.typography.bodyStrong)
+            SummaryMoneyRow(stringResource(R.string.week_summary_remaining), remainingRub)
+            SummaryMoneyRow(stringResource(R.string.week_summary_savings), savings)
+            Text(
+                text = when {
+                    progress.unexpectedMandatoryRub > 0 ->
+                        stringResource(R.string.week_summary_comment_unexpected_expense)
+                    remainingRub <= progress.plan.availableRub / 10 ->
+                        stringResource(R.string.week_summary_comment_almost_all_spent)
+                    savings > 0 -> stringResource(R.string.week_summary_comment_saved, savings)
+                    mandatory >= wants -> stringResource(R.string.week_summary_comment_food)
+                    else -> stringResource(R.string.week_summary_comment_wants)
+                },
+                style = AppTheme.typography.body,
+            )
+            if (remainingRub <= progress.plan.availableRub / 10 && progress.unexpectedMandatoryRub == 0L) {
+                Text(
+                    stringResource(R.string.week_summary_comment_leave_reserve),
+                    style = AppTheme.typography.body,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMoneyRow(label: String, amountRub: Long) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = AppTheme.typography.body)
+        Text(stringResource(R.string.plan_money, amountRub), style = AppTheme.typography.bodyStrong)
     }
 }
 
@@ -710,6 +820,8 @@ private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
         modifier = Modifier.fillMaxWidth(),
         tone = if (
             assessment.feedbackReason == WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST ||
+            assessment.feedbackReason == WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_COVERED ||
+            assessment.feedbackReason == WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_BEYOND_RESERVE ||
             assessment.feedbackReason == WeekPlanFeedbackReason.CLOSE_TO_PLAN ||
             assessment.feedbackReason == WeekPlanFeedbackReason.ORDINARY &&
             assessment.outcome == WeekPlanOutcome.ALL_MATCHED
@@ -718,6 +830,10 @@ private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
         Text(
             text = when (assessment.feedbackReason) {
                 WeekPlanFeedbackReason.WEAK_PLAN -> stringResource(R.string.plan_result_weak_plan)
+                WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_COVERED ->
+                    stringResource(R.string.plan_result_unexpected_covered)
+                WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_BEYOND_RESERVE ->
+                    stringResource(R.string.plan_result_unexpected_beyond_reserve, assessment.uncoveredEventRub)
                 WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST ->
                     stringResource(R.string.plan_result_adapted_to_mandatory)
                 WeekPlanFeedbackReason.CLOSE_TO_PLAN -> stringResource(R.string.plan_result_close_to_plan)
@@ -824,7 +940,7 @@ private fun PlanProgressTone.color(): Color = when (this) {
     PlanProgressTone.OVER_LIMIT -> AppTheme.colors.statusCritical.accent
 }
 
-@Preview(name = "План на неделю", widthDp = 360, heightDp = 760, showBackground = true)
+@Preview(name = "План новой недели", widthDp = 360, heightDp = 760, showBackground = true)
 @Composable
 private fun WeeklyPlanDialogPreview() {
     FinPetTheme {
@@ -837,6 +953,7 @@ private fun WeeklyPlanDialogPreview() {
             petPortrait = { modifier ->
                 Box(modifier.background(AppTheme.colors.actionSecondary))
             },
+            newWeekPromptVisible = true,
             tutorialStep = null,
             feedbackCards = null,
             onTutorialNext = {},
