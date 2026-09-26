@@ -60,8 +60,12 @@ enum class FirstRunOnboardingStep {
 
 interface FirstRunGuideApi {
     val step: StateFlow<FirstRunOnboardingStep>
+    val resetVersion: StateFlow<Int>
 
     fun moveTo(step: FirstRunOnboardingStep)
 
     fun completeFirstNeed()
+
+    /** Resets the first-run guide after a debug/demo progress reset. */
+    fun reset(skipOnboarding: Boolean)
 }

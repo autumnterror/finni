@@ -65,6 +65,8 @@
     <string name="parent_help_unavailable_payments">Новые выплаты станут доступны после завершения текущих.</string>
     <string name="parent_help_unavailable_savings">В копилке хватает денег на важную покупку. Сначала переведи их в кошелёк.</string>
     <string name="parent_help_unavailable_wallet">Сейчас денег в кошельке хватает на важную покупку.</string>
+    <string name="parent_help_unavailable_food">В холодильнике есть еда. Её хватит, чтобы покормить питомца и дождаться карманных денег.</string>
+    <string name="parent_help_unavailable_satiety">Сытости пока хватает, чтобы лечь спать и дождаться карманных денег.</string>
     <string name="parent_help_unavailable_other">Сейчас помощь от родителей недоступна.</string>
     <string name="parent_help_money">%1$d ₽</string>
     <string name="parent_help_close">Закрыть</string>
@@ -102,7 +104,7 @@
     <string name="day_transition_title">%1$s - неделя %2$d</string>
     <string name="day_transition_week_title">Понедельник — неделя %1$d</string>
     <string name="room_sleep_hungry_title">Сначала покорми питомца</string>
-    <string name="room_sleep_hungry_message">Питомец голоден и пока не может уснуть.</string>
+    <string name="room_sleep_hungry_message">Сытости мало. Сначала покорми питомца.</string>
     <string name="room_sleep_hungry_ok">Хорошо</string>
     <string name="plan_not_ready">Сначала сохрани план на эту неделю.</string>
     <string name="plan_save_error">Не получилось сохранить план. Попробуй ещё раз.</string>

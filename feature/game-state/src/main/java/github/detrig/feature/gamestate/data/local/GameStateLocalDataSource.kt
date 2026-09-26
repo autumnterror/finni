@@ -167,7 +167,10 @@ internal class GameStateLocalDataSource(
     }
 
     suspend fun applyDayNeeds(): Unit = transactionRunner.runInTransaction {
-        initialize()
+        val current = initialize()
+        check(PetSatietyRules.canSleep(current.pet.hunger)) {
+            "Pet needs more than ${PetSatietyRules.MINIMUM_TO_SLEEP} satiety to end the day"
+        }
         check(dao.decreaseNeedsForDay(PetSatietyRules.SLEEP_COST, PetHappinessRules.SLEEP_COST) == 1)
     }
 
