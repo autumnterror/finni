@@ -24,6 +24,8 @@ interface GameAudio {
     fun stop(owner: String)
     fun stopAll()
     fun setForeground(foreground: Boolean)
+    fun isSoundEnabled(): Boolean
+    fun setSoundEnabled(enabled: Boolean)
 }
 
 object SilentGameAudio : GameAudio {
@@ -32,4 +34,6 @@ object SilentGameAudio : GameAudio {
     override fun stop(owner: String) = Unit
     override fun stopAll() = Unit
     override fun setForeground(foreground: Boolean) = Unit
+    override fun isSoundEnabled(): Boolean = true
+    override fun setSoundEnabled(enabled: Boolean) = Unit
 }

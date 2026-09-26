@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.core.mvvm.command.CommandsQueueEffect
@@ -38,6 +39,7 @@ import github.detrig.feature.room.presentation.component.EarlyWeekParentHelpDial
 import github.detrig.feature.room.presentation.component.HouseHud
 import github.detrig.feature.room.presentation.component.AchievementsDialog
 import github.detrig.feature.room.presentation.component.RoomMenuDialog
+import github.detrig.feature.room.presentation.component.RoomSettingsDialog
 import github.detrig.feature.room.presentation.component.ParentGateDialog
 import github.detrig.feature.room.presentation.component.ParentCabinetDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
@@ -90,6 +92,8 @@ internal fun RoomScreen(
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
     var dialogZoneId by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val processLifecycle = ProcessLifecycleOwner.get().lifecycle
+    RoomAppEntryCoordinator.initialize()
     var resumed by remember(lifecycle) { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     val focused = LocalWindowInfo.current.isWindowFocused
     DisposableEffect(lifecycle) {
@@ -99,6 +103,17 @@ internal fun RoomScreen(
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
+    DisposableEffect(processLifecycle, viewModel, externalActive) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START && externalActive &&
+                RoomAppEntryCoordinator.consumePendingEntry()
+            ) {
+                viewModel.perform(RoomViewEvent.AppEntered)
+            }
+        }
+        processLifecycle.addObserver(observer)
+        onDispose { processLifecycle.removeObserver(observer) }
+    }
     val commands = remember(viewModel) { ImmutableCommandsQueue(viewModel.commands<RoomCommand>()) }
     CommandsQueueEffect(commands) { command ->
         when (command) {
@@ -106,7 +121,14 @@ internal fun RoomScreen(
             is RoomCommand.CloseBuyConfirmation -> if (dialogZoneId == command.zoneId) dialogZoneId = null
         }
     }
-    LaunchedEffect(viewModel) { viewModel.perform(RoomViewEvent.Load) }
+    LaunchedEffect(viewModel) {
+        viewModel.perform(RoomViewEvent.Load)
+    }
+    LaunchedEffect(viewModel, externalActive) {
+        if (externalActive && RoomAppEntryCoordinator.consumePendingEntry()) {
+            viewModel.perform(RoomViewEvent.AppEntered)
+        }
+    }
     val requestedZoneId by previewRequests.zoneId.collectAsState()
     val content = state as? RoomViewState.Content
     val onboarding = content?.onboarding
@@ -460,8 +482,16 @@ internal fun RoomScreen(
                 showAllUnlocked = content.areMenuAchievementsExpanded,
                 onToggleUnlocked = { viewModel.perform(RoomViewEvent.ToggleMenuAchievements) },
                 onShowAllAchievements = { viewModel.perform(RoomViewEvent.ShowAllAchievements) },
+                onSettings = { viewModel.perform(RoomViewEvent.SettingsClicked) },
                 onParentCabinet = { viewModel.perform(RoomViewEvent.ParentCabinetClicked) },
                 onDismiss = { viewModel.perform(RoomViewEvent.CloseMenu) },
+            )
+        }
+        content?.menuDestination == RoomMenuDestination.SETTINGS && canShowDialogs -> {
+            RoomSettingsDialog(
+                isSoundEnabled = content.isSoundEnabled,
+                onSoundEnabledChange = { viewModel.perform(RoomViewEvent.SoundSettingChanged(it)) },
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseSettings) },
             )
         }
         content?.menuDestination == RoomMenuDestination.ALL_ACHIEVEMENTS && canShowDialogs -> {

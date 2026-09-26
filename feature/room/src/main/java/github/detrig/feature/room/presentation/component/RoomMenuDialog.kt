@@ -29,6 +29,7 @@ internal fun RoomMenuDialog(
     showAllUnlocked: Boolean,
     onToggleUnlocked: () -> Unit,
     onShowAllAchievements: () -> Unit,
+    onSettings: () -> Unit,
     onParentCabinet: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -105,6 +106,12 @@ internal fun RoomMenuDialog(
             modifier = Modifier.fillMaxWidth().testTag("menu_all_achievements"),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
+        FinPetButton(
+            text = stringResource(R.string.room_menu_settings),
+            onClick = onSettings,
+            modifier = Modifier.fillMaxWidth().testTag("menu_settings"),
+            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
     }
 }
 
@@ -139,6 +146,7 @@ private fun RoomMenuDialogPreview() {
             showAllUnlocked = false,
             onToggleUnlocked = {},
             onShowAllAchievements = {},
+            onSettings = {},
             onParentCabinet = {},
             onDismiss = {},
         )

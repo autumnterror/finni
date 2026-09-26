@@ -100,7 +100,7 @@
         <item>Понедельник</item><item>Вторник</item><item>Среда</item><item>Четверг</item><item>Пятница</item><item>Суббота</item><item>Воскресенье</item>
     </string-array>
     <string name="day_transition_title">%1$s - неделя %2$d</string>
-    <string name="day_transition_week_title">Неделя %1$d</string>
+    <string name="day_transition_week_title">Понедельник — неделя %1$d</string>
     <string name="room_sleep_hungry_title">Сначала покорми питомца</string>
     <string name="room_sleep_hungry_message">Питомец голоден и пока не может уснуть.</string>
     <string name="room_sleep_hungry_ok">Хорошо</string>
@@ -157,6 +157,14 @@
     <string name="menu_expand_achievements">Показать все полученные (%1$d)</string>
     <string name="menu_collapse_achievements">Свернуть список</string>
     <string name="menu_all_achievements">Показать все достижения</string>
+    <string name="room_menu_settings">Настройки</string>
+    <string name="room_settings_title">Настройки</string>
+    <string name="room_settings_sound">Звук приложения</string>
+    <string name="room_settings_sound_enabled">Включён. Звуковые эффекты будут воспроизводиться.</string>
+    <string name="room_settings_sound_disabled">Выключен. Звуковые эффекты не воспроизводятся.</string>
+    <string name="room_settings_sound_turn_off">Выключить звук</string>
+    <string name="room_settings_sound_turn_on">Включить звук</string>
+    <string name="room_settings_back">Назад в меню</string>
     <string name="parent_cabinet_title">Родительский кабинет</string>
     <string name="parent_gate_title">Проверка для взрослого</string>
     <string name="parent_gate_hint">Решите пример, чтобы открыть родительский кабинет.</string>

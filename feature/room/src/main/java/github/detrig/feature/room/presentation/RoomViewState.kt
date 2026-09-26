@@ -36,7 +36,8 @@ internal data object SavingsRecoveryPromptState
 
 internal data object ParentHelpPhonePromptState
 
-internal data class DayTransitionNoticeState(
+/** Each instance is a fresh display, even when the same game date is shown again. */
+internal class DayTransitionNoticeState(
     val dayOfWeek: Int,
     val weekNumber: Long,
 )
@@ -133,7 +134,7 @@ internal data class PlanAchievementFeedback(
     val unlockOrder: Long? = null,
 )
 
-internal enum class RoomMenuDestination { NONE, MENU, ALL_ACHIEVEMENTS, PARENT_GATE, PARENT_CABINET }
+internal enum class RoomMenuDestination { NONE, MENU, SETTINGS, ALL_ACHIEVEMENTS, PARENT_GATE, PARENT_CABINET }
 
 internal data class ParentGateState(
     val firstNumber: Int,
@@ -190,6 +191,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val achievements: List<PlanAchievementFeedback> = emptyList(),
         val parentRows: List<ParentProgressRow> = emptyList(),
         val menuDestination: RoomMenuDestination = RoomMenuDestination.NONE,
+        val isSoundEnabled: Boolean = true,
         val areMenuAchievementsExpanded: Boolean = false,
         val parentGate: ParentGateState? = null,
         val parentHelpDialog: ParentHelpDialogState? = null,
