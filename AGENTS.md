@@ -1347,7 +1347,7 @@ The child should be able to quickly understand:
 
 1. current spendable balance;
 2. the current day and week in a compact HUD badge, with a short notice
-   immediately after sleep;
+   immediately after sleep and whenever the app returns to the foreground;
 3. savings / current goal;
 4. pet hunger;
 5. pet happiness if enabled;
@@ -1357,6 +1357,8 @@ The child should be able to quickly understand:
 Do not turn the HUD into a spreadsheet.
 
 Detailed history belongs in the phone or contextual sheets.
+
+The burger menu contains Settings with an app-wide sound-effects toggle.
 
 ---
 

@@ -97,6 +97,7 @@ internal class RoomViewModel(
     private val promptedSavingsRecoveryWeeks = mutableSetOf<Long>()
     private val hintedHungerDays = mutableSetOf<Long>()
     private var firstWeekGoalHintShown = false
+    private var appEntryNoticePending = false
     private val reconciledPlanWeeks = mutableSetOf<Long>()
     private var reconcilingPlanWeek: Long? = null
     // Read this small preference before the first composition of HouseScene. Loading it
@@ -201,6 +202,7 @@ internal class RoomViewModel(
                 }
             }
             RoomViewEvent.Paused -> Unit
+            RoomViewEvent.AppEntered -> showDayTransitionNoticeOnAppEntry()
             RoomViewEvent.SavePlanClicked -> savePlan()
             RoomViewEvent.PlanTutorialNext -> advancePlanTutorial()
             RoomViewEvent.PlanDialogueFinished -> closePlanDialogue()
@@ -208,10 +210,27 @@ internal class RoomViewModel(
                 updateState(it.copy(planDialogue = null))
             }
             RoomViewEvent.MenuClicked -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(menuDestination = RoomMenuDestination.MENU, areMenuAchievementsExpanded = false))
+                updateState(it.copy(
+                    menuDestination = RoomMenuDestination.MENU,
+                    areMenuAchievementsExpanded = false,
+                    isSoundEnabled = gameAudio.isSoundEnabled(),
+                ))
             }
             RoomViewEvent.CloseMenu -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(menuDestination = RoomMenuDestination.NONE))
+            }
+            RoomViewEvent.SettingsClicked -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(
+                    menuDestination = RoomMenuDestination.SETTINGS,
+                    isSoundEnabled = gameAudio.isSoundEnabled(),
+                ))
+            }
+            RoomViewEvent.CloseSettings -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(menuDestination = RoomMenuDestination.MENU))
+            }
+            is RoomViewEvent.SoundSettingChanged -> nullableState<RoomViewState.Content>()?.let {
+                gameAudio.setSoundEnabled(viewEvent.enabled)
+                updateState(it.copy(isSoundEnabled = viewEvent.enabled))
             }
             RoomViewEvent.ToggleMenuAchievements -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(areMenuAchievementsExpanded = !it.areMenuAchievementsExpanded))
@@ -340,6 +359,14 @@ internal class RoomViewModel(
                         editor == null -> null
                         else -> current?.planTutorialStep
                     }
+                    val appEntryNotice = if (
+                        appEntryNoticePending && current?.dayTransitionNotice == null
+                    ) {
+                        DayTransitionNoticeState(
+                            dayOfWeek = roomData.progress.dayOfWeek,
+                            weekNumber = roomData.progress.weekNumber,
+                        )
+                    } else null
                     val retainedParentHelpDialog = current?.parentHelpDialog?.takeIf { dialog ->
                         shouldRetainParentHelpDialog(
                             hasActiveParentHelp = dialog.activeHelp != null,
@@ -390,6 +417,7 @@ internal class RoomViewModel(
                             },
                             parentRows = parentRows,
                             menuDestination = current?.menuDestination ?: RoomMenuDestination.NONE,
+                            isSoundEnabled = gameAudio.isSoundEnabled(),
                             areMenuAchievementsExpanded = current?.areMenuAchievementsExpanded ?: false,
                             parentGate = current?.parentGate,
                             parentHelpDialog = retainedParentHelpDialog,
@@ -400,11 +428,12 @@ internal class RoomViewModel(
                             savingsRecoveryPrompt = current?.savingsRecoveryPrompt,
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
-                            dayTransitionNotice = current?.dayTransitionNotice,
+                            dayTransitionNotice = current?.dayTransitionNotice ?: appEntryNotice,
                             impulseWish = current?.impulseWish,
                             onboarding = onboardingUiState(),
                         ),
                     )
+                    appEntryNoticePending = false
                     showFirstWeekNeedHintIfNeeded(roomData.progress)
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 handleLowBalance(roomData.progress)
@@ -433,6 +462,20 @@ internal class RoomViewModel(
             }
             impulseWishJob = null
         }
+    }
+
+    private fun showDayTransitionNoticeOnAppEntry() {
+        val content = nullableState<RoomViewState.Content>()
+        if (content == null) {
+            appEntryNoticePending = true
+            return
+        }
+        updateState(content.copy(
+            dayTransitionNotice = DayTransitionNoticeState(
+                dayOfWeek = content.progress.dayOfWeek,
+                weekNumber = content.progress.weekNumber,
+            ),
+        ))
     }
 
     private fun onboardingUiState(): FirstRunOnboardingState? {

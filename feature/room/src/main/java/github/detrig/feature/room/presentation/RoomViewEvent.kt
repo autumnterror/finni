@@ -38,12 +38,16 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data class FirstRunDepositSelected(val depositNow: Boolean) : RoomViewEvent
     data object Resumed : RoomViewEvent
     data object Paused : RoomViewEvent
+    data object AppEntered : RoomViewEvent
     data object SavePlanClicked : RoomViewEvent
     data object PlanTutorialNext : RoomViewEvent
     data object PlanDialogueFinished : RoomViewEvent
     data object PlanDialogueEditRequested : RoomViewEvent
     data object MenuClicked : RoomViewEvent
     data object CloseMenu : RoomViewEvent
+    data object SettingsClicked : RoomViewEvent
+    data object CloseSettings : RoomViewEvent
+    data class SoundSettingChanged(val enabled: Boolean) : RoomViewEvent
     data object ToggleMenuAchievements : RoomViewEvent
     data object ShowAllAchievements : RoomViewEvent
     data object CloseAchievements : RoomViewEvent
