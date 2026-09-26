@@ -22,7 +22,7 @@ internal class GameStateModule(
             transactionRunner = dependencies.transactionRunner(),
             initialConfig = dependencies.initialConfig(),
             currentTimeMillis = dependencies::currentTimeMillis,
-            needDecayConfig = dependencies.needDecayConfig(),
+            currentWeekNumber = dependencies::currentWeekNumber,
         )
     }
 

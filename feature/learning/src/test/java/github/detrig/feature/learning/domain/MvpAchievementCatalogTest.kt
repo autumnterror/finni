@@ -9,14 +9,15 @@ class MvpAchievementCatalogTest {
     fun catalogHasTwoMappedAchievementsForEveryMetric() {
         val catalog = MvpAchievementCatalog.create(LearningConfig())
 
-        assertEquals(24, catalog.definitions.size)
-        assertEquals(24, catalog.definitions.map { it.achievementId }.distinct().size)
-        assertEquals(12, catalog.definitions.count { it.stage == AchievementStage.INTRODUCTION })
-        assertEquals(12, catalog.definitions.count { it.stage == AchievementStage.LEARNED })
+        assertEquals(22, catalog.definitions.size)
+        assertEquals(22, catalog.definitions.map { it.achievementId }.distinct().size)
+        assertEquals(11, catalog.definitions.count { it.stage == AchievementStage.INTRODUCTION })
+        assertEquals(11, catalog.definitions.count { it.stage == AchievementStage.LEARNED })
+        assertTrue(catalog.definitions.none { it.metricId == "savings.plan_saving" })
         assertTrue(catalog.definitions.all { it.xpReward > 0 })
         assertTrue(catalog.definitions
             .filter { it.stage == AchievementStage.INTRODUCTION }
-            .all { it.xpReward == 50 })
+            .all { it.xpReward == 10 })
         assertTrue(catalog.definitions
             .filter { it.stage == AchievementStage.LEARNED }
             .all { it.xpReward == 20 })

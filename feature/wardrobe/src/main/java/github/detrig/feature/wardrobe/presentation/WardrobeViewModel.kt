@@ -89,7 +89,15 @@ internal class WardrobeViewModel(
         ) {
             val result = purchase.purchase(item)
             when (result) {
-                ClothingPurchaseResult.Purchased,
+                is ClothingPurchaseResult.Purchased -> {
+                    pet.equipClothing(item.slot, item.id)
+                    val message = if (result.happinessGained > 0) {
+                        "Новая вещь надета · +${result.happinessGained} счастья"
+                    } else {
+                        "Новая вещь надета"
+                    }
+                    updateState { copy(purchasing = false, selectedId = null, message = message) }
+                }
                 ClothingPurchaseResult.AlreadyOwned -> {
                     pet.equipClothing(item.slot, item.id)
                     updateState { copy(purchasing = false, selectedId = null, message = "Новая вещь надета") }

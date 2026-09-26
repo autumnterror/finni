@@ -196,7 +196,10 @@ internal fun WardrobeContent(
                 },
             ) {
                 Text("Категория: желание", style = AppTheme.typography.body)
-                Text("Питомец сможет носить эту вещь. Потребности она не меняет.", style = AppTheme.typography.body)
+                Text(
+                    "Питомец сможет носить эту вещь. При покупке: до +${github.detrig.feature.wardrobe.domain.ClothingHappinessRewards.points(item)} счастья.",
+                    style = AppTheme.typography.body,
+                )
                 FinPetCoinText("Сейчас: ${state.balanceRub} ₽", style = AppTheme.typography.bodyStrong)
                 FinPetCoinText(
                     "После покупки: ${(state.balanceRub - item.priceRub).coerceAtLeast(0)} ₽",

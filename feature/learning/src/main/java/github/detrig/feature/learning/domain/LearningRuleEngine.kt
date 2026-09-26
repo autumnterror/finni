@@ -9,14 +9,23 @@ internal class LearningRuleEngine(
     fun evaluate(
         rule: MetricRuleDefinition,
         qualifyingPeriods: List<Long>,
+        milestonePeriods: Map<Int, List<Long>> = emptyMap(),
     ): MetricProgress {
         val sortedDistinctPeriods = qualifyingPeriods.distinct().sorted()
         val currentStreak = sortedDistinctPeriods.currentStreak()
         val progressSteps = rule.milestones
             .filter { milestone ->
-                qualifyingPeriods.size >= milestone.requiredActions &&
-                    sortedDistinctPeriods.size >= milestone.requiredDistinctPeriods &&
-                    currentStreak >= milestone.requiredCurrentStreak
+                val eligiblePeriods = if (milestone.qualifyingActionTypes == null) {
+                    qualifyingPeriods
+                } else {
+                    requireNotNull(milestonePeriods[milestone.progressSteps]) {
+                        "Missing eligible periods for ${rule.metricId} step ${milestone.progressSteps}"
+                    }
+                }
+                val eligibleDistinctPeriods = eligiblePeriods.distinct().sorted()
+                eligiblePeriods.size >= milestone.requiredActions &&
+                    eligibleDistinctPeriods.size >= milestone.requiredDistinctPeriods &&
+                    eligibleDistinctPeriods.currentStreak() >= milestone.requiredCurrentStreak
             }
             .maxOfOrNull { it.progressSteps }
             ?: 0

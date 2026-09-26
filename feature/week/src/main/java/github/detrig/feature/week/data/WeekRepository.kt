@@ -17,7 +17,14 @@ import github.detrig.feature.gamestate.domain.progression.GrantXpResult
 import github.detrig.feature.gamestate.domain.progression.XpRewards
 import github.detrig.feature.gamestate.domain.progression.XpSources
 import github.detrig.feature.planning.api.PlanningApi
+import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.isGoodWeeklyResult
+import github.detrig.feature.learning.api.LearningApi
+import github.detrig.feature.learning.domain.BudgetPlanningLearning
+import github.detrig.feature.learning.domain.BudgetWeekLearning
+import github.detrig.feature.learning.domain.BudgetWeekSnapshot
+import github.detrig.feature.learning.domain.RecordLearningResult
 
 internal class WeekRepository(
     private val dao: WeekDao,
@@ -26,6 +33,8 @@ internal class WeekRepository(
     private val petDayEffects: PetDayEffects = PetDayEffects {},
     private val progressionApi: ProgressionApi,
     private val planningApi: PlanningApi,
+    private val learningApi: LearningApi,
+    private val currentPlayerLevel: suspend () -> Int = { 1 },
 ) : WeekApi {
     override suspend fun initialize(): WeekState = transactionRunner.runInTransaction { ensureState() }
 
@@ -37,7 +46,7 @@ internal class WeekRepository(
         val next = WeekState(Math.addExact(current.absoluteDay, 1))
         val allowance = if (next.dayOfWeek == 1) {
             rewardCompletedWeek(current.weekNumber)
-            economyApi.grantWeeklyAllowance(next.weekNumber)
+            economyApi.grantWeeklyAllowance(next.weekNumber, currentPlayerLevel())
         } else null
         petDayEffects.afterSleep()
         check(dao.advance(expectedAbsoluteDay, next.absoluteDay) == 1)
@@ -65,7 +74,7 @@ internal class WeekRepository(
         }
         val next = WeekState(current.weekNumber * WeekState.DAYS_PER_WEEK + 1)
         rewardCompletedWeek(current.weekNumber, includeGoodResult = false)
-        val allowance = economyApi.grantWeeklyAllowance(next.weekNumber)
+        val allowance = economyApi.grantWeeklyAllowance(next.weekNumber, currentPlayerLevel())
         check(dao.advance(expectedAbsoluteDay, next.absoluteDay) == 1)
         EarlyWeekEndResult.Completed(
             state = next,
@@ -86,6 +95,38 @@ internal class WeekRepository(
         weekNumber: Long,
         includeGoodResult: Boolean = true,
     ) {
+        val planProgress = planningApi.getPlanProgress(weekNumber)
+        if (planProgress != null) {
+            val plan = planProgress.plan
+            val snapshot = BudgetWeekSnapshot(
+                planAdequate = planProgress.planAssessment == PlanAssessment.Adequate,
+                availableRub = plan.availableRub,
+                plannedMandatoryRub = plan.plannedRub(PlanCategory.MANDATORY),
+                plannedWantsRub = plan.plannedRub(PlanCategory.WANTS),
+                plannedSavingsRub = plan.plannedRub(PlanCategory.SAVINGS),
+                plannedReserveRub = plan.reserveRub,
+                actualMandatoryRub = planProgress.category(PlanCategory.MANDATORY).actualRub,
+                actualWantsRub = planProgress.category(PlanCategory.WANTS).actualRub,
+                actualSavingsRub = planProgress.category(PlanCategory.SAVINGS).actualRub,
+                unexpectedMandatoryRub = planProgress.unexpectedMandatoryRub,
+            )
+            if (snapshot.planAdequate) {
+                recordLearning(BudgetPlanningLearning.confirmedPlanAction(
+                    profileId = CURRENT_PROFILE_ID,
+                    weekNumber = weekNumber,
+                    mandatoryPercent = plan.percentages.mandatory,
+                    wantsPercent = plan.percentages.wants,
+                    savingsPercent = plan.percentages.savings,
+                    reservePercent = plan.percentages.reserve,
+                ))
+            }
+            BudgetWeekLearning.actionsForCompletedWeek(
+                profileId = CURRENT_PROFILE_ID,
+                weekNumber = weekNumber,
+                snapshot = snapshot,
+                earlyFinish = !includeGoodResult,
+            ).forEach { action -> recordLearning(action) }
+        }
         progressionApi.grantXp(
             grantId = "week-completed:$weekNumber",
             profileId = CURRENT_PROFILE_ID,
@@ -93,13 +134,25 @@ internal class WeekRepository(
             source = XpSources.WEEK_COMPLETED,
         ).requireNoConflict()
 
-        if (includeGoodResult && planningApi.getPlanProgress(weekNumber)?.isGoodWeeklyResult() == true) {
+        if (includeGoodResult && planProgress?.isGoodWeeklyResult() == true) {
             progressionApi.grantXp(
                 grantId = "good-week-result:$weekNumber",
                 profileId = CURRENT_PROFILE_ID,
                 amount = XpRewards.GOOD_WEEK_RESULT,
                 source = XpSources.GOOD_WEEK_RESULT,
             ).requireNoConflict()
+        }
+    }
+
+    private suspend fun recordLearning(action: github.detrig.feature.learning.domain.LearningAction) {
+        when (val result = learningApi.record(action)) {
+            is RecordLearningResult.Processed,
+            is RecordLearningResult.AlreadyProcessed,
+            -> Unit
+            is RecordLearningResult.OperationIdConflict ->
+                error("Conflicting weekly learning action ${result.actionId}")
+            is RecordLearningResult.UnsupportedAction ->
+                error("Unsupported weekly learning action ${result.actionType.value}")
         }
     }
 

@@ -47,7 +47,7 @@ object PurchaseLearning {
         context: PurchaseDecisionContext,
         config: PurchaseAssessmentConfig = PurchaseAssessmentConfig(),
     ): List<LearningAction> = buildList {
-        if (context.scenario == PurchaseScenario.STANDARD_PURCHASE && context.purchaseProblem(config) == null) {
+        if (context.scenario == PurchaseScenario.STANDARD_PURCHASE && context.isReasonable(config)) {
             add(action(profileId, gamePeriod, sourceOperationId, REASONABLE_DECISION, "reasonable", context))
         }
         if (context.scenario == PurchaseScenario.PROMOTION && context.isGoodPromotionDecision(config)) {
@@ -76,14 +76,15 @@ object PurchaseLearning {
 }
 
 data class PurchaseAssessmentConfig(
-    /** A small extra is allowed when required food and future mandatory costs remain covered. */
-    val maximumSmallExtraUnits: Int = 2,
     /** Units above the quantity needed to receive a promotion before it becomes stockpiling. */
     val maximumPromotionExtraUnits: Int = 2,
+    val minimumUsefulHappinessGain: Int = 10,
+    val usefulFoodHungerThreshold: Int = 70,
 ) {
     init {
-        require(maximumSmallExtraUnits >= 0)
         require(maximumPromotionExtraUnits >= 0)
+        require(minimumUsefulHappinessGain in 1..100)
+        require(usefulFoodHungerThreshold in 0..100)
     }
 }
 
@@ -101,9 +102,19 @@ enum class PurchaseDecision {
 enum class PurchaseProblem {
     REQUIRED_FOOD_MISSING,
     MANDATORY_MONEY_AT_RISK,
+    RESERVE_AT_RISK,
     PROMOTION_OVERBUY,
     TOO_MANY_EXTRAS,
 }
+
+enum class PurchaseOutcome { GOOD, PLAN_ADJUSTMENT, RISKY }
+
+data class PurchaseAssessment(
+    val outcome: PurchaseOutcome,
+    val problem: PurchaseProblem? = null,
+    val categoryOverrunRub: Long = 0,
+    val savingsPlanReductionRub: Long = 0,
+)
 
 /**
  * Snapshot captured at the moment of a decision. Monetary fields contain rubles and never change
@@ -128,6 +139,15 @@ data class PurchaseDecisionContext(
     val promotionSavingRub: Long = 0,
     val eventTargetQuantity: Int = 0,
     val eventTargetMinimumQuantity: Int = 0,
+    val mandatoryPurchaseRub: Long = requiredFoodCostRub,
+    val mandatoryCategoryRemainingRub: Long = futureMandatoryRub,
+    val optionalCategoryRemainingRub: Long = discretionaryRub,
+    val reserveRemainingRub: Long = 0,
+    val savingsPlanRemainingRub: Long = 0,
+    val consciouslyAdjustedPlan: Boolean = false,
+    val eventTargetUseful: Boolean = eventTargetNeeded || scenario == PurchaseScenario.IMPULSE_WISH,
+    val futureMandatoryAfterPurchaseRub: Long =
+        (futureMandatoryRub - mandatoryPurchaseRub).coerceAtLeast(0),
 ) : LearningActionContext {
     init {
         require(balanceBeforeRub >= 0)
@@ -143,6 +163,12 @@ data class PurchaseDecisionContext(
         require(promotionSavingRub >= 0)
         require(eventTargetQuantity >= 0)
         require(eventTargetMinimumQuantity >= 0)
+        require(mandatoryPurchaseRub >= 0)
+        require(mandatoryCategoryRemainingRub >= 0)
+        require(optionalCategoryRemainingRub >= 0)
+        require(reserveRemainingRub >= 0)
+        require(savingsPlanRemainingRub >= 0)
+        require(futureMandatoryAfterPurchaseRub >= 0)
         require(balanceAfterPurchaseRub <= balanceBeforeRub)
     }
 
@@ -165,19 +191,26 @@ data class PurchaseDecisionContext(
         "promotionSaving=$promotionSavingRub",
         "targetQuantity=$eventTargetQuantity",
         "targetMinimumQuantity=$eventTargetMinimumQuantity",
+        "mandatoryPurchase=$mandatoryPurchaseRub",
+        "mandatoryCategory=$mandatoryCategoryRemainingRub",
+        "optionalCategory=$optionalCategoryRemainingRub",
+        "reserve=$reserveRemainingRub",
+        "savingsPlan=$savingsPlanRemainingRub",
+        "adjusted=$consciouslyAdjustedPlan",
+        "targetUseful=$eventTargetUseful",
+        "mandatoryAfter=$futureMandatoryAfterPurchaseRub",
     ).joinToString(";")
 
-    fun purchaseProblem(config: PurchaseAssessmentConfig): PurchaseProblem? {
-        if (decision != PurchaseDecision.PURCHASED) {
-            return null
+    fun assess(config: PurchaseAssessmentConfig): PurchaseAssessment {
+        if (decision != PurchaseDecision.PURCHASED) return PurchaseAssessment(PurchaseOutcome.RISKY)
+        val mandatoryAfterPurchase = futureMandatoryAfterPurchaseRub
+        if (balanceAfterPurchaseRub < mandatoryAfterPurchase) {
+            return PurchaseAssessment(PurchaseOutcome.RISKY, PurchaseProblem.MANDATORY_MONEY_AT_RISK)
         }
-        if (mandatoryFoodNeeded && foodUnitsPurchased == 0) {
-            return PurchaseProblem.REQUIRED_FOOD_MISSING
-        }
-
-        val mandatoryAfterRequiredFood = (futureMandatoryRub - requiredFoodCostRub).coerceAtLeast(0)
-        if (balanceAfterPurchaseRub < mandatoryAfterRequiredFood) {
-            return PurchaseProblem.MANDATORY_MONEY_AT_RISK
+        if (optionalPurchaseRub > 0 &&
+            balanceAfterPurchaseRub < mandatoryAfterPurchase + reserveRemainingRub
+        ) {
+            return PurchaseAssessment(PurchaseOutcome.RISKY, PurchaseProblem.RESERVE_AT_RISK)
         }
 
         val promotionQuantityLimit = eventTargetMinimumQuantity + config.maximumPromotionExtraUnits
@@ -187,16 +220,32 @@ data class PurchaseDecisionContext(
             eventTargetMinimumQuantity > 0 &&
             eventTargetQuantity > promotionQuantityLimit
         ) {
-            return PurchaseProblem.PROMOTION_OVERBUY
+            return PurchaseAssessment(PurchaseOutcome.RISKY, PurchaseProblem.PROMOTION_OVERBUY)
         }
-
-        val extrasFitBudget = optionalPurchaseRub <= discretionaryRub
-        val extrasAreSmall = extraUnitsPurchased <= config.maximumSmallExtraUnits
-        return if (extrasAreSmall || extrasFitBudget) null else PurchaseProblem.TOO_MANY_EXTRAS
+        val savingsReduction = (savingsPlanRemainingRub -
+            (balanceAfterPurchaseRub - mandatoryAfterPurchase - reserveRemainingRub).coerceAtLeast(0))
+            .coerceAtLeast(0)
+        val categoryOverrun = (mandatoryPurchaseRub - mandatoryCategoryRemainingRub).coerceAtLeast(0) +
+            (optionalPurchaseRub - optionalCategoryRemainingRub).coerceAtLeast(0)
+        return if (categoryOverrun > 0 || savingsReduction > 0) {
+            PurchaseAssessment(
+                PurchaseOutcome.PLAN_ADJUSTMENT,
+                categoryOverrunRub = categoryOverrun,
+                savingsPlanReductionRub = savingsReduction,
+            )
+        } else {
+            PurchaseAssessment(PurchaseOutcome.GOOD)
+        }
     }
 
+    fun purchaseProblem(config: PurchaseAssessmentConfig): PurchaseProblem? = assess(config).problem
+
     internal fun isReasonable(config: PurchaseAssessmentConfig): Boolean =
-        decision == PurchaseDecision.PURCHASED && purchaseProblem(config) == null
+        decision == PurchaseDecision.PURCHASED && when (assess(config).outcome) {
+            PurchaseOutcome.GOOD -> true
+            PurchaseOutcome.PLAN_ADJUSTMENT -> consciouslyAdjustedPlan
+            PurchaseOutcome.RISKY -> false
+        }
 
     internal fun isGoodPromotionDecision(config: PurchaseAssessmentConfig): Boolean {
         if (scenario != PurchaseScenario.PROMOTION || promotionSavingRub <= 0) return false
@@ -205,21 +254,29 @@ data class PurchaseDecisionContext(
         } else {
             futureMandatoryRub
         }
-        val canBuyWithoutRisk = balanceBeforeRub >= eventTargetPriceRub &&
-            balanceBeforeRub - eventTargetPriceRub >= mandatoryAfterTarget
-        val targetPurchaseIsReasonable = eventTargetNeeded && canBuyWithoutRisk
+        val targetCategoryRemaining = if (eventTargetNeeded) {
+            mandatoryCategoryRemainingRub
+        } else {
+            optionalCategoryRemainingRub
+        }
+        val targetPurchaseIsReasonable = eventTargetUseful &&
+            balanceBeforeRub >= eventTargetPriceRub &&
+            eventTargetPriceRub <= targetCategoryRemaining &&
+            balanceBeforeRub - eventTargetPriceRub >=
+                mandatoryAfterTarget + reserveRemainingRub + savingsPlanRemainingRub
         return when (decision) {
             PurchaseDecision.PURCHASED ->
-                eventTargetPurchased && targetPurchaseIsReasonable && isReasonable(config)
+                eventTargetPurchased && eventTargetUseful && isReasonable(config)
             PurchaseDecision.DECLINED -> !targetPurchaseIsReasonable
         }
     }
 
     internal fun isGoodImpulseDecision(config: PurchaseAssessmentConfig): Boolean {
         if (scenario != PurchaseScenario.IMPULSE_WISH || eventTargetPriceRub <= 0) return false
-        val wishFitsBudget = balanceBeforeRub >= eventTargetPriceRub &&
-            balanceBeforeRub - eventTargetPriceRub >= futureMandatoryRub &&
-            eventTargetPriceRub <= discretionaryRub
+        val wishFitsBudget = eventTargetUseful && balanceBeforeRub >= eventTargetPriceRub &&
+            balanceBeforeRub - eventTargetPriceRub >=
+                futureMandatoryRub + reserveRemainingRub + savingsPlanRemainingRub &&
+            eventTargetPriceRub <= optionalCategoryRemainingRub
         return when (decision) {
             PurchaseDecision.PURCHASED -> eventTargetPurchased && wishFitsBudget && isReasonable(config)
             PurchaseDecision.DECLINED -> !wishFitsBudget

@@ -1,6 +1,5 @@
 package github.detrig.internetbooster.mediators
 
-import github.detrig.products.GroceryItemIds
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -9,27 +8,38 @@ class ShopPlanActualClassificationTest {
     fun ordinaryFoodPurchaseIsMandatory() {
         val result = classifyShopPlanActuals(
             lines = listOf(
-                ShopPlanLine(GroceryItemIds.Apple, isFood = true, totalRub = 30),
-                ShopPlanLine(GroceryItemIds.Soup, isFood = true, totalRub = 45),
+                ShopPlanLine(restoresSatiety = true, totalRub = 30),
+                ShopPlanLine(restoresSatiety = true, totalRub = 60),
             ),
-            impulseWishProductId = null,
         )
 
-        assertEquals(75L, result.mandatoryRub)
+        assertEquals(90L, result.mandatoryRub)
         assertEquals(0L, result.wantsRub)
     }
 
     @Test
-    fun wishedFoodIsAWantWhileOtherFoodStaysMandatory() {
+    fun foodWithoutSatietyIsAWantWhileCareFoodStaysMandatory() {
         val result = classifyShopPlanActuals(
             lines = listOf(
-                ShopPlanLine(GroceryItemIds.Apple, isFood = true, totalRub = 30),
-                ShopPlanLine(GroceryItemIds.Soup, isFood = true, totalRub = 45),
+                ShopPlanLine(restoresSatiety = true, totalRub = 30),
+                ShopPlanLine(restoresSatiety = false, totalRub = 65),
             ),
-            impulseWishProductId = GroceryItemIds.Soup,
         )
 
         assertEquals(30L, result.mandatoryRub)
-        assertEquals(45L, result.wantsRub)
+        assertEquals(65L, result.wantsRub)
+    }
+
+    @Test
+    fun discountedMixedBasketUsesPaidLineTotals() {
+        val result = classifyShopPlanActuals(
+            lines = listOf(
+                ShopPlanLine(restoresSatiety = true, totalRub = 42),
+                ShopPlanLine(restoresSatiety = false, totalRub = 65),
+            ),
+        )
+
+        assertEquals(42L, result.mandatoryRub)
+        assertEquals(65L, result.wantsRub)
     }
 }

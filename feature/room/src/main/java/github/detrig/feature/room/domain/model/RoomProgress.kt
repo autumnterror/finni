@@ -12,6 +12,7 @@ internal data class RoomProgress(
     val dayOfWeek: Int,
     val daysUntilAllowance: Int,
     val planProgress: WeeklyPlanProgress? = null,
+    val knownMandatoryExpenseRub: Long = 0,
     val requiresPlan: Boolean = false,
     val petHunger: Int = 0,
     val petHappiness: Int = 0,

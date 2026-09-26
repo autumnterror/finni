@@ -5,6 +5,7 @@ import github.detrig.feature.economy.domain.FinancialOperation
 import github.detrig.feature.inventory.api.InventoryApi
 import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.learning.domain.PurchaseAssessmentConfig
+import github.detrig.feature.learning.domain.PurchaseAssessment
 import github.detrig.feature.learning.domain.PurchaseDecision
 import github.detrig.feature.learning.domain.PurchaseDecisionContext
 import github.detrig.feature.learning.domain.PurchaseLearning
@@ -23,6 +24,7 @@ import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.feature.shop.domain.priceLine
 import github.detrig.feature.week.api.WeekApi
 import github.detrig.products.FoodItem
+import github.detrig.products.GroceryStoreIds
 import github.detrig.products.ProductId
 import kotlinx.coroutines.flow.first
 
@@ -45,7 +47,8 @@ internal data class ShopPurchaseTrackingConfig(
 internal data class PreparedShopCheckout(
     val lineTotalOverrides: Map<ProductId, Long>,
     val learningMetadata: String,
-    val purchaseProblem: PurchaseProblem?,
+    val assessment: PurchaseAssessment,
+    val totalRub: Long,
 )
 
 /** Coordinates source-of-truth game facts with the central Learning rules. */
@@ -57,6 +60,7 @@ internal class ShopLearningCoordinator(
     private val learningApi: LearningApi,
     private val catalogRegistry: ShopCatalogRegistry,
     private val config: ShopPurchaseTrackingConfig = ShopPurchaseTrackingConfig(),
+    private val petNeeds: suspend () -> Pair<Int, Int> = { 70 to 70 },
 ) {
     suspend fun prepareCheckout(request: ShopCheckoutRequest): PreparedShopCheckout {
         val event = request.decisionEvent?.takeIf { it.storeId == request.storeId }
@@ -68,11 +72,13 @@ internal class ShopLearningCoordinator(
             event = event,
             declinedWithoutCheckout = false,
             lineTotalOverrides = overrides,
+            consciouslyAdjustedPlan = request.confirmedConsequence,
         )
         return PreparedShopCheckout(
             lineTotalOverrides = overrides,
             learningMetadata = ShopPurchaseLearningPayloadCodec.encode(payload),
-            purchaseProblem = payload.standardPurchase.purchaseProblem(config.assessment),
+            assessment = payload.standardPurchase.assess(config.assessment),
+            totalRub = payload.standardPurchase.purchaseTotalRub,
         )
     }
 
@@ -89,6 +95,7 @@ internal class ShopLearningCoordinator(
             event = event,
             declinedWithoutCheckout = true,
             lineTotalOverrides = emptyMap(),
+            consciouslyAdjustedPlan = false,
         )
         payload.eventDecision?.let { context ->
             PurchaseLearning.qualifyingActions(
@@ -115,15 +122,22 @@ internal class ShopLearningCoordinator(
         event: ShopDecisionEvent?,
         declinedWithoutCheckout: Boolean,
         lineTotalOverrides: Map<ProductId, Long>,
+        consciouslyAdjustedPlan: Boolean,
     ): ShopPurchaseLearningPayload {
         val catalog = requireNotNull(catalogRegistry.catalog(storeId))
         val week = weekApi.initialize()
         val economy = economyApi.getState()
         val stock = inventoryApi.observeStock().first()
         val plan = planningApi.getPlanProgress(week.weekNumber)
+        val (petHunger, petHappiness) = petNeeds()
         val itemsById = catalog.storefront.items.associateBy { it.id }
+        val foodCatalog = catalogRegistry.catalog(GroceryStoreIds.Store)?.storefront?.items
+            ?.filterIsInstance<FoodItem>().orEmpty()
+        val foodItemsById = foodCatalog.associateBy { it.id }
         val stockFoodUnits = stock.sumOf { stockItem ->
-            if (itemsById[stockItem.productId] is FoodItem) stockItem.quantity else 0
+            if ((foodItemsById[stockItem.productId]?.effects?.satietyPercent ?: 0) > 0) {
+                stockItem.quantity
+            } else 0
         }
         val mandatoryFoodNeeded = config.isFoodPurchaseRequired(stockFoodUnits)
         val pricedLines = lines.map { (productId, quantity) ->
@@ -134,8 +148,17 @@ internal class ShopLearningCoordinator(
             PricedLine(item, quantity, singleUnitPrice, lineTotal)
         }
         val purchaseTotal = pricedLines.sumOf(PricedLine::lineTotalRub)
-        val foodLines = pricedLines.filter { it.item is FoodItem }
+        val foodLines = pricedLines.filter {
+            ((it.item as? FoodItem)?.effects?.satietyPercent ?: 0) > 0
+        }
+        val stockedSatiety = stock.sumOf { stockItem ->
+            (foodItemsById[stockItem.productId]?.effects?.satietyPercent ?: 0).toLong() *
+                stockItem.quantity
+        }
         val foodUnits = foodLines.sumOf(PricedLine::quantity)
+        val purchasedSatiety = foodLines.sumOf { line ->
+            ((line.item as FoodItem).effects.satietyPercent).toLong() * line.quantity
+        }
         val requiredFoodCost = if (mandatoryFoodNeeded && foodUnits > 0) {
             foodLines.minOf(PricedLine::unitPriceRub)
         } else {
@@ -143,14 +166,47 @@ internal class ShopLearningCoordinator(
         }
         val totalUnits = pricedLines.sumOf(PricedLine::quantity)
         val extraUnits = (totalUnits - if (requiredFoodCost > 0) 1 else 0).coerceAtLeast(0)
-        val optionalCost = (purchaseTotal - requiredFoodCost).coerceAtLeast(0)
-        val futureMandatory = plan?.category(PlanCategory.MANDATORY)?.let {
+        val planActuals = classifyShopPlanActuals(
+            lines = pricedLines.map { line ->
+                ShopPlanLine(
+                    restoresSatiety = ((line.item as? FoodItem)?.effects?.satietyPercent ?: 0) > 0,
+                    totalRub = line.lineTotalRub,
+                )
+            },
+        )
+        val optionalCost = planActuals.wantsRub
+        val mandatoryCategoryRemaining = plan?.category(PlanCategory.MANDATORY)?.let {
             (it.plannedRub - it.actualRub).coerceAtLeast(0)
         } ?: config.fallbackMandatoryReserveRub.coerceAtMost(economy.availableRub)
-        val discretionary = plan?.let {
+        val satietyFood = foodCatalog
+            .filter { it.effects.satietyPercent > 0 }
+        fun remainingFoodCost(stockedPoints: Long): Long {
+            val neededPoints = (week.daysUntilAllowance * 50L - petHunger + 1L - stockedPoints)
+                .coerceAtLeast(0L)
+            if (neededPoints == 0L) return 0L
+            return satietyFood.minOfOrNull { food ->
+                val portions = (neededPoints + food.effects.satietyPercent - 1) /
+                    food.effects.satietyPercent
+                portions * food.priceRub
+            } ?: config.fallbackMandatoryReserveRub
+        }
+        val knownMandatory = plan?.plan?.context?.knownMandatoryExpenseRub ?: 0L
+        val futureMandatory = maxOf(
+            mandatoryCategoryRemaining,
+            remainingFoodCost(stockedSatiety) + knownMandatory,
+        )
+        val futureMandatoryAfterPurchase = maxOf(
+            (mandatoryCategoryRemaining - planActuals.mandatoryRub).coerceAtLeast(0L),
+            remainingFoodCost(stockedSatiety + purchasedSatiety) + knownMandatory,
+        )
+        val optionalCategoryRemaining = plan?.let {
             val wants = it.category(PlanCategory.WANTS)
-            (wants.plannedRub - wants.actualRub).coerceAtLeast(0) + it.plan.reserveRub
+            (wants.plannedRub - wants.actualRub).coerceAtLeast(0)
         } ?: (economy.availableRub - futureMandatory).coerceAtLeast(0)
+        val reserveRemaining = plan?.plan?.reserveRub ?: 0L
+        val savingsPlanRemaining = plan?.category(PlanCategory.SAVINGS)?.let {
+            (it.plannedRub - it.actualRub).coerceAtLeast(0)
+        } ?: 0L
         val balanceAfter = (economy.availableRub - purchaseTotal).coerceAtLeast(0)
         val eventTargetQuantity = event?.let { lines[it.productId] ?: 0 } ?: 0
         val eventTargetMinimumQuantity = event
@@ -167,12 +223,19 @@ internal class ShopLearningCoordinator(
             balanceAfterPurchaseRub = balanceAfter,
             purchaseTotalRub = purchaseTotal,
             futureMandatoryRub = futureMandatory,
-            discretionaryRub = discretionary,
+            futureMandatoryAfterPurchaseRub = futureMandatoryAfterPurchase,
+            discretionaryRub = optionalCategoryRemaining,
             mandatoryFoodNeeded = mandatoryFoodNeeded,
             foodUnitsPurchased = foodUnits,
             requiredFoodCostRub = requiredFoodCost,
             extraUnitsPurchased = extraUnits,
             optionalPurchaseRub = optionalCost,
+            mandatoryPurchaseRub = planActuals.mandatoryRub,
+            mandatoryCategoryRemainingRub = mandatoryCategoryRemaining,
+            optionalCategoryRemainingRub = optionalCategoryRemaining,
+            reserveRemainingRub = reserveRemaining,
+            savingsPlanRemainingRub = savingsPlanRemaining,
+            consciouslyAdjustedPlan = consciouslyAdjustedPlan,
             eventTargetPurchased = eventTargetQuantity > 0,
             eventTargetQuantity = eventTargetQuantity,
             eventTargetMinimumQuantity = eventTargetMinimumQuantity,
@@ -189,6 +252,13 @@ internal class ShopLearningCoordinator(
             }
             val targetPrice = it.priceLine(it.productId, target.priceRub, assessedQuantity)
             val decision = if (targetPurchased) PurchaseDecision.PURCHASED else PurchaseDecision.DECLINED
+            val targetFood = target as? FoodItem
+            val targetNeeded = mandatoryFoodNeeded && (targetFood?.effects?.satietyPercent ?: 0) > 0
+            val targetUseful = targetNeeded || targetFood == null ||
+                ((targetFood.effects.satietyPercent > 0 &&
+                    petHunger <= config.assessment.usefulFoodHungerThreshold) ||
+                    minOf(targetFood.effects.happinessPoints, 100 - petHappiness) >=
+                        config.assessment.minimumUsefulHappinessGain)
             PurchaseDecisionContext(
                 scenario = when (it.type) {
                     ShopDecisionEventType.PROMOTION -> PurchaseScenario.PROMOTION
@@ -199,14 +269,22 @@ internal class ShopLearningCoordinator(
                 balanceAfterPurchaseRub = if (targetPurchased) balanceAfter else economy.availableRub,
                 purchaseTotalRub = if (targetPurchased) purchaseTotal else 0,
                 futureMandatoryRub = futureMandatory,
-                discretionaryRub = discretionary,
+                futureMandatoryAfterPurchaseRub = futureMandatoryAfterPurchase,
+                discretionaryRub = optionalCategoryRemaining,
                 mandatoryFoodNeeded = mandatoryFoodNeeded,
                 foodUnitsPurchased = foodUnits,
                 requiredFoodCostRub = requiredFoodCost,
                 extraUnitsPurchased = extraUnits,
                 optionalPurchaseRub = optionalCost,
+                mandatoryPurchaseRub = planActuals.mandatoryRub,
+                mandatoryCategoryRemainingRub = mandatoryCategoryRemaining,
+                optionalCategoryRemainingRub = optionalCategoryRemaining,
+                reserveRemainingRub = reserveRemaining,
+                savingsPlanRemainingRub = savingsPlanRemaining,
+                consciouslyAdjustedPlan = consciouslyAdjustedPlan,
                 eventTargetPurchased = targetPurchased,
-                eventTargetNeeded = mandatoryFoodNeeded && target is FoodItem,
+                eventTargetNeeded = targetNeeded,
+                eventTargetUseful = targetUseful,
                 eventTargetPriceRub = targetPrice.chargedTotalRub,
                 promotionSavingRub = targetPrice.savingRub,
                 eventTargetQuantity = targetQuantity,
@@ -217,19 +295,6 @@ internal class ShopLearningCoordinator(
                 },
             )
         }
-        val impulseWishProductId = event
-            ?.takeIf { it.type == ShopDecisionEventType.IMPULSE_WISH }
-            ?.productId
-        val planActuals = classifyShopPlanActuals(
-            lines = pricedLines.map { line ->
-                ShopPlanLine(
-                    productId = line.item.id,
-                    isFood = line.item is FoodItem,
-                    totalRub = line.lineTotalRub,
-                )
-            },
-            impulseWishProductId = impulseWishProductId,
-        )
         return ShopPurchaseLearningPayload(
             gamePeriod = week.weekNumber,
             sourceOperationId = sourceOperationId,

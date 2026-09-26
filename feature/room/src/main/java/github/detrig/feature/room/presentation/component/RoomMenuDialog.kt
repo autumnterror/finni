@@ -139,7 +139,7 @@ private fun RoomMenuDialogPreview() {
                     id = "achievement-$index",
                     title = "Достижение $index",
                     description = "Новое финансовое умение питомца и игрока.",
-                    xpReward = if (index % 2 == 0) 20 else 50,
+                    xpReward = if (index % 2 == 0) 20 else 10,
                     unlockOrder = index.toLong(),
                 )
             },

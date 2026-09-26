@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import github.detrig.feature.week.domain.EndDayResult
 import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.PlanAssessment
+import github.detrig.feature.planning.domain.PlanWeekContext
+import github.detrig.feature.planning.domain.WeeklyPlan
 import github.detrig.feature.planning.domain.SavePlanResult
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
@@ -21,8 +23,13 @@ internal interface RoomRepository {
     fun observeProgress(): Flow<RoomProgress>
     suspend fun buyZone(zone: RoomZoneDefinition, useSavings: Boolean = false): ZoneBuyResult
     suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult
-    fun assessPlan(percentages: PlanPercentages): PlanAssessment
-    suspend fun savePlan(weekNumber: Long, availableRub: Long, percentages: PlanPercentages): SavePlanResult
+    fun assessPlan(plan: WeeklyPlan): PlanAssessment
+    suspend fun savePlan(
+        weekNumber: Long,
+        availableRub: Long,
+        percentages: PlanPercentages,
+        context: PlanWeekContext,
+    ): SavePlanResult
     fun parentHelpOffers(): List<ParentHelpOffer>
     suspend fun parentHelp(): ParentHelpState?
     suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult

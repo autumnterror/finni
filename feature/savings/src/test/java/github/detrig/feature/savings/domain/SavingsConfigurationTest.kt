@@ -8,8 +8,8 @@ class SavingsConfigurationTest {
     fun lockedMiniGamesAreAvailableAsStarterGoalsWithRoomPrices() {
         val goals = SavingsConfiguration().starterGoals.associateBy { it.id }
 
-        assertEquals(200, goals.getValue("room-zone:drawing").targetRub)
-        assertEquals(350, goals.getValue("room-zone:music").targetRub)
-        assertEquals(400, goals.getValue("room-zone:fishing").targetRub)
+        assertEquals(900, goals.getValue("room-zone:drawing").targetRub)
+        assertEquals(1_800, goals.getValue("room-zone:music").targetRub)
+        assertEquals(600, goals.getValue("room-zone:fishing").targetRub)
     }
 }

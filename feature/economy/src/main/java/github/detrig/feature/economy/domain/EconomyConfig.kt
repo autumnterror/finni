@@ -4,7 +4,9 @@ data class EconomyConfig(
     val initialAvailableRub: Long = 500,
     val initialSavingsRub: Long = 0,
     val periodicIncomeAmountRub: Long = 500,
-    val weeklyAllowanceRub: Long = 1_000,
+    val weeklyAllowanceRub: Long = 900,
+    val middleWeeklyAllowanceRub: Long = 1_400,
+    val highWeeklyAllowanceRub: Long = 2_200,
     val firstPeriodicIncomeDelayMillis: Long = 2L * 24 * 60 * 60 * 1_000,
     val periodicIncomePeriodMillis: Long = 7L * 24 * 60 * 60 * 1_000,
     val maximumDebtRub: Long = 1_000,
@@ -20,6 +22,8 @@ data class EconomyConfig(
         require(initialSavingsRub >= 0)
         require(periodicIncomeAmountRub > 0)
         require(weeklyAllowanceRub > 0)
+        require(middleWeeklyAllowanceRub > 0)
+        require(highWeeklyAllowanceRub > 0)
         require(firstPeriodicIncomeDelayMillis > 0)
         require(periodicIncomePeriodMillis > 0)
         require(maximumDebtRub > 0)
@@ -29,6 +33,13 @@ data class EconomyConfig(
         require(parentHelpOffers.all {
             (it.totalRepaymentRub + it.repaymentWeeks - 1) / it.repaymentWeeks <= weeklyAllowanceRub
         })
+    }
+
+    fun weeklyAllowanceForLevel(playerLevel: Int): Long = when {
+        playerLevel in 1..2 -> weeklyAllowanceRub
+        playerLevel in 3..4 -> middleWeeklyAllowanceRub
+        playerLevel >= 5 -> highWeeklyAllowanceRub
+        else -> throw IllegalArgumentException("Player level must be positive")
     }
 
     fun initialState(nowMillis: Long) = EconomyState(

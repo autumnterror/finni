@@ -20,6 +20,8 @@ import github.detrig.feature.week.domain.EndDayResult
 import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.PlanAssessment
+import github.detrig.feature.planning.domain.PlanWeekContext
+import github.detrig.feature.planning.domain.WeeklyPlan
 import github.detrig.feature.planning.domain.SavePlanResult
 import github.detrig.feature.planning.domain.PaymentClassification
 import github.detrig.feature.planning.domain.PlanActualOperation
@@ -81,13 +83,14 @@ internal class RoomRepositoryImpl(
 
     override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = weekApi.endDay(expectedAbsoluteDay)
 
-    override fun assessPlan(percentages: PlanPercentages): PlanAssessment = planningApi.assessPlan(percentages)
+    override fun assessPlan(plan: WeeklyPlan): PlanAssessment = planningApi.assessPlan(plan)
 
     override suspend fun savePlan(
         weekNumber: Long,
         availableRub: Long,
         percentages: PlanPercentages,
-    ): SavePlanResult = planningApi.savePlan(weekNumber, availableRub, percentages)
+        context: PlanWeekContext,
+    ): SavePlanResult = planningApi.savePlan(weekNumber, availableRub, percentages, context)
 
     override fun parentHelpOffers(): List<ParentHelpOffer> = economyApi.parentHelpOffers()
 
