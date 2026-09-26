@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -105,6 +106,8 @@ fun PetScene(
     val reaction = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var reacting by remember { mutableStateOf(false) }
+    var reactionJob by remember { mutableStateOf<Job?>(null) }
+    var reactionSerial by remember { mutableIntStateOf(0) }
     val poseScaleX by animateFloatAsState(
         targetValue = when (pose) {
             PetPose.HELD -> 0.94f
@@ -113,7 +116,7 @@ fun PetScene(
             PetPose.GETTING_UP -> 0.91f
             PetPose.IDLE -> 1f
         },
-        animationSpec = tween(if (pose == PetPose.LANDED) 100 else 180),
+        animationSpec = tween(if (pose == PetPose.LANDED) 65 else 180),
         label = "pet_pose_scale_x",
     )
     val poseScaleY by animateFloatAsState(
@@ -124,7 +127,7 @@ fun PetScene(
             PetPose.GETTING_UP -> 1.14f
             PetPose.IDLE -> 1f
         },
-        animationSpec = tween(if (pose == PetPose.LANDED) 100 else 180),
+        animationSpec = tween(if (pose == PetPose.LANDED) 65 else 180),
         label = "pet_pose_scale_y",
     )
     val tapScaleX = 1f + reaction.value * 0.05f
@@ -149,10 +152,14 @@ fun PetScene(
     val flightWobble = flightPhase?.let { sin(it * 2f * PI).toFloat() * limbAmplitude } ?: 0f
     val viewConfiguration = LocalViewConfiguration.current
     val reactThenClick = {
-        if (!reacting && pose == PetPose.IDLE) {
+        if (pose == PetPose.IDLE) {
+            reactionSerial++
+            val serial = reactionSerial
+            reactionJob?.cancel()
             reacting = true
-            scope.launch {
+            reactionJob = scope.launch {
                 try {
+                    reaction.snapTo(0f)
                     reaction.animateTo(1f, tween(85))
                     reaction.animateTo(
                         0f,
@@ -160,7 +167,7 @@ fun PetScene(
                     )
                     onClick?.invoke()
                 } finally {
-                    reacting = false
+                    if (serial == reactionSerial) reacting = false
                 }
             }
         }
@@ -171,8 +178,8 @@ fun PetScene(
             appearance = profile.hamsterAppearance,
             blink = hamsterBlink,
             contentDescription = description,
-            onClick = reactThenClick.takeIf { pose == PetPose.IDLE && !reacting },
-            gestureCallbacks = gestureCallbacks.takeUnless { reacting },
+            onClick = reactThenClick.takeIf { pose == PetPose.IDLE },
+            gestureCallbacks = gestureCallbacks,
             touchSlop = viewConfiguration.touchSlop,
             longPressTimeoutMillis = viewConfiguration.longPressTimeoutMillis,
             scaleX = poseScaleX * tapScaleX,
@@ -338,6 +345,7 @@ private class HamsterClickableNode(
     private var pressedPointerId: androidx.compose.ui.input.pointer.PointerId? = null
     private var dragCallbacks: PetGestureCallbacks? = null
     private var dragging = false
+    private var tapCancelled = false
     private var startRoot = Offset.Zero
     private var lastRoot = Offset.Zero
     private val recentPositions = ArrayDeque<Pair<Long, Offset>>()
@@ -357,11 +365,13 @@ private class HamsterClickableNode(
                 pressedPointerId = down.id
                 dragCallbacks = gestureCallbacks
                 dragging = false
+                tapCancelled = false
                 startRoot = requireLayoutCoordinates().localToRoot(down.position)
                 lastRoot = startRoot
                 recentPositions.clear()
                 record(down.uptimeMillis, startRoot)
                 down.consume()
+                dragCallbacks?.onTouchStart()
                 if (dragCallbacks != null) {
                     longPressJob = coroutineScope.launch {
                         delay(longPressTimeoutMillis)
@@ -379,12 +389,13 @@ private class HamsterClickableNode(
         val root = requireLayoutCoordinates().localToRoot(change.position)
         if (change.pressed) {
             record(change.uptimeMillis, root)
-            if (!dragging && dragCallbacks != null &&
-                hypot(root.x - startRoot.x, root.y - startRoot.y) > touchSlop
-            ) {
+            if (!dragging && hypot(root.x - startRoot.x, root.y - startRoot.y) > touchSlop) {
                 longPressJob?.cancel()
-                dragging = true
-                dragCallbacks?.onGrab()
+                longPressJob = null
+                if (!tapCancelled) {
+                    tapCancelled = true
+                    dragCallbacks?.onCancel()
+                }
             }
             if (dragging) {
                 val delta = root - lastRoot
@@ -406,12 +417,15 @@ private class HamsterClickableNode(
             if (wasDragging) {
                 change.consume()
                 callbacks?.onRelease(release)
-            } else if (assets.contains(
-                    appearance, unscale(change.position, containerSize), containerSize, blink,
-                )
-            ) {
-                change.consume()
-                onClick?.invoke()
+            } else {
+                callbacks?.onCancel()
+                if (!tapCancelled && !change.isConsumed && assets.contains(
+                        appearance, unscale(change.position, containerSize), containerSize, blink,
+                    )
+                ) {
+                    change.consume()
+                    onClick?.invoke()
+                }
             }
         }
     }
@@ -419,10 +433,11 @@ private class HamsterClickableNode(
     override fun onCancelPointerInput() {
         longPressJob?.cancel()
         longPressJob = null
-        if (dragging) dragCallbacks?.onCancel()
+        dragCallbacks?.onCancel()
         pressedPointerId = null
         dragCallbacks = null
         dragging = false
+        tapCancelled = false
         recentPositions.clear()
     }
 

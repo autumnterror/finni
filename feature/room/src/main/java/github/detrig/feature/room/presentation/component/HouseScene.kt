@@ -163,11 +163,13 @@ internal fun HouseScene(
         var petPose by remember { mutableStateOf(RoomPetPose.IDLE) }
         var flight by remember { mutableStateOf(PetFlightFrame(motion.petX, 0f)) }
         var flightBounds by remember { mutableStateOf(HouseLayout.petFlightBounds(motion.petX)) }
+        var flightCatchPending by remember { mutableStateOf(false) }
         var ready by remember { mutableStateOf(false) }
         val maxFlightLift = ((HouseLayout.PET_FLOOR_BASELINE * heightPx -
             HouseLayout.PET_WIDTH * unitPx - heightPx * 0.05f) / unitPx).coerceAtLeast(0.2f)
 
         fun finishFlight() {
+            flightCatchPending = false
             motion.placeAt(flight.x)
             flight = PetFlightFrame(motion.petX, 0f)
             petPose = RoomPetPose.IDLE
@@ -184,6 +186,11 @@ internal fun HouseScene(
                 var previous = withFrameNanos { it }
                 while (petPose == RoomPetPose.AIRBORNE && isActive) {
                     val now = withFrameNanos { it }
+                    if (petPose != RoomPetPose.AIRBORNE) break
+                    if (flightCatchPending) {
+                        previous = now
+                        continue
+                    }
                     val result = PetFlightPhysics.step(
                         frame = flight,
                         elapsedSeconds = (now - previous) / 1_000_000_000f,
@@ -196,9 +203,9 @@ internal fun HouseScene(
                     if (result.landed) {
                         motion.placeAt(flight.x)
                         petPose = RoomPetPose.LANDED
-                        delay(200)
+                        delay(140)
                         petPose = RoomPetPose.GETTING_UP
-                        delay(380)
+                        delay(320)
                         finishFlight()
                     }
                 }
@@ -433,15 +440,25 @@ internal fun HouseScene(
                             RoomPetInteraction(
                                 pose = petPose,
                                 canGrab = active && ready && focusObjectId == null &&
-                                    petPose == RoomPetPose.IDLE,
+                                    (petPose == RoomPetPose.IDLE || petPose == RoomPetPose.AIRBORNE),
+                                onTouchStart = {
+                                    if (petPose == RoomPetPose.AIRBORNE) flightCatchPending = true
+                                },
                                 onGrab = {
-                                    motion.pause()
-                                    flightBounds = HouseLayout.petFlightBounds(motion.petX)
-                                    flight = PetFlightFrame(
-                                        motion.petX.coerceIn(flightBounds.first, flightBounds.second),
-                                        0.12f.coerceAtMost(maxFlightLift),
-                                    )
-                                    petPose = RoomPetPose.HELD
+                                    if (petPose == RoomPetPose.IDLE || petPose == RoomPetPose.AIRBORNE) {
+                                        motion.pause()
+                                        if (petPose == RoomPetPose.AIRBORNE) {
+                                            flight = flight.copy(velocityX = 0f, velocityUp = 0f)
+                                        } else {
+                                            flightBounds = HouseLayout.petFlightBounds(motion.petX)
+                                            flight = PetFlightFrame(
+                                                motion.petX.coerceIn(flightBounds.first, flightBounds.second),
+                                                0.12f.coerceAtMost(maxFlightLift),
+                                            )
+                                        }
+                                        petPose = RoomPetPose.HELD
+                                    }
+                                    flightCatchPending = false
                                 },
                                 onDrag = { delta ->
                                     if (petPose == RoomPetPose.HELD) {
@@ -463,6 +480,7 @@ internal fun HouseScene(
                                     }
                                 },
                                 onCancel = {
+                                    flightCatchPending = false
                                     if (petPose == RoomPetPose.HELD) {
                                         flight = flight.copy(velocityX = 0f, velocityUp = 0f)
                                         petPose = RoomPetPose.AIRBORNE

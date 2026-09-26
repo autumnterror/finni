@@ -8,7 +8,6 @@ internal data class PetFlightFrame(
     val lift: Float,
     val velocityX: Float = 0f,
     val velocityUp: Float = 0f,
-    val floorBounces: Int = 0,
 )
 
 internal data class PetFlightStep(val frame: PetFlightFrame, val landed: Boolean)
@@ -16,9 +15,6 @@ internal data class PetFlightStep(val frame: PetFlightFrame, val landed: Boolean
 internal object PetFlightPhysics {
     private const val GRAVITY = 4.8f
     private const val WALL_REBOUND = 0.42f
-    private const val FLOOR_REBOUND = 0.22f
-    private const val MIN_FLOOR_REBOUND_SPEED = 0.9f
-    private const val MAX_FLOOR_BOUNCES = 1
     private const val MAX_STEP_SECONDS = 0.033f
 
     fun step(
@@ -50,14 +46,8 @@ internal object PetFlightPhysics {
         }
 
         if (lift <= 0f) {
-            if (frame.floorBounces < MAX_FLOOR_BOUNCES && vy < -MIN_FLOOR_REBOUND_SPEED) {
-                return PetFlightStep(
-                    PetFlightFrame(x, 0f, vx * 0.55f, -vy * FLOOR_REBOUND, frame.floorBounces + 1),
-                    landed = false,
-                )
-            }
             return PetFlightStep(PetFlightFrame(x, 0f), landed = true)
         }
-        return PetFlightStep(PetFlightFrame(x, lift, vx, vy, frame.floorBounces), landed = false)
+        return PetFlightStep(PetFlightFrame(x, lift, vx, vy), landed = false)
     }
 }

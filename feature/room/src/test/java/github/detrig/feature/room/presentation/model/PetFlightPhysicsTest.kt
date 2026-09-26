@@ -21,21 +21,18 @@ class PetFlightPhysicsTest {
     }
 
     @Test
-    fun `floor allows one soft bounce and then settles`() {
-        var frame = PetFlightFrame(x = 1.5f, lift = 0.3f, velocityUp = -2f)
-        var bounced = false
-        var landed = false
-        repeat(120) {
-            if (landed) return@repeat
-            val step = PetFlightPhysics.step(frame, 0.03f, 1f, 2f, 2f)
-            frame = step.frame
-            bounced = bounced || frame.floorBounces == 1
-            landed = step.landed
-        }
+    fun `pet lands on its first contact with the floor`() {
+        val step = PetFlightPhysics.step(
+            frame = PetFlightFrame(x = 1.5f, lift = 0.01f, velocityUp = -2f),
+            elapsedSeconds = 0.03f,
+            left = 1f,
+            right = 2f,
+            maxLift = 2f,
+        )
 
-        assertTrue(bounced)
-        assertTrue(landed)
-        assertEquals(0f, frame.lift, 0f)
+        assertTrue(step.landed)
+        assertEquals(0f, step.frame.lift, 0f)
+        assertEquals(0f, step.frame.velocityUp, 0f)
     }
 
     @Test

@@ -10,4 +10,5 @@ data class PetGestureCallbacks(
     val onDrag: (Offset) -> Unit,
     val onRelease: (Offset) -> Unit,
     val onCancel: () -> Unit,
+    val onTouchStart: () -> Unit = {},
 )
