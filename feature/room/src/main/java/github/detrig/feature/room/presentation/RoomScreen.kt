@@ -287,7 +287,6 @@ internal fun RoomScreen(
         firstMoneyNotice != null -> {
             AllowanceReceiptDialog(
                 notice = firstMoneyNotice,
-                firstRun = true,
                 onDismiss = {
                     if (content?.allowanceNotice != null) {
                         viewModel.perform(RoomViewEvent.CloseAllowanceNotice)
@@ -451,7 +450,6 @@ internal fun RoomScreen(
             WeeklyPlanProgressDialog(
                 progress = content.weekResult,
                 isWeekResult = true,
-                remainingRub = content.progress.balanceRub.toLong(),
                 onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
             )
         }

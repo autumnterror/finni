@@ -356,7 +356,6 @@ private fun ParentHelpMoneyRow(labelRes: Int, amountRub: Long) {
 @Composable
 internal fun AllowanceReceiptDialog(
     notice: AllowanceNoticeState,
-    firstRun: Boolean = false,
     onDismiss: () -> Unit,
 ) {
     FinPetModalVisibilityEffect()
@@ -420,26 +419,14 @@ internal fun AllowanceReceiptDialog(
                         contentScale = ContentScale.Fit,
                     )
                 }
-                Column(
+                FinPetMoneyAmount(
+                    amount = notice.grossRub.toString(),
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .offset(x = 20.dp, y = 76.dp)
-                        .width(maxWidth * 0.45f),
-                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xl),
-                ) {
-                    FinPetMoneyAmount(
-                        amount = notice.grossRub.toString(),
-                        modifier = Modifier.fillMaxWidth().height(60.dp),
-                    )
-                    Text(
-                        text = stringResource(
-                            if (firstRun) R.string.allowance_notice_first_received
-                            else R.string.allowance_notice_received,
-                            notice.grossRub,
-                        ),
-                        style = AppTheme.typography.bodyStrong,
-                    )
-                }
+                        .offset(x = 20.dp, y = 92.dp)
+                        .width(maxWidth * 0.45f)
+                        .height(60.dp),
+                )
                 Image(
                     painter = painterResource(R.drawable.allowance_wallet),
                     contentDescription = null,
@@ -477,24 +464,16 @@ internal fun AllowanceReceiptDialog(
                     }
                 }
                 FinPetButton(
+                    text = stringResource(R.string.allowance_notice_get),
                     onClick = onDismiss,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .offset(y = (-12).dp)
+                        .offset(y = (-24).dp)
                         .fillMaxWidth()
-                        .height(100.dp),
-                    style = allowanceArtworkButtonStyle(),
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.allowance_continue),
-                        contentDescription = stringResource(R.string.allowance_notice_continue),
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .graphicsLayer(scaleX = 1.25f, scaleY = 1.25f),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
+                        .padding(horizontal = AppTheme.spacing.md)
+                        .height(72.dp),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
                 Image(
                     painter = painterResource(R.drawable.allowance_hamster),
                     contentDescription = null,
@@ -582,7 +561,6 @@ private fun AllowanceReceiptDialogPreview() {
     FinPetTheme {
         AllowanceReceiptDialog(
             notice = AllowanceNoticeState(grossRub = 500, parentHelpRepaidRub = 0, receivedRub = 500),
-            firstRun = true,
             onDismiss = {},
         )
     }
