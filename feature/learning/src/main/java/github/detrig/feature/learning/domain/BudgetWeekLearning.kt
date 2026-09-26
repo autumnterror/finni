@@ -47,10 +47,16 @@ object BudgetWeekLearning {
         config: BudgetWeekAssessmentConfig = BudgetWeekAssessmentConfig(),
     ): List<LearningAction> {
         val controlledCostChanged = snapshot.meaningfulMandatoryOverrun(config) > 0
-        val eventChanged = snapshot.unexpectedMandatoryRub > 0
-        val changed = !earlyFinish && (controlledCostChanged || eventChanged)
-        val adapted = changed && snapshot.planAdequate && snapshot.adaptedToMandatoryOverrun() &&
-            (controlledCostChanged || snapshot.actualWantsRub < snapshot.plannedWantsRub)
+        val eventChanged = snapshot.unexpectedMandatoryRub > 0 || snapshot.extraIncomeRub > 0
+        val knownExpenseChanged = snapshot.knownMandatoryExpenseRub > 0
+        val changed = !earlyFinish && (controlledCostChanged || eventChanged || knownExpenseChanged)
+        val adapted = changed && snapshot.planAdequate && (
+            ((controlledCostChanged || snapshot.unexpectedMandatoryRub > 0) &&
+                snapshot.adaptedToMandatoryOverrun() &&
+                (controlledCostChanged || snapshot.actualWantsRub < snapshot.plannedWantsRub)) ||
+                (snapshot.extraIncomeRub > 0 && snapshot.adaptedToExtraIncome())
+                || (knownExpenseChanged && snapshot.adaptedToKnownExpense())
+        )
         val followed = !earlyFinish && snapshot.planAdequate &&
             (snapshot.closeToPlan(config) || adapted)
         return buildList {
@@ -106,12 +112,18 @@ data class BudgetWeekSnapshot(
     val actualWantsRub: Long,
     val actualSavingsRub: Long,
     val unexpectedMandatoryRub: Long = 0,
+    val extraIncomeRub: Long = 0,
+    val extraReserveRub: Long = 0,
+    val knownMandatoryExpenseRub: Long = 0,
 ) : LearningActionContext {
     init {
         require(availableRub >= 0)
         require(plannedMandatoryRub >= 0 && plannedWantsRub >= 0 && plannedSavingsRub >= 0 && plannedReserveRub >= 0)
         require(actualMandatoryRub >= 0 && actualWantsRub >= 0)
         require(unexpectedMandatoryRub >= 0)
+        require(extraIncomeRub >= 0)
+        require(extraReserveRub in 0..extraIncomeRub)
+        require(knownMandatoryExpenseRub >= 0)
         require(plannedMandatoryRub + plannedWantsRub + plannedSavingsRub + plannedReserveRub == availableRub)
     }
 
@@ -121,7 +133,8 @@ data class BudgetWeekSnapshot(
     override val fingerprint: String = listOf(
         planAdequate, availableRub, plannedMandatoryRub, plannedWantsRub,
         plannedSavingsRub, plannedReserveRub, actualMandatoryRub, actualWantsRub,
-        actualSavingsRub, unexpectedMandatoryRub,
+        actualSavingsRub, unexpectedMandatoryRub, extraIncomeRub, extraReserveRub,
+        knownMandatoryExpenseRub,
     ).joinToString(";")
 
     internal fun meaningfulMandatoryOverrun(config: BudgetWeekAssessmentConfig): Long {
@@ -133,6 +146,17 @@ data class BudgetWeekSnapshot(
     internal fun adaptedToMandatoryOverrun(): Boolean =
         actualWantsRub <= plannedWantsRub &&
             actualMandatoryRub + actualWantsRub + actualSavingsRub + unexpectedMandatoryRub <= availableRub
+
+    internal fun adaptedToExtraIncome(): Boolean =
+        actualMandatoryRub + actualWantsRub + actualSavingsRub + unexpectedMandatoryRub <=
+            availableRub + extraIncomeRub -
+                (plannedReserveRub + extraReserveRub - unexpectedMandatoryRub).coerceAtLeast(0L)
+
+    internal fun adaptedToKnownExpense(): Boolean =
+        actualMandatoryRub >= knownMandatoryExpenseRub &&
+            actualWantsRub <= plannedWantsRub + extraIncomeRub &&
+            actualMandatoryRub + actualWantsRub + actualSavingsRub + unexpectedMandatoryRub <=
+                availableRub + extraIncomeRub - plannedReserveRub
 
     internal fun closeToPlan(config: BudgetWeekAssessmentConfig): Boolean =
         close(plannedMandatoryRub, actualMandatoryRub, config) &&

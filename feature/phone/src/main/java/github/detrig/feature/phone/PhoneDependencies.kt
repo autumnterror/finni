@@ -28,6 +28,7 @@ interface PhoneDependencies {
     fun inventoryApi(): InventoryApi
     fun messagesStorage(): PhoneMessagesStorage
     fun dailySecurityEventProbability(): Double
+    fun minimumDaysBetweenSecurityEvents(): Int
     fun minimumHelpBalanceRub(): Long
     fun globalMessageController(): GlobalMessageController
     suspend fun resetDemoProgress(skipOnboarding: Boolean)

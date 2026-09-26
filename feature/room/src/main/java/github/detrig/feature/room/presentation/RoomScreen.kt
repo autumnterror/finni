@@ -44,6 +44,7 @@ import github.detrig.feature.room.presentation.component.ParentGateDialog
 import github.detrig.feature.room.presentation.component.ParentCabinetDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
 import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
+import github.detrig.feature.room.presentation.component.RoomMoneyEventDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
 import github.detrig.feature.gamestate.domain.model.PetSatietyRules
@@ -211,6 +212,8 @@ internal fun RoomScreen(
                 content?.parentHelpPhonePrompt == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
+                content?.moneyEvent == null &&
+                content?.rulesRecapVisible != true &&
                 !showPhoneNotificationPrompt &&
                 (onboarding == null || hasAllowedOnboardingObjects),
             previewZoneId = requestedZoneId,
@@ -377,7 +380,25 @@ internal fun RoomScreen(
                 onFinished = { viewModel.perform(RoomViewEvent.CloseParentHelpPhonePrompt) },
             )
         }
-        content?.impulseWish != null && canShowDialogs -> {
+        content?.moneyEvent != null && canShowDialogs && content.dayTransitionNotice == null -> {
+            RoomMoneyEventDialog(
+                event = content.moneyEvent,
+                availableRub = content.progress.balanceRub.toLong(),
+                savingsRub = content.progress.savingsRub,
+                canAskParents = content.progress.debtRub == 0L,
+                hasActiveGoal = content.activeSavingsGoal != null,
+                error = content.moneyEventError,
+                isResolving = content.resolvingMoneyEvent,
+                petName = petName,
+                petPortrait = petPortrait,
+                onResolve = { viewModel.perform(RoomViewEvent.ResolveMoneyEvent(it)) },
+                onLater = { viewModel.perform(RoomViewEvent.CloseMoneyEvent) },
+                onOpenSavings = { viewModel.perform(RoomViewEvent.OpenSavingsForMoneyEvent) },
+                onAskParents = { viewModel.perform(RoomViewEvent.RequestParentHelpForMoneyEvent) },
+                onParentCoverage = { viewModel.perform(RoomViewEvent.CoverMoneyEventWithParents) },
+            )
+        }
+        content?.impulseWish != null && canShowDialogs && content.dayTransitionNotice == null -> {
             RoomImpulseWishDialog(
                 wish = content.impulseWish,
                 petName = petName,
@@ -445,6 +466,7 @@ internal fun RoomScreen(
                 editor = content.planEditor,
                 weekNumber = content.progress.weekNumber,
                 availableRub = content.progress.balanceRub.toLong(),
+                knownMandatoryExpenseRub = content.progress.knownMandatoryExpenseRub,
                 isSaving = content.isSavingPlan,
                 petName = petName,
                 petPortrait = petPortrait,
@@ -517,6 +539,19 @@ internal fun RoomScreen(
                 portrait = petPortrait,
                 topInset = 0.dp,
                 onFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
+            )
+        }
+        content?.rulesRecapVisible == true && canShowDialogs && content.dayTransitionNotice == null -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(
+                    stringResource(R.string.finance_rules_plan),
+                    stringResource(R.string.finance_rules_purchase),
+                    stringResource(R.string.finance_rules_event),
+                    stringResource(R.string.finance_rules_wish),
+                ),
+                portrait = petPortrait,
+                onFinished = { viewModel.perform(RoomViewEvent.CloseRulesRecap) },
             )
         }
         visibleOnboarding != null -> {

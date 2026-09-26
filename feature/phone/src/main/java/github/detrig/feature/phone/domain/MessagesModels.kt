@@ -110,9 +110,11 @@ internal data class ParentHelpDialogData(
 internal data class SecurityEventConfig(
     val dailyProbability: Double,
     val randomSeed: Int = 0x51A7E,
+    val minimumDaysBetweenEvents: Int = 0,
 ) {
     init {
         require(dailyProbability in 0.0..1.0)
+        require(minimumDaysBetweenEvents >= 0)
     }
 }
 

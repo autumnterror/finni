@@ -147,13 +147,23 @@ data class WeeklyPlanProgress(
     val categories: List<CategoryPlanProgress>,
     val planAssessment: PlanAssessment = PlanningCalculator.assess(plan, PlanningConfig()),
     val unexpectedMandatoryRub: Long = 0,
+    /** Income from money events, projected from economy history for display. */
+    val extraIncomeRub: Long = 0,
+    val extraWantsRub: Long = 0,
+    val extraSavingsRub: Long = 0,
+    val extraReserveRub: Long = 0,
 ) {
-    init { require(unexpectedMandatoryRub >= 0) }
+    init {
+        require(unexpectedMandatoryRub >= 0 && extraIncomeRub >= 0)
+        require(extraWantsRub >= 0 && extraSavingsRub >= 0 && extraReserveRub >= 0)
+        require(extraWantsRub + extraSavingsRub + extraReserveRub <= extraIncomeRub)
+    }
 
     fun category(category: PlanCategory): CategoryPlanProgress = categories.first { it.category == category }
 
     val controlledReserveRub: Long
-        get() = (plan.availableRub - categories.sumOf { it.actualRub }).coerceAtLeast(0)
+        get() = (plan.availableRub + extraWantsRub + extraSavingsRub + extraReserveRub -
+            categories.sumOf { it.actualRub }).coerceAtLeast(0)
 
     val remainingReserveRub: Long
         get() = (controlledReserveRub - unexpectedMandatoryRub).coerceAtLeast(0)

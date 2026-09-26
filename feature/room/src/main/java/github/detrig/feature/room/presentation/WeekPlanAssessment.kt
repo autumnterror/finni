@@ -25,6 +25,7 @@ internal enum class WeekPlanFeedbackReason {
     ADAPTED_TO_MANDATORY_COST,
     CLOSE_TO_PLAN,
     MANDATORY_COST_INCREASED,
+    EXTRA_INCOME_ALLOCATED,
     ORDINARY,
 }
 
@@ -59,18 +60,21 @@ internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
         if (category(PlanCategory.MANDATORY).let { it.actualRub == it.plannedRub }) {
             add(WeekPlanItem.MANDATORY)
         }
-        if (category(PlanCategory.WANTS).let { it.actualRub == it.plannedRub }) {
+        if (wants.actualRub == wants.plannedRub + extraWantsRub) {
             add(WeekPlanItem.WANTS)
         }
-        if (category(PlanCategory.SAVINGS).let { it.actualRub == it.plannedRub }) {
+        if (category(PlanCategory.SAVINGS).let { it.actualRub == it.plannedRub + extraSavingsRub }) {
             add(WeekPlanItem.SAVINGS)
         }
-        if (categorizedActualRub <= plan.availableRub && actualReserveRub == plan.reserveRub) {
+        if (categorizedActualRub <= plan.availableRub + extraIncomeRub &&
+            actualReserveRub == plan.reserveRub + extraReserveRub) {
             add(WeekPlanItem.RESERVE)
         }
     }
     val feedbackReason = when {
         planAssessment != PlanAssessment.Adequate -> WeekPlanFeedbackReason.WEAK_PLAN
+        extraIncomeRub > 0 && isGoodWeeklyResult() && unexpectedMandatoryRub == 0L ->
+            WeekPlanFeedbackReason.EXTRA_INCOME_ALLOCATED
         unexpectedMandatoryRub > 0 && isGoodWeeklyResult() ->
             if (unexpectedMandatoryRub <= actualReserveRub) {
                 WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_COVERED

@@ -63,6 +63,11 @@ internal class PersistentMessagesRepository(
                 message.senderId == MessageSenderId.BANK || message.senderId == MessageSenderId.MOM
             },
         )
+        if (current.events.lastOrNull()?.let { last ->
+                absoluteDay - last.absoluteDay < config.minimumDaysBetweenEvents
+            } == true) {
+            return@update processed
+        }
         if (dailyRoll(absoluteDay, config.randomSeed) >= config.dailyProbability) {
             return@update processed
         }

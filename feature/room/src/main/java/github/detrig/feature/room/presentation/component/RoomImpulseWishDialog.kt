@@ -19,20 +19,25 @@ internal fun RoomImpulseWishDialog(
     onFinished: () -> Unit,
 ) {
     FinPetModalVisibilityEffect()
-    val wishText = when (wish.phraseVariant) {
+    val wishText = if (wish.kind == RoomImpulseWish.Kind.FREE) {
+        stringResource(R.string.impulse_wish_free, wish.productTitle)
+    } else when (wish.phraseVariant) {
         0 -> stringResource(R.string.impulse_wish_variant_enough_money, wish.productTitle)
         1 -> stringResource(R.string.impulse_wish_variant_afford, wish.productTitle)
         2 -> stringResource(R.string.impulse_wish_variant_check_plan, wish.productTitle)
         else -> stringResource(R.string.impulse_wish_variant_money_after, wish.productTitle)
     }
-    val cards = if (wish.showIntroduction) {
+    val cards = if (wish.kind == RoomImpulseWish.Kind.FREE) {
+        listOf(wishText)
+    } else if (wish.showIntroduction) {
         listOf(
             stringResource(R.string.impulse_wish_intro_feeling),
             stringResource(R.string.impulse_wish_intro_check),
             wishText,
+            stringResource(R.string.impulse_wish_optional),
         )
     } else {
-        listOf(wishText)
+        listOf(wishText, stringResource(R.string.impulse_wish_optional))
     }
     FinPetDialogueDialog(
         speakerName = petName,

@@ -222,9 +222,15 @@ data class PurchaseDecisionContext(
         ) {
             return PurchaseAssessment(PurchaseOutcome.RISKY, PurchaseProblem.PROMOTION_OVERBUY)
         }
-        val savingsReduction = (savingsPlanRemainingRub -
-            (balanceAfterPurchaseRub - mandatoryAfterPurchase - reserveRemainingRub).coerceAtLeast(0))
-            .coerceAtLeast(0)
+        val savingsPossibleBefore = minOf(
+            savingsPlanRemainingRub,
+            (balanceBeforeRub - futureMandatoryRub - reserveRemainingRub).coerceAtLeast(0),
+        )
+        val savingsPossibleAfter = minOf(
+            savingsPlanRemainingRub,
+            (balanceAfterPurchaseRub - mandatoryAfterPurchase - reserveRemainingRub).coerceAtLeast(0),
+        )
+        val savingsReduction = (savingsPossibleBefore - savingsPossibleAfter).coerceAtLeast(0)
         val categoryOverrun = (mandatoryPurchaseRub - mandatoryCategoryRemainingRub).coerceAtLeast(0) +
             (optionalPurchaseRub - optionalCategoryRemainingRub).coerceAtLeast(0)
         return if (categoryOverrun > 0 || savingsReduction > 0) {
@@ -241,11 +247,7 @@ data class PurchaseDecisionContext(
     fun purchaseProblem(config: PurchaseAssessmentConfig): PurchaseProblem? = assess(config).problem
 
     internal fun isReasonable(config: PurchaseAssessmentConfig): Boolean =
-        decision == PurchaseDecision.PURCHASED && when (assess(config).outcome) {
-            PurchaseOutcome.GOOD -> true
-            PurchaseOutcome.PLAN_ADJUSTMENT -> consciouslyAdjustedPlan
-            PurchaseOutcome.RISKY -> false
-        }
+        decision == PurchaseDecision.PURCHASED && assess(config).outcome == PurchaseOutcome.GOOD
 
     internal fun isGoodPromotionDecision(config: PurchaseAssessmentConfig): Boolean {
         if (scenario != PurchaseScenario.PROMOTION || promotionSavingRub <= 0) return false

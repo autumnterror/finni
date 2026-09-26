@@ -95,7 +95,20 @@ internal class WeekRepository(
         weekNumber: Long,
         includeGoodResult: Boolean = true,
     ) {
-        val planProgress = planningApi.getPlanProgress(weekNumber)
+        val storedPlanProgress = planningApi.getPlanProgress(weekNumber)
+        val extraIncome = if (storedPlanProgress == null) emptyList() else economyApi.getIncomeHistory()
+            .filter { operation ->
+                operation.context.metadata?.contains("source=money-event;week=$weekNumber;") == true
+            }
+        val planProgress = storedPlanProgress?.copy(
+            extraIncomeRub = extraIncome.sumOf { it.amountRub },
+            extraWantsRub = extraIncome.filter { it.context.metadata?.contains("allocation=wants") == true }
+                .sumOf { it.amountRub },
+            extraSavingsRub = extraIncome.filter { it.context.metadata?.contains("allocation=goal") == true }
+                .sumOf { it.amountRub },
+            extraReserveRub = extraIncome.filter { it.context.metadata?.contains("allocation=reserve") == true }
+                .sumOf { it.amountRub },
+        )
         if (planProgress != null) {
             val plan = planProgress.plan
             val snapshot = BudgetWeekSnapshot(
@@ -109,6 +122,9 @@ internal class WeekRepository(
                 actualWantsRub = planProgress.category(PlanCategory.WANTS).actualRub,
                 actualSavingsRub = planProgress.category(PlanCategory.SAVINGS).actualRub,
                 unexpectedMandatoryRub = planProgress.unexpectedMandatoryRub,
+                extraIncomeRub = planProgress.extraIncomeRub,
+                extraReserveRub = planProgress.extraReserveRub,
+                knownMandatoryExpenseRub = plan.context.knownMandatoryExpenseRub,
             )
             if (snapshot.planAdequate) {
                 recordLearning(BudgetPlanningLearning.confirmedPlanAction(
