@@ -14,6 +14,7 @@ internal class CreatePetInteractor(
         name: String,
         color: PetColor,
         hamsterAppearance: HamsterAppearance = HamsterAppearance(),
+        existingProfile: PetProfile? = null,
     ): PetProfile {
         val normalizedName = PetNameRules.normalize(name)
         require(PetNameRules.validate(normalizedName) == null) { "Invalid pet name" }
@@ -22,6 +23,7 @@ internal class CreatePetInteractor(
             species = PetSpecies.Hamster,
             color = color,
             hamsterAppearance = hamsterAppearance,
+            clothing = existingProfile?.clothing ?: github.detrig.feature.pet.domain.model.ClothingState(),
         ).also(repository::saveProfile)
     }
 }

@@ -46,7 +46,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     }
     private val router by lazy {
         RoomRouterImpl(dependencies.gameLauncher(), dependencies.globalMessageController(), dependencies.resources(),
-            dependencies.marketLauncher())
+            dependencies.marketLauncher(), dependencies.wardrobeLauncher())
     }
     private val observeZones by lazy {
         ObserveRoomZonesInteractor(repository, ResolveRoomZoneAccessInteractor())

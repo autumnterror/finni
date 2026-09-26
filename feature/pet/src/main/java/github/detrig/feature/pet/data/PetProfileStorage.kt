@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import github.detrig.core.infrastructure.preferences.SharedStorage
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.HamsterAppearance
+import github.detrig.feature.pet.domain.model.ClothingState
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.model.PetSpecies
 import org.json.JSONObject
@@ -33,6 +34,14 @@ internal class PetProfileStorage(
                     mark = json.optString(MARK_KEY, HamsterAppearance.DEFAULT_MARK),
                     eyes = json.optString(EYES_KEY, HamsterAppearance.DEFAULT_EYES),
                 ),
+                clothing = json.optJSONObject(CLOTHING_KEY)?.let { saved ->
+                    val owned = saved.optJSONArray(OWNED_KEY)
+                    val equipped = saved.optJSONObject(EQUIPPED_KEY)
+                    ClothingState(
+                        ownedIds = (0 until (owned?.length() ?: 0)).map { owned!!.getString(it) }.toSet(),
+                        equippedBySlot = equipped?.keys()?.asSequence()?.associateWith { equipped.getString(it) }.orEmpty(),
+                    )
+                } ?: ClothingState(),
             )
             if (storedSpecies != PetSpecies.Hamster) saveProfile(profile)
             profile
@@ -51,6 +60,9 @@ internal class PetProfileStorage(
             .put(EARS_KEY, profile.hamsterAppearance.ears)
             .put(MARK_KEY, profile.hamsterAppearance.mark)
             .put(EYES_KEY, profile.hamsterAppearance.eyes)
+            .put(CLOTHING_KEY, JSONObject()
+                .put(OWNED_KEY, org.json.JSONArray(profile.clothing.ownedIds.sorted()))
+                .put(EQUIPPED_KEY, JSONObject(profile.clothing.equippedBySlot)))
             .toString()
         putString(PROFILE_KEY, payload)
     }
@@ -67,6 +79,9 @@ internal class PetProfileStorage(
         const val EARS_KEY = "appearance_ears"
         const val MARK_KEY = "appearance_mark"
         const val EYES_KEY = "appearance_eyes"
+        const val CLOTHING_KEY = "clothing"
+        const val OWNED_KEY = "owned"
+        const val EQUIPPED_KEY = "equipped"
         const val CURRENT_VERSION = 1
     }
 }

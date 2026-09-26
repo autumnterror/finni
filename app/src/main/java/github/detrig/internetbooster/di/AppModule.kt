@@ -18,6 +18,7 @@ import github.detrig.internetbooster.mediators.ShopMediator
 import github.detrig.internetbooster.mediators.PhoneMediator
 import github.detrig.internetbooster.mediators.InventoryMediator
 import github.detrig.internetbooster.mediators.FridgeMediator
+import github.detrig.internetbooster.mediators.WardrobeMediator
 import github.detrig.internetbooster.mediators.LearningMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 import github.detrig.core.time.SystemWallClock
@@ -141,6 +142,9 @@ internal class AppModuleImpl(
     private val petMediator: PetMediator by lazy {
         PetMediator(coreComponent)
     }
+    private val wardrobeMediator: WardrobeMediator by lazy {
+        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator)
+    }
 
     private val gameSessionMediator: GameSessionMediator by lazy {
         GameSessionMediator(
@@ -164,6 +168,7 @@ internal class AppModuleImpl(
             learningMediator,
             savingsMediator,
             shopMediator,
+            wardrobeMediator,
             inventoryMediator,
             gameAudio,
         )
@@ -188,6 +193,7 @@ internal class AppModuleImpl(
         savingsMediator.init()
         shopMediator.init()
         petMediator.init()
+        wardrobeMediator.init()
         github.detrig.internetbooster.mediators.FlightMediator(
             coreComponent,
             gameStateMediator,

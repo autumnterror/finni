@@ -121,13 +121,13 @@ internal class RoomViewModel(
     override fun perform(viewEvent: RoomViewEvent) {
         when (viewEvent) {
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
+            RoomViewEvent.WardrobeClicked -> launchOnce { router.openWardrobe() }
             RoomViewEvent.BedClicked -> showSleepConfirmation()
             RoomViewEvent.SleepConfirmed -> sleep()
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openPiggyBank()
             RoomViewEvent.TestsClicked,
-            RoomViewEvent.WardrobeClicked,
             RoomViewEvent.FoodClicked,
             RoomViewEvent.FeedingClicked -> router.showEntryComingSoon()
             RoomViewEvent.DishesClicked -> router.showEntryComingSoon()

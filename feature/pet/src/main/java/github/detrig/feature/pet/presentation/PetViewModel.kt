@@ -56,6 +56,7 @@ internal class PetViewModel(
             name = current.name,
             color = current.color,
             hamsterAppearance = current.hamsterAppearance,
+            existingProfile = current.existingProfile,
         )
     }
 
