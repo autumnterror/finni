@@ -117,10 +117,16 @@ internal class HamsterAssets(
         appearance: HamsterAppearance,
         targetSidePx: Int,
         blink: Boolean,
+        clothingLayers: List<ClothingDrawLayer> = emptyList(),
     ): Bitmap {
         val output = Bitmap.createBitmap(targetSidePx, targetSidePx, Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(output)
         val scale = targetSidePx.toFloat() / canvasSize
+        val clothingTarget = Rect(0, 0, targetSidePx, targetSidePx)
+        val clothingPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        clothingLayers.filter { it.z < 0 }.forEach {
+            canvas.drawBitmap(it.image.asAndroidBitmap(), null, clothingTarget, clothingPaint)
+        }
         resolve(appearance, blink).forEach { layer ->
             val bitmap = layer.sprite.image.asAndroidBitmap()
             val destination = Rect(
@@ -135,6 +141,9 @@ internal class HamsterAssets(
                 }
             }
             canvas.drawBitmap(bitmap, null, destination, paint)
+        }
+        clothingLayers.filter { it.z >= 0 }.forEach {
+            canvas.drawBitmap(it.image.asAndroidBitmap(), null, clothingTarget, clothingPaint)
         }
         return output
     }
@@ -324,6 +333,7 @@ internal fun HamsterPreview(
     lookAt: Offset? = null,
     flightPhase: Float? = null,
     limbAmplitude: Float = 1f,
+    clothingLayers: List<ClothingDrawLayer> = emptyList(),
 ) {
     val drawLayers = remember(assets, appearance, blink) {
         assets.resolve(appearance, blink)
@@ -349,6 +359,14 @@ internal fun HamsterPreview(
         val footWave = flightPhase?.let {
             sin(it * 2f * PI + PI / 2f).toFloat() * limbAmplitude
         } ?: 0f
+        clothingLayers.filter { it.z < 0 }.forEach { layer ->
+            drawImage(
+                image = layer.image,
+                dstOffset = IntOffset(dx.toInt(), dy.toInt()),
+                dstSize = IntSize((assets.canvasSize * factor).toInt(), (assets.canvasSize * factor).toInt()),
+                filterQuality = FilterQuality.High,
+            )
+        }
         drawLayers.forEach { layer ->
             val isOpenEye = layer.id.startsWith("eyes_") && !layer.id.startsWith("eyes_closed")
             val layerOffset = if (isOpenEye) eyeOffset else Offset.Zero
@@ -381,6 +399,14 @@ internal fun HamsterPreview(
                     filterQuality = FilterQuality.High,
                 )
             }
+        }
+        clothingLayers.filter { it.z >= 0 }.forEach { layer ->
+            drawImage(
+                image = layer.image,
+                dstOffset = IntOffset(dx.toInt(), dy.toInt()),
+                dstSize = IntSize((assets.canvasSize * factor).toInt(), (assets.canvasSize * factor).toInt()),
+                filterQuality = FilterQuality.High,
+            )
         }
         if (mouthOpenness > 0.05f) {
             val center = Offset(dx + 498f * factor, dy + 460f * factor)

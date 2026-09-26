@@ -8,6 +8,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import kotlin.math.roundToInt
 
@@ -21,6 +26,7 @@ fun PetPortrait(profile: PetProfile, modifier: Modifier = Modifier) {
                 assets = assets,
                 appearance = profile.hamsterAppearance,
                 modifier = modifier,
+                clothingLayers = rememberClothingLayers(profile.clothing.equippedBySlot, profile.hamsterAppearance),
             )
         }
         return
@@ -56,5 +62,13 @@ fun PetPortrait(profile: PetProfile, modifier: Modifier = Modifier) {
             colorFilter = tint,
             filterQuality = FilterQuality.None,
         )
+    }
+}
+
+@Preview(name = "Портрет питомца", widthDp = 220, heightDp = 220)
+@Composable
+private fun PetPortraitPreview() {
+    FinPetTheme {
+        PetPortrait(PetProfile(name = "Финни", color = PetColor.Sunny), Modifier.size(220.dp))
     }
 }

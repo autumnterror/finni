@@ -25,6 +25,7 @@ internal class RoomMediator(
     private val learningMediator: LearningMediator,
     private val savingsMediator: SavingsMediator,
     private val shopMediator: ShopMediator,
+    private val wardrobeMediator: WardrobeMediator,
     private val inventoryMediator: InventoryMediator,
     private val gameAudio: GameAudio,
 ) : Mediator<RoomApi> {
@@ -41,6 +42,9 @@ internal class RoomMediator(
                 override fun inventoryApi() = inventoryMediator.getApi()
                 override fun marketLauncher() = github.detrig.feature.room.api.RoomMarketLauncher {
                     shopMediator.getApi().open(github.detrig.products.GroceryStoreIds.Store)
+                }
+                override fun wardrobeLauncher() = github.detrig.feature.room.api.RoomWardrobeLauncher {
+                    wardrobeMediator.getApi().open()
                 }
                 override fun impulseWishSource() = RoomImpulseWishSource {
                     shopMediator.claimRoomImpulseWish()?.let { wish ->

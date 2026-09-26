@@ -12,6 +12,18 @@ interface PetApi {
     suspend fun preloadAssets()
 
     fun observeProfile(): Flow<PetProfile?>
+    fun currentProfile(): PetProfile?
+
+    suspend fun clothingItems(): List<ClothingItem>
+    fun cachedClothingItems(): List<ClothingItem>
+    fun recordClothingPurchase(itemId: String)
+    fun equipClothing(slot: String, itemId: String?)
+
+    @Composable
+    fun ClothingThumbnail(itemId: String, modifier: Modifier = Modifier)
+
+    @Composable
+    fun OutfitPreview(profile: PetProfile, equippedBySlot: Map<String, String>, modifier: Modifier = Modifier)
 
     /** Не пропускает игрока в основной интерфейс, пока питомец не создан. */
     @Composable

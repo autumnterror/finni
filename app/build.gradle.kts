@@ -78,6 +78,7 @@ dependencies {
     implementation(project(":feature:phone"))
     implementation(project(":feature:inventory"))
     implementation(project(":feature:fridge"))
+    implementation(project(":feature:wardrobe"))
     implementation(project(":feature:mini-games:common"))
     implementation(project(":feature:mini-games:fishing"))
     implementation(project(":feature:mini-games:flight"))

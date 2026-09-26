@@ -217,6 +217,10 @@ fun PetScene(
                         lookAt = lookAt,
                         flightPhase = flightPhase,
                         limbAmplitude = limbAmplitude,
+                        clothingLayers = rememberClothingLayers(
+                            profile.clothing.equippedBySlot,
+                            profile.hamsterAppearance,
+                        ),
                     )
                 } else if (profile.species != PetSpecies.Hamster) {
                     Image(
@@ -476,16 +480,23 @@ internal fun rememberPetAppearanceBitmap(
     if (profile.species == PetSpecies.Hamster) {
         val assets = rememberHamsterAssets()
         val blink = rememberHamsterBlink()
+        val assetManager = LocalResources.current.assets
         val bitmap by produceState<ImageBitmap?>(
             initialValue = null,
             assets,
             profile.hamsterAppearance,
+            profile.clothing.equippedBySlot,
             blink,
             maxSidePx,
         ) {
             value = assets?.let {
+                val clothes = ClothingArtwork.layers(
+                    assetManager,
+                    profile.clothing.equippedBySlot,
+                    profile.hamsterAppearance,
+                )
                 withContext(Dispatchers.Default) {
-                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink).asImageBitmap()
+                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes).asImageBitmap()
                 }
             }
         }

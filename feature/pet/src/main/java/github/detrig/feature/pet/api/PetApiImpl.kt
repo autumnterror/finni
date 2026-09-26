@@ -12,6 +12,11 @@ import github.detrig.feature.pet.presentation.HamsterAssetsCache
 import github.detrig.feature.pet.presentation.PetHostScreen
 import github.detrig.feature.pet.presentation.PetScene
 import github.detrig.feature.pet.presentation.PetPortrait
+import github.detrig.feature.pet.presentation.ClothingArtwork
+import github.detrig.feature.pet.presentation.ClothingThumbnail as PetClothingThumbnail
+import github.detrig.feature.pet.presentation.HamsterPreview
+import github.detrig.feature.pet.presentation.rememberHamsterAssets
+import github.detrig.feature.pet.presentation.rememberClothingLayers
 import github.detrig.feature.pet.presentation.rememberPetAppearanceBitmap
 
 internal class PetApiImpl(
@@ -20,9 +25,43 @@ internal class PetApiImpl(
 ) : PetApi {
     override suspend fun preloadAssets() {
         HamsterAssetsCache.awaitPreloaded(assets)
+        ClothingArtwork.preload(assets, repository.currentProfile())
     }
 
     override fun observeProfile() = repository.observeProfile()
+
+    override fun currentProfile(): PetProfile? = repository.currentProfile()
+
+    override suspend fun clothingItems(): List<ClothingItem> = ClothingArtwork.items(assets)
+
+    override fun cachedClothingItems(): List<ClothingItem> = ClothingArtwork.cachedItems()
+
+    override fun recordClothingPurchase(itemId: String) {
+        repository.updateClothing { it.withPurchase(itemId) }
+    }
+
+    override fun equipClothing(slot: String, itemId: String?) {
+        val profile = repository.updateClothing { it.withEquipped(slot, itemId) }
+        ClothingArtwork.retainEquipped(profile)
+    }
+
+    @Composable
+    override fun ClothingThumbnail(itemId: String, modifier: Modifier) {
+        PetClothingThumbnail(itemId, modifier)
+    }
+
+    @Composable
+    override fun OutfitPreview(profile: PetProfile, equippedBySlot: Map<String, String>, modifier: Modifier) {
+        val hamsterAssets = rememberHamsterAssets()
+        if (hamsterAssets != null) {
+            HamsterPreview(
+                assets = hamsterAssets,
+                appearance = profile.hamsterAppearance,
+                modifier = modifier,
+                clothingLayers = rememberClothingLayers(equippedBySlot, profile.hamsterAppearance),
+            )
+        }
+    }
 
     @Composable
     override fun RequirePet(
