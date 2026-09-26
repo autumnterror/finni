@@ -8,9 +8,14 @@ import android.graphics.ColorMatrixColorFilter as AndroidColorMatrixColorFilter
 import android.graphics.Paint as AndroidPaint
 import android.graphics.Rect
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -22,7 +27,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -42,8 +51,10 @@ import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.PointerInputModifierNode
+import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -58,13 +69,20 @@ import androidx.core.graphics.createBitmap
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.R
+import github.detrig.feature.pet.api.PetGestureCallbacks
+import github.detrig.feature.pet.api.PetPose
 import github.detrig.feature.pet.domain.model.HamsterAppearance
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.model.PetSpecies
-import github.detrig.feature.gamestate.domain.progression.PetGrowthStage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.hypot
+import kotlin.math.PI
+import kotlin.math.sin
 
 /** Единый 2D-рендер питомца для комнаты и других игровых сцен. */
 @Composable
@@ -74,60 +92,131 @@ fun PetScene(
     animateIdle: Boolean = true,
     mouthOpen: Boolean = false,
     lookAt: Offset? = null,
-    growthStage: PetGrowthStage = PetGrowthStage.COMPANION,
     onClick: (() -> Unit)? = null,
+    pose: PetPose = PetPose.IDLE,
+    gestureCallbacks: PetGestureCallbacks? = null,
+    showShadow: Boolean = true,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
     val hamsterAssets = if (profile.species == PetSpecies.Hamster) rememberHamsterAssets() else null
     val hamsterBlink = if (profile.species == PetSpecies.Hamster) rememberHamsterBlink() else false
+    val reaction = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var reacting by remember { mutableStateOf(false) }
+    val poseScaleX by animateFloatAsState(
+        targetValue = when (pose) {
+            PetPose.HELD -> 0.94f
+            PetPose.AIRBORNE -> 0.97f
+            PetPose.LANDED -> 1.17f
+            PetPose.GETTING_UP -> 0.91f
+            PetPose.IDLE -> 1f
+        },
+        animationSpec = tween(if (pose == PetPose.LANDED) 100 else 180),
+        label = "pet_pose_scale_x",
+    )
+    val poseScaleY by animateFloatAsState(
+        targetValue = when (pose) {
+            PetPose.HELD -> 1.04f
+            PetPose.AIRBORNE -> 1.05f
+            PetPose.LANDED -> 0.78f
+            PetPose.GETTING_UP -> 1.14f
+            PetPose.IDLE -> 1f
+        },
+        animationSpec = tween(if (pose == PetPose.LANDED) 100 else 180),
+        label = "pet_pose_scale_y",
+    )
+    val tapScaleX = 1f + reaction.value * 0.05f
+    val tapScaleY = 1f - reaction.value * 0.06f
+    val flightPhase = if (pose == PetPose.HELD || pose == PetPose.AIRBORNE) {
+        val flightTransition = rememberInfiniteTransition(label = "pet_flight")
+        val phase by flightTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = if (pose == PetPose.HELD) 800 else 620,
+                    easing = LinearEasing,
+                ),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "pet_flight_phase",
+        )
+        phase
+    } else null
+    val limbAmplitude = if (pose == PetPose.HELD) 0.8f else 1f
+    val flightWobble = flightPhase?.let { sin(it * 2f * PI).toFloat() * limbAmplitude } ?: 0f
+    val viewConfiguration = LocalViewConfiguration.current
+    val reactThenClick = {
+        if (!reacting && pose == PetPose.IDLE) {
+            reacting = true
+            scope.launch {
+                try {
+                    reaction.animateTo(1f, tween(85))
+                    reaction.animateTo(
+                        0f,
+                        spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                    )
+                    onClick?.invoke()
+                } finally {
+                    reacting = false
+                }
+            }
+        }
+    }
     val clickModifier = when {
-        onClick == null -> modifier
         profile.species == PetSpecies.Hamster && hamsterAssets != null -> modifier.hamsterClickable(
             assets = hamsterAssets,
             appearance = profile.hamsterAppearance,
             blink = hamsterBlink,
             contentDescription = description,
-            onClick = onClick,
+            onClick = reactThenClick.takeIf { pose == PetPose.IDLE && !reacting },
+            gestureCallbacks = gestureCallbacks.takeUnless { reacting },
+            touchSlop = viewConfiguration.touchSlop,
+            longPressTimeoutMillis = viewConfiguration.longPressTimeoutMillis,
+            scaleX = poseScaleX * tapScaleX,
+            scaleY = poseScaleY * tapScaleY,
         )
-        else -> modifier.clickable(
+        onClick != null -> modifier.clickable(
             onClickLabel = stringResource(R.string.pet_talk_to, profile.name),
             role = Role.Button,
             onClick = onClick,
         )
-    }
-    val growthScale = when (growthStage) {
-        PetGrowthStage.BABY -> .78f
-        PetGrowthStage.EXPLORER -> .9f
-        PetGrowthStage.COMPANION -> 1f
+        else -> modifier
     }
     Box(clickModifier) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = growthScale
-                    scaleY = growthScale
-                    transformOrigin = TransformOrigin(.5f, 1f)
-                },
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawOval(
-                    color = shadowColor,
-                    topLeft = Offset(size.width * 0.24f, size.height * 0.88f),
-                    size = Size(size.width * 0.52f, size.height * 0.08f),
-                )
+        Box(Modifier.fillMaxSize()) {
+            if (showShadow) {
+                Canvas(Modifier.fillMaxSize()) {
+                    drawOval(
+                        color = shadowColor,
+                        topLeft = Offset(size.width * 0.24f, size.height * 0.88f),
+                        size = Size(size.width * 0.52f, size.height * 0.08f),
+                    )
+                }
             }
-            Box(Modifier.fillMaxSize().petCalmIdleAnimation(animateIdle)) {
+            Box(
+                Modifier.fillMaxSize()
+                    .petCalmIdleAnimation(animateIdle && pose == PetPose.IDLE && !reacting)
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(0.5f, 0.94f)
+                        scaleX = poseScaleX * tapScaleX
+                        scaleY = poseScaleY * tapScaleY
+                        rotationZ = reaction.value * 1.5f + flightWobble * 2.5f
+                        translationX = flightWobble * size.width * 0.008f
+                    },
+            ) {
                 if (profile.species == PetSpecies.Hamster && hamsterAssets != null) {
                     HamsterPreview(
                         assets = hamsterAssets,
                         appearance = profile.hamsterAppearance,
                         modifier = Modifier.fillMaxSize(),
-                        blink = hamsterBlink,
+                        blink = hamsterBlink || pose == PetPose.LANDED || reaction.value > 0.7f,
                         mouthOpen = mouthOpen,
                         lookAt = lookAt,
+                        flightPhase = flightPhase,
+                        limbAmplitude = limbAmplitude,
                     )
                 } else if (profile.species != PetSpecies.Hamster) {
                     Image(
@@ -156,20 +245,32 @@ private fun Modifier.hamsterClickable(
     appearance: HamsterAppearance,
     blink: Boolean,
     contentDescription: String,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
+    gestureCallbacks: PetGestureCallbacks?,
+    touchSlop: Float,
+    longPressTimeoutMillis: Long,
+    scaleX: Float,
+    scaleY: Float,
 ): Modifier = this.then(
     HamsterClickableElement(
         assets = assets,
         appearance = appearance,
         blink = blink,
         onClick = onClick,
+        gestureCallbacks = gestureCallbacks,
+        touchSlop = touchSlop,
+        longPressTimeoutMillis = longPressTimeoutMillis,
+        scaleX = scaleX,
+        scaleY = scaleY,
     ),
 ).semantics {
     this.contentDescription = contentDescription
     role = Role.Button
-    onClick {
-        onClick()
-        true
+    if (onClick != null) {
+        onClick {
+            onClick()
+            true
+        }
     }
 }.focusable()
 
@@ -185,13 +286,23 @@ private data class HamsterClickableElement(
     val assets: HamsterAssets,
     val appearance: HamsterAppearance,
     val blink: Boolean,
-    val onClick: () -> Unit,
+    val onClick: (() -> Unit)?,
+    val gestureCallbacks: PetGestureCallbacks?,
+    val touchSlop: Float,
+    val longPressTimeoutMillis: Long,
+    val scaleX: Float,
+    val scaleY: Float,
 ) : ModifierNodeElement<HamsterClickableNode>() {
     override fun create(): HamsterClickableNode = HamsterClickableNode(
         assets = assets,
         appearance = appearance,
         blink = blink,
         onClick = onClick,
+        gestureCallbacks = gestureCallbacks,
+        touchSlop = touchSlop,
+        longPressTimeoutMillis = longPressTimeoutMillis,
+        scaleX = scaleX,
+        scaleY = scaleY,
     )
 
     override fun update(node: HamsterClickableNode) {
@@ -200,6 +311,11 @@ private data class HamsterClickableElement(
             appearance = appearance,
             blink = blink,
             onClick = onClick,
+            gestureCallbacks = gestureCallbacks,
+            touchSlop = touchSlop,
+            longPressTimeoutMillis = longPressTimeoutMillis,
+            scaleX = scaleX,
+            scaleY = scaleY,
         )
     }
 }
@@ -208,9 +324,20 @@ private class HamsterClickableNode(
     private var assets: HamsterAssets,
     private var appearance: HamsterAppearance,
     private var blink: Boolean,
-    private var onClick: () -> Unit,
+    private var onClick: (() -> Unit)?,
+    private var gestureCallbacks: PetGestureCallbacks?,
+    private var touchSlop: Float,
+    private var longPressTimeoutMillis: Long,
+    private var scaleX: Float,
+    private var scaleY: Float,
 ) : Modifier.Node(), PointerInputModifierNode {
     private var pressedPointerId: androidx.compose.ui.input.pointer.PointerId? = null
+    private var dragCallbacks: PetGestureCallbacks? = null
+    private var dragging = false
+    private var startRoot = Offset.Zero
+    private var lastRoot = Offset.Zero
+    private val recentPositions = ArrayDeque<Pair<Long, Offset>>()
+    private var longPressJob: Job? = null
 
     override fun sharePointerInputWithSiblings(): Boolean = true
 
@@ -220,41 +347,123 @@ private class HamsterClickableNode(
         val containerSize = Size(bounds.width.toFloat(), bounds.height.toFloat())
         if (pressedPointerId == null) {
             val down = pointerEvent.changes.firstOrNull { it.changedToDownIgnoreConsumed() } ?: return
-            if (assets.contains(appearance, down.position, containerSize, blink)) {
+            if ((onClick != null || gestureCallbacks != null) &&
+                assets.contains(appearance, unscale(down.position, containerSize), containerSize, blink)
+            ) {
                 pressedPointerId = down.id
+                dragCallbacks = gestureCallbacks
+                dragging = false
+                startRoot = requireLayoutCoordinates().localToRoot(down.position)
+                lastRoot = startRoot
+                recentPositions.clear()
+                record(down.uptimeMillis, startRoot)
                 down.consume()
+                if (dragCallbacks != null) {
+                    longPressJob = coroutineScope.launch {
+                        delay(longPressTimeoutMillis)
+                        if (pressedPointerId == down.id && !dragging) {
+                            dragging = true
+                            dragCallbacks?.onGrab()
+                        }
+                    }
+                }
             }
             return
         }
 
         val change = pointerEvent.changes.firstOrNull { it.id == pressedPointerId } ?: return
-        if (change.changedToUpIgnoreConsumed()) {
-            val isInside = assets.contains(appearance, change.position, containerSize, blink)
-            pressedPointerId = null
-            if (isInside) {
+        val root = requireLayoutCoordinates().localToRoot(change.position)
+        if (change.pressed) {
+            record(change.uptimeMillis, root)
+            if (!dragging && dragCallbacks != null &&
+                hypot(root.x - startRoot.x, root.y - startRoot.y) > touchSlop
+            ) {
+                longPressJob?.cancel()
+                dragging = true
+                dragCallbacks?.onGrab()
+            }
+            if (dragging) {
+                val delta = root - lastRoot
+                if (delta != Offset.Zero) dragCallbacks?.onDrag(delta)
                 change.consume()
-                onClick()
+            }
+            lastRoot = root
+        }
+        if (change.changedToUpIgnoreConsumed()) {
+            longPressJob?.cancel()
+            longPressJob = null
+            val wasDragging = dragging
+            val release = if (wasDragging) velocity() else Offset.Zero
+            pressedPointerId = null
+            dragging = false
+            recentPositions.clear()
+            val callbacks = dragCallbacks
+            dragCallbacks = null
+            if (wasDragging) {
+                change.consume()
+                callbacks?.onRelease(release)
+            } else if (assets.contains(
+                    appearance, unscale(change.position, containerSize), containerSize, blink,
+                )
+            ) {
+                change.consume()
+                onClick?.invoke()
             }
         }
     }
 
     override fun onCancelPointerInput() {
+        longPressJob?.cancel()
+        longPressJob = null
+        if (dragging) dragCallbacks?.onCancel()
         pressedPointerId = null
+        dragCallbacks = null
+        dragging = false
+        recentPositions.clear()
+    }
+
+    private fun unscale(position: Offset, size: Size): Offset = Offset(
+        x = (position.x - size.width * 0.5f) / scaleX + size.width * 0.5f,
+        y = (position.y - size.height * 0.94f) / scaleY + size.height * 0.94f,
+    )
+
+    private fun record(timeMillis: Long, position: Offset) {
+        recentPositions.addLast(timeMillis to position)
+        while (recentPositions.size > 2 && timeMillis - recentPositions.first().first > 120L) {
+            recentPositions.removeFirst()
+        }
+    }
+
+    private fun velocity(): Offset {
+        val first = recentPositions.firstOrNull() ?: return Offset.Zero
+        val last = recentPositions.lastOrNull() ?: return Offset.Zero
+        val seconds = (last.first - first.first) / 1_000f
+        return if (seconds > 0.015f) (last.second - first.second) / seconds else Offset.Zero
     }
 
     fun update(
         assets: HamsterAssets,
         appearance: HamsterAppearance,
         blink: Boolean,
-        onClick: () -> Unit,
+        onClick: (() -> Unit)?,
+        gestureCallbacks: PetGestureCallbacks?,
+        touchSlop: Float,
+        longPressTimeoutMillis: Long,
+        scaleX: Float,
+        scaleY: Float,
     ) {
-        if (this.assets !== assets || this.appearance != appearance || this.blink != blink) {
-            pressedPointerId = null
+        if (this.assets !== assets || this.appearance != appearance) {
+            onCancelPointerInput()
         }
         this.assets = assets
         this.appearance = appearance
         this.blink = blink
         this.onClick = onClick
+        this.gestureCallbacks = gestureCallbacks
+        this.touchSlop = touchSlop
+        this.longPressTimeoutMillis = longPressTimeoutMillis
+        this.scaleX = scaleX
+        this.scaleY = scaleY
     }
 }
 
@@ -406,17 +615,18 @@ private fun Modifier.petCalmIdleAnimation(enabled: Boolean): Modifier {
     }
 }
 
-@Preview(name = "Стадии питомца", widthDp = 330, heightDp = 130, showBackground = true)
+@Preview(name = "Реакции питомца", widthDp = 330, heightDp = 130, showBackground = true)
 @Composable
-private fun PetGrowthStagesPreview() {
+private fun PetMotionStatesPreview() {
     FinPetTheme {
         Row {
-            PetGrowthStage.entries.forEach { stage ->
+            listOf(PetPose.IDLE, PetPose.LANDED, PetPose.GETTING_UP).forEach { pose ->
                 PetScene(
                     profile = PetProfile(name = "Финни", color = PetColor.Sunny),
                     modifier = Modifier.size(110.dp),
                     animateIdle = false,
-                    growthStage = stage,
+                    pose = pose,
+                    showShadow = pose == PetPose.IDLE,
                 )
             }
         }

@@ -52,6 +52,11 @@ internal class HouseMotionState(position: HousePosition) {
 
     fun pause() { isWalking = false }
 
+    fun placeAt(x: Float) {
+        petX = HouseLayout.clampPet(x)
+        isWalking = false
+    }
+
     fun position() = HousePosition(
         HouseLayout.VERSION, HouseLayout.clampCamera(cameraLeftX), petX, facingRight, hintSeen,
     )

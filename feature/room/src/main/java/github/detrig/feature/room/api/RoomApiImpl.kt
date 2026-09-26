@@ -32,7 +32,7 @@ internal class RoomApiImpl(
         modifier: Modifier,
         petName: String,
         canShowDialogs: Boolean,
-        petContent: @Composable (Modifier) -> Unit,
+        petContent: @Composable (Modifier, RoomPetInteraction) -> Unit,
         petPortrait: @Composable (Modifier) -> Unit,
         onMirrorClick: () -> Unit,
         onPhoneClick: () -> Unit,

@@ -34,6 +34,9 @@ interface PetApi {
         animateIdle: Boolean = true,
         mouthOpen: Boolean = false,
         lookAt: Offset? = null,
+        pose: PetPose = PetPose.IDLE,
+        gestureCallbacks: PetGestureCallbacks? = null,
+        showShadow: Boolean = true,
     )
 
     /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */

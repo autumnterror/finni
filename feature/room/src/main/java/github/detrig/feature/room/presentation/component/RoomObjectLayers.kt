@@ -29,7 +29,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.layout.boundsInWindow
@@ -73,7 +73,7 @@ internal fun RoomObjectLayers(
     rotationByObjectId: Map<String, Float> = emptyMap(),
     nightMode: Boolean = false,
 ) {
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val click by rememberUpdatedState(onObjectClick)

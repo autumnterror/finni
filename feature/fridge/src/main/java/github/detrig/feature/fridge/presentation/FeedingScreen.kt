@@ -57,7 +57,7 @@ import github.detrig.products.GroceryCategoryIds
 import github.detrig.products.ProductId
 import kotlin.math.roundToInt
 import github.detrig.feature.room.api.FirstRunOnboardingStep
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 
 @Composable
 internal fun FeedingScreen() {
@@ -100,7 +100,7 @@ internal fun FeedingScreen() {
                 petAnchorObjectId = "decor_chair",
                 petZIndex = 1.5f,
                 petBaselineFraction = 0.742f,
-                petContent = roomPetContent,
+                petContent = { petModifier, _ -> roomPetContent(petModifier) },
                 tableFoodContent = roomTableContent,
             )
         },
@@ -121,7 +121,7 @@ internal fun FeedingScreen() {
         when (firstRunStep) {
             FirstRunOnboardingStep.FEEDING -> FinPetDialogueDialog(
                 speakerName = profile.name,
-                cards = listOf(LocalContext.current.getString(R.string.first_run_feeding_drag)),
+                cards = listOf(stringResource(R.string.first_run_feeding_drag)),
                 portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
                 focusable = false,
                 advanceOnTap = false,
@@ -131,7 +131,7 @@ internal fun FeedingScreen() {
             )
             FirstRunOnboardingStep.FEEDING_DONE -> FinPetDialogueDialog(
                 speakerName = profile.name,
-                cards = listOf(LocalContext.current.getString(R.string.first_run_fed_thanks)),
+                cards = listOf(stringResource(R.string.first_run_fed_thanks)),
                 portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
                 dismissOnBackPress = false,
                 onFinished = { viewModel.perform(FeedingViewEvent.FirstRunThanksDismissed) },

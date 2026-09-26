@@ -176,6 +176,18 @@ internal object HouseLayout {
     fun clampCamera(x: Float): Float = x.coerceIn(0f, WORLD_WIDTH - VIEWPORT_WIDTH)
     fun clampPet(x: Float): Float = x.coerceIn(PET_WALK_MARGIN, WORLD_WIDTH - PET_WALK_MARGIN)
 
+    /** The three visible partitions split the room into four soft flight arenas. */
+    fun petFlightBounds(x: Float): Pair<Float, Float> {
+        val partitions = floatArrayOf(0f, 318f, 854f, 1548f, 2048f)
+        val referenceX = x / WORLD_WIDTH * 2048f
+        val index = (0 until partitions.lastIndex).firstOrNull {
+            referenceX <= partitions[it + 1]
+        } ?: partitions.lastIndex - 1
+        val radius = PET_WIDTH * 0.36f
+        return (partitions[index] / 2048f * WORLD_WIDTH + radius) to
+            (partitions[index + 1] / 2048f * WORLD_WIDTH - radius)
+    }
+
     fun restored(position: HousePosition?): HousePosition =
         position?.takeIf { it.layoutVersion == VERSION && it.cameraLeftX.isFinite() && it.petX.isFinite() }
             ?.copy(cameraLeftX = clampCamera(position.cameraLeftX), petX = clampPet(position.petX))

@@ -48,10 +48,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -108,7 +109,7 @@ private const val HOME_CLOSE_GLYPH_SIZE = 54f
 @Composable
 internal fun PhoneScreen(route: PhoneRoute) {
     val component = PhoneFeature.component()
-    val componentContext = LocalContext.current
+    val componentResources = LocalResources.current
     val messagesViewModel: MessagesViewModel = viewModel { component.messagesViewModel() }
     val messagesState by messagesViewModel.state().observeAsState(MessagesViewState())
     val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
@@ -134,7 +135,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 modifier = Modifier.fillMaxSize(),
                 active = false,
                 canShowDialogs = false,
-                petContent = { petModifier ->
+                petContent = { petModifier, _ ->
                     component.petApi.Content(profile = petProfile, modifier = petModifier)
                 },
             )
@@ -172,7 +173,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
                     if (component.roomApi.firstRunGuide.step.value in firstRunShopPurchaseSteps) {
                         component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.PURCHASE_READY)
                         component.globalMessageController.showMessage(
-                            componentContext.getString(R.string.first_run_spent, spentRub),
+                            componentResources.getString(R.string.first_run_spent, spentRub),
                         )
                     }
                 },
@@ -195,7 +196,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 firstRunStep == FirstRunOnboardingStep.PHONE_STORE_GUIDANCE && activeAppId == null -> {
                     FinPetDialogueDialog(
                         speakerName = petProfile.name,
-                        cards = listOf(componentContext.getString(R.string.first_run_store_intro)),
+                        cards = listOf(stringResource(R.string.first_run_store_intro)),
                         portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
                         dismissOnBackPress = false,
                         onFinished = {
@@ -208,11 +209,11 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 firstRunStep == FirstRunOnboardingStep.SHOP_PRICE_GUIDANCE && activeAppId == GROCERY_APP -> {
                     FinPetDialogueDialog(
                         speakerName = petProfile.name,
-                        cards = listOf(componentContext.getString(R.string.first_run_price_intro)),
+                        cards = listOf(stringResource(R.string.first_run_price_intro)),
                         portrait = { modifier -> component.petApi.Portrait(petProfile, modifier) },
                         advanceOnTap = false,
                         dismissOnBackPress = false,
-                        actions = listOf(FinPetDialogueAction("next", componentContext.getString(R.string.first_run_next))),
+                        actions = listOf(FinPetDialogueAction("next", stringResource(R.string.first_run_next))),
                         onActionSelected = {
                             component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE)
                         },
@@ -327,12 +328,12 @@ private fun PhoneCanvasLayer(
     modifier: Modifier,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val assets = remember(context.resources) {
+    val resources = LocalResources.current
+    val assets = remember(resources) {
         PhoneCanvasAssets(
-            wallpaper = ImageBitmap.imageResource(context.resources, R.drawable.phone_wallpaper_blue),
-            screenMask = ImageBitmap.imageResource(context.resources, R.drawable.phone_screen_mask),
-            overlay = ImageBitmap.imageResource(context.resources, R.drawable.phone_overlay),
+            wallpaper = ImageBitmap.imageResource(resources, R.drawable.phone_wallpaper_blue),
+            screenMask = ImageBitmap.imageResource(resources, R.drawable.phone_screen_mask),
+            overlay = ImageBitmap.imageResource(resources, R.drawable.phone_overlay),
         )
     }
     Box(modifier) {
@@ -763,7 +764,6 @@ private fun GroceryAppContent(
     onFirstRunProductSelected: () -> Unit,
     onFirstRunCheckout: (Long) -> Unit,
 ) {
-    val context = LocalContext.current
     var page by rememberSaveable { mutableStateOf(PhoneShopPage.Catalog) }
     val highlightedProductId = remember {
         GroceryCatalog().storefront.items.minByOrNull { it.priceRub }?.id
@@ -785,7 +785,7 @@ private fun GroceryAppContent(
                 }
             },
             tutorialMessage = if (firstRunStep == FirstRunOnboardingStep.SHOP_FOOD_GUIDANCE) {
-                context.getString(R.string.first_run_buy_food)
+                stringResource(R.string.first_run_buy_food)
             } else null,
         )
         PhoneShopPage.Cart -> shopApi.CartContent(

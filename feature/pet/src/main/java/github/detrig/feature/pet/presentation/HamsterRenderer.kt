@@ -32,8 +32,9 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import kotlin.math.PI
+import kotlin.math.sin
 
 internal data class HamsterSprite(
     val image: ImageBitmap,
@@ -292,7 +295,7 @@ private fun loadHamsterThumbnails(
 
 @Composable
 internal fun rememberHamsterAssets(): HamsterAssets? {
-    val assetManager = LocalContext.current.assets
+    val assetManager = LocalResources.current.assets
     val state by HamsterAssetsCache.assets(assetManager).collectAsState()
     return state
 }
@@ -319,6 +322,8 @@ internal fun HamsterPreview(
     blink: Boolean = false,
     mouthOpen: Boolean = false,
     lookAt: Offset? = null,
+    flightPhase: Float? = null,
+    limbAmplitude: Float = 1f,
 ) {
     val drawLayers = remember(assets, appearance, blink) {
         assets.resolve(appearance, blink)
@@ -340,6 +345,10 @@ internal fun HamsterPreview(
             val vertical = ((target.y - 0.40f) * 1.8f).coerceIn(-1f, 1f)
             Offset(horizontal * 20f * factor, vertical * 12f * factor)
         } ?: Offset.Zero
+        val armWave = flightPhase?.let { sin(it * 2f * PI).toFloat() * limbAmplitude } ?: 0f
+        val footWave = flightPhase?.let {
+            sin(it * 2f * PI + PI / 2f).toFloat() * limbAmplitude
+        } ?: 0f
         drawLayers.forEach { layer ->
             val isOpenEye = layer.id.startsWith("eyes_") && !layer.id.startsWith("eyes_closed")
             val layerOffset = if (isOpenEye) eyeOffset else Offset.Zero
@@ -348,21 +357,30 @@ internal fun HamsterPreview(
             val spriteHeight = if (layer.id == "face_nose_mouth" && mouthOpenness > 0.05f) {
                 minOf(layer.sprite.image.height, MOUTH_SPRITE_NOSE_HEIGHT)
             } else layer.sprite.image.height
-            drawImage(
-                image = layer.sprite.image,
-                srcOffset = IntOffset.Zero,
-                srcSize = IntSize(layer.sprite.image.width, spriteHeight),
-                dstOffset = IntOffset(
-                    (dx + layer.sprite.x * factor + layerOffset.x).toInt(),
-                    (dy + layer.sprite.y * factor + layerOffset.y).toInt(),
-                ),
-                dstSize = IntSize(
-                    (layer.sprite.image.width * factor).toInt(),
-                    (spriteHeight * factor).toInt(),
-                ),
-                colorFilter = layer.colorFilter,
-                filterQuality = FilterQuality.High,
-            )
+            val (angle, anchor) = when (layer.id) {
+                "arm_left_detail" -> 7f * armWave to Offset(420f, 570f)
+                "arm_right_detail" -> -7f * armWave to Offset(590f, 675f)
+                "foot_left" -> 5f * footWave to Offset(400f, 900f)
+                "foot_right" -> -5f * footWave to Offset(650f, 900f)
+                else -> 0f to Offset.Zero
+            }
+            rotate(angle, pivot = Offset(dx + anchor.x * factor, dy + anchor.y * factor)) {
+                drawImage(
+                    image = layer.sprite.image,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(layer.sprite.image.width, spriteHeight),
+                    dstOffset = IntOffset(
+                        (dx + layer.sprite.x * factor + layerOffset.x).toInt(),
+                        (dy + layer.sprite.y * factor + layerOffset.y).toInt(),
+                    ),
+                    dstSize = IntSize(
+                        (layer.sprite.image.width * factor).toInt(),
+                        (spriteHeight * factor).toInt(),
+                    ),
+                    colorFilter = layer.colorFilter,
+                    filterQuality = FilterQuality.High,
+                )
+            }
         }
         if (mouthOpenness > 0.05f) {
             val center = Offset(dx + 498f * factor, dy + 460f * factor)

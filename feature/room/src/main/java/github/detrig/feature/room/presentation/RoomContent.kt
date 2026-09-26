@@ -10,13 +10,14 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.room.presentation.component.HouseScene
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.component.RoomErrorState
+import github.detrig.feature.room.api.RoomPetInteraction
 
 @Composable
 internal fun RoomContent(
     state: RoomViewState,
     onEvent: (RoomViewEvent) -> Unit,
     modifier: Modifier = Modifier,
-    petContent: @Composable (Modifier) -> Unit = {},
+    petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     petLookingAround: Boolean = false,
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},

@@ -22,7 +22,7 @@ interface RoomApi {
         modifier: Modifier = Modifier,
         petName: String = "",
         canShowDialogs: Boolean = true,
-        petContent: @Composable (Modifier) -> Unit = {},
+        petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
         petPortrait: @Composable (Modifier) -> Unit = {},
         onMirrorClick: () -> Unit = {},
         onPhoneClick: () -> Unit = {},
