@@ -16,6 +16,9 @@ import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.week.domain.EarlyWeekEndResult
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
+import github.detrig.feature.room.domain.model.RoomMoneyEvent
+import github.detrig.feature.room.domain.model.MoneyAllocation
+import github.detrig.feature.room.domain.model.MoneyEventResolution
 
 internal interface RoomRepository {
     fun zones(): List<RoomZoneDefinition>
@@ -23,6 +26,9 @@ internal interface RoomRepository {
     fun observeProgress(): Flow<RoomProgress>
     suspend fun buyZone(zone: RoomZoneDefinition, useSavings: Boolean = false): ZoneBuyResult
     suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult
+    suspend fun pendingMoneyEvent(): RoomMoneyEvent?
+    suspend fun resolveMoneyEvent(eventId: String, allocation: MoneyAllocation? = null): MoneyEventResolution
+    suspend fun coverMoneyEventWithParents(eventId: String): MoneyEventResolution
     fun assessPlan(plan: WeeklyPlan): PlanAssessment
     suspend fun savePlan(
         weekNumber: Long,

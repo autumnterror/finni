@@ -72,7 +72,6 @@ internal class ShopLearningCoordinator(
             event = event,
             declinedWithoutCheckout = false,
             lineTotalOverrides = overrides,
-            consciouslyAdjustedPlan = request.confirmedConsequence,
         )
         return PreparedShopCheckout(
             lineTotalOverrides = overrides,
@@ -95,7 +94,6 @@ internal class ShopLearningCoordinator(
             event = event,
             declinedWithoutCheckout = true,
             lineTotalOverrides = emptyMap(),
-            consciouslyAdjustedPlan = false,
         )
         payload.eventDecision?.let { context ->
             PurchaseLearning.qualifyingActions(
@@ -106,6 +104,51 @@ internal class ShopLearningCoordinator(
                 config = config.assessment,
             ).forEach { action -> recordAction(action) }
         }
+    }
+
+    suspend fun recordDeclinedClothingWish(eventId: String, priceRub: Long) {
+        if (priceRub <= 0) return
+        val week = weekApi.initialize()
+        val economy = economyApi.getState()
+        val plan = planningApi.getPlanProgress(week.weekNumber)
+        val mandatoryRemaining = plan?.category(PlanCategory.MANDATORY)?.let {
+            (it.plannedRub - it.actualRub).coerceAtLeast(0)
+        } ?: config.fallbackMandatoryReserveRub
+        val wantsRemaining = plan?.category(PlanCategory.WANTS)?.let {
+            (it.plannedRub - it.actualRub).coerceAtLeast(0)
+        } ?: (economy.availableRub - mandatoryRemaining).coerceAtLeast(0)
+        val reserveRemaining = ((plan?.plan?.reserveRub ?: 0L) -
+            (plan?.unexpectedMandatoryRub ?: 0L)).coerceAtLeast(0)
+        val savingsRemaining = plan?.category(PlanCategory.SAVINGS)?.let {
+            (it.plannedRub - it.actualRub).coerceAtLeast(0)
+        } ?: 0L
+        val context = PurchaseDecisionContext(
+            scenario = PurchaseScenario.IMPULSE_WISH,
+            decision = PurchaseDecision.DECLINED,
+            balanceBeforeRub = economy.availableRub,
+            balanceAfterPurchaseRub = economy.availableRub,
+            purchaseTotalRub = 0,
+            futureMandatoryRub = mandatoryRemaining,
+            discretionaryRub = wantsRemaining,
+            mandatoryFoodNeeded = false,
+            foodUnitsPurchased = 0,
+            requiredFoodCostRub = 0,
+            extraUnitsPurchased = 0,
+            optionalPurchaseRub = 0,
+            eventTargetPriceRub = priceRub,
+            eventTargetUseful = true,
+            optionalCategoryRemainingRub = wantsRemaining,
+            mandatoryCategoryRemainingRub = mandatoryRemaining,
+            reserveRemainingRub = reserveRemaining,
+            savingsPlanRemainingRub = savingsRemaining,
+        )
+        PurchaseLearning.qualifyingActions(
+            profileId = CURRENT_PROFILE_ID,
+            gamePeriod = week.weekNumber,
+            sourceOperationId = eventId,
+            context = context,
+            config = config.assessment,
+        ).forEach { recordAction(it) }
     }
 
     suspend fun reconcile(history: List<FinancialOperation>) {
@@ -122,13 +165,23 @@ internal class ShopLearningCoordinator(
         event: ShopDecisionEvent?,
         declinedWithoutCheckout: Boolean,
         lineTotalOverrides: Map<ProductId, Long>,
-        consciouslyAdjustedPlan: Boolean,
     ): ShopPurchaseLearningPayload {
         val catalog = requireNotNull(catalogRegistry.catalog(storeId))
         val week = weekApi.initialize()
         val economy = economyApi.getState()
         val stock = inventoryApi.observeStock().first()
         val plan = planningApi.getPlanProgress(week.weekNumber)
+        val moneyEventIncome = economyApi.getIncomeHistory()
+            .filter { it.context.metadata?.contains("source=money-event;week=${week.weekNumber};") == true }
+        val addedWantsRub = moneyEventIncome
+            .filter { it.context.metadata?.contains("allocation=wants") == true }
+            .sumOf { it.amountRub }
+        val addedReserveRub = moneyEventIncome
+            .filter { it.context.metadata?.contains("allocation=reserve") == true }
+            .sumOf { it.amountRub }
+        val paidKnownExpenseRub = economyApi.getExpenseHistory()
+            .filter { it.context.metadata?.contains("source=money-event;week=${week.weekNumber};kind=known_expense") == true }
+            .sumOf { it.amountRub }
         val (petHunger, petHappiness) = petNeeds()
         val itemsById = catalog.storefront.items.associateBy { it.id }
         val foodCatalog = catalogRegistry.catalog(GroceryStoreIds.Store)?.storefront?.items
@@ -190,7 +243,8 @@ internal class ShopLearningCoordinator(
                 portions * food.priceRub
             } ?: config.fallbackMandatoryReserveRub
         }
-        val knownMandatory = plan?.plan?.context?.knownMandatoryExpenseRub ?: 0L
+        val knownMandatory = ((plan?.plan?.context?.knownMandatoryExpenseRub ?: 0L) - paidKnownExpenseRub)
+            .coerceAtLeast(0L)
         val futureMandatory = maxOf(
             mandatoryCategoryRemaining,
             remainingFoodCost(stockedSatiety) + knownMandatory,
@@ -201,9 +255,10 @@ internal class ShopLearningCoordinator(
         )
         val optionalCategoryRemaining = plan?.let {
             val wants = it.category(PlanCategory.WANTS)
-            (wants.plannedRub - wants.actualRub).coerceAtLeast(0)
+            (wants.plannedRub + addedWantsRub - wants.actualRub).coerceAtLeast(0)
         } ?: (economy.availableRub - futureMandatory).coerceAtLeast(0)
-        val reserveRemaining = plan?.plan?.reserveRub ?: 0L
+        val reserveRemaining = ((plan?.plan?.reserveRub ?: 0L) + addedReserveRub -
+            (plan?.unexpectedMandatoryRub ?: 0L)).coerceAtLeast(0L)
         val savingsPlanRemaining = plan?.category(PlanCategory.SAVINGS)?.let {
             (it.plannedRub - it.actualRub).coerceAtLeast(0)
         } ?: 0L
@@ -235,7 +290,8 @@ internal class ShopLearningCoordinator(
             optionalCategoryRemainingRub = optionalCategoryRemaining,
             reserveRemainingRub = reserveRemaining,
             savingsPlanRemainingRub = savingsPlanRemaining,
-            consciouslyAdjustedPlan = consciouslyAdjustedPlan,
+            // Confirming the warning permits payment; it does not edit the weekly plan.
+            consciouslyAdjustedPlan = false,
             eventTargetPurchased = eventTargetQuantity > 0,
             eventTargetQuantity = eventTargetQuantity,
             eventTargetMinimumQuantity = eventTargetMinimumQuantity,
@@ -281,7 +337,7 @@ internal class ShopLearningCoordinator(
                 optionalCategoryRemainingRub = optionalCategoryRemaining,
                 reserveRemainingRub = reserveRemaining,
                 savingsPlanRemainingRub = savingsPlanRemaining,
-                consciouslyAdjustedPlan = consciouslyAdjustedPlan,
+                consciouslyAdjustedPlan = false,
                 eventTargetPurchased = targetPurchased,
                 eventTargetNeeded = targetNeeded,
                 eventTargetUseful = targetUseful,

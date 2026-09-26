@@ -38,6 +38,8 @@ internal class PhoneModule(
             minimumHelpBalanceRub = dependencies.minimumHelpBalanceRub(),
             eventConfig = SecurityEventConfig(
                 dailyProbability = dependencies.dailySecurityEventProbability(),
+                randomSeed = kotlin.random.Random.nextInt(),
+                minimumDaysBetweenEvents = dependencies.minimumDaysBetweenSecurityEvents(),
             ),
             onParentHelpSettled = roomApi::notifyParentHelpSettled,
             gameStateApi = dependencies.gameStateApi(),

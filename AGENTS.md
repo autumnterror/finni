@@ -397,6 +397,15 @@ available to restore it. Low happiness does not reduce XP or educational progres
 
 Refusing an optional purchase must not automatically reduce happiness.
 
+Pet wishes are suggestions, never required purchases. A day has at most one
+scheduled wish. Its chance is based on happiness at first observation that day:
+15% at 70–100, 35% at 40–69, 65% at 20–39, and 85% at 0–19. The selected
+wish remains stable for the game day. Mix requests for existing optional food
+and clothing with free actions such as petting, talking, playing, changing owned
+clothes, or using an unlocked mini-game. A costly wish may appear despite a
+tight budget. Dismissing an unaffordable paid wish can count as a prudent
+impulse decision; it never removes happiness.
+
 ### 7.3. Food tiers
 
 Basic food fully covers the mandatory need.
@@ -659,6 +668,35 @@ Competitive safety additions:
 
 Events should be data-driven where practical.
 
+Ordinary weeks schedule one or two money events with fixed ruble amounts rather
+than amounts proportional to pocket money. Week one introduces a known 80 ₽
+expense before planning; week two introduces an unexpected mandatory expense;
+week three introduces extra income. Later weeks mix known expenses, unexpected
+expenses, and extra income. Known costs are included in the plan's mandatory
+minimum and counted as controlled mandatory spending when paid. Unexpected
+costs are recorded separately from controlled purchases, so they do not by
+themselves make plan adherence poor. Every event uses a stable operation ID.
+From week four, draw the ordinary events, their amounts, and eligible days at
+random within the configured catalog. Save the full weekly draw before showing
+or applying an event, so reopening the app cannot reroll it. Keep known future
+expenses fixed and visible before the weekly plan. A regular week has one or
+two money events. A known-expense week has one ordinary event alongside the
+known cost; when there are two ordinary events, include one income and one
+unexpected expense.
+Additional income stays in the wallet until the player chooses to designate it
+for wants, reserve, a savings goal, or free money. Choosing a goal transfers it
+through the savings feature. The confirmed weekly plan is not silently edited.
+The week review considers explicit use of extra income as a possible adaptation,
+while unexpected expense amounts remain separate from controlled purchases.
+After the first known expense, unexpected expense, and extra-income cycles,
+show one short child-facing recap of four rules: adequate plan, affordable
+purchase, response to a money event, and optional pet wishes.
+An unpaid mandatory event remains visible and must be resolved before ending
+the day. If the wallet is short, the child may review savings or request the
+existing parent-help offer. With an active parent-help debt and no savings,
+parents may cover only the remaining mandatory shortfall so the week cannot
+deadlock. This rescue is recorded as an economy operation.
+
 Suggested event shape:
 
 ```text
@@ -821,11 +859,14 @@ metric and must not be added to the active catalog until a receipt mechanic exis
 
 Shop purchases have three outcomes. A good purchase stays within the remaining
 plan for each category and leaves enough wallet money for remaining mandatory
-expenses, the financial reserve, and planned savings. A safe plan adjustment
+expenses and the financial reserve without further reducing the amount that can
+still be saved toward the plan. A deficit caused by an earlier purchase must not
+be attributed again to a later purchase. A safe plan adjustment
 exceeds a category or reduces planned savings while preserving mandatory money
-and the reserve; it requires an explicit choice before payment and may count as
-a reasonable purchase after that choice. A risky purchase threatens mandatory
-money or uses the reserve for an optional item. It remains possible when the
+and the reserve; it requires an explicit choice before payment but does not
+advance the reasonable-purchase achievement. A warning acknowledgement permits
+payment but does not redistribute the confirmed weekly plan. A risky purchase
+threatens mandatory money or uses the reserve for an optional item. It remains possible when the
 wallet can pay, but receives neutral feedback and does not advance the
 reasonable-purchase achievement. Small optional baskets do not bypass these
 checks. Food that restores satiety uses the mandatory category; treats that
@@ -856,7 +897,11 @@ while incomplete sets keep the regular unit price. The catalog card, cart total,
 economy debit, and receipt must use the same promotion calculation. A selected
 promotion remains stable for the whole game day, including after leaving and
 reopening the shop or completing a purchase; the next game day recalculates the
-event. Buying substantially more promotion items than the quantity needed to
+event. After the first guaranteed offer on game day five, promotions have a
+15% daily chance when the shop is opened. One quarter of promotions use `2+1`;
+the others use a percentage discount. Persist the random seed so the day's
+offer does not change when the shop is reopened or the app restarts. Buying
+substantially more promotion items than the quantity needed to
 receive the offer remains allowed, but it does not count as a reasonable purchase
 or a good promotion decision. The threshold is the promotion's minimum useful
 quantity plus a small configured allowance; when it is exceeded, the pet gives
@@ -882,6 +927,9 @@ On the first occurrence, the pet points out that something looks suspicious and
 explains the nature of the risk. The second occurrence checks an independent
 choice; the third reinforces it in a later or changed situation. Only the first
 and third steps unlock achievements.
+Security messages use a 20% daily chance in both debug and release builds, with
+at least two full game days between occurrences. The processed day is saved even
+when no message appears, so reopening the phone cannot reroll that day.
 
 ### 15.4. Required learning-module contracts
 

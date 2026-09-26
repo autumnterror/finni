@@ -38,6 +38,12 @@ import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.gamestate.domain.model.MiniGameAccess
 import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 import github.detrig.feature.inventory.api.InventoryApi
+import github.detrig.feature.savings.api.SavingsApi
+import github.detrig.feature.savings.api.SavingsTransferResult
+import github.detrig.feature.room.domain.model.RoomMoneyEvent
+import github.detrig.feature.room.data.local.RoomMoneyEventStorage
+import github.detrig.feature.room.domain.model.MoneyAllocation
+import github.detrig.feature.room.domain.model.MoneyEventResolution
 
 internal class RoomRepositoryImpl(
     private val catalog: RoomZoneCatalog,
@@ -45,8 +51,10 @@ internal class RoomRepositoryImpl(
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
     private val planningApi: PlanningApi,
+    private val savingsApi: SavingsApi,
     private val minimumProductPriceRub: Long,
     private val inventoryApi: InventoryApi? = null,
+    private val moneyEventStorage: RoomMoneyEventStorage,
 ) : RoomRepository {
     override fun zones(): List<RoomZoneDefinition> = catalog.zones
 
@@ -62,7 +70,17 @@ internal class RoomRepositoryImpl(
         weekApi.observeState(),
     ) { game, economy, week -> Triple(game, economy, week) }.flatMapLatest { (game, economy, week) ->
         planningApi.observePlanProgress(week.weekNumber).map { plan ->
-            game.toRoomProgress(economy, week, plan)
+            val extraIncome = if (plan == null) emptyList() else economyApi.getIncomeHistory()
+                .filter { it.context.metadata?.contains("source=money-event;week=${week.weekNumber};") == true }
+            game.toRoomProgress(economy, week, plan?.copy(
+                extraIncomeRub = extraIncome.sumOf { it.amountRub },
+                extraWantsRub = extraIncome.filter { it.context.metadata?.contains("allocation=wants") == true }
+                    .sumOf { it.amountRub },
+                extraSavingsRub = extraIncome.filter { it.context.metadata?.contains("allocation=goal") == true }
+                    .sumOf { it.amountRub },
+                extraReserveRub = extraIncome.filter { it.context.metadata?.contains("allocation=reserve") == true }
+                    .sumOf { it.amountRub },
+            ))
         }
     }.distinctUntilChanged()
 
@@ -86,6 +104,105 @@ internal class RoomRepositoryImpl(
 
     override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = weekApi.endDay(expectedAbsoluteDay)
 
+    override suspend fun pendingMoneyEvent(): RoomMoneyEvent? {
+        val week = weekApi.observeState().first()
+        if (planningApi.getPlanProgress(week.weekNumber) == null) return null
+        val operations = economyApi.getHistory().associateBy { it.id }
+        val hasActiveGoal = savingsApi.getActiveGoalProgress() != null
+        // The economy operation is the durable outbox if the app was stopped before
+        // the planning projection was written.
+        val weekEvents = moneyEventStorage.events(week.weekNumber)
+        weekEvents.forEach { event ->
+            if (operations[event.id] != null && event.kind != RoomMoneyEvent.Kind.EXTRA_INCOME) {
+                planningApi.recordActual(if (event.kind == RoomMoneyEvent.Kind.KNOWN_EXPENSE) {
+                    PlanActualOperation.Payment(event.id, event.weekNumber, event.amountRub,
+                        PaymentClassification.MANDATORY)
+                } else {
+                    PlanActualOperation.UnexpectedMandatoryExpense(
+                        event.id, event.weekNumber, event.amountRub)
+                })
+            }
+        }
+        return weekEvents
+            .sortedBy { it.dayOfWeek }
+            .firstOrNull { event ->
+                event.dayOfWeek <= week.dayOfWeek && (operations[event.id] == null ||
+                    event.kind == RoomMoneyEvent.Kind.EXTRA_INCOME &&
+                    operations[event.id]?.context?.metadata?.contains("allocation=goal") == true &&
+                    operations["${event.id}:goal"] == null && hasActiveGoal)
+            }?.let { event ->
+                event.copy(savedAllocation = if (operations[event.id]?.context?.metadata
+                        ?.contains("allocation=goal") == true) MoneyAllocation.GOAL else null)
+            }
+    }
+
+    override suspend fun resolveMoneyEvent(
+        eventId: String,
+        allocation: MoneyAllocation?,
+    ): MoneyEventResolution {
+        val event = pendingMoneyEvent()?.takeIf { it.id == eventId }
+            ?: return MoneyEventResolution.Completed
+        if (event.kind == RoomMoneyEvent.Kind.EXTRA_INCOME) {
+            val chosen = event.savedAllocation ?: allocation ?: MoneyAllocation.FREE
+            if (chosen == MoneyAllocation.GOAL && savingsApi.getActiveGoalProgress() == null) {
+                return MoneyEventResolution.NoActiveGoal
+            }
+            val income = economyApi.credit(
+                event.id, event.amountRub,
+                OperationContext(reasonId = event.id,
+                    metadata = "source=money-event;week=${event.weekNumber};allocation=${chosen.name.lowercase()}"),
+            )
+            check(income !is FinancialOperationResult.Rejected) { "Money event income rejected" }
+            if (chosen == MoneyAllocation.GOAL) {
+                val transfer = savingsApi.transferToActiveGoal("${event.id}:goal", event.amountRub)
+                if (transfer is SavingsTransferResult.NoActiveGoal) return MoneyEventResolution.NoActiveGoal
+                if (transfer is SavingsTransferResult.Completed &&
+                    transfer.financial is FinancialOperationResult.Rejected) {
+                    return MoneyEventResolution.InsufficientFunds
+                }
+            }
+        } else {
+            val payment = economyApi.debit(
+                event.id, event.amountRub,
+                OperationContext(reasonId = event.id,
+                    metadata = "source=money-event;week=${event.weekNumber};kind=${event.kind.name.lowercase()}"),
+            )
+            if (payment is FinancialOperationResult.Rejected) {
+                if (payment.reason == RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS) {
+                    return MoneyEventResolution.InsufficientFunds
+                }
+                error("Money event expense rejected: ${payment.reason}")
+            }
+            val actual = if (event.kind == RoomMoneyEvent.Kind.KNOWN_EXPENSE) {
+                PlanActualOperation.Payment(event.id, event.weekNumber, event.amountRub,
+                    PaymentClassification.MANDATORY)
+            } else {
+                PlanActualOperation.UnexpectedMandatoryExpense(
+                    event.id, event.weekNumber, event.amountRub)
+            }
+            planningApi.recordActual(actual)
+        }
+        return MoneyEventResolution.Completed
+    }
+
+    override suspend fun coverMoneyEventWithParents(eventId: String): MoneyEventResolution {
+        val event = pendingMoneyEvent()?.takeIf { it.id == eventId }
+            ?: return MoneyEventResolution.Completed
+        require(event.kind != RoomMoneyEvent.Kind.EXTRA_INCOME)
+        val state = economyApi.getState()
+        if (state.savingsRub > 0 || state.debtRub == 0L || state.availableRub >= event.amountRub) {
+            return MoneyEventResolution.InsufficientFunds
+        }
+        val shortfall = event.amountRub - state.availableRub
+        val help = economyApi.credit(
+            "${event.id}:parent-coverage", shortfall,
+            OperationContext(reasonId = event.id,
+                metadata = "source=parents;week=${event.weekNumber};mandatory-event-shortfall"),
+        )
+        check(help !is FinancialOperationResult.Rejected)
+        return resolveMoneyEvent(event.id)
+    }
+
     override fun assessPlan(plan: WeeklyPlan): PlanAssessment = planningApi.assessPlan(plan)
 
     override suspend fun savePlan(
@@ -102,16 +219,22 @@ internal class RoomRepositoryImpl(
     override suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult {
         val economy = economyApi.getState()
         val activeHelp = economyApi.getParentHelp()
-        val hasFoodInFridge = inventoryApi?.observeStock()?.first()?.any { it.quantity > 0 } == true
-        val canSleepUntilAllowance = gameStateApi.observeState().first()?.let { game ->
-            PetSatietyRules.canSleep(game.pet.hunger)
-        } == true
+        val requiredForEvent = pendingMoneyEvent()
+            ?.takeIf { it.kind != RoomMoneyEvent.Kind.EXTRA_INCOME }
+            ?.amountRub ?: 0L
+        val requiredBalance = maxOf(minimumProductPriceRub, requiredForEvent)
+        val hasFoodInFridge = requiredForEvent == 0L &&
+            inventoryApi?.observeStock()?.first()?.any { it.quantity > 0 } == true
+        val canSleepUntilAllowance = requiredForEvent == 0L &&
+            gameStateApi.observeState().first()?.let { game ->
+                PetSatietyRules.canSleep(game.pet.hunger)
+            } == true
         if (activeHelp == null && !canOfferParentHelp(
                 availableRub = economy.availableRub,
                 savingsRub = economy.savingsRub,
                 debtRub = economy.debtRub,
                 hasActiveParentHelp = false,
-                minimumRequiredBalanceRub = minimumProductPriceRub,
+                minimumRequiredBalanceRub = requiredBalance,
                 hasFoodInFridge = hasFoodInFridge,
                 canSleepUntilAllowance = canSleepUntilAllowance,
             )

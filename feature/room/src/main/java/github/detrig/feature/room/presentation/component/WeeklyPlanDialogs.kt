@@ -98,6 +98,7 @@ internal fun WeeklyPlanEditorDialog(
     editor: PlanEditorState,
     weekNumber: Long,
     availableRub: Long,
+    knownMandatoryExpenseRub: Long = 0,
     isSaving: Boolean,
     petName: String,
     petPortrait: @Composable (Modifier) -> Unit,
@@ -176,6 +177,14 @@ internal fun WeeklyPlanEditorDialog(
             )
         },
     ) {
+        if (knownMandatoryExpenseRub > 0) {
+            Text(
+                text = stringResource(R.string.plan_known_expense_notice, knownMandatoryExpenseRub),
+                style = AppTheme.typography.bodyStrong,
+                color = AppTheme.colors.textPrimary,
+                modifier = Modifier.padding(bottom = AppTheme.spacing.sm),
+            )
+        }
         MoneySlider(
             category = PlanCategory.MANDATORY,
             valuePercent = editor.mandatory,
@@ -703,7 +712,8 @@ internal fun WeeklyPlanProgressDialog(
         ) {
             Text(
                 text = if (assessment == null) {
-                    stringResource(R.string.plan_progress_reserve, progress.plan.reserveRub)
+                    stringResource(R.string.plan_progress_reserve,
+                        progress.plan.reserveRub + progress.extraReserveRub)
                 } else {
                     stringResource(
                         if (progress.unexpectedMandatoryRub > 0) {
@@ -712,7 +722,7 @@ internal fun WeeklyPlanProgressDialog(
                             R.string.plan_result_reserve
                         },
                         assessment.actualReserveRub,
-                        progress.plan.reserveRub,
+                        progress.plan.reserveRub + progress.extraReserveRub,
                     )
                 },
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -753,7 +763,13 @@ private fun WeekMoneyOverview(progress: WeeklyPlanProgress, remainingRub: Long) 
             Text(stringResource(R.string.week_summary_income_title), style = AppTheme.typography.bodyStrong)
             SummaryMoneyRow(stringResource(R.string.week_summary_allowance), progress.plan.availableRub)
             SummaryMoneyRow(stringResource(R.string.week_summary_jobs), 0)
-            SummaryMoneyRow(stringResource(R.string.week_summary_other_income), 0)
+            SummaryMoneyRow(stringResource(R.string.week_summary_other_income), progress.extraIncomeRub)
+            if (progress.extraWantsRub > 0) SummaryMoneyRow(
+                stringResource(R.string.week_summary_extra_wants), progress.extraWantsRub)
+            if (progress.extraSavingsRub > 0) SummaryMoneyRow(
+                stringResource(R.string.week_summary_extra_savings), progress.extraSavingsRub)
+            if (progress.extraReserveRub > 0) SummaryMoneyRow(
+                stringResource(R.string.week_summary_extra_reserve), progress.extraReserveRub)
             Text(stringResource(R.string.week_summary_expenses_title), style = AppTheme.typography.bodyStrong)
             SummaryMoneyRow(stringResource(R.string.week_summary_food), mandatory)
             SummaryMoneyRow(stringResource(R.string.week_summary_wants_and_games), wants)
@@ -823,6 +839,7 @@ private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
             assessment.feedbackReason == WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_COVERED ||
             assessment.feedbackReason == WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_BEYOND_RESERVE ||
             assessment.feedbackReason == WeekPlanFeedbackReason.CLOSE_TO_PLAN ||
+            assessment.feedbackReason == WeekPlanFeedbackReason.EXTRA_INCOME_ALLOCATED ||
             assessment.feedbackReason == WeekPlanFeedbackReason.ORDINARY &&
             assessment.outcome == WeekPlanOutcome.ALL_MATCHED
         ) FinPetModalSectionTone.Highlighted else FinPetModalSectionTone.Warning,
@@ -839,6 +856,8 @@ private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
                 WeekPlanFeedbackReason.CLOSE_TO_PLAN -> stringResource(R.string.plan_result_close_to_plan)
                 WeekPlanFeedbackReason.MANDATORY_COST_INCREASED ->
                     stringResource(R.string.plan_result_mandatory_increased)
+                WeekPlanFeedbackReason.EXTRA_INCOME_ALLOCATED ->
+                    stringResource(R.string.plan_result_extra_income)
                 WeekPlanFeedbackReason.ORDINARY -> when (assessment.outcome) {
                     WeekPlanOutcome.ALL_MATCHED -> stringResource(R.string.plan_result_all_matched)
                     WeekPlanOutcome.PARTIALLY_MATCHED -> stringResource(

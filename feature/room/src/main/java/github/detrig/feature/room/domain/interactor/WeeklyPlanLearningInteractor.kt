@@ -48,6 +48,11 @@ internal class WeeklyPlanLearningInteractor(
         explanationId = INTRODUCTION_EXPLANATION_ID,
     )
 
+    suspend fun claimFinalRulesRecap(): Boolean = learningApi.claimFirstExplanation(
+        profileId = CURRENT_PROFILE_ID,
+        explanationId = "finance:four-rules-recap",
+    )
+
     suspend fun recordConfirmed(plan: WeeklyPlan): WeeklyPlanLearningFeedback {
         val result = learningApi.record(plan.toLearningAction())
         val newlyUnlocked = when (result) {

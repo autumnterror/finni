@@ -50,11 +50,8 @@ internal class PhoneMediator(
                         Context.MODE_PRIVATE,
                     ),
                 )
-                override fun dailySecurityEventProbability() = if (BuildConfig.DEBUG) {
-                    DEBUG_SECURITY_EVENT_DAILY_PROBABILITY
-                } else {
-                    SECURITY_EVENT_DAILY_PROBABILITY
-                }
+                override fun dailySecurityEventProbability() = SECURITY_EVENT_DAILY_PROBABILITY
+                override fun minimumDaysBetweenSecurityEvents() = SECURITY_EVENT_MINIMUM_INTERVAL_DAYS
                 override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
                 override fun globalMessageController() = coreComponent.globalMessageController
             }
@@ -68,9 +65,8 @@ internal class PhoneMediator(
     private companion object {
         const val MESSAGES_PREFERENCES = "phone_messages"
 
-        // Отдельные точки настройки: в debug событие гарантировано для быстрой проверки.
-        const val DEBUG_SECURITY_EVENT_DAILY_PROBABILITY = 1.0
-        const val SECURITY_EVENT_DAILY_PROBABILITY = 0.45
+        const val SECURITY_EVENT_DAILY_PROBABILITY = 0.20
+        const val SECURITY_EVENT_MINIMUM_INTERVAL_DAYS = 3
     }
 
     private class DurablePhoneMessagesStorage(
