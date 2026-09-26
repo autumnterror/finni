@@ -56,6 +56,7 @@ import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.room.presentation.preview.RoomPreviewData
 import github.detrig.feature.room.api.FirstRunOnboardingStep
+import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Row
@@ -72,7 +73,7 @@ internal fun RoomScreen(
     modifier: Modifier = Modifier,
     petName: String,
     canShowDialogs: Boolean,
-    petContent: @Composable (Modifier) -> Unit = {},
+    petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     petPortrait: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},

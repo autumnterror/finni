@@ -7,6 +7,9 @@ import androidx.compose.ui.Modifier
 import github.detrig.feature.gamesession.GameSessionFeature
 import github.detrig.feature.gamesession.presentation.component.GameSessionHome
 import github.detrig.feature.room.api.FirstRunOnboardingStep
+import github.detrig.feature.room.api.RoomPetPose
+import github.detrig.feature.pet.api.PetGestureCallbacks
+import github.detrig.feature.pet.api.PetPose
 
 @Composable
 internal fun GameSessionScreen() {
@@ -33,13 +36,29 @@ internal fun GameSessionScreen() {
                     onFoodClick = { component.fridgeApi.open() },
                     onFeedingClick = { component.fridgeApi.openFeeding() },
                     tableFoodContent = { tableModifier -> component.fridgeApi.TableContent(tableModifier) },
-                    petContent = { petModifier ->
+                    petContent = { petModifier, interaction ->
                         component.petApi.Content(
                             profile = petProfile,
                             modifier = petModifier,
                             onClick = onPetClick.takeIf {
                                 firstRunStep == FirstRunOnboardingStep.COMPLETED
                             },
+                            pose = when (interaction.pose) {
+                                RoomPetPose.IDLE -> PetPose.IDLE
+                                RoomPetPose.HELD -> PetPose.HELD
+                                RoomPetPose.AIRBORNE -> PetPose.AIRBORNE
+                                RoomPetPose.LANDED -> PetPose.LANDED
+                                RoomPetPose.GETTING_UP -> PetPose.GETTING_UP
+                            },
+                            gestureCallbacks = if (interaction.canGrab) {
+                                PetGestureCallbacks(
+                                    interaction.onGrab,
+                                    interaction.onDrag,
+                                    interaction.onRelease,
+                                    interaction.onCancel,
+                                )
+                            } else null,
+                            showShadow = interaction.pose == RoomPetPose.IDLE,
                         )
                     },
                     petPortrait = { portraitModifier ->

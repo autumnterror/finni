@@ -44,7 +44,7 @@ internal object RoomPreviewData {
 @Composable
 private fun RoomPreview() {
     FinPetTheme {
-        RoomContent(RoomPreviewData.state, {}, petContent = { modifier ->
+        RoomContent(RoomPreviewData.state, {}, petContent = { modifier, _ ->
             Box(modifier, contentAlignment = Alignment.Center) {
                 Text("Питомец", color = AppTheme.colors.onRoomBackground)
             }

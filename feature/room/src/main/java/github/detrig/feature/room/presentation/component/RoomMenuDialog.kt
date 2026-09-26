@@ -18,7 +18,6 @@ import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetProgressIndicator
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
-import github.detrig.feature.gamestate.domain.progression.PetGrowthStage
 import github.detrig.feature.room.R
 import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.room.presentation.PlanAchievementFeedback
@@ -56,11 +55,7 @@ internal fun RoomMenuDialog(
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             ) {
                 Text(
-                    text = stringResource(when (progress.petGrowthStage) {
-                        PetGrowthStage.BABY -> R.string.pet_stage_baby
-                        PetGrowthStage.EXPLORER -> R.string.pet_stage_explorer
-                        PetGrowthStage.COMPANION -> R.string.pet_stage_companion
-                    }),
+                    text = stringResource(R.string.room_player_level, progress.playerLevel),
                     style = AppTheme.typography.metricValue,
                     color = AppTheme.colors.storefront.onSurface,
                 )
@@ -131,7 +126,6 @@ private fun RoomMenuDialogPreview() {
                 currentLevelXp = 60,
                 nextLevelXp = 200,
                 experienceProgress = .3f,
-                petGrowthStage = PetGrowthStage.EXPLORER,
             ),
             achievements = (1..6).map { index ->
                 PlanAchievementFeedback(

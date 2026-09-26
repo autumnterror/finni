@@ -33,7 +33,7 @@ internal class SavingsMediator(
                     roomApiProvider().Content(
                         modifier = modifier,
                         canShowDialogs = false,
-                        petContent = petContent,
+                        petContent = { petModifier, _ -> petContent(petModifier) },
                         active = false,
                     )
                 }

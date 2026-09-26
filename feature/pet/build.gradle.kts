@@ -45,7 +45,6 @@ kotlin {
 dependencies {
     implementation(project(":core"))
     implementation(project(":core:designsystem"))
-    implementation(project(":feature:game-state"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

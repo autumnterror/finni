@@ -48,7 +48,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -110,11 +111,11 @@ internal fun FridgeScreen() {
         when (firstRunStep) {
             FirstRunOnboardingStep.FRIDGE_EXPLANATION -> FinPetDialogueDialog(
                 speakerName = profile.name,
-                cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_explanation)),
+                cards = listOf(stringResource(R.string.first_run_fridge_explanation)),
                 portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
                 advanceOnTap = false,
                 dismissOnBackPress = false,
-                actions = listOf(FinPetDialogueAction("next", LocalContext.current.getString(R.string.first_run_next))),
+                actions = listOf(FinPetDialogueAction("next", stringResource(R.string.first_run_next))),
                 onActionSelected = {
                     component.roomApi.firstRunGuide.moveTo(FirstRunOnboardingStep.FRIDGE_PICK_FOOD)
                 },
@@ -124,7 +125,7 @@ internal fun FridgeScreen() {
             )
             FirstRunOnboardingStep.FRIDGE_PICK_FOOD -> FinPetDialogueDialog(
                 speakerName = profile.name,
-                cards = listOf(LocalContext.current.getString(R.string.first_run_fridge_pick_food)),
+                cards = listOf(stringResource(R.string.first_run_fridge_pick_food)),
                 portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
                 focusable = false,
                 advanceOnTap = false,
@@ -550,7 +551,7 @@ internal fun FridgeProductArtwork(
         )
 
         is ShopArtwork.AtlasRegion -> {
-            val resources = LocalContext.current.resources
+            val resources = LocalResources.current
             val productImage = remember(resources, artwork) {
                 FridgeArtworkBitmapCache.load(resources, artwork)
             }

@@ -153,9 +153,7 @@
     <string name="plan_achievement_unlocked">Новое достижение — «%1$s»! %2$s</string>
     <string name="room_menu_open">Открыть меню</string>
     <string name="room_menu_title">Меню</string>
-    <string name="pet_stage_baby">Малыш</string>
-    <string name="pet_stage_explorer">Исследователь</string>
-    <string name="pet_stage_companion">Напарник</string>
+    <string name="room_player_level">Уровень %1$d</string>
     <string name="menu_unlocked_achievements">Полученные достижения · %1$d</string>
     <string name="menu_no_achievements">Первое достижение появится после важного игрового решения.</string>
     <string name="menu_expand_achievements">Показать все полученные (%1$d)</string>

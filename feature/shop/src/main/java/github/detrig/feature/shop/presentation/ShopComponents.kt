@@ -41,7 +41,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -488,7 +488,7 @@ private enum class PromotionAtlasRegion(
 
 @Composable
 private fun promotionPainter(region: PromotionAtlasRegion): Painter {
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     val atlas = remember(resources) {
         ShopArtworkBitmapCache.load(resources, R.drawable.shop_promotion_atlas)
     }
@@ -692,7 +692,7 @@ internal fun ShopCartIcon(
 private fun artworkPainter(artwork: ShopArtwork): Painter = when (artwork) {
     is ShopArtwork.Resource -> painterResource(artwork.drawableRes)
     is ShopArtwork.AtlasRegion -> {
-        val resources = LocalContext.current.resources
+        val resources = LocalResources.current
         val atlas = remember(resources, artwork.drawableRes) {
             ShopArtworkBitmapCache.load(resources, artwork.drawableRes)
         }

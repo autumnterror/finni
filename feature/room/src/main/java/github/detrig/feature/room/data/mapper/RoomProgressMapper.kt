@@ -28,5 +28,4 @@ internal fun GameState.toRoomProgress(
     currentLevelXp = progress.currentLevelXp,
     nextLevelXp = progress.nextLevelXp,
     experienceProgress = progress.levelProgress,
-    petGrowthStage = progress.petStage,
 )

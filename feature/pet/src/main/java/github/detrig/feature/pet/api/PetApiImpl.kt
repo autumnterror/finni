@@ -13,13 +13,10 @@ import github.detrig.feature.pet.presentation.PetHostScreen
 import github.detrig.feature.pet.presentation.PetScene
 import github.detrig.feature.pet.presentation.PetPortrait
 import github.detrig.feature.pet.presentation.rememberPetAppearanceBitmap
-import github.detrig.feature.gamestate.api.ProgressionApi
-import github.detrig.feature.gamestate.domain.progression.ProgressionRules
 
 internal class PetApiImpl(
     private val repository: PetRepository,
     private val assets: android.content.res.AssetManager,
-    private val progression: ProgressionApi,
 ) : PetApi {
     override suspend fun preloadAssets() {
         HamsterAssetsCache.awaitPreloaded(assets)
@@ -43,17 +40,20 @@ internal class PetApiImpl(
         animateIdle: Boolean,
         mouthOpen: Boolean,
         lookAt: Offset?,
+        pose: PetPose,
+        gestureCallbacks: PetGestureCallbacks?,
+        showShadow: Boolean,
     ) {
-        val gameProgress by progression.observeProgress(CURRENT_PROFILE_ID)
-            .collectAsState(initial = ProgressionRules.progress(0))
         PetScene(
             profile = profile,
             modifier = modifier,
             animateIdle = animateIdle,
             mouthOpen = mouthOpen,
             lookAt = lookAt,
-            growthStage = gameProgress.petStage,
             onClick = onClick,
+            pose = pose,
+            gestureCallbacks = gestureCallbacks,
+            showShadow = showShadow,
         )
     }
 
@@ -66,9 +66,5 @@ internal class PetApiImpl(
     override fun rememberCurrentAppearanceBitmap(maxSidePx: Int): ImageBitmap? {
         val profile by repository.observeProfile().collectAsState(initial = null)
         return profile?.let { rememberPetAppearanceBitmap(it, maxSidePx) }
-    }
-
-    private companion object {
-        const val CURRENT_PROFILE_ID = "current"
     }
 }

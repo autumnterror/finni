@@ -2,6 +2,7 @@ package github.detrig.feature.room.presentation.component
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -34,8 +35,12 @@ import androidx.compose.ui.zIndex
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.domain.model.HousePosition
+import github.detrig.feature.room.api.RoomPetInteraction
+import github.detrig.feature.room.api.RoomPetPose
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseMotionState
+import github.detrig.feature.room.presentation.model.PetFlightFrame
+import github.detrig.feature.room.presentation.model.PetFlightPhysics
 import github.detrig.feature.room.presentation.model.HouseObjectPlacement
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import kotlinx.coroutines.FlowPreview
@@ -43,6 +48,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -78,13 +84,14 @@ internal fun HouseScene(
     onPreviewReady: (String) -> Unit,
     isFeedingScene: Boolean = focusObjectId == "dining_table",
     modifier: Modifier = Modifier,
-    petContent: @Composable (Modifier) -> Unit = {},
+    petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     tableFoodContent: @Composable (Modifier) -> Unit = {},
     petLookingAround: Boolean = false,
     phoneUnreadCount: Int = 0,
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
     val appMotion = AppTheme.motion
+    val shadowColor = AppTheme.colors.sceneShadow
     val savePosition by rememberUpdatedState(onSavePosition)
     val previewReady by rememberUpdatedState(onPreviewReady)
     val diningTableBounds = remember {
@@ -153,11 +160,68 @@ internal fun HouseScene(
         val unitPx = with(LocalDensity.current) { unitDp.toPx() }
         val heightPx = with(LocalDensity.current) { sceneHeightDp.toPx() }
         val density = LocalDensity.current
+        var petPose by remember { mutableStateOf(RoomPetPose.IDLE) }
+        var flight by remember { mutableStateOf(PetFlightFrame(motion.petX, 0f)) }
+        var flightBounds by remember { mutableStateOf(HouseLayout.petFlightBounds(motion.petX)) }
+        var ready by remember { mutableStateOf(false) }
+        val maxFlightLift = ((HouseLayout.PET_FLOOR_BASELINE * heightPx -
+            HouseLayout.PET_WIDTH * unitPx - heightPx * 0.05f) / unitPx).coerceAtLeast(0.2f)
+
+        fun finishFlight() {
+            motion.placeAt(flight.x)
+            flight = PetFlightFrame(motion.petX, 0f)
+            petPose = RoomPetPose.IDLE
+            if (ready && focusObjectId == null) savePosition(motion.position())
+        }
+
+        LaunchedEffect(active, ready) {
+            if (!active || !ready) {
+                if (petPose != RoomPetPose.IDLE) finishFlight()
+                return@LaunchedEffect
+            }
+            while (isActive) {
+                snapshotFlow { petPose == RoomPetPose.AIRBORNE }.first { it }
+                var previous = withFrameNanos { it }
+                while (petPose == RoomPetPose.AIRBORNE && isActive) {
+                    val now = withFrameNanos { it }
+                    val result = PetFlightPhysics.step(
+                        frame = flight,
+                        elapsedSeconds = (now - previous) / 1_000_000_000f,
+                        left = flightBounds.first,
+                        right = flightBounds.second,
+                        maxLift = maxFlightLift,
+                    )
+                    previous = now
+                    flight = result.frame
+                    if (result.landed) {
+                        motion.placeAt(flight.x)
+                        petPose = RoomPetPose.LANDED
+                        delay(200)
+                        petPose = RoomPetPose.GETTING_UP
+                        delay(380)
+                        finishFlight()
+                    }
+                }
+            }
+        }
         // Первая отрисовка уже в сохранённой точке, без кадра с левой границей дома.
         val scroll = remember(unitPx, focusObjectId, sceneZoom) {
             ScrollState((initialCameraLeftX * unitPx).roundToInt())
         }
-        var ready by remember { mutableStateOf(false) }
+        LaunchedEffect(ready, feedingScene, unitPx) {
+            if (!ready || feedingScene) return@LaunchedEffect
+            snapshotFlow { petPose to flight.x }.collect { (pose, petX) ->
+                if (pose != RoomPetPose.HELD && pose != RoomPetPose.AIRBORNE) return@collect
+                val cameraLeft = scroll.value / unitPx
+                val nextLeft = when {
+                    petX < cameraLeft + 0.27f -> petX - 0.27f
+                    petX > cameraLeft + 0.73f -> petX - 0.73f
+                    else -> cameraLeft
+                }
+                val target = (HouseLayout.clampCamera(nextLeft) * unitPx).roundToInt()
+                if (target != scroll.value) scroll.scrollTo(target)
+            }
+        }
 
         fun save() {
             // A temporary focus (for example, the feeding scene) must not rewrite
@@ -188,9 +252,9 @@ internal fun HouseScene(
             }
             try {
                 while (isActive) {
-                    snapshotFlow<Boolean> { motion.needsStep }.first { it }
+                    snapshotFlow<Boolean> { petPose == RoomPetPose.IDLE && motion.needsStep }.first { it }
                     var previous = withFrameNanos { it }
-                    while (motion.needsStep && isActive) {
+                    while (petPose == RoomPetPose.IDLE && motion.needsStep && isActive) {
                         val now = withFrameNanos { it }
                         motion.step((now - previous) / 1_000_000_000f)
                         previous = now
@@ -288,8 +352,9 @@ internal fun HouseScene(
                         petContent(
                             petModifier(
                                 unitDp, unitPx, heightPx, petAnchorX, petBaselineFraction ?: 0.742f,
-                                petZIndex, motion, active, petLookingAround,
+                                petZIndex, motion, active, petLookingAround, null, RoomPetPose.IDLE,
                             ),
+                            RoomPetInteraction(),
                         )
 
                         RoomObjectLayers(
@@ -335,10 +400,74 @@ internal fun HouseScene(
                             nightMode = nightMode,
                             modifier = Modifier.fillMaxSize(),
                         )
+                        if (petPose != RoomPetPose.IDLE) {
+                            Canvas(
+                                Modifier.offset {
+                                    IntOffset(
+                                        ((flight.x - HouseLayout.PET_WIDTH / 2f) * unitPx).roundToInt(),
+                                        (HouseLayout.PET_FLOOR_BASELINE * heightPx -
+                                            HouseLayout.PET_WIDTH * unitPx).roundToInt(),
+                                    )
+                                }.size(unitDp * HouseLayout.PET_WIDTH).zIndex(petZIndex - 0.1f),
+                            ) {
+                                drawOval(
+                                    color = shadowColor,
+                                    topLeft = androidx.compose.ui.geometry.Offset(
+                                        size.width * (0.26f + flight.lift * 0.035f),
+                                        size.height * 0.88f,
+                                    ),
+                                    size = androidx.compose.ui.geometry.Size(
+                                        size.width * (0.48f - flight.lift * 0.07f).coerceAtLeast(0.28f),
+                                        size.height * 0.07f,
+                                    ),
+                                    alpha = (1f - flight.lift * 0.35f).coerceIn(0.3f, 1f),
+                                )
+                            }
+                        }
                         petContent(
                             petModifier(
                                 unitDp, unitPx, heightPx, null, HouseLayout.PET_FLOOR_BASELINE,
                                 petZIndex, motion, active, petLookingAround,
+                                flight.takeIf { petPose != RoomPetPose.IDLE }, petPose,
+                            ),
+                            RoomPetInteraction(
+                                pose = petPose,
+                                canGrab = active && ready && focusObjectId == null &&
+                                    petPose == RoomPetPose.IDLE,
+                                onGrab = {
+                                    motion.pause()
+                                    flightBounds = HouseLayout.petFlightBounds(motion.petX)
+                                    flight = PetFlightFrame(
+                                        motion.petX.coerceIn(flightBounds.first, flightBounds.second),
+                                        0.12f.coerceAtMost(maxFlightLift),
+                                    )
+                                    petPose = RoomPetPose.HELD
+                                },
+                                onDrag = { delta ->
+                                    if (petPose == RoomPetPose.HELD) {
+                                        flight = flight.copy(
+                                            x = (flight.x + delta.x / unitPx)
+                                                .coerceIn(flightBounds.first, flightBounds.second),
+                                            lift = (flight.lift - delta.y / unitPx).coerceIn(0f, maxFlightLift),
+                                            velocityX = (delta.x / unitPx * 8f).coerceIn(-2f, 2f),
+                                        )
+                                    }
+                                },
+                                onRelease = { velocity ->
+                                    if (petPose == RoomPetPose.HELD) {
+                                        flight = flight.copy(
+                                            velocityX = (velocity.x / unitPx).coerceIn(-2.8f, 2.8f),
+                                            velocityUp = (-velocity.y / unitPx).coerceIn(-1f, 3.2f),
+                                        )
+                                        petPose = RoomPetPose.AIRBORNE
+                                    }
+                                },
+                                onCancel = {
+                                    if (petPose == RoomPetPose.HELD) {
+                                        flight = flight.copy(velocityX = 0f, velocityUp = 0f)
+                                        petPose = RoomPetPose.AIRBORNE
+                                    }
+                                },
                             ),
                         )
                         // The groceries rest on the tabletop behind a pet walking
@@ -411,17 +540,22 @@ private fun petModifier(
     motion: HouseMotionState,
     active: Boolean,
     petLookingAround: Boolean,
+    flight: PetFlightFrame?,
+    pose: RoomPetPose,
 ): Modifier = Modifier.offset {
-    val petX = anchorX ?: motion.petX
+    val petX = flight?.x ?: anchorX ?: motion.petX
     IntOffset(
         ((petX - HouseLayout.PET_WIDTH / 2) * unitPx).roundToInt(),
-        (baseline * heightPx - HouseLayout.PET_WIDTH * unitPx).roundToInt(),
+        (baseline * heightPx - HouseLayout.PET_WIDTH * unitPx -
+            (flight?.lift ?: 0f) * unitPx).roundToInt(),
     )
 }.size(unitDp * HouseLayout.PET_WIDTH).zIndex(zIndex).graphicsLayer {
     scaleX = if (motion.facingRight == petLookingAround) -1f else 1f
-    val step = if (active && motion.isWalking) sin(motion.walkPhase * PI * 2).toFloat() else 0f
+    val step = if (active && pose == RoomPetPose.IDLE && motion.isWalking) {
+        sin(motion.walkPhase * PI * 2).toFloat()
+    } else 0f
     translationY = -kotlin.math.abs(step) * size.height * 0.035f
-    rotationZ = step * 2f
+    rotationZ = step * 2f + (flight?.velocityX?.times(7f) ?: 0f).coerceIn(-16f, 16f)
 }.testTag("house_pet")
 
 @Preview(name = "Feeding furniture", widthDp = 360, heightDp = 640)
@@ -454,7 +588,7 @@ private fun FeedingFurniturePreview() {
             allowedObjectIds = emptySet(),
             onHighlightedObjectBoundsChanged = {},
             onPreviewReady = {},
-            petContent = { petModifier ->
+            petContent = { petModifier, _ ->
                 Box(petModifier.background(AppTheme.colors.house.blush))
             },
         )

@@ -139,7 +139,7 @@ internal class AppModuleImpl(
     }
 
     private val petMediator: PetMediator by lazy {
-        PetMediator(coreComponent, gameStateMediator)
+        PetMediator(coreComponent)
     }
 
     private val gameSessionMediator: GameSessionMediator by lazy {
