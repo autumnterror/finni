@@ -263,7 +263,7 @@
     <string name="onboarding_week_end_finished">Кажется, наша первая неделя закончилась.</string>
     <string name="onboarding_week_end_guidance">Давай посмотрим, откуда у нас появились деньги и на что мы их потратили.</string>
     <string name="onboarding_show_week_summary">Посмотреть итоги</string>
-    <string name="onboarding_new_week_plan_guidance">новая неделя - новый план!</string>
+    <string name="onboarding_new_week_plan_guidance">Новая неделя - новый план!</string>
     <string name="onboarding_week_summary_income">Здесь видно, откуда у нас появились деньги за неделю.</string>
     <string name="onboarding_week_summary_expenses">А здесь — на что мы тратили деньги.</string>
     <string name="onboarding_week_summary_remainder">Ещё можно посмотреть, сколько осталось в кошельке и сколько лежит в копилке.</string>
