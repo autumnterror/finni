@@ -26,7 +26,10 @@ import github.detrig.core.time.TimeDrivenTask
 import github.detrig.core.time.TimedEventProcessor
 import github.detrig.internetbooster.time.HungerNotificationDispatcher
 import github.detrig.internetbooster.audio.AppAudioCues
+import github.detrig.internetbooster.mediators.FlightMediator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 internal interface AppModule {
 
@@ -34,6 +37,7 @@ internal interface AppModule {
     fun initFeatures()
     suspend fun reconcileTimedEvents()
     suspend fun hasPetProfile(): Boolean
+    suspend fun resetDemoProgress(skipOnboarding: Boolean)
 }
 
 internal class AppModuleImpl(
@@ -114,6 +118,17 @@ internal class AppModuleImpl(
 
     override suspend fun hasPetProfile(): Boolean = petMediator.getApi().observeProfile().first() != null
 
+    override suspend fun resetDemoProgress(skipOnboarding: Boolean) {
+        phoneMediator.getApi().resetProgress {
+            withContext(Dispatchers.IO) {
+                databaseModule.database.clearAllTables()
+                flightMediator.resetProgress()
+            }
+            inventoryMediator.getApi().resetProgress()
+            roomMediator.getApi().resetProgress(skipOnboarding)
+        }
+    }
+
     private val phoneMediator: PhoneMediator by lazy {
         PhoneMediator(
             coreComponent = coreComponent,
@@ -124,6 +139,8 @@ internal class AppModuleImpl(
             weekMediator = weekMediator,
             learningMediator = learningMediator,
             gameStateMediator = gameStateMediator,
+            inventoryMediator = inventoryMediator,
+            resetDemoProgress = ::resetDemoProgress,
         )
     }
 
@@ -181,6 +198,15 @@ internal class AppModuleImpl(
         )
     }
 
+    private val flightMediator: FlightMediator by lazy {
+        FlightMediator(
+            coreComponent,
+            gameStateMediator,
+            petMediator,
+            gameAudio,
+        )
+    }
+
     override fun initFeatures() {
         gameAudio.preload(listOf(AppAudioCues.Purchase))
         miniGamesCommonMediator.init()
@@ -194,12 +220,7 @@ internal class AppModuleImpl(
         shopMediator.init()
         petMediator.init()
         wardrobeMediator.init()
-        github.detrig.internetbooster.mediators.FlightMediator(
-            coreComponent,
-            gameStateMediator,
-            petMediator,
-            gameAudio,
-        ).init()
+        flightMediator.init()
         github.detrig.internetbooster.mediators.FishingMediator(
             coreComponent,
             databaseModule,

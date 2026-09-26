@@ -1,6 +1,7 @@
 package github.detrig.feature.room.data.repository
 
 import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.gamestate.domain.model.ZoneOffer
 import github.detrig.feature.room.data.catalog.RoomZoneCatalog
@@ -34,6 +35,7 @@ import github.detrig.feature.economy.domain.canOfferParentHelp
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.gamestate.domain.model.MiniGameAccess
 import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
+import github.detrig.feature.inventory.api.InventoryApi
 
 internal class RoomRepositoryImpl(
     private val catalog: RoomZoneCatalog,
@@ -42,6 +44,7 @@ internal class RoomRepositoryImpl(
     private val weekApi: WeekApi,
     private val planningApi: PlanningApi,
     private val minimumProductPriceRub: Long,
+    private val inventoryApi: InventoryApi? = null,
 ) : RoomRepository {
     override fun zones(): List<RoomZoneDefinition> = catalog.zones
 
@@ -96,12 +99,18 @@ internal class RoomRepositoryImpl(
     override suspend fun requestParentHelp(offerId: String): ParentHelpRequestResult {
         val economy = economyApi.getState()
         val activeHelp = economyApi.getParentHelp()
+        val hasFoodInFridge = inventoryApi?.observeStock()?.first()?.any { it.quantity > 0 } == true
+        val canSleepUntilAllowance = gameStateApi.observeState().first()?.let { game ->
+            PetSatietyRules.canSleep(game.pet.hunger)
+        } == true
         if (activeHelp == null && !canOfferParentHelp(
                 availableRub = economy.availableRub,
                 savingsRub = economy.savingsRub,
                 debtRub = economy.debtRub,
                 hasActiveParentHelp = false,
                 minimumRequiredBalanceRub = minimumProductPriceRub,
+                hasFoodInFridge = hasFoodInFridge,
+                canSleepUntilAllowance = canSleepUntilAllowance,
             )
         ) return ParentHelpRequestResult.Rejected(RejectionReason.PARENT_HELP_NOT_AVAILABLE, economy)
         val week = weekApi.observeState().first()

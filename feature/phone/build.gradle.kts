@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":feature:week"))
     implementation(project(":feature:learning"))
     implementation(project(":feature:game-state"))
+    implementation(project(":feature:inventory"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.androidx.compose.foundation)

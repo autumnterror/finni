@@ -7,6 +7,7 @@ import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
+import github.detrig.feature.economy.domain.ParentHelpUnavailableReason
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
@@ -22,6 +23,7 @@ data class ParentHelpDialogState(
     val savingsRub: Long = 0,
     val debtRub: Long = 0,
     val minimumRequiredBalanceRub: Long = 0,
+    val unavailableReasons: List<ParentHelpUnavailableReason> = emptyList(),
 )
 
 internal data class AllowanceNoticeState(

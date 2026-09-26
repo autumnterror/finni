@@ -20,6 +20,7 @@ import kotlin.random.Random
 
 internal interface MessagesRepository {
     fun observeInbox(): StateFlow<MessagesInbox>
+    suspend fun resetProgress()
     suspend fun ensureEventForDay(absoluteDay: Long, config: SecurityEventConfig)
     suspend fun markThreadRead(senderId: MessageSenderId)
     suspend fun consumeFirstRoomPrompt()
@@ -44,6 +45,10 @@ internal class PersistentMessagesRepository(
     private val inbox = MutableStateFlow(storedState.toInbox())
 
     override fun observeInbox(): StateFlow<MessagesInbox> = inbox.asStateFlow()
+
+    override suspend fun resetProgress() {
+        update { StoredMessagesState() }
+    }
 
     override suspend fun ensureEventForDay(
         absoluteDay: Long,

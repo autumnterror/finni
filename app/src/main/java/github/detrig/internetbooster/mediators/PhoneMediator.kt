@@ -22,6 +22,8 @@ internal class PhoneMediator(
     private val weekMediator: WeekMediator,
     private val learningMediator: LearningMediator,
     private val gameStateMediator: GameStateMediator,
+    private val inventoryMediator: InventoryMediator,
+    private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
 ) : Mediator<PhoneApi> {
 
     @MainThread
@@ -37,6 +39,11 @@ internal class PhoneMediator(
                 override fun weekApi() = weekMediator.getApi()
                 override fun learningApi() = learningMediator.getApi()
                 override fun progressionApi() = gameStateMediator.getProgressionApi()
+                override fun gameStateApi() = gameStateMediator.getApi()
+                override fun inventoryApi() = inventoryMediator.getApi()
+                override suspend fun resetDemoProgress(skipOnboarding: Boolean) =
+                    this@PhoneMediator.resetDemoProgress(skipOnboarding)
+                override fun isDebugBuild() = BuildConfig.DEBUG
                 override fun messagesStorage(): PhoneMessagesStorage = DurablePhoneMessagesStorage(
                     preferences = coreComponent.context.getSharedPreferences(
                         MESSAGES_PREFERENCES,

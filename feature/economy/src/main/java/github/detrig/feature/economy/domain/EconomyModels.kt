@@ -45,16 +45,59 @@ fun canOfferParentHelp(
     debtRub: Long,
     hasActiveParentHelp: Boolean,
     minimumRequiredBalanceRub: Long,
+    hasFoodInFridge: Boolean = false,
+    canSleepUntilAllowance: Boolean = false,
 ): Boolean {
+    return parentHelpUnavailableReasons(
+        availableRub = availableRub,
+        savingsRub = savingsRub,
+        debtRub = debtRub,
+        hasActiveParentHelp = hasActiveParentHelp,
+        minimumRequiredBalanceRub = minimumRequiredBalanceRub,
+        hasFoodInFridge = hasFoodInFridge,
+        canSleepUntilAllowance = canSleepUntilAllowance,
+    ).isEmpty()
+}
+
+enum class ParentHelpUnavailableReason {
+    WALLET_HAS_ENOUGH,
+    SAVINGS_CAN_COVER,
+    ACTIVE_REPAYMENT,
+    FOOD_IN_FRIDGE,
+    SATIETY_ALLOWS_SLEEP,
+}
+
+fun parentHelpUnavailableReasons(
+    availableRub: Long,
+    savingsRub: Long,
+    debtRub: Long,
+    hasActiveParentHelp: Boolean,
+    minimumRequiredBalanceRub: Long,
+    hasFoodInFridge: Boolean = false,
+    canSleepUntilAllowance: Boolean = false,
+): List<ParentHelpUnavailableReason> {
     require(availableRub >= 0)
     require(savingsRub >= 0)
     require(debtRub >= 0)
     require(minimumRequiredBalanceRub > 0)
 
-    return availableRub < minimumRequiredBalanceRub &&
-        savingsRub < minimumRequiredBalanceRub &&
-        debtRub == 0L &&
-        !hasActiveParentHelp
+    return buildList {
+        if (availableRub >= minimumRequiredBalanceRub) {
+            add(ParentHelpUnavailableReason.WALLET_HAS_ENOUGH)
+        }
+        if (savingsRub >= minimumRequiredBalanceRub) {
+            add(ParentHelpUnavailableReason.SAVINGS_CAN_COVER)
+        }
+        if (debtRub > 0L || hasActiveParentHelp) {
+            add(ParentHelpUnavailableReason.ACTIVE_REPAYMENT)
+        }
+        if (hasFoodInFridge) {
+            add(ParentHelpUnavailableReason.FOOD_IN_FRIDGE)
+        }
+        if (canSleepUntilAllowance) {
+            add(ParentHelpUnavailableReason.SATIETY_ALLOWS_SLEEP)
+        }
+    }
 }
 
 data class FinancialSnapshot(

@@ -15,6 +15,7 @@ internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
     private val resources: Resources,
     private val purchaseSavingsGoal: PurchaseSavingsGoalInteractor,
+    private val repository: github.detrig.feature.room.domain.repository.RoomRepository,
     override val firstRunGuide: FirstRunGuideApi,
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
 ) : RoomApi {
@@ -28,6 +29,11 @@ internal class RoomApiImpl(
 
     override fun requestZonePreview(zoneId: String) = requests.request(zoneId)
     override fun notifyParentHelpSettled() = parentHelpPromptRepository.resetAfterParentHelpSettlement()
+    override suspend fun resetProgress(skipOnboarding: Boolean) {
+        firstRunGuide.reset(skipOnboarding)
+        parentHelpPromptRepository.resetAfterParentHelpSettlement()
+        repository.initialize()
+    }
     override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
         purchaseSavingsGoal(goal)
     @Composable

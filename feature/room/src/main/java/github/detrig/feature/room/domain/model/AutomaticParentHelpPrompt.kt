@@ -11,12 +11,16 @@ internal fun shouldOfferAutomaticParentHelp(
     hasActiveParentHelp: Boolean,
     minimumRequiredBalanceRub: Long,
     alreadyShownInWeek: Boolean,
+    hasFoodInFridge: Boolean = false,
+    canSleepUntilAllowance: Boolean = false,
 ): Boolean = onboardingCompleted && !alreadyShownInWeek && canOfferParentHelp(
     availableRub = availableRub,
     savingsRub = savingsRub,
     debtRub = debtRub,
     hasActiveParentHelp = hasActiveParentHelp,
     minimumRequiredBalanceRub = minimumRequiredBalanceRub,
+    hasFoodInFridge = hasFoodInFridge,
+    canSleepUntilAllowance = canSleepUntilAllowance,
 )
 
 internal fun shouldRetainParentHelpDialog(

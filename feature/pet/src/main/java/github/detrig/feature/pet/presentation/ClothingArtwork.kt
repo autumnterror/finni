@@ -121,6 +121,10 @@ internal object ClothingArtwork {
         }.toMap()
     }
 
+    fun clearEquipped() {
+        equippedLayers = emptyMap()
+    }
+
     suspend fun layers(
         assets: AssetManager,
         equippedBySlot: Map<String, String>,

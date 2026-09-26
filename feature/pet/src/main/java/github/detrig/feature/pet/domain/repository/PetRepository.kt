@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 interface PetRepository {
     fun observeProfile(): Flow<PetProfile?>
     fun currentProfile(): PetProfile?
+    fun resetProfile()
     fun saveProfile(value: PetProfile)
     fun updateClothing(change: (ClothingState) -> ClothingState): PetProfile
 }

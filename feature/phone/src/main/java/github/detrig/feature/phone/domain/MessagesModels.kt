@@ -3,6 +3,7 @@ package github.detrig.feature.phone.domain
 import kotlinx.serialization.Serializable
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
+import github.detrig.feature.economy.domain.ParentHelpUnavailableReason
 
 @Serializable
 internal enum class MessageSenderId {
@@ -103,6 +104,7 @@ internal data class ParentHelpDialogData(
     val savingsRub: Long,
     val debtRub: Long,
     val minimumRequiredBalanceRub: Long,
+    val unavailableReasons: List<ParentHelpUnavailableReason>,
 )
 
 internal data class SecurityEventConfig(

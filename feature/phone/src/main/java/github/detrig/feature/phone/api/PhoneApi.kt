@@ -9,6 +9,7 @@ interface PhoneApi {
     fun initialize()
     fun open()
     fun openMessages()
+    suspend fun resetProgress(resetGame: suspend () -> Unit)
     fun entries(): EntryHostProviderInstaller
 
     @Composable
