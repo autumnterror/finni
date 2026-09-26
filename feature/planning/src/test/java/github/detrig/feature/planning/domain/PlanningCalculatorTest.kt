@@ -17,9 +17,31 @@ class PlanningCalculatorTest {
         assertEquals(250L, progress.category(PlanCategory.WANTS).plannedRub)
         assertEquals(200L, progress.category(PlanCategory.SAVINGS).plannedRub)
         assertEquals(150L, progress.plan.reserveRub)
-        assertEquals(PlanProgressTone.ON_TRACK, progress.category(PlanCategory.MANDATORY).tone)
+        assertEquals(PlanProgressTone.WARNING, progress.category(PlanCategory.MANDATORY).tone)
         assertEquals(PlanProgressTone.WARNING, progress.category(PlanCategory.WANTS).tone)
         assertEquals(PlanProgressTone.OVER_LIMIT, progress.category(PlanCategory.SAVINGS).tone)
+    }
+
+    @Test fun underspendingIsNotReportedAsFollowingThePlan() {
+        val plan = WeeklyPlan(weekNumber = 2, availableRub = 500, percentages = PlanPercentages.DEFAULT)
+        val progress = PlanningCalculator.progress(plan, mapOf(
+            PlanCategory.MANDATORY to 0,
+            PlanCategory.WANTS to 0,
+            PlanCategory.SAVINGS to 0,
+        ))
+
+        PlanCategory.entries.forEach { category ->
+            assertEquals(PlanProgressTone.WARNING, progress.category(category).tone)
+        }
+    }
+
+    @Test fun exactSpendingMatchesAreReportedAsFollowingThePlan() {
+        val plan = WeeklyPlan(weekNumber = 2, availableRub = 500, percentages = PlanPercentages.DEFAULT)
+        val progress = PlanningCalculator.progress(plan, PlanCategory.entries.associateWith(plan::plannedRub))
+
+        PlanCategory.entries.forEach { category ->
+            assertEquals(PlanProgressTone.ON_TRACK, progress.category(category).tone)
+        }
     }
 
     @Test fun planPercentagesMayLeaveAReserveButCannotExceedOneHundred() {

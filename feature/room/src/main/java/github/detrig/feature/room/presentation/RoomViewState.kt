@@ -193,6 +193,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val areMenuAchievementsExpanded: Boolean = false,
         val parentGate: ParentGateState? = null,
         val parentHelpDialog: ParentHelpDialogState? = null,
+        val isParentHelpDialogClaimed: Boolean = false,
         val isRequestingParentHelp: Boolean = false,
         val parentHelpPhonePrompt: ParentHelpPhonePromptState? = null,
         val savingsRecoveryPrompt: SavingsRecoveryPromptState? = null,

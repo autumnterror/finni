@@ -1,5 +1,6 @@
 package github.detrig.feature.room.domain.model
 
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.canOfferParentHelp
 
 internal fun shouldOfferAutomaticParentHelp(
@@ -17,3 +18,16 @@ internal fun shouldOfferAutomaticParentHelp(
     hasActiveParentHelp = hasActiveParentHelp,
     minimumRequiredBalanceRub = minimumRequiredBalanceRub,
 )
+
+internal fun shouldRetainParentHelpDialog(
+    hasActiveParentHelp: Boolean,
+    isRequestingParentHelp: Boolean,
+    helpIsAvailable: Boolean,
+): Boolean = hasActiveParentHelp || isRequestingParentHelp || helpIsAvailable
+
+internal fun shouldCloseAutomaticParentHelpDialog(
+    requestResult: ParentHelpRequestResult,
+    hasActiveParentHelp: Boolean,
+): Boolean = requestResult is ParentHelpRequestResult.Accepted ||
+    requestResult is ParentHelpRequestResult.AlreadyActive ||
+    hasActiveParentHelp

@@ -12,14 +12,21 @@ class ParentHelpPromptStorageTest {
     fun promptIsRecordedForTheDisplayedWeekAndCanAppearInANewWeek() {
         val preferences = preferencesWithOldPromptMarkers()
         val storage = ParentHelpPromptStorage(preferences)
+        val secondStorage = ParentHelpPromptStorage(preferences)
 
         assertFalse(storage.wasShownInWeek(3))
-        storage.markShownInWeek(3)
-        assertTrue(ParentHelpPromptStorage(preferences).wasShownInWeek(3))
+        assertTrue(storage.tryMarkShownInWeek(3))
+        assertTrue(secondStorage.wasShownInWeek(3))
+        assertFalse(storage.tryMarkShownInWeek(3))
+        assertFalse(secondStorage.tryMarkShownInWeek(3))
         assertFalse(storage.wasShownInWeek(4))
 
-        storage.markShownInWeek(4)
+        assertTrue(storage.tryMarkShownInWeek(4))
         assertTrue(storage.wasShownInWeek(4))
+
+        storage.resetAfterParentHelpSettlement()
+        assertFalse(storage.wasShownInWeek(4))
+        assertTrue(storage.tryMarkShownInWeek(4))
     }
 
     private fun preferencesWithOldPromptMarkers(): SharedPreferences {
@@ -36,6 +43,10 @@ class ParentHelpPromptStorageTest {
                     values[args!![0] as String] = args[1] as Long
                     proxy
                 }
+                "remove" -> {
+                    values.remove(args!![0] as String)
+                    proxy
+                }
                 "apply" -> null
                 "commit" -> true
                 else -> error("Unexpected editor call: ${method.name}")
@@ -47,6 +58,7 @@ class ParentHelpPromptStorageTest {
         ) { _, method, args ->
             when (method.name) {
                 "getLong" -> values[args!![0] as String] as? Long ?: args[1] as Long
+                "contains" -> values.containsKey(args!![0] as String)
                 "edit" -> editor
                 else -> error("Unexpected preferences call: ${method.name}")
             }

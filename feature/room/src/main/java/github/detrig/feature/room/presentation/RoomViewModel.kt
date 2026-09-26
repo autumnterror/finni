@@ -30,7 +30,9 @@ import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
+import github.detrig.feature.room.domain.model.shouldCloseAutomaticParentHelpDialog
 import github.detrig.feature.room.domain.model.shouldOfferAutomaticParentHelp
+import github.detrig.feature.room.domain.model.shouldRetainParentHelpDialog
 import github.detrig.feature.room.api.FirstRunGuideApi
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.inventory.api.InventoryApi
@@ -142,13 +144,22 @@ internal class RoomViewModel(
                 handleLowBalance(it.progress)
             }
             is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
-            RoomViewEvent.ParentHelpDialogShown -> nullableState<RoomViewState.Content>()?.let {
-                if (it.parentHelpDialog != null) parentHelpPromptRepository.markShownInWeek(it.progress.weekNumber)
+            RoomViewEvent.ClaimParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
+                if (it.parentHelpDialog != null && !it.isParentHelpDialogClaimed) {
+                    if (parentHelpPromptRepository.tryMarkShownInWeek(it.progress.weekNumber)) {
+                        updateState(it.copy(isParentHelpDialogClaimed = true))
+                    } else {
+                        updateState(it.copy(
+                            parentHelpDialog = null,
+                            isParentHelpDialogClaimed = false,
+                        ))
+                    }
+                }
             }
             RoomViewEvent.CloseParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
-                parentHelpPromptRepository.markShownInWeek(it.progress.weekNumber)
                 updateState(it.copy(
                     parentHelpDialog = null,
+                    isParentHelpDialogClaimed = false,
                     parentHelpPhonePrompt = if (it.parentHelpDialog?.activeHelp == null) {
                         ParentHelpPhonePromptState
                     } else {
@@ -329,6 +340,19 @@ internal class RoomViewModel(
                         editor == null -> null
                         else -> current?.planTutorialStep
                     }
+                    val retainedParentHelpDialog = current?.parentHelpDialog?.takeIf { dialog ->
+                        shouldRetainParentHelpDialog(
+                            hasActiveParentHelp = dialog.activeHelp != null,
+                            isRequestingParentHelp = current.isRequestingParentHelp,
+                            helpIsAvailable = canOfferParentHelp(
+                                availableRub = roomData.progress.balanceRub.toLong(),
+                                savingsRub = roomData.progress.savingsRub,
+                                debtRub = roomData.progress.debtRub,
+                                hasActiveParentHelp = false,
+                                minimumRequiredBalanceRub = minimumProductPriceRub,
+                            ),
+                        )
+                    }
                     updateState(
                         RoomViewState.Content(
                             zones = zones,
@@ -368,15 +392,9 @@ internal class RoomViewModel(
                             menuDestination = current?.menuDestination ?: RoomMenuDestination.NONE,
                             areMenuAchievementsExpanded = current?.areMenuAchievementsExpanded ?: false,
                             parentGate = current?.parentGate,
-                            parentHelpDialog = current?.parentHelpDialog?.takeIf { dialog ->
-                                dialog.activeHelp != null || canOfferParentHelp(
-                                    availableRub = roomData.progress.balanceRub.toLong(),
-                                    savingsRub = roomData.progress.savingsRub,
-                                    debtRub = roomData.progress.debtRub,
-                                    hasActiveParentHelp = false,
-                                    minimumRequiredBalanceRub = minimumProductPriceRub,
-                                )
-                            },
+                            parentHelpDialog = retainedParentHelpDialog,
+                            isParentHelpDialogClaimed = current?.isParentHelpDialogClaimed == true &&
+                                retainedParentHelpDialog != null,
                             isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
                             parentHelpPhonePrompt = current?.parentHelpPhonePrompt,
                             savingsRecoveryPrompt = current?.savingsRecoveryPrompt,
@@ -1149,15 +1167,19 @@ internal class RoomViewModel(
             },
         ) {
             val result = requestParentHelpInteractor(offerId)
-            val activeHelp = when (result) {
-                is ParentHelpRequestResult.Accepted -> result.help
-                is ParentHelpRequestResult.AlreadyActive -> result.help
-                is ParentHelpRequestResult.Rejected -> loadParentHelpInteractor()
-            }
+            val activeHelp = if (result is ParentHelpRequestResult.Rejected) {
+                loadParentHelpInteractor()
+            } else null
             nullableState<RoomViewState.Content>()?.let { latest ->
+                val closeOfferDialog = shouldCloseAutomaticParentHelpDialog(
+                    requestResult = result,
+                    hasActiveParentHelp = activeHelp != null,
+                )
                 updateState(latest.copy(
-                    parentHelpDialog = latest.parentHelpDialog?.copy(activeHelp = activeHelp),
+                    parentHelpDialog = if (closeOfferDialog) null else latest.parentHelpDialog,
+                    isParentHelpDialogClaimed = latest.isParentHelpDialogClaimed && !closeOfferDialog,
                     isRequestingParentHelp = false,
+                    parentHelpPhonePrompt = if (closeOfferDialog) null else latest.parentHelpPhonePrompt,
                 ))
             }
         }

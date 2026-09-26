@@ -2,6 +2,11 @@ package github.detrig.feature.phone.domain
 
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.EconomyState
+import github.detrig.feature.economy.domain.FinancialOperation
+import github.detrig.feature.economy.domain.FinancialOperationResult
+import github.detrig.feature.economy.domain.FinancialOperationType
+import github.detrig.feature.economy.domain.FinancialSnapshot
+import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
@@ -247,6 +252,64 @@ class MessagesCoordinatorParentHelpTest {
         assertEquals(1, momMessages(repository).count { it.kind == MessageKind.PARENT_HELP_OFFER })
     }
 
+    @Test
+    fun `successful settlement is reflected by the coordinator and restores moms offer message`() = runTest {
+        val economyState = MutableStateFlow(economyState(availableRub = 800, savingsRub = 0, debtRub = 720))
+        val activeHelp = MutableStateFlow<ParentHelpState?>(ParentHelpState(
+            offerId = "offer",
+            receivedRub = 600,
+            totalRepaymentRub = 720,
+            remainingRub = 720,
+            paymentsRemaining = 4,
+        ))
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        var parentHelpSettledNotifications = 0
+        val coordinator = MessagesCoordinator(
+            repository = repository,
+            weekApi = weekApi(absoluteDay = 3),
+            learningApi = learningApi(),
+            progressionApi = unusedProgressionApi(),
+            economyApi = economyApi(economyState, activeHelp = activeHelp) { operationId, context ->
+                val before = economyState.value
+                val amountRub = activeHelp.value!!.remainingRub
+                val after = before.copy(
+                    availableRub = before.availableRub - amountRub,
+                    debtRub = before.debtRub - amountRub,
+                )
+                economyState.value = after
+                activeHelp.value = null
+                FinancialOperationResult.Applied(
+                    operation = FinancialOperation(
+                        id = operationId,
+                        type = FinancialOperationType.DEBT_REPAYMENT,
+                        amountRub = amountRub,
+                        timestampMillis = 1,
+                        availableDeltaRub = -amountRub,
+                        savingsDeltaRub = 0,
+                        debtDeltaRub = -amountRub,
+                        before = FinancialSnapshot(before.availableRub, before.savingsRub, before.debtRub),
+                        after = FinancialSnapshot(after.availableRub, after.savingsRub, after.debtRub),
+                        context = context,
+                    ),
+                    state = after,
+                )
+            },
+            minimumHelpBalanceRub = 100,
+            eventConfig = SecurityEventConfig(dailyProbability = 0.0),
+            onParentHelpSettled = { parentHelpSettledNotifications++ },
+        )
+        repository.upsertParentHelpMessage(absoluteDay = 3, activeHelp = activeHelp.value)
+
+        val result = coordinator.settleParentHelpInFull()
+
+        assertTrue(result is FinancialOperationResult.Applied)
+        assertEquals(80L, economyState.value.availableRub)
+        assertEquals(0L, economyState.value.debtRub)
+        assertEquals(null, activeHelp.value)
+        assertEquals(1, parentHelpSettledNotifications)
+        assertEquals(listOf(MessageKind.PARENT_HELP_OFFER), momMessages(repository).map { it.kind })
+    }
+
     private fun momMessages(repository: PersistentMessagesRepository) = repository.observeInbox().value.threads
         .single { it.senderId == MessageSenderId.MOM }
         .messages
@@ -255,17 +318,21 @@ class MessagesCoordinatorParentHelpTest {
         state: MutableStateFlow<EconomyState>,
         acceptedHelp: ParentHelpState? = null,
         activeHelp: MutableStateFlow<ParentHelpState?> = MutableStateFlow(acceptedHelp),
+        settleParentHelp: ((String, OperationContext) -> FinancialOperationResult)? = null,
     ): EconomyApi =
         Proxy.newProxyInstance(
             EconomyApi::class.java.classLoader,
             arrayOf(EconomyApi::class.java),
-        ) { _, method, _ ->
+        ) { _, method, args ->
             when (method.name) {
                 "getState", "initialize" -> state.value
                 "observeState" -> state
                 "getParentHelp" -> activeHelp.value
                 "parentHelpOffers" -> listOf(ParentHelpOffer("offer", 100, 2, 110))
                 "requestParentHelp" -> ParentHelpRequestResult.Accepted(acceptedHelp!!, state.value)
+                "settleParentHelpInFull" -> checkNotNull(settleParentHelp) {
+                    "Parent help settlement is unused in this test"
+                }(args!![0] as String, args[1] as OperationContext)
                 else -> error("Unexpected EconomyApi call: ${method.name}")
             }
         } as EconomyApi

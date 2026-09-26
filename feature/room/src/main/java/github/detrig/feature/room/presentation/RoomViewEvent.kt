@@ -20,7 +20,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object OpenSavingsFromRecoveryPrompt : RoomViewEvent
     data object DismissSavingsRecoveryPrompt : RoomViewEvent
     data class ParentHelpOfferClicked(val offerId: String) : RoomViewEvent
-    data object ParentHelpDialogShown : RoomViewEvent
+    data object ClaimParentHelpDialog : RoomViewEvent
     data object CloseParentHelpDialog : RoomViewEvent
     data object CloseParentHelpPhonePrompt : RoomViewEvent
     data object FeedingClicked : RoomViewEvent

@@ -42,7 +42,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     }
     private val purchaseSavingsGoal by lazy { PurchaseSavingsGoalInteractor(repository) }
     override val api: RoomApi by lazy {
-        RoomApiImpl(previewRequests, dependencies.resources(), purchaseSavingsGoal, firstRunGuide)
+        RoomApiImpl(previewRequests, dependencies.resources(), purchaseSavingsGoal, firstRunGuide, parentHelpPrompt)
     }
     private val router by lazy {
         RoomRouterImpl(dependencies.gameLauncher(), dependencies.globalMessageController(), dependencies.resources(),
