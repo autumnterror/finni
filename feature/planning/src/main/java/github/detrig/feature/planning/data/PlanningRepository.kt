@@ -69,6 +69,6 @@ internal class PlanningRepository(
         val plan = WeeklyPlan(weekNumber, availableRub, PlanPercentages(mandatoryPercent, wantsPercent, savingsPercent))
         val totals = actuals.groupBy { PlanCategory.entries.first { category -> category.code == it.categoryCode } }
             .mapValues { (_, operations) -> operations.sumOf { it.amountRub } }
-        return PlanningCalculator.progress(plan, totals)
+        return PlanningCalculator.progress(plan, totals, config)
     }
 }

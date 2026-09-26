@@ -21,6 +21,20 @@ interface LearningDao {
     @Query("SELECT gamePeriod FROM learning_metric_occurrences WHERE profileId = :profileId AND metricId = :metricId ORDER BY gamePeriod, actionId")
     suspend fun getQualifyingPeriods(profileId: String, metricId: String): List<Long>
 
+    @Query("""
+        SELECT occurrence.gamePeriod FROM learning_metric_occurrences AS occurrence
+        INNER JOIN learning_actions AS recordedAction
+            ON recordedAction.profileId = occurrence.profileId AND recordedAction.actionId = occurrence.actionId
+        WHERE occurrence.profileId = :profileId AND occurrence.metricId = :metricId
+            AND recordedAction.actionType IN (:actionTypes)
+        ORDER BY occurrence.gamePeriod, occurrence.actionId
+    """)
+    suspend fun getQualifyingPeriodsForTypes(
+        profileId: String,
+        metricId: String,
+        actionTypes: List<String>,
+    ): List<Long>
+
     @Upsert
     suspend fun upsertMetricProgress(progress: LearningMetricProgressEntity)
 

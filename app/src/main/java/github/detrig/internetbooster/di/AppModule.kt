@@ -56,7 +56,7 @@ internal class AppModuleImpl(
 
     private val economyMediator: EconomyMediator by lazy { EconomyMediator(databaseModule) }
     private val weekMediator: WeekMediator by lazy {
-        WeekMediator(databaseModule, economyMediator, gameStateMediator, planningMediator)
+        WeekMediator(databaseModule, economyMediator, gameStateMediator, planningMediator, learningMediator)
     }
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
     private val learningMediator: LearningMediator by lazy {
@@ -186,9 +186,9 @@ internal class AppModuleImpl(
         miniGamesCommonMediator.init()
         economyMediator.init()
         gameStateMediator.init()
-        weekMediator.init()
         planningMediator.init()
         learningMediator.init()
+        weekMediator.init()
         inventoryMediator.init()
         savingsMediator.init()
         shopMediator.init()

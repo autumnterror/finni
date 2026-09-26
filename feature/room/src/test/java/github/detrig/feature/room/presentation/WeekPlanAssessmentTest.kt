@@ -2,6 +2,8 @@ package github.detrig.feature.room.presentation
 
 import github.detrig.feature.planning.domain.CategoryPlanProgress
 import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PlanAssessment
+import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.PlanProgressTone
 import github.detrig.feature.planning.domain.WeeklyPlan
@@ -65,6 +67,30 @@ class WeekPlanAssessmentTest {
 
         assertEquals(WeekPlanOutcome.TRY_AGAIN, result.outcome)
         assertEquals(emptySet<WeekPlanItem>(), result.matchedItems)
+    }
+
+    @Test
+    fun `following a weak plan does not receive positive week feedback`() {
+        val result = progress(mandatory = 200, wants = 125, savings = 100)
+            .copy(planAssessment = PlanAssessment.NeedsChanges(PlanAdjustmentReason.RESERVE_TOO_LOW, 10))
+            .assessWeek()
+
+        assertEquals(WeekPlanOutcome.ALL_MATCHED, result.outcome)
+        assertEquals(WeekPlanFeedbackReason.WEAK_PLAN, result.feedbackReason)
+    }
+
+    @Test
+    fun `higher mandatory costs with lower wants explain the adjustment`() {
+        val result = progress(mandatory = 280, wants = 45, savings = 100).assessWeek()
+
+        assertEquals(WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST, result.feedbackReason)
+    }
+
+    @Test
+    fun `small deviation from an adequate plan receives positive feedback`() {
+        val result = progress(mandatory = 200, wants = 120, savings = 100).assessWeek()
+
+        assertEquals(WeekPlanFeedbackReason.CLOSE_TO_PLAN, result.feedbackReason)
     }
 
     private fun progress(

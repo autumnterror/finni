@@ -15,7 +15,11 @@ internal object PlanningCalculator {
         else -> PlanAssessment.Adequate
     }
 
-    fun progress(plan: WeeklyPlan, actuals: Map<PlanCategory, Long>): WeeklyPlanProgress {
+    fun progress(
+        plan: WeeklyPlan,
+        actuals: Map<PlanCategory, Long>,
+        config: PlanningConfig = PlanningConfig(),
+    ): WeeklyPlanProgress {
         val planned = mapOf(
             PlanCategory.MANDATORY to plan.plannedRub(PlanCategory.MANDATORY),
             PlanCategory.WANTS to plan.plannedRub(PlanCategory.WANTS),
@@ -25,7 +29,7 @@ internal object PlanningCalculator {
             val expected = checkNotNull(planned[category])
             val actual = actuals[category] ?: 0L
             CategoryPlanProgress(category, expected, actual, tone(expected, actual))
-        })
+        }, planAssessment = assess(plan.percentages, config))
     }
 
     private fun tone(plannedRub: Long, actualRub: Long): PlanProgressTone = when {

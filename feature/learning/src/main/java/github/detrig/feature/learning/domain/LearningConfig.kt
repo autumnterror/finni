@@ -5,6 +5,7 @@ data class ProgressMilestone(
     val requiredActions: Int,
     val requiredDistinctPeriods: Int = 1,
     val requiredCurrentStreak: Int = 0,
+    val qualifyingActionTypes: Set<LearningActionType>? = null,
 ) {
     init {
         require(progressSteps > 0)
@@ -12,6 +13,7 @@ data class ProgressMilestone(
         require(requiredDistinctPeriods in 1..requiredActions)
         require(requiredCurrentStreak >= 0)
         require(requiredCurrentStreak <= requiredDistinctPeriods)
+        require(qualifyingActionTypes == null || qualifyingActionTypes.isNotEmpty())
     }
 }
 
@@ -25,6 +27,9 @@ data class MetricRuleDefinition(
         require(actionTypes.isNotEmpty())
         require(milestones.isNotEmpty())
         require(milestones.map { it.progressSteps }.distinct().size == milestones.size)
+        require(milestones.all { milestone ->
+            milestone.qualifyingActionTypes == null || actionTypes.containsAll(milestone.qualifyingActionTypes)
+        }) { "Milestone action types must belong to the metric rule" }
         require(milestones.zipWithNext().all { (left, right) ->
             left.progressSteps < right.progressSteps &&
                 left.requiredActions <= right.requiredActions &&

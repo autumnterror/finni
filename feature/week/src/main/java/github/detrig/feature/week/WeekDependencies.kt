@@ -6,6 +6,7 @@ import github.detrig.feature.week.data.local.WeekDao
 import github.detrig.feature.week.domain.PetDayEffects
 import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.planning.api.PlanningApi
+import github.detrig.feature.learning.api.LearningApi
 
 interface WeekDependencies {
     fun weekDao(): WeekDao
@@ -14,4 +15,5 @@ interface WeekDependencies {
     fun transactionRunner(): RoomTransactionRunner
     fun progressionApi(): ProgressionApi
     fun planningApi(): PlanningApi
+    fun learningApi(): LearningApi
 }

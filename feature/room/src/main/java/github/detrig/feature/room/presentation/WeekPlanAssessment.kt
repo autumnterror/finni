@@ -1,7 +1,9 @@
 package github.detrig.feature.room.presentation
 
 import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
+import github.detrig.feature.planning.domain.isGoodWeeklyResult
 
 internal enum class WeekPlanItem {
     MANDATORY,
@@ -16,10 +18,19 @@ internal enum class WeekPlanOutcome {
     TRY_AGAIN,
 }
 
+internal enum class WeekPlanFeedbackReason {
+    WEAK_PLAN,
+    ADAPTED_TO_MANDATORY_COST,
+    CLOSE_TO_PLAN,
+    MANDATORY_COST_INCREASED,
+    ORDINARY,
+}
+
 internal data class WeekPlanAssessment(
     val matchedItems: Set<WeekPlanItem>,
     val missedItems: Set<WeekPlanItem>,
     val actualReserveRub: Long,
+    val feedbackReason: WeekPlanFeedbackReason,
 ) {
     val outcome: WeekPlanOutcome = when (matchedItems.size) {
         WeekPlanItem.entries.size -> WeekPlanOutcome.ALL_MATCHED
@@ -37,6 +48,9 @@ internal data class WeekPlanAssessment(
 internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
     val categorizedActualRub = categories.sumOf { it.actualRub }
     val actualReserveRub = (plan.availableRub - categorizedActualRub).coerceAtLeast(0)
+    val mandatory = category(PlanCategory.MANDATORY)
+    val wants = category(PlanCategory.WANTS)
+    val mandatoryIncreased = mandatory.actualRub > mandatory.plannedRub
     val matched = buildSet {
         if (category(PlanCategory.MANDATORY).let { it.actualRub == it.plannedRub }) {
             add(WeekPlanItem.MANDATORY)
@@ -51,9 +65,18 @@ internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
             add(WeekPlanItem.RESERVE)
         }
     }
+    val feedbackReason = when {
+        planAssessment != PlanAssessment.Adequate -> WeekPlanFeedbackReason.WEAK_PLAN
+        mandatoryIncreased && wants.actualRub <= wants.plannedRub &&
+            categorizedActualRub <= plan.availableRub -> WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST
+        matched.size < WeekPlanItem.entries.size && isGoodWeeklyResult() -> WeekPlanFeedbackReason.CLOSE_TO_PLAN
+        mandatoryIncreased -> WeekPlanFeedbackReason.MANDATORY_COST_INCREASED
+        else -> WeekPlanFeedbackReason.ORDINARY
+    }
     return WeekPlanAssessment(
         matchedItems = matched,
         missedItems = WeekPlanItem.entries.toSet() - matched,
         actualReserveRub = actualReserveRub,
+        feedbackReason = feedbackReason,
     )
 }

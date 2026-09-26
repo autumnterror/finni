@@ -726,6 +726,14 @@ Learned achievement requires an adequate plan. A confirmed weekly plan remains
 fixed; adaptation means changing later decisions and the use of remaining money,
 not silently rewriting the confirmed plan.
 
+The current implementation grants `reasonable_plan` Introduction after the first
+adequate confirmed plan and Learned after adequate plans in three distinct game
+weeks. `follow_plan` Introduction is granted when a completed week is compared
+with its plan; Learned requires an adequate plan and good adherence in three
+distinct completed weeks. A close result permits up to the greater of 10 rubles
+or 25% deviation in each planned category and the reserve. An early crisis
+finish can introduce the comparison but cannot qualify as good adherence.
+
 At the end of a period, feedback evaluates plan quality separately from adherence:
 
 - adequate plan + small justified deviation: positive explanation;
@@ -737,21 +745,30 @@ After the introductory cycles, adaptation may be checked through a known future
 expense, extra income, an unexpected mandatory expense, or a configured temporary
 price change. A price-change scenario is not mandatory until its rules and content
 are approved.
+The current qualifying change is a mandatory-expense overrun greater than the
+larger of 10 rubles or 25% of the planned mandatory amount in the completed
+week. Introduction records that change; Learned requires covering
+such an overrun with an adequate starting plan, optional spending within its
+limit, and the week's total within available money in two distinct weeks. The
+learning action is committed with the week transition and is idempotent.
 
 #### Savings building
 
 | Metric | Introduction row | Learned row |
 |---|---|---|
 | `create_goal` | Ребёнок познакомился с созданием финансовой цели. | Ребёнок умеет самостоятельно выбирать и создавать достижимую финансовую цель. |
-| `plan_saving` | Ребёнок познакомился с включением сбережений в недельный план. | Ребёнок умеет планировать регулярные пополнения финансовой цели. |
 | `regular_contribution` | Ребёнок познакомился с откладыванием денег на финансовую цель. | Ребёнок умеет пополнять финансовую цель на протяжении нескольких игровых периодов. |
 | `reach_goal` | Ребёнок познакомился с завершением накопления на выбранную цель. | Ребёнок умеет доводить план накопления до достижения цели. |
 
 The piggy-bank introduction explains its purpose but does not itself advance a
-metric. Creating a goal, confirming a plan with savings, a successful transfer,
-and reaching a target are separate learning actions. Friendly reminders are
+metric. Creating a goal, a successful transfer, and reaching a target are
+separate learning actions. The savings share remains in the weekly plan but does
+not award a savings achievement by itself. Friendly reminders are
 allowed; the pet must not guilt the child or imply that affection depends on
 buying the desired item.
+The former `savings.plan_saving` achievement IDs are retired and must not be
+reused. Existing unlock records and earned XP are retained; the retired items
+are absent from the active album and parent rows.
 
 #### Payments and purchases
 

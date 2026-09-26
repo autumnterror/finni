@@ -86,6 +86,7 @@ import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.PlanEditorState
 import github.detrig.feature.room.presentation.PlanTutorialStep
 import github.detrig.feature.room.presentation.WeekPlanAssessment
+import github.detrig.feature.room.presentation.WeekPlanFeedbackReason
 import github.detrig.feature.room.presentation.WeekPlanItem
 import github.detrig.feature.room.presentation.WeekPlanOutcome
 import github.detrig.feature.room.presentation.assessWeek
@@ -707,21 +708,29 @@ private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
     ).joinToString(", ")
     NotebookSection(
         modifier = Modifier.fillMaxWidth(),
-        tone = when (assessment.outcome) {
-            WeekPlanOutcome.ALL_MATCHED -> FinPetModalSectionTone.Highlighted
-            WeekPlanOutcome.PARTIALLY_MATCHED,
-            WeekPlanOutcome.TRY_AGAIN,
-            -> FinPetModalSectionTone.Warning
-        },
+        tone = if (
+            assessment.feedbackReason == WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST ||
+            assessment.feedbackReason == WeekPlanFeedbackReason.CLOSE_TO_PLAN ||
+            assessment.feedbackReason == WeekPlanFeedbackReason.ORDINARY &&
+            assessment.outcome == WeekPlanOutcome.ALL_MATCHED
+        ) FinPetModalSectionTone.Highlighted else FinPetModalSectionTone.Warning,
     ) {
         Text(
-            text = when (assessment.outcome) {
-                WeekPlanOutcome.ALL_MATCHED -> stringResource(R.string.plan_result_all_matched)
-                WeekPlanOutcome.PARTIALLY_MATCHED -> stringResource(
-                    R.string.plan_result_partially_matched,
-                    missedItems,
-                )
-                WeekPlanOutcome.TRY_AGAIN -> stringResource(R.string.plan_result_try_again)
+            text = when (assessment.feedbackReason) {
+                WeekPlanFeedbackReason.WEAK_PLAN -> stringResource(R.string.plan_result_weak_plan)
+                WeekPlanFeedbackReason.ADAPTED_TO_MANDATORY_COST ->
+                    stringResource(R.string.plan_result_adapted_to_mandatory)
+                WeekPlanFeedbackReason.CLOSE_TO_PLAN -> stringResource(R.string.plan_result_close_to_plan)
+                WeekPlanFeedbackReason.MANDATORY_COST_INCREASED ->
+                    stringResource(R.string.plan_result_mandatory_increased)
+                WeekPlanFeedbackReason.ORDINARY -> when (assessment.outcome) {
+                    WeekPlanOutcome.ALL_MATCHED -> stringResource(R.string.plan_result_all_matched)
+                    WeekPlanOutcome.PARTIALLY_MATCHED -> stringResource(
+                        R.string.plan_result_partially_matched,
+                        missedItems,
+                    )
+                    WeekPlanOutcome.TRY_AGAIN -> stringResource(R.string.plan_result_try_again)
+                }
             },
             modifier = Modifier.padding(AppTheme.spacing.md),
             style = AppTheme.typography.bodyStrong,

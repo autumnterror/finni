@@ -124,6 +124,7 @@ data class CategoryPlanProgress(
 data class WeeklyPlanProgress(
     val plan: WeeklyPlan,
     val categories: List<CategoryPlanProgress>,
+    val planAssessment: PlanAssessment = PlanningCalculator.assess(plan.percentages, PlanningConfig()),
 ) {
     fun category(category: PlanCategory): CategoryPlanProgress = categories.first { it.category == category }
 }
