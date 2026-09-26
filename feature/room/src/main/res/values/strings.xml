@@ -131,10 +131,13 @@
     <string name="plan_progress_over_limit">Сильно больше плана</string>
     <string name="plan_close">Готово</string>
     <string name="plan_tutorial_intro">Вот все деньги на эту неделю. Распредели их так, чтобы потом не оказалось, что всё уже потрачено.</string>
-    <string name="plan_tutorial_mandatory">Сначала то, без чего трудно обойтись: еда и другие нужные вещи. Лучше заранее оставить на них часть денег.</string>
-    <string name="plan_tutorial_wants">А это деньги на то, что просто хочется: вкусняшку, украшение для комнаты или что-нибудь ещё приятное.</string>
-    <string name="plan_tutorial_savings">Сюда можно откладывать на что-нибудь подороже.</string>
-    <string name="plan_tutorial_reserve">И ещё я бы оставил немного просто так. Вдруг неожиданно понадобится что-нибудь купить?</string>
+    <string name="plan_help_button">Подсказка о плане</string>
+    <string name="plan_help_title">План на неделю</string>
+    <string name="plan_help_dismiss">Понятно</string>
+    <string name="plan_tutorial_mandatory">В пункте «Обязательное» оставь деньги на корм для питомца и другие важные покупки. Это нужно купить в первую очередь.</string>
+    <string name="plan_tutorial_wants">В пункте «Желания» запланируй покупки для радости: например, вкусняшку или украшение комнаты. Это не срочные покупки.</string>
+    <string name="plan_tutorial_savings">В пункте «Накопления» отложи часть денег на выбранную цель. Копилка поможет собрать нужную сумму постепенно.</string>
+    <string name="plan_tutorial_reserve">В пункте «Финансовый запас» оставь немного денег на случай неожиданной покупки.</string>
     <string name="plan_tutorial_try">Теперь попробуй сам. Распредели деньги так, как тебе кажется правильным.</string>
     <string name="plan_tutorial_next">Дальше</string>
     <string name="plan_tutorial_practice">Попробовать самому</string>

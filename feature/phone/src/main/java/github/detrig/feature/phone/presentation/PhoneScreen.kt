@@ -72,6 +72,8 @@ import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetHelpButton
+import github.detrig.designsystem.component.FinPetHelpDialog
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.phone.PhoneFeature
@@ -414,6 +416,7 @@ private fun PhoneHomeContent(
     onOpenApp: (String) -> Unit,
     highlightedAppId: String? = null,
 ) {
+    var isHelpVisible by rememberSaveable { mutableStateOf(false) }
     var highlightedAppBounds by remember { mutableStateOf<Rect?>(null) }
     LaunchedEffect(highlightedAppId) { highlightedAppBounds = null }
     PhoneAssetButton(
@@ -427,6 +430,11 @@ private fun PhoneHomeContent(
         onClick = onClose,
     )
     PhoneStatusIcons(scale)
+    FinPetHelpButton(
+        contentDescription = stringResource(R.string.phone_help_button),
+        onClick = { isHelpVisible = true },
+        modifier = Modifier.offset(x = (100f * scale).dp, y = (140f * scale).dp),
+    )
     val apps = listOf(
         PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP),
         PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP),
@@ -502,6 +510,14 @@ private fun PhoneHomeContent(
     }
     highlightedAppBounds?.let { bounds ->
         PhoneAppTutorialMask(bounds = bounds)
+    }
+    if (isHelpVisible) {
+        FinPetHelpDialog(
+            title = stringResource(R.string.phone_help_title),
+            message = stringResource(R.string.phone_help_message),
+            dismissText = stringResource(R.string.phone_help_dismiss),
+            onDismissRequest = { isHelpVisible = false },
+        )
     }
 }
 

@@ -3,6 +3,14 @@
     <string name="messages_app_name">Сообщения</string>
     <string name="messages_first_room_prompt">На телефон пришло сообщение! Давай посмотрим — вдруг там что-то важное.</string>
     <string name="messages_back">Назад</string>
+    <string name="messages_help_button">Подсказка</string>
+    <string name="messages_help_dismiss">Понятно</string>
+    <string name="messages_mom_help_hint_title">Помощь от родителей</string>
+    <string name="messages_mom_help_hint">Здесь ты можешь попросить деньги на важную покупку. Нажми на сообщение от мамы, чтобы посмотреть условия.</string>
+    <string name="phone_help_button">Подсказка о телефоне</string>
+    <string name="phone_help_title">Что есть в телефоне?</string>
+    <string name="phone_help_message">Здесь есть магазины еды, одежды и вещей для комнаты. Мошенники могут писать в сообщениях: не сообщай коды и не открывай незнакомые ссылки — покажи их взрослому.</string>
+    <string name="phone_help_dismiss">Понятно</string>
     <string name="messages_empty_preview">Сообщений пока нет</string>
     <string name="messages_day">День %1$d</string>
     <string name="messages_bank">Банк</string>

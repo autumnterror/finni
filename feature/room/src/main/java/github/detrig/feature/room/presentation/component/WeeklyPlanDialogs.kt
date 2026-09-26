@@ -68,6 +68,8 @@ import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetHelpButton
+import github.detrig.designsystem.component.FinPetHelpDialog
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetProgressIndicator
@@ -107,6 +109,7 @@ internal fun WeeklyPlanEditorDialog(
     onReserveChanged: (Int) -> Unit,
     onSave: () -> Unit,
 ) {
+    var replayTutorialStep by remember { mutableStateOf<PlanTutorialStep?>(null) }
     val density = LocalDensity.current
     val mandatoryRequester = remember { BringIntoViewRequester() }
     val wantsRequester = remember { BringIntoViewRequester() }
@@ -133,15 +136,36 @@ internal fun WeeklyPlanEditorDialog(
         }
     }
 
+    LaunchedEffect(replayTutorialStep) {
+        val requester = when (replayTutorialStep) {
+            PlanTutorialStep.MANDATORY -> mandatoryRequester
+            PlanTutorialStep.WANTS -> wantsRequester
+            PlanTutorialStep.SAVINGS -> savingsRequester
+            PlanTutorialStep.RESERVE -> reserveRequester
+            PlanTutorialStep.PRACTICE,
+            null,
+            -> null
+        }
+        if (requester != null) {
+            withFrameNanos { }
+            requester.bringIntoView()
+        }
+    }
+
     WeeklyPlanNotebookDialog(
         title = stringResource(R.string.plan_title, weekNumber),
         onDismissRequest = null,
+        onHelpClick = {
+            if (tutorialStep == null && feedbackCards == null && !isSaving) {
+                replayTutorialStep = PlanTutorialStep.MANDATORY
+            }
+        },
         modifier = Modifier.testTag("weekly_plan_editor"),
         actions = {
             FinPetButton(
                 text = if (isSaving) stringResource(R.string.plan_saving) else stringResource(R.string.plan_save),
                 onClick = onSave,
-                enabled = tutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
+                enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null && !isSaving && editor.total <= 100,
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -151,7 +175,7 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.MANDATORY,
             valuePercent = editor.mandatory,
             availableRub = availableRub,
-            enabled = tutorialStep == null && feedbackCards == null,
+            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(mandatoryRequester)
                 .onGloballyPositioned { mandatoryBounds = it.boundsInWindow() },
@@ -161,7 +185,7 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.WANTS,
             valuePercent = editor.wants,
             availableRub = availableRub,
-            enabled = tutorialStep == null && feedbackCards == null,
+            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(wantsRequester)
                 .onGloballyPositioned { wantsBounds = it.boundsInWindow() },
@@ -171,7 +195,7 @@ internal fun WeeklyPlanEditorDialog(
             category = PlanCategory.SAVINGS,
             valuePercent = editor.savings,
             availableRub = availableRub,
-            enabled = tutorialStep == null && feedbackCards == null,
+            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
             modifier = Modifier
                 .bringIntoViewRequester(savingsRequester)
                 .onGloballyPositioned { savingsBounds = it.boundsInWindow() },
@@ -186,7 +210,7 @@ internal fun WeeklyPlanEditorDialog(
                 editor.savings,
             ).sumOf { percent -> availableRub * percent / 100 },
             availableRub = availableRub,
-            enabled = tutorialStep == null && feedbackCards == null,
+            enabled = tutorialStep == null && replayTutorialStep == null && feedbackCards == null,
             testTag = "weekly_plan_reserve",
             modifier = Modifier
                 .bringIntoViewRequester(reserveRequester)
@@ -257,6 +281,52 @@ internal fun WeeklyPlanEditorDialog(
                 },
                 onFinished = onFeedbackEdit,
             )
+        } else if (replayTutorialStep != null) {
+            val step = checkNotNull(replayTutorialStep)
+            val tutorialDialogueTopInset = if (step == PlanTutorialStep.MANDATORY) {
+                mandatoryBounds?.let { bounds ->
+                    maxOf(
+                        dialogueTopInset,
+                        with(density) { bounds.bottom.toDp() } + AppTheme.spacing.sm,
+                    )
+                } ?: dialogueTopInset
+            } else {
+                dialogueTopInset
+            }
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(step.message()),
+                portrait = petPortrait,
+                underlay = {
+                    TutorialSpotlight(
+                        targetBounds = when (step) {
+                            PlanTutorialStep.MANDATORY -> mandatoryBounds
+                            PlanTutorialStep.WANTS -> wantsBounds
+                            PlanTutorialStep.SAVINGS -> savingsBounds
+                            PlanTutorialStep.RESERVE -> reserveBounds
+                            PlanTutorialStep.PRACTICE -> null
+                        },
+                    )
+                },
+                advanceOnTap = false,
+                topInset = tutorialDialogueTopInset,
+                actions = listOf(FinPetDialogueAction(
+                    id = "next",
+                    label = stringResource(if (step == PlanTutorialStep.RESERVE) {
+                        R.string.plan_tutorial_practice
+                    } else {
+                        R.string.plan_tutorial_next
+                    }),
+                )),
+                onActionSelected = {
+                    replayTutorialStep = if (step == PlanTutorialStep.RESERVE) {
+                        null
+                    } else {
+                        step.nextOrNull()
+                    }
+                },
+                onFinished = { replayTutorialStep = null },
+            )
         }
     }
 }
@@ -268,6 +338,7 @@ private const val PLAN_SAVE_ANYWAY_ACTION_ID = "save_plan_anyway"
 private fun WeeklyPlanNotebookDialog(
     title: String,
     onDismissRequest: (() -> Unit)?,
+    onHelpClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     actions: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
@@ -310,13 +381,23 @@ private fun WeeklyPlanNotebookDialog(
                         ),
                     verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
                 ) {
-                    Text(
-                        text = title,
-                        modifier = Modifier.fillMaxWidth(),
-                        style = AppTheme.typography.screenTitle,
-                        color = AppTheme.colors.storefront.onSurface,
-                        textAlign = TextAlign.Center,
-                    )
+                    Box(Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.preferredTouchTarget)) {
+                        Text(
+                            text = title,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.Center)
+                                .padding(horizontal = AppTheme.sizes.preferredTouchTarget),
+                            style = AppTheme.typography.screenTitle,
+                            color = AppTheme.colors.storefront.onSurface,
+                            textAlign = TextAlign.Center,
+                        )
+                        FinPetHelpButton(
+                            contentDescription = stringResource(R.string.plan_help_button),
+                            onClick = onHelpClick,
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                        )
+                    }
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -539,6 +620,7 @@ internal fun WeeklyPlanProgressDialog(
     isWeekResult: Boolean = false,
     onDismiss: () -> Unit,
 ) {
+    var isHelpVisible by remember { mutableStateOf(false) }
     val assessment = remember(progress, isWeekResult) {
         if (isWeekResult) progress.assessWeek() else null
     }
@@ -548,6 +630,7 @@ internal fun WeeklyPlanProgressDialog(
             progress.plan.weekNumber,
         ),
         onDismissRequest = onDismiss,
+        onHelpClick = { isHelpVisible = true },
         modifier = Modifier.testTag("weekly_plan_progress"),
         actions = {
             FinPetButton(
@@ -592,7 +675,23 @@ internal fun WeeklyPlanProgressDialog(
             )
         }
     }
+    if (isHelpVisible) {
+        FinPetHelpDialog(
+            title = stringResource(R.string.plan_help_title),
+            message = weeklyPlanHelpMessage(),
+            dismissText = stringResource(R.string.plan_help_dismiss),
+            onDismissRequest = { isHelpVisible = false },
+        )
+    }
 }
+
+@Composable
+private fun weeklyPlanHelpMessage(): String = listOf(
+    stringResource(R.string.plan_tutorial_mandatory),
+    stringResource(R.string.plan_tutorial_wants),
+    stringResource(R.string.plan_tutorial_savings),
+    stringResource(R.string.plan_tutorial_reserve),
+).joinToString("\n\n")
 
 @Composable
 private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
