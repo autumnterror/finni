@@ -488,7 +488,10 @@ internal fun AllowanceReceiptDialog(
                     Image(
                         painter = painterResource(R.drawable.allowance_continue),
                         contentDescription = stringResource(R.string.allowance_notice_continue),
-                        modifier = Modifier.weight(1f).fillMaxSize().graphicsLayer(scaleX = 1.25f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .graphicsLayer(scaleX = 1.25f, scaleY = 1.25f),
                         contentScale = ContentScale.Fit,
                     )
                 }
@@ -497,7 +500,7 @@ internal fun AllowanceReceiptDialog(
                     contentDescription = null,
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .offset(x = 50.dp, y = (-84).dp)
+                        .offset(x = 30.dp, y = (-84).dp)
                         .size(120.dp)
                         .zIndex(1f),
                     contentScale = ContentScale.Fit,
