@@ -7,12 +7,16 @@ import android.content.pm.PackageManager
 import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.core.content.ContextCompat
 import github.detrig.core.view.Nav3Activity
+import github.detrig.designsystem.component.LocalPetSpeechController
+import github.detrig.designsystem.component.PetSpeechController
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.internetbooster.navigation.appGraph
 import github.detrig.internetbooster.startup.AppStartupGate
@@ -65,9 +69,18 @@ class MainActivity : Nav3Activity(
 
     @Composable
     override fun ProvideAppContent(content: @Composable () -> Unit) {
+        val gameAudio = (application as FinPetApplication).appComponent.gameAudio
+        val petSpeechController = remember(gameAudio) {
+            PetSpeechController(
+                speak = gameAudio::speakPet,
+                stop = gameAudio::stopPetSpeech,
+            )
+        }
         FinPetTheme {
-            AppStartupGate {
-                AchievementNotificationHost(content)
+            CompositionLocalProvider(LocalPetSpeechController provides petSpeechController) {
+                AppStartupGate {
+                    AchievementNotificationHost(content)
+                }
             }
         }
     }

@@ -1,15 +1,19 @@
 package github.detrig.core.audio
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.SoundPool
+import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
+import android.speech.tts.TextToSpeech
 import android.util.Log
+import java.util.Locale
 
 /** Single SoundPool and audio-focus owner for all in-app sound effects. */
 class AndroidGameAudio(context: Context) : GameAudio {
@@ -22,6 +26,10 @@ class AndroidGameAudio(context: Context) : GameAudio {
     private val attributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_GAME)
         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+    private val speechAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_GAME)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
         .build()
     private val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
         .setAudioAttributes(attributes)
@@ -42,10 +50,14 @@ class AndroidGameAudio(context: Context) : GameAudio {
     private var currentStreamId = 0
     private var hasFocus = false
     private var foreground = false
+    private var textToSpeech: TextToSpeech? = null
+    private var speechReady = false
+    private var pendingSpeech: String? = null
     private val finishCue = Runnable { stopAllInternal() }
 
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
+        initializeTextToSpeech(findRhVoiceEnginePackage())
         handler.post {
             pool = SoundPool.Builder()
                 .setMaxStreams(1)
@@ -106,6 +118,23 @@ class AndroidGameAudio(context: Context) : GameAudio {
         preferences.edit().putBoolean("sound", enabled).apply()
     }
 
+    override fun speakPet(text: String) {
+        if (text.isBlank()) return
+        handler.post {
+            stopPetSpeechInternal()
+            if (!foreground || !isSoundEnabled()) return@post
+            if (!speechReady) {
+                pendingSpeech = text
+                return@post
+            }
+            speakPetInternal(text)
+        }
+    }
+
+    override fun stopPetSpeech() {
+        handler.post { stopPetSpeechInternal() }
+    }
+
     private fun load(cue: AudioCue): Int? {
         sampleIds[cue.assetPath]?.let { return it }
         val sampleId = try {
@@ -145,6 +174,7 @@ class AndroidGameAudio(context: Context) : GameAudio {
 
     private fun stopAllInternal() {
         handler.removeCallbacks(finishCue)
+        stopPetSpeechInternal()
         if (currentStreamId != 0) pool?.stop(currentStreamId)
         currentStreamId = 0
         currentCue = null
@@ -154,7 +184,91 @@ class AndroidGameAudio(context: Context) : GameAudio {
         hasFocus = false
     }
 
+    private fun speakPetInternal(text: String) {
+        if (!foreground || !isSoundEnabled() || !speechReady) return
+        textToSpeech?.speak(
+            text,
+            TextToSpeech.QUEUE_FLUSH,
+            Bundle(),
+            "pet-${++speechRequestId}",
+        )
+    }
+
+    private fun stopPetSpeechInternal() {
+        pendingSpeech = null
+        textToSpeech?.stop()
+    }
+
+    private fun findRhVoiceEnginePackage(): String? = try {
+        appContext.packageManager.queryIntentServices(
+            Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE),
+            0,
+        ).firstOrNull { it.serviceInfo.packageName == RHVOICE_PACKAGE }?.serviceInfo?.packageName
+    } catch (error: Exception) {
+        Log.w(TAG, "Could not inspect installed text-to-speech engines", error)
+        null
+    }
+
+    private fun initializeTextToSpeech(enginePackage: String?) {
+        val isRhVoice = enginePackage == RHVOICE_PACKAGE
+        val listener = TextToSpeech.OnInitListener { status ->
+            handler.post { configureTextToSpeech(status, isRhVoice) }
+        }
+        try {
+            textToSpeech = if (enginePackage == null) {
+                TextToSpeech(appContext, listener)
+            } else {
+                TextToSpeech(appContext, listener, enginePackage)
+            }
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not create the text-to-speech engine", error)
+            if (isRhVoice) initializeTextToSpeech(enginePackage = null)
+        }
+    }
+
+    private fun configureTextToSpeech(status: Int, isRhVoice: Boolean) {
+        val engine = textToSpeech ?: return
+        if (status != TextToSpeech.SUCCESS) {
+            if (isRhVoice) {
+                fallbackFromRhVoice()
+            } else {
+                Log.w(TAG, "Could not initialize the text-to-speech engine")
+            }
+            return
+        }
+        engine.setAudioAttributes(speechAttributes)
+        engine.setPitch(PET_SPEECH_PITCH)
+        engine.setSpeechRate(PET_SPEECH_RATE)
+        speechReady = engine.setLanguage(RUSSIAN_LOCALE) >= TextToSpeech.LANG_AVAILABLE
+        if (!speechReady) {
+            if (isRhVoice) {
+                fallbackFromRhVoice()
+            } else {
+                Log.w(TAG, "The selected text-to-speech engine has no Russian voice")
+            }
+            return
+        }
+        pendingSpeech?.also {
+            pendingSpeech = null
+            speakPetInternal(it)
+        }
+    }
+
+    private fun fallbackFromRhVoice() {
+        Log.w(TAG, "RHVoice is unavailable for Russian; falling back to the device speech engine")
+        textToSpeech?.shutdown()
+        textToSpeech = null
+        speechReady = false
+        initializeTextToSpeech(enginePackage = null)
+    }
+
     private companion object {
         const val TAG = "FinPetAudio"
+        const val RHVOICE_PACKAGE = "com.github.olga_yakovleva.rhvoice.android"
+        const val PET_SPEECH_PITCH = 1.08f
+        const val PET_SPEECH_RATE = 0.94f
+        val RUSSIAN_LOCALE: Locale = Locale.forLanguageTag("ru-RU")
     }
+
+    private var speechRequestId = 0
 }

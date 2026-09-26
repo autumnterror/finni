@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -108,6 +109,17 @@ fun FinPetDialogueDialog(
     }
 
     var pageIndex by rememberSaveable(cards) { mutableIntStateOf(0) }
+    val petSpeechController = LocalPetSpeechController.current
+    val currentText = cards[pageIndex]
+    if (petSpeechController != null) {
+        LaunchedEffect(petSpeechController, pageIndex, currentText) {
+            petSpeechController.stop()
+            petSpeechController.speak(currentText)
+        }
+        DisposableEffect(petSpeechController) {
+            onDispose { petSpeechController.stop() }
+        }
+    }
     val scrollState = rememberScrollState()
     LaunchedEffect(pageIndex) { scrollState.scrollTo(0) }
     val lastIndex = cards.lastIndex

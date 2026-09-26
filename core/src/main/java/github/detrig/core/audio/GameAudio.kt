@@ -26,6 +26,12 @@ interface GameAudio {
     fun setForeground(foreground: Boolean)
     fun isSoundEnabled(): Boolean
     fun setSoundEnabled(enabled: Boolean)
+
+    /** Speaks a pet dialogue line through the device's configured speech engine. */
+    fun speakPet(text: String) = Unit
+
+    /** Stops a currently spoken pet dialogue line. */
+    fun stopPetSpeech() = Unit
 }
 
 object SilentGameAudio : GameAudio {
