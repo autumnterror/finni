@@ -20,6 +20,7 @@ import github.detrig.internetbooster.mediators.InventoryMediator
 import github.detrig.internetbooster.mediators.FridgeMediator
 import github.detrig.internetbooster.mediators.WardrobeMediator
 import github.detrig.internetbooster.mediators.LearningMediator
+import github.detrig.internetbooster.mediators.LearningTestsMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 import github.detrig.core.time.SystemWallClock
 import github.detrig.core.time.TimeDrivenTask
@@ -61,6 +62,9 @@ internal class AppModuleImpl(
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
     private val learningMediator: LearningMediator by lazy {
         LearningMediator(databaseModule, gameStateMediator)
+    }
+    private val learningTestsMediator: LearningTestsMediator by lazy {
+        LearningTestsMediator(coreComponent, databaseModule, economyMediator, weekMediator, gameStateMediator)
     }
     private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
     private val savingsMediator: SavingsMediator by lazy {
@@ -171,6 +175,7 @@ internal class AppModuleImpl(
             wardrobeMediator,
             inventoryMediator,
             gameAudio,
+            learningTestsMediator,
         )
     }
 
@@ -189,6 +194,7 @@ internal class AppModuleImpl(
         weekMediator.init()
         planningMediator.init()
         learningMediator.init()
+        learningTestsMediator.init()
         inventoryMediator.init()
         savingsMediator.init()
         shopMediator.init()

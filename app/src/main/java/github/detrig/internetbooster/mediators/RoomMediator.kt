@@ -28,6 +28,7 @@ internal class RoomMediator(
     private val wardrobeMediator: WardrobeMediator,
     private val inventoryMediator: InventoryMediator,
     private val gameAudio: GameAudio,
+    private val learningTestsMediator: LearningTestsMediator,
 ) : Mediator<RoomApi> {
     fun init() {
         RoomFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -45,6 +46,9 @@ internal class RoomMediator(
                 }
                 override fun wardrobeLauncher() = github.detrig.feature.room.api.RoomWardrobeLauncher {
                     wardrobeMediator.getApi().open()
+                }
+                override fun testsLauncher() = github.detrig.feature.room.api.RoomTestsLauncher {
+                    learningTestsMediator.getApi().open()
                 }
                 override fun impulseWishSource() = RoomImpulseWishSource {
                     shopMediator.claimRoomImpulseWish()?.let { wish ->

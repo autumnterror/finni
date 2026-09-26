@@ -202,3 +202,14 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_achievement_xp_outbox_profileId_delivered` ON `achievement_xp_outbox` (`profileId`, `delivered`)")
     }
 }
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_daily_offers` (`profileId` TEXT NOT NULL, `gameDay` INTEGER NOT NULL, `position` INTEGER NOT NULL, `testId` TEXT NOT NULL, PRIMARY KEY(`profileId`, `gameDay`, `testId`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_attempts` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `gameDay` INTEGER NOT NULL, `questionIndex` INTEGER NOT NULL, `mistakeCount` INTEGER NOT NULL, `isComplete` INTEGER NOT NULL, `isPerfect` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`, `gameDay`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_answers` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `gameDay` INTEGER NOT NULL, `questionIndex` INTEGER NOT NULL, `selectedOptionIndex` INTEGER NOT NULL, `isCorrect` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`, `gameDay`, `questionIndex`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_mastery` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `completedAtGameDay` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_question_xp_outbox` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `questionIndex` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `delivered` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`, `questionIndex`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_completion_reward_outbox` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `amountRub` INTEGER NOT NULL, `delivered` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`))")
+    }
+}

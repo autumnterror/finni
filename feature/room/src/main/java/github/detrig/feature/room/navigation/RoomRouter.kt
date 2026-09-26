@@ -4,6 +4,7 @@ internal interface RoomRouter {
     fun openMarket()
     fun openWardrobe()
     fun openGame(gameId: String)
+    fun openTests()
     fun showLevelRequired(level: Int)
     fun showNotEnoughMoney(missingRub: Int)
     fun showBought()

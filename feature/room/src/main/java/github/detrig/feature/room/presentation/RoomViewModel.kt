@@ -130,9 +130,9 @@ internal class RoomViewModel(
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openPiggyBank()
-            RoomViewEvent.TestsClicked,
             RoomViewEvent.FoodClicked,
             RoomViewEvent.FeedingClicked -> router.showEntryComingSoon()
+            RoomViewEvent.TestsClicked -> router.openTests()
             RoomViewEvent.DishesClicked -> router.showEntryComingSoon()
             RoomViewEvent.OpenSavingsFromRecoveryPrompt -> {
                 nullableState<RoomViewState.Content>()?.let {
