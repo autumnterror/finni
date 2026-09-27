@@ -159,7 +159,10 @@ MVP apartment objects:
 The bathroom extends the apartment to the right of the kitchen on the same
 scrollable room scene. Tapping its bathtub opens a close-up bath scene. The player
 drags soap from the shelf across the pet, moves the showerhead to rinse the soap,
-then uses the towel to dry the pet. Washing is free and does not advance the game
+then moves the hair dryer over the pet to dry it gradually in no more than five
+seconds of active drying. The hair dryer plays a short sound while operating.
+The player may repeat the full cycle in the same bath visit, including when the
+pet is already clean. Washing is free and does not advance the game
 day or change money. The bed keeps the End day action.
 
 Do not reintroduce old room metaphors such as calendar/task-board/bowl as primary MVP objects unless an approved newer design explicitly requires them.

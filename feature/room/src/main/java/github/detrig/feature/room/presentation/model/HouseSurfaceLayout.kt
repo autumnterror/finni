@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 
 /** Native coordinates shared by the room, its store preview, and replacement surface assets. */
 internal object HouseSurfaceLayout {
-    const val SCENE_WIDTH = 3128
+    const val SCENE_WIDTH = 2578
     const val SCENE_HEIGHT = 685
     const val WALL_HEIGHT = 474
     const val FLOOR_HEIGHT = SCENE_HEIGHT - WALL_HEIGHT

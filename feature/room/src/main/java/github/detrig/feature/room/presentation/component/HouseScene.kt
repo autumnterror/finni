@@ -420,10 +420,9 @@ internal fun HouseScene(
                         val bathroom = HouseSurfaceLayout.Room.BATHROOM
                         BathroomScene(
                             closeUp = false,
+                            compactRoom = true,
                             equipped = bathroomFurnitureByPlacement,
-                            onBathtubClick = onBathtubClick.takeIf {
-                                active && ready && allowedObjectIds.isEmpty()
-                            },
+                            onBathtubClick = onBathtubClick.takeIf { active && ready },
                             modifier = Modifier
                                 .offset(x = unitDp * bathroom.left * HouseLayout.WORLD_WIDTH /
                                     HouseSurfaceLayout.SCENE_WIDTH)

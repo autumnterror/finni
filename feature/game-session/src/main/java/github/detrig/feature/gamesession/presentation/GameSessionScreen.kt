@@ -43,7 +43,7 @@ internal fun GameSessionScreen() {
                             } else petProfile,
                             modifier = petModifier,
                             onClick = onPetClick.takeIf {
-                                firstRunStep == FirstRunOnboardingStep.COMPLETED && !interaction.isBathing
+                                firstRunStep == FirstRunOnboardingStep.COMPLETED
                             },
                             pose = when (interaction.pose) {
                                 RoomPetPose.IDLE -> PetPose.IDLE

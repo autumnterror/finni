@@ -215,7 +215,9 @@ internal fun RoomScreen(
                 petContent = petContent,
                 onBack = { viewModel.perform(RoomViewEvent.BathroomBackClicked) },
                 onToolCompleted = { viewModel.perform(RoomViewEvent.BathToolClicked(it)) },
-                onRestart = { viewModel.perform(RoomViewEvent.BathRestartClicked) },
+                onDryerRunningChanged = {
+                    viewModel.perform(RoomViewEvent.BathDryerRunningChanged(it))
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         } else RoomContent(

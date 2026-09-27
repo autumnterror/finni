@@ -126,8 +126,14 @@ internal class RoomViewModel(
             RoomViewEvent.BathroomBackClicked -> backFromBathroom()
             RoomViewEvent.BathtubClicked -> openBathCloseup()
             is RoomViewEvent.BathToolClicked -> useBathTool(viewEvent.step)
-            RoomViewEvent.BathRestartClicked -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(bathStep = BathStep.SOAP))
+            is RoomViewEvent.BathDryerRunningChanged -> {
+                val content = nullableState<RoomViewState.Content>()
+                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING &&
+                    content.bathStep == BathStep.DRY) {
+                    gameAudio.play(RoomAudioCues.HairDryer)
+                } else {
+                    gameAudio.stop(RoomAudioCues.HairDryer.owner)
+                }
             }
             RoomViewEvent.SleepConfirmed -> sleep()
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
@@ -820,28 +826,28 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping || content.buyingZoneId != null) return
         if (content.bathroomView != BathroomView.HOUSE) return
-        if (onboardingStep != FirstRunOnboardingStep.COMPLETED &&
-            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_BED &&
-            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
-        ) return
         updateState(content.copy(bathroomView = BathroomView.WASHING, bathStep = BathStep.SOAP))
     }
 
     private fun backFromBathroom() {
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping) return
+        gameAudio.stop(RoomAudioCues.HairDryer.owner)
         updateState(content.copy(bathroomView = BathroomView.HOUSE))
     }
 
     private fun useBathTool(step: BathStep) {
         val content = nullableState<RoomViewState.Content>() ?: return
-        if (content.bathroomView != BathroomView.WASHING || content.bathStep != step) return
+        if (content.bathroomView != BathroomView.WASHING ||
+            (content.bathStep != step &&
+                !(content.bathStep == BathStep.CLEAN && step == BathStep.SOAP))) return
         val next = when (step) {
             BathStep.SOAP -> BathStep.RINSE
             BathStep.RINSE -> BathStep.DRY
             BathStep.DRY -> BathStep.CLEAN
             BathStep.CLEAN -> return
         }
+        if (step == BathStep.DRY) gameAudio.stop(RoomAudioCues.HairDryer.owner)
         updateState(content.copy(bathStep = next))
     }
 
