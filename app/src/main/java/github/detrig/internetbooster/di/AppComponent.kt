@@ -11,6 +11,7 @@ interface AppComponent {
     fun initFeatures()
     suspend fun reconcileTimedEvents()
     suspend fun hasPetProfile(): Boolean
+    suspend fun resetDemoProgress(skipOnboarding: Boolean)
 }
 
 fun AppComponent(

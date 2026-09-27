@@ -58,7 +58,7 @@ class ShopCheckoutGatewayTest {
             ),
         )
 
-        assertEquals(75L, chargedAmount)
+        assertEquals(120L, chargedAmount)
         assertEquals("shop:${GroceryStoreIds.Store.value}:purchase", chargedContext?.reasonId)
         assertTrue(chargedContext?.metadata.orEmpty().contains("${GroceryItemIds.Apple.value}=2"))
         assertEquals(

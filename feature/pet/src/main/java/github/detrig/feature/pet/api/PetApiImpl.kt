@@ -32,6 +32,11 @@ internal class PetApiImpl(
 
     override fun currentProfile(): PetProfile? = repository.currentProfile()
 
+    override fun resetProfile() {
+        repository.resetProfile()
+        ClothingArtwork.clearEquipped()
+    }
+
     override suspend fun clothingItems(): List<ClothingItem> = ClothingArtwork.items(assets)
 
     override fun cachedClothingItems(): List<ClothingItem> = ClothingArtwork.cachedItems()

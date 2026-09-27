@@ -19,6 +19,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +38,8 @@ import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetFeedbackSurface
 import github.detrig.designsystem.component.FinPetFeedbackTone
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetHelpButton
+import github.detrig.designsystem.component.FinPetHelpDialog
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.phone.R
@@ -121,6 +127,7 @@ private fun MessagesThreadList(
 private fun MessagesHeader(
     title: String,
     onBack: () -> Unit,
+    onHelpClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -139,6 +146,12 @@ private fun MessagesHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (onHelpClick != null) {
+            FinPetHelpButton(
+                contentDescription = stringResource(R.string.messages_help_button),
+                onClick = onHelpClick,
+            )
+        }
     }
 }
 
@@ -256,13 +269,22 @@ private fun MessageThreadContent(
     onSuspiciousMessageOpened: (String, SecurityResponseChoice) -> Unit,
     onParentHelpOfferOpened: () -> Unit,
 ) {
+    var isMomHelpHintVisible by rememberSaveable(thread.senderId) { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(AppTheme.colors.currencyContainer)
             .padding(AppTheme.spacing.md),
     ) {
-        MessagesHeader(title = thread.senderId.displayName(), onBack = onBack)
+        MessagesHeader(
+            title = thread.senderId.displayName(),
+            onBack = onBack,
+            onHelpClick = if (thread.senderId == MessageSenderId.MOM) {
+                { isMomHelpHintVisible = true }
+            } else {
+                null
+            },
+        )
         Spacer(Modifier.height(AppTheme.spacing.md))
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -315,6 +337,14 @@ private fun MessageThreadContent(
                 }
             }
         }
+    }
+    if (isMomHelpHintVisible) {
+        FinPetHelpDialog(
+            title = stringResource(R.string.messages_mom_help_hint_title),
+            message = stringResource(R.string.messages_mom_help_hint),
+            dismissText = stringResource(R.string.messages_help_dismiss),
+            onDismissRequest = { isMomHelpHintVisible = false },
+        )
     }
 }
 
@@ -503,5 +533,34 @@ private fun MessagesAppPreview() {
                 onFeedbackDismissed = {},
             )
         }
+    }
+}
+
+@Preview(name = "Сообщение от мамы", widthDp = 360, heightDp = 640, showBackground = true)
+@Composable
+private fun MomMessageHelpPreview() {
+    val message = PhoneMessage(
+        id = "parent-help-reminder",
+        eventId = "parent-help-reminder",
+        senderId = MessageSenderId.MOM,
+        absoluteDay = 2,
+        kind = MessageKind.PARENT_HELP_OFFER,
+    )
+    val state = MessagesViewState(
+        inbox = github.detrig.feature.phone.domain.MessagesInbox(
+            threads = listOf(MessageThread(MessageSenderId.MOM, listOf(message), 1, null)),
+            unreadCount = 1,
+            firstRoomPromptPending = false,
+        ),
+        selectedSenderId = MessageSenderId.MOM,
+    )
+    FinPetTheme {
+        MessagesApp(
+            state = state,
+            onBack = {},
+            onThreadOpened = {},
+            onThreadClosed = {},
+            onSuspiciousInteraction = { _, _ -> },
+        )
     }
 }

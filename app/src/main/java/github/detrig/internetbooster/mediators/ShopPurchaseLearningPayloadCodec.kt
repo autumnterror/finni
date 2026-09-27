@@ -16,7 +16,8 @@ internal data class ShopPurchaseLearningPayload(
 )
 
 internal object ShopPurchaseLearningPayloadCodec {
-    private const val VERSION = "v2"
+    private const val VERSION = "v4"
+    private val PREVIOUS_VERSIONS = setOf("v2", "v3")
     private const val LEGACY_VERSION = "v1"
 
     fun encode(payload: ShopPurchaseLearningPayload): String {
@@ -46,7 +47,7 @@ internal object ShopPurchaseLearningPayloadCodec {
         val lines = raw.lines()
         val header = lines.first().split('\t')
         require(
-            (header[0] == VERSION && header.size == 5) ||
+            ((header[0] == VERSION || header[0] in PREVIOUS_VERSIONS) && header.size == 5) ||
                 (header[0] == LEGACY_VERSION && header.size == 3),
         )
         require(lines.size in 2..3)
@@ -80,11 +81,19 @@ internal object ShopPurchaseLearningPayloadCodec {
         promotionSavingRub,
         eventTargetQuantity,
         eventTargetMinimumQuantity,
+        mandatoryPurchaseRub,
+        mandatoryCategoryRemainingRub,
+        optionalCategoryRemainingRub,
+        reserveRemainingRub,
+        savingsPlanRemainingRub,
+        consciouslyAdjustedPlan,
+        eventTargetUseful,
+        futureMandatoryAfterPurchaseRub,
     ).joinToString("\t")
 
     private fun String.decodeContext(): PurchaseDecisionContext {
         val values = split('\t')
-        require(values.size == 18)
+        require(values.size == 18 || values.size == 25 || values.size == 26)
         return PurchaseDecisionContext(
             scenario = PurchaseScenario.valueOf(values[0]),
             decision = PurchaseDecision.valueOf(values[1]),
@@ -104,6 +113,17 @@ internal object ShopPurchaseLearningPayloadCodec {
             promotionSavingRub = values[15].toLong(),
             eventTargetQuantity = values[16].toInt(),
             eventTargetMinimumQuantity = values[17].toInt(),
+            mandatoryPurchaseRub = values.getOrNull(18)?.toLong() ?: values[9].toLong(),
+            mandatoryCategoryRemainingRub = values.getOrNull(19)?.toLong() ?: values[5].toLong(),
+            optionalCategoryRemainingRub = values.getOrNull(20)?.toLong() ?: values[6].toLong(),
+            reserveRemainingRub = values.getOrNull(21)?.toLong() ?: 0L,
+            savingsPlanRemainingRub = values.getOrNull(22)?.toLong() ?: 0L,
+            consciouslyAdjustedPlan = values.getOrNull(23)?.toBooleanStrict() ?: false,
+            eventTargetUseful = values.getOrNull(24)?.toBooleanStrict()
+                ?: (values[13].toBooleanStrict() || values[0] == PurchaseScenario.IMPULSE_WISH.name),
+            futureMandatoryAfterPurchaseRub = values.getOrNull(25)?.toLong()
+                ?: (values[5].toLong() - (values.getOrNull(18)?.toLong() ?: values[9].toLong()))
+                    .coerceAtLeast(0),
         )
     }
 }

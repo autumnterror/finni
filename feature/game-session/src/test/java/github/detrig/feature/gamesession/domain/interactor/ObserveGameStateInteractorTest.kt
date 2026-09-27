@@ -94,9 +94,10 @@ class ObserveGameStateInteractorTest {
         override suspend fun washPet() = error("Not used by observation")
         override suspend fun adjustPetDirtStageForDebug(delta: Int): Int = error("Not used by observation")
         override suspend fun feedPet(completion: github.detrig.feature.gamestate.domain.model.PetFeedingCompletion): github.detrig.feature.gamestate.domain.model.PetFeedingResult = error("Not used by observation")
-        override suspend fun consumeHungerForSleep(): Int = error("Not used by observation")
-        override suspend fun reconcileTimedNeeds(nowMillis: Long) = error("Not used by observation")
+        override suspend fun applyDayNeeds() = error("Not used by observation")
         override suspend fun hungerAlertState(): github.detrig.feature.gamestate.domain.model.HungerAlertState? = error("Not used by observation")
         override suspend fun markHungerAlertDelivered(episode: Long): Boolean = error("Not used by observation")
+        override suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int = error("Not used by observation")
+        override suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int = error("Not used by observation")
     }
 }

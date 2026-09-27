@@ -6,17 +6,16 @@ import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.feature.gamestate.domain.model.ZoneOffer
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.gamestate.domain.model.MiniGameAccess
+import github.detrig.feature.gamestate.domain.model.MiniGameHappinessRewards
 import github.detrig.feature.gamestate.domain.model.PetFeedingCompletion
 import github.detrig.feature.gamestate.domain.model.PetFeedingResult
 import github.detrig.feature.gamestate.domain.model.PetSatietyRules
-import github.detrig.feature.gamestate.domain.model.PetNeedDecayConfig
-import github.detrig.feature.gamestate.domain.model.TimedPetNeeds
-import github.detrig.feature.gamestate.domain.model.reconcilePetNeeds
+import github.detrig.feature.gamestate.domain.model.PetHappinessRules
 import github.detrig.feature.gamestate.domain.model.HungerAlertState
 import github.detrig.feature.gamestate.domain.model.PetDirtAnchor
 import github.detrig.feature.gamestate.domain.model.PetDirtRules
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -42,15 +41,15 @@ internal class GameStateLocalDataSource(
     private val transactionRunner: RoomTransactionRunner,
     private val initialConfig: GameStateInitialConfig,
     private val currentTimeMillis: () -> Long,
-    private val needDecayConfig: PetNeedDecayConfig,
     private val dirtStorage: PetDirtStorage,
+    private val currentWeekNumber: suspend () -> Long,
 ) {
-    private val dirtClock = MutableStateFlow(currentTimeMillis())
-
     suspend fun initialize(): GameState = transactionRunner.runInTransaction {
         val stored = dao.getCurrentStateWithZones()
         if (stored != null) {
-            reconcileTimedNeeds(currentTimeMillis())
+            if (stored.state.hunger == 0 && stored.state.hungerAlertEpisode == 0L) {
+                dao.seedZeroHungerAlertEpisode()
+            }
             val now = currentTimeMillis()
             val plays = petPlayEffectDao.completedMiniGameCount()
             val anchor = dirtStorage.ensureInitialized(now, plays)
@@ -66,7 +65,13 @@ internal class GameStateLocalDataSource(
     }
 
     fun observeState(): Flow<GameState?> {
-        return combine(dao.observeCurrentStateWithZones(), dirtStorage.anchor, dirtClock) {
+        val clock = flow {
+            while (true) {
+                emit(currentTimeMillis())
+                delay(60_000L)
+            }
+        }
+        return combine(dao.observeCurrentStateWithZones(), dirtStorage.anchor, clock) {
             state, anchor, now -> Triple(state, anchor, now)
         }.map { (state, anchor, now) ->
             state?.toDomain()?.let { game ->
@@ -84,7 +89,6 @@ internal class GameStateLocalDataSource(
         initialize()
         val now = currentTimeMillis()
         dirtStorage.reset(now, petPlayEffectDao.completedMiniGameCount())
-        dirtClock.value = now
     }
 
     suspend fun adjustPetDirtStageForDebug(delta: Int): Int = transactionRunner.runInTransaction {
@@ -95,7 +99,6 @@ internal class GameStateLocalDataSource(
             val now = currentTimeMillis()
             dirtStorage.setAnchor(PetDirtRules.anchorAtStage(
                 targetStage, now, petPlayEffectDao.completedMiniGameCount()))
-            dirtClock.value = now
         }
         targetStage
     }
@@ -121,28 +124,6 @@ internal class GameStateLocalDataSource(
         grantXpInTransaction(grantId, profileId, amount, source)
     }
 
-    suspend fun reconcileTimedNeeds(nowMillis: Long): Unit = transactionRunner.runInTransaction {
-        val state = dao.getCurrentState() ?: return@runInTransaction
-        if (dirtStorage.anchor.value == null) {
-            dirtStorage.ensureInitialized(nowMillis, petPlayEffectDao.completedMiniGameCount())
-        }
-        if (state.hunger == 0 && state.hungerAlertEpisode == 0L) {
-            dao.seedZeroHungerAlertEpisode()
-        }
-        val current = TimedPetNeeds(
-            state.hunger, state.happiness,
-            state.hungerCheckpointMillis, state.happinessCheckpointMillis,
-        )
-        val updated = reconcilePetNeeds(current, nowMillis, needDecayConfig)
-        if (updated != current) {
-            check(dao.updateTimedNeeds(
-                updated.hunger, updated.happiness,
-                updated.hungerCheckpointMillis, updated.happinessCheckpointMillis,
-            ) == 1)
-        }
-        dirtClock.value = nowMillis
-    }
-
     suspend fun hungerAlertState(): HungerAlertState? = dao.hungerAlertState()
 
     suspend fun markHungerAlertDelivered(episode: Long): Boolean =
@@ -165,17 +146,75 @@ internal class GameStateLocalDataSource(
             val delta = github.detrig.feature.gamestate.domain.model.PetPlayReward.delta(
                 current.pet.happiness, completion,
             )
-            check(dao.increaseHappiness(delta, currentTimeMillis()) == 1)
+            check(dao.increaseHappiness(delta) == 1)
             petPlayEffectDao.insert(PetPlayEffectEntity(operationId, completion.profileId, completion.sessionId,
                 completion.gameId, delta, currentTimeMillis()))
             grantMiniGameXp(completion)
             delta
         }
 
-    suspend fun consumeHungerForSleep(): Int = transactionRunner.runInTransaction {
+    suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int =
+        transactionRunner.runInTransaction {
+            require(absoluteDay >= 1)
+            val points = MiniGameHappinessRewards.firstLaunchPoints(gameId)
+            require(points > 0) { "No first-launch reward for $gameId" }
+            val current = initialize()
+            require(MiniGameAccess.isOpen(gameId, current.ownedZoneIds)) { "Game is not unlocked" }
+            applyHappinessRewardOnce(
+                current = current,
+                operationId = "mini-game-launch:$gameId:$absoluteDay",
+                sourceId = "mini-game-launch:$gameId",
+                sourceOperationId = absoluteDay.toString(),
+                points = points,
+            )
+        }
+
+    suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int =
+        transactionRunner.runInTransaction {
+            require(purchaseOperationId.startsWith("clothing_purchase:") &&
+                purchaseOperationId.length > "clothing_purchase:".length)
+            require(happinessPoints in 12..25)
+            applyHappinessRewardOnce(
+                current = initialize(),
+                operationId = "clothing-happiness:$purchaseOperationId",
+                sourceId = "clothing-purchase",
+                sourceOperationId = purchaseOperationId,
+                points = happinessPoints,
+            )
+        }
+
+    private suspend fun applyHappinessRewardOnce(
+        current: GameState,
+        operationId: String,
+        sourceId: String,
+        sourceOperationId: String,
+        points: Int,
+    ): Int {
+        petPlayEffectDao.find(operationId)?.let { existing ->
+            require(existing.gameId == sourceId && existing.sessionId == sourceOperationId) {
+                "Happiness operation ID conflict"
+            }
+            return 0
+        }
+        val delta = minOf(points, (100 - current.pet.happiness).coerceAtLeast(0))
+        check(dao.increaseHappiness(delta) == 1)
+        petPlayEffectDao.insert(PetPlayEffectEntity(
+            operationId = operationId,
+            profileId = GameStateEntity.CURRENT_STATE_ID,
+            sessionId = sourceOperationId,
+            gameId = sourceId,
+            happinessDelta = delta,
+            appliedAtMillis = currentTimeMillis(),
+        ))
+        return delta
+    }
+
+    suspend fun applyDayNeeds(): Unit = transactionRunner.runInTransaction {
         val current = initialize()
-        check(dao.decreaseHunger(PetSatietyRules.SLEEP_COST) == 1)
-        PetSatietyRules.afterCost(current.pet.hunger, PetSatietyRules.SLEEP_COST)
+        check(PetSatietyRules.canSleep(current.pet.hunger)) {
+            "Pet needs more than ${PetSatietyRules.MINIMUM_TO_SLEEP} satiety to end the day"
+        }
+        check(dao.decreaseNeedsForDay(PetSatietyRules.SLEEP_COST, PetHappinessRules.SLEEP_COST) == 1)
     }
 
     /**
@@ -197,9 +236,8 @@ internal class GameStateLocalDataSource(
 
             val hungerDelta = minOf(completion.satietyPercent, 100 - current.pet.hunger)
             val happinessDelta = minOf(completion.happinessPoints, 100 - current.pet.happiness)
-            val nowMillis = currentTimeMillis()
-            check(dao.increaseHunger(hungerDelta, nowMillis) == 1)
-            check(dao.increaseHappiness(happinessDelta, nowMillis) == 1)
+            check(dao.increaseHunger(hungerDelta) == 1)
+            check(dao.increaseHappiness(happinessDelta) == 1)
             petPlayEffectDao.insert(
                 PetPlayEffectEntity(
                     operationId = operationId,
@@ -254,12 +292,6 @@ internal class GameStateLocalDataSource(
             is FinancialOperationResult.Applied,
             is FinancialOperationResult.AlreadyApplied -> {
                 zoneDao.insert(RoomZoneEntity(sessionId, offer.zoneId, now))
-                grantXpInTransaction(
-                    grantId = "content-unlock:${offer.zoneId}",
-                    profileId = sessionId,
-                    amount = XpRewards.CONTENT_UNLOCKED,
-                    source = XpSources.CONTENT_UNLOCKED,
-                ).requireNoConflict()
                 ZoneBuyResult.Bought
             }
             is FinancialOperationResult.Rejected -> when (debit.reason) {
@@ -283,12 +315,32 @@ internal class GameStateLocalDataSource(
             activePlayMillis = completion.activePlayMillis,
         )
         if (amount == 0) return
-        grantXpInTransaction(
-            grantId = "mini-game:${completion.profileId}:${completion.sessionId}",
-            profileId = completion.profileId,
-            amount = amount,
-            source = XpSources.MINI_GAME,
-        ).requireNoConflict()
+        val grantId = "mini-game:${completion.profileId}:${completion.sessionId}"
+        dao.getExperienceGrant(grantId)?.let { existing ->
+            check(existing.profileId == completion.profileId &&
+                (existing.source == XpSources.MINI_GAME ||
+                    existing.source.startsWith("${XpSources.MINI_GAME}:week:"))) {
+                "Conflicting mini-game XP grant"
+            }
+            return
+        }
+        val weekNumber = currentWeekNumber()
+        require(weekNumber >= 1)
+        val source = "${XpSources.MINI_GAME}:week:$weekNumber"
+        val earnedThisWeek = dao.totalExperienceForSource(completion.profileId, source)
+        val grantedAmount = MiniGameXpPolicy.rewardWithinWeek(earnedThisWeek)
+        if (grantedAmount > 0) {
+            grantXpInTransaction(grantId, completion.profileId, grantedAmount, source).requireNoConflict()
+        } else {
+            // A zero-value ledger entry keeps a capped session from earning XP on replay next week.
+            check(dao.insertExperienceGrant(ExperienceGrantEntity(
+                grantId = grantId,
+                profileId = completion.profileId,
+                amount = 0,
+                source = source,
+                grantedAtMillis = currentTimeMillis(),
+            )) != -1L)
+        }
     }
 
     private suspend fun grantXpInTransaction(

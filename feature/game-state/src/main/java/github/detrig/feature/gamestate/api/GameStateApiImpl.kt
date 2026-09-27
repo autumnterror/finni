@@ -36,13 +36,16 @@ internal class GameStateApiImpl(
 
     override suspend fun adjustPetDirtStageForDebug(delta: Int): Int =
         repository.adjustPetDirtStageForDebug(delta)
+    override suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int =
+        repository.rewardMiniGameLaunch(gameId, absoluteDay)
+
+    override suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int =
+        repository.rewardClothingPurchase(purchaseOperationId, happinessPoints)
 
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         repository.feedPet(completion)
 
-    override suspend fun consumeHungerForSleep(): Int = repository.consumeHungerForSleep()
-
-    override suspend fun reconcileTimedNeeds(nowMillis: Long) = repository.reconcileTimedNeeds(nowMillis)
+    override suspend fun applyDayNeeds() = repository.applyDayNeeds()
 
     override suspend fun hungerAlertState() = repository.hungerAlertState()
 

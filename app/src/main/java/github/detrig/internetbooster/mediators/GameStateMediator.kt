@@ -14,6 +14,7 @@ import github.detrig.feature.gamestate.data.local.RoomZoneDao
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.internetbooster.database.AppDatabaseModule
+import github.detrig.feature.week.domain.WeekState
 
 internal class GameStateMediator(
     private val databaseModule: AppDatabaseModule,
@@ -56,4 +57,7 @@ private class GameStateDependenciesImpl(
     override fun initialConfig(): GameStateInitialConfig = GameStateInitialConfig()
 
     override fun currentTimeMillis(): Long = System.currentTimeMillis()
+
+    override suspend fun currentWeekNumber(): Long = databaseModule.weekDao.getState()
+        ?.let { WeekState(it.absoluteDay).weekNumber } ?: 1L
 }

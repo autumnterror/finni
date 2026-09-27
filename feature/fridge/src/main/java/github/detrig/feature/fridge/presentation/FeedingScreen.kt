@@ -48,6 +48,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetHelpButton
+import github.detrig.designsystem.component.FinPetHelpDialog
 import github.detrig.feature.fridge.FridgeFeature
 import github.detrig.feature.fridge.R
 import github.detrig.feature.shop.api.ShopArtworkResolver
@@ -158,6 +160,7 @@ private fun FeedingContent(
     val catalog = remember { GroceryCatalog() }
     val density = LocalDensity.current
     val activeProduct = state.activePortion?.let { catalog.find(it.productId) }
+    var isHelpVisible by remember { mutableStateOf(false) }
 
     var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var petCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -338,6 +341,14 @@ private fun FeedingContent(
                 .clickable(role = Role.Button) { onEvent(FeedingViewEvent.Back) },
             contentScale = ContentScale.Fit,
         )
+        FinPetHelpButton(
+            contentDescription = stringResource(R.string.feeding_help_button),
+            onClick = { isHelpVisible = true },
+            outlined = true,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = maxWidth * 0.045f, top = maxHeight * 0.18f),
+        )
 
         activeProduct?.let { food ->
             FeedingFoodAtMouth(
@@ -358,6 +369,14 @@ private fun FeedingContent(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.align(Alignment.BottomCenter)
                     .padding(bottom = AppTheme.spacing.xl, start = AppTheme.spacing.xl, end = AppTheme.spacing.xl),
+            )
+        }
+        if (isHelpVisible) {
+            FinPetHelpDialog(
+                title = stringResource(R.string.feeding_help_title),
+                message = stringResource(R.string.feeding_help_message),
+                dismissText = stringResource(R.string.feeding_help_dismiss),
+                onDismissRequest = { isHelpVisible = false },
             )
         }
     }

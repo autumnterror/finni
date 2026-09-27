@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -38,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
+import github.detrig.designsystem.component.FinPetSunIcon
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
@@ -102,28 +101,8 @@ internal fun HouseHud(
                     transparent = true,
                     modifier = Modifier.semantics { contentDescription = balanceDescription }.testTag("house_balance"),
                 )
-                if (showDetails) {
-                    Spacer(Modifier.height(AppTheme.spacing.sm))
-                    HouseDayBadge(progress.weekNumber, progress.dayOfWeek, Modifier.testTag("hud_day"))
-                }
             }
         }
-    }
-}
-
-@Composable
-private fun HouseDayBadge(weekNumber: Long, dayOfWeek: Int, modifier: Modifier = Modifier) {
-    FinPetCard(
-        modifier = modifier,
-        containerColor = AppTheme.colors.roomBackground.copy(alpha = .62f),
-        contentColor = AppTheme.colors.onRoomBackground,
-        borderColor = AppTheme.colors.onRoomBackground.copy(alpha = .75f),
-    ) {
-        Text(
-            text = stringResource(R.string.house_day_counter, weekNumber, dayOfWeek),
-            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm, vertical = AppTheme.spacing.xs),
-            style = AppTheme.typography.caption,
-        )
     }
 }
 
@@ -171,9 +150,12 @@ private fun HouseNeedRing(
 
 @Composable
 private fun HouseNeedArtwork(icon: HouseNeedIcon, modifier: Modifier = Modifier) {
+    if (icon == HouseNeedIcon.SUN) {
+        FinPetSunIcon(modifier)
+        return
+    }
     val outline = AppTheme.colors.house.outline
     val leaf = AppTheme.colors.house.leaf
-    val sun = AppTheme.colors.house.sunnyAccent
     Canvas(modifier) {
         val w = size.width
         val h = size.height
@@ -193,30 +175,7 @@ private fun HouseNeedArtwork(icon: HouseNeedIcon, modifier: Modifier = Modifier)
                 drawLine(outline, Offset(w * .5f, h * .3f), Offset(w * .54f, h * .1f), stroke)
                 drawOval(leaf, Offset(w * .57f, h * .1f), Size(w * .25f, h * .13f))
             }
-            HouseNeedIcon.SUN -> {
-                val center = Offset(w / 2f, h / 2f)
-                repeat(8) { index ->
-                    val angle = Math.PI * index / 4.0
-                    val dx = kotlin.math.cos(angle).toFloat()
-                    val dy = kotlin.math.sin(angle).toFloat()
-                    drawLine(
-                        outline,
-                        center + Offset(dx * w * .36f, dy * h * .36f),
-                        center + Offset(dx * w * .47f, dy * h * .47f),
-                        stroke,
-                        cap = StrokeCap.Round,
-                    )
-                }
-                drawCircle(sun, w * .29f, center)
-                drawCircle(outline, w * .29f, center, style = Stroke(stroke))
-                drawCircle(outline, w * .023f, Offset(w * .41f, h * .46f))
-                drawCircle(outline, w * .023f, Offset(w * .59f, h * .46f))
-                drawArc(
-                    outline, 15f, 150f, false,
-                    Offset(w * .39f, h * .48f), Size(w * .22f, h * .2f),
-                    style = Stroke(stroke * .75f),
-                )
-            }
+            HouseNeedIcon.SUN -> Unit
         }
     }
 }

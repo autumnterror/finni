@@ -19,6 +19,7 @@ class AppDatabaseModule(
         RoomDatabaseFactory.create(
             context = context,
             databaseName = DATABASE_NAME,
+            migrations = arrayOf(MIGRATION_17_18),
             fallbackToDestructiveMigration = true,
         )
     }
@@ -31,6 +32,9 @@ class AppDatabaseModule(
     val weekDao: WeekDao by lazy { database.weekDao() }
     val planningDao: PlanningDao by lazy { database.planningDao() }
     val learningDao: LearningDao by lazy { database.learningDao() }
+    val learningTestsDao: github.detrig.feature.learningtests.data.local.LearningTestsDao by lazy {
+        database.learningTestsDao()
+    }
 
     val transactionRunner: RoomTransactionRunner by lazy {
         RoomTransactionRunner(database)

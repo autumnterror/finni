@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import github.detrig.core.presentation.message.GlobalMessageController
 import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.inventory.api.InventoryApi
 
 interface PhoneDependencies {
     fun globalNavigator(): GlobalNavigator
@@ -24,8 +25,12 @@ interface PhoneDependencies {
     fun learningApi(): LearningApi
     fun progressionApi(): ProgressionApi
     fun gameStateApi(): GameStateApi
+    fun inventoryApi(): InventoryApi
     fun messagesStorage(): PhoneMessagesStorage
     fun dailySecurityEventProbability(): Double
+    fun minimumDaysBetweenSecurityEvents(): Int
     fun minimumHelpBalanceRub(): Long
     fun globalMessageController(): GlobalMessageController
+    suspend fun resetDemoProgress(skipOnboarding: Boolean)
+    fun isDebugBuild(): Boolean
 }

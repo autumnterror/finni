@@ -22,6 +22,8 @@ internal class PhoneMediator(
     private val weekMediator: WeekMediator,
     private val learningMediator: LearningMediator,
     private val gameStateMediator: GameStateMediator,
+    private val inventoryMediator: InventoryMediator,
+    private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
 ) : Mediator<PhoneApi> {
 
     @MainThread
@@ -38,17 +40,18 @@ internal class PhoneMediator(
                 override fun learningApi() = learningMediator.getApi()
                 override fun progressionApi() = gameStateMediator.getProgressionApi()
                 override fun gameStateApi() = gameStateMediator.getApi()
+                override fun inventoryApi() = inventoryMediator.getApi()
+                override suspend fun resetDemoProgress(skipOnboarding: Boolean) =
+                    this@PhoneMediator.resetDemoProgress(skipOnboarding)
+                override fun isDebugBuild() = BuildConfig.DEBUG
                 override fun messagesStorage(): PhoneMessagesStorage = DurablePhoneMessagesStorage(
                     preferences = coreComponent.context.getSharedPreferences(
                         MESSAGES_PREFERENCES,
                         Context.MODE_PRIVATE,
                     ),
                 )
-                override fun dailySecurityEventProbability() = if (BuildConfig.DEBUG) {
-                    DEBUG_SECURITY_EVENT_DAILY_PROBABILITY
-                } else {
-                    SECURITY_EVENT_DAILY_PROBABILITY
-                }
+                override fun dailySecurityEventProbability() = SECURITY_EVENT_DAILY_PROBABILITY
+                override fun minimumDaysBetweenSecurityEvents() = SECURITY_EVENT_MINIMUM_INTERVAL_DAYS
                 override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
                 override fun globalMessageController() = coreComponent.globalMessageController
             }
@@ -62,9 +65,8 @@ internal class PhoneMediator(
     private companion object {
         const val MESSAGES_PREFERENCES = "phone_messages"
 
-        // Отдельные точки настройки: в debug событие гарантировано для быстрой проверки.
-        const val DEBUG_SECURITY_EVENT_DAILY_PROBABILITY = 1.0
-        const val SECURITY_EVENT_DAILY_PROBABILITY = 0.45
+        const val SECURITY_EVENT_DAILY_PROBABILITY = 0.20
+        const val SECURITY_EVENT_MINIMUM_INTERVAL_DAYS = 3
     }
 
     private class DurablePhoneMessagesStorage(

@@ -14,8 +14,9 @@ import github.detrig.feature.phone.presentation.MessagesViewModel
 import github.detrig.feature.phone.presentation.RoomNotificationsViewModel
 
 internal class PhoneModule(
-    dependencies: PhoneDependencies,
+    private val dependencies: PhoneDependencies,
 ) : PhoneComponent {
+    override val isDebugBuild = dependencies.isDebugBuild()
     override val roomApi = dependencies.roomApi()
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()
@@ -38,7 +39,12 @@ internal class PhoneModule(
             minimumHelpBalanceRub = dependencies.minimumHelpBalanceRub(),
             eventConfig = SecurityEventConfig(
                 dailyProbability = dependencies.dailySecurityEventProbability(),
+                randomSeed = kotlin.random.Random.nextInt(),
+                minimumDaysBetweenEvents = dependencies.minimumDaysBetweenSecurityEvents(),
             ),
+            onParentHelpSettled = roomApi::notifyParentHelpSettled,
+            gameStateApi = dependencies.gameStateApi(),
+            inventoryApi = dependencies.inventoryApi(),
         )
     }
 
@@ -54,7 +60,14 @@ internal class PhoneModule(
         )
     }
 
-    override fun debugMenuViewModel() = DebugMenuViewModel(economyApi, weekApi, gameStateApi)
+    override fun debugMenuViewModel() = DebugMenuViewModel(
+        economyApi = economyApi,
+        weekApi = weekApi,
+        gameStateApi = gameStateApi,
+        resetDemoProgress = dependencies::resetDemoProgress,
+        petApi = petApi,
+        router = router,
+    )
 
     override fun messagesViewModel() = MessagesViewModel(
         repository = messagesRepository,

@@ -41,21 +41,34 @@ sealed interface PlanActualOperation {
         override val amountRub: Long,
     ) : PlanActualOperation
 
+    /** An unavoidable event charge, recorded separately from the player's choices. */
+    data class UnexpectedMandatoryExpense(
+        override val operationId: String,
+        override val weekNumber: Long,
+        override val amountRub: Long,
+    ) : PlanActualOperation
+
     val signedAmountRub: Long
         get() = when (this) {
             is SavingsWithdrawal -> -amountRub
-            is Payment, is SavingsContribution -> amountRub
+            is Payment, is SavingsContribution, is UnexpectedMandatoryExpense -> amountRub
         }
 
-    val planCategory: PlanCategory
+    val planCategory: PlanCategory?
         get() = when (this) {
             is Payment -> when (classification) {
                 PaymentClassification.MANDATORY -> PlanCategory.MANDATORY
                 PaymentClassification.OPTIONAL -> PlanCategory.WANTS
             }
             is SavingsContribution, is SavingsWithdrawal -> PlanCategory.SAVINGS
+            is UnexpectedMandatoryExpense -> null
         }
+
+    val categoryCode: String
+        get() = planCategory?.code ?: UNEXPECTED_MANDATORY_CATEGORY_CODE
 }
+
+const val UNEXPECTED_MANDATORY_CATEGORY_CODE = "unexpected_mandatory"
 
 data class PlanPercentages(
     val mandatory: Int,
@@ -93,14 +106,22 @@ sealed interface PlanAssessment {
 
     data class NeedsChanges(
         val reason: PlanAdjustmentReason,
-        val recommendedPercent: Int,
+        val requiredRub: Long,
     ) : PlanAssessment
+}
+
+data class PlanWeekContext(
+    val knownMandatoryExpenseRub: Long = 0,
+    val hasActiveGoal: Boolean = false,
+) {
+    init { require(knownMandatoryExpenseRub >= 0) }
 }
 
 data class WeeklyPlan(
     val weekNumber: Long,
     val availableRub: Long,
     val percentages: PlanPercentages,
+    val context: PlanWeekContext = PlanWeekContext(),
 ) {
     val reserveRub: Long
         get() = availableRub - PlanCategory.entries.sumOf { category -> plannedRub(category) }
@@ -124,8 +145,28 @@ data class CategoryPlanProgress(
 data class WeeklyPlanProgress(
     val plan: WeeklyPlan,
     val categories: List<CategoryPlanProgress>,
+    val planAssessment: PlanAssessment = PlanningCalculator.assess(plan, PlanningConfig()),
+    val unexpectedMandatoryRub: Long = 0,
+    /** Income from money events, projected from economy history for display. */
+    val extraIncomeRub: Long = 0,
+    val extraWantsRub: Long = 0,
+    val extraSavingsRub: Long = 0,
+    val extraReserveRub: Long = 0,
 ) {
+    init {
+        require(unexpectedMandatoryRub >= 0 && extraIncomeRub >= 0)
+        require(extraWantsRub >= 0 && extraSavingsRub >= 0 && extraReserveRub >= 0)
+        require(extraWantsRub + extraSavingsRub + extraReserveRub <= extraIncomeRub)
+    }
+
     fun category(category: PlanCategory): CategoryPlanProgress = categories.first { it.category == category }
+
+    val controlledReserveRub: Long
+        get() = (plan.availableRub + extraWantsRub + extraSavingsRub + extraReserveRub -
+            categories.sumOf { it.actualRub }).coerceAtLeast(0)
+
+    val remainingReserveRub: Long
+        get() = (controlledReserveRub - unexpectedMandatoryRub).coerceAtLeast(0)
 }
 
 sealed interface SavePlanResult {

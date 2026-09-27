@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,13 +33,11 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.R
 import github.detrig.feature.shop.api.ShopArtworkResolver
-import github.detrig.feature.shop.api.ShopItemDetail
-import github.detrig.feature.shop.api.ShopItemDetailIcon
 import github.detrig.feature.shop.api.ShopItemDetailsResolver
 import github.detrig.feature.shop.api.ShopPetPortrait
 import github.detrig.feature.shop.domain.ShopDecisionEventType
-import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
+import kotlinx.coroutines.flow.collect
 
 @Composable
 internal fun ShopContent(
@@ -68,6 +67,17 @@ internal fun ShopContent(
         } else {
             gridState.animateScrollToItem(index)
             promotionInView = true
+        }
+    }
+    LaunchedEffect(state.decisionEvent?.eventId, visibleItems, gridState) {
+        val promotion = state.decisionEvent?.takeIf {
+            it.type == ShopDecisionEventType.PROMOTION
+        } ?: return@LaunchedEffect
+        snapshotFlow {
+            val index = visibleItems.indexOfFirst { it.id == promotion.productId }
+            index >= 0 && gridState.layoutInfo.visibleItemsInfo.any { it.index == index }
+        }.collect { visible ->
+            if (visible) onEvent(ShopViewEvent.PromotionViewed(promotion.eventId))
         }
     }
     Column(
@@ -230,10 +240,7 @@ internal fun ShopContent(
     }
 }
 
-private val shopContentPreviewDetails = ShopItemDetailsResolver { item ->
-    val food = item as? FoodItem ?: return@ShopItemDetailsResolver emptyList()
-    listOf(ShopItemDetail("+${food.effects.satietyPercent}%", ShopItemDetailIcon.SATIETY))
-}
+private val shopContentPreviewDetails = ShopItemDetailsResolver { github.detrig.feature.shop.api.foodEffectDetails(it) }
 
 @Preview(name = "Product catalog", widthDp = 432, heightDp = 920, showBackground = true)
 @Composable

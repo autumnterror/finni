@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":feature:economy"))
     implementation(project(":feature:game-state"))
     implementation(project(":feature:planning"))
+    implementation(project(":feature:learning"))
     api(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

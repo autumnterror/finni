@@ -11,13 +11,17 @@ import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
 import github.detrig.feature.economy.domain.ParentHelpRequestResult
 import github.detrig.feature.economy.domain.RejectionReason
-import github.detrig.feature.economy.domain.canOfferParentHelp
+import github.detrig.feature.economy.domain.parentHelpUnavailableReasons
 import github.detrig.feature.phone.data.MessagesRepository
 import github.detrig.feature.week.api.WeekApi
+import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
+import github.detrig.feature.inventory.api.InventoryApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -35,9 +39,13 @@ internal class MessagesCoordinator(
     private val economyApi: EconomyApi,
     private val minimumHelpBalanceRub: Long,
     private val eventConfig: SecurityEventConfig,
+    private val onParentHelpSettled: () -> Unit = {},
+    private val gameStateApi: GameStateApi? = null,
+    private val inventoryApi: InventoryApi? = null,
 ) {
     private var observationJob: Job? = null
     private val parentHelpMutex = Mutex()
+    private val dayProcessingMutex = Mutex()
 
     fun start(scope: CoroutineScope) {
         if (observationJob?.isActive == true) return
@@ -58,34 +66,34 @@ internal class MessagesCoordinator(
         repository.consumeFirstRoomPrompt()
     }
 
+    suspend fun resetProgress(resetGame: suspend () -> Unit) = dayProcessingMutex.withLock {
+        resetGame()
+        repository.resetProgress()
+        processDayLocked(weekApi.initialize().absoluteDay)
+    }
+
     suspend fun parentHelpOffers(): List<ParentHelpOffer> {
-        val economy = economyApi.getState()
-        val activeHelp = economyApi.getParentHelp()
-        return if (canOfferParentHelp(
-                availableRub = economy.availableRub,
-                savingsRub = economy.savingsRub,
-                debtRub = economy.debtRub,
-                hasActiveParentHelp = activeHelp != null,
-                minimumRequiredBalanceRub = minimumHelpBalanceRub,
-            )
-        ) {
-            economyApi.parentHelpOffers()
-        } else {
-            emptyList()
-        }
+        val data = parentHelpDialogData()
+        return if (data.unavailableReasons.isEmpty()) data.offers else emptyList()
     }
 
     suspend fun parentHelpDialogData(): ParentHelpDialogData {
         val economy = economyApi.getState()
         val activeHelp = economyApi.getParentHelp()
-        val offers = if (canOfferParentHelp(
-                availableRub = economy.availableRub,
-                savingsRub = economy.savingsRub,
-                debtRub = economy.debtRub,
-                hasActiveParentHelp = activeHelp != null,
-                minimumRequiredBalanceRub = minimumHelpBalanceRub,
-            )
-        ) economyApi.parentHelpOffers() else emptyList()
+        val hasFoodInFridge = inventoryApi?.observeStock()?.first()?.any { it.quantity > 0 } == true
+        val canSleepUntilAllowance = gameStateApi?.observeState()?.first()?.let { game ->
+            PetSatietyRules.canSleep(game.pet.hunger)
+        } == true
+        val unavailableReasons = parentHelpUnavailableReasons(
+            availableRub = economy.availableRub,
+            savingsRub = economy.savingsRub,
+            debtRub = economy.debtRub,
+            hasActiveParentHelp = activeHelp != null,
+            minimumRequiredBalanceRub = minimumHelpBalanceRub,
+            hasFoodInFridge = hasFoodInFridge,
+            canSleepUntilAllowance = canSleepUntilAllowance,
+        )
+        val offers = if (unavailableReasons.isEmpty()) economyApi.parentHelpOffers() else emptyList()
         return ParentHelpDialogData(
             offers = offers,
             activeHelp = activeHelp,
@@ -93,6 +101,7 @@ internal class MessagesCoordinator(
             savingsRub = economy.savingsRub,
             debtRub = economy.debtRub,
             minimumRequiredBalanceRub = minimumHelpBalanceRub,
+            unavailableReasons = unavailableReasons,
         )
     }
 
@@ -133,6 +142,7 @@ internal class MessagesCoordinator(
             ),
         )
         if (result is FinancialOperationResult.Applied || result is FinancialOperationResult.AlreadyApplied) {
+            onParentHelpSettled()
             repository.upsertParentHelpMessage(weekApi.initialize().absoluteDay, activeHelp = null)
         }
         result
@@ -181,7 +191,8 @@ internal class MessagesCoordinator(
             when (progressionApi.grantXp(
                 grantId = "financial-task:${event.id}",
                 profileId = CURRENT_PROFILE_ID,
-                amount = XpRewards.FINANCIAL_TASK_COMPLETED,
+                amount = if (event.guidanceVisible) XpRewards.FINANCIAL_TASK_GUIDED
+                    else XpRewards.FINANCIAL_TASK_INDEPENDENT,
                 source = XpSources.FINANCIAL_TASK_COMPLETED,
             )) {
                 is GrantXpResult.Granted,
@@ -191,7 +202,11 @@ internal class MessagesCoordinator(
         }
     }
 
-    private suspend fun processDay(absoluteDay: Long) {
+    private suspend fun processDay(absoluteDay: Long) = dayProcessingMutex.withLock {
+        processDayLocked(absoluteDay)
+    }
+
+    private suspend fun processDayLocked(absoluteDay: Long) {
         runCatching {
             repository.ensureEventForDay(absoluteDay, eventConfig)
             ensureParentHelpReminder(absoluteDay)

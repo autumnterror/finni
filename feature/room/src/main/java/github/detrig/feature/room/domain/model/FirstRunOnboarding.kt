@@ -38,6 +38,7 @@ internal data class FirstRunOnboardingProgress(
 internal interface FirstRunOnboardingRepository {
     fun load(): FirstRunOnboardingProgress
     fun markChapterCompleted(chapter: FirstRunOnboardingChapter): FirstRunOnboardingProgress
+    fun reset(skipOnboarding: Boolean): FirstRunOnboardingProgress
     fun loadSuggestedGoalZoneId(): String?
     fun saveSuggestedGoalZoneId(zoneId: String?)
     fun isFirstGamePurchaseExplained(): Boolean

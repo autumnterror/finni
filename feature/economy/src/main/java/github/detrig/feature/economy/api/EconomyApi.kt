@@ -35,6 +35,8 @@ interface EconomyApi {
     suspend fun isPeriodicIncomeDue(atMillis: Long): Boolean
     suspend fun processPeriodicIncome(atMillis: Long): PeriodicIncomeResult
     suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult
+    suspend fun grantWeeklyAllowance(weekNumber: Long, playerLevel: Int): WeeklyAllowanceResult =
+        grantWeeklyAllowance(weekNumber)
     fun parentHelpOffers(): List<ParentHelpOffer> = emptyList()
     suspend fun getParentHelp(): ParentHelpState? = null
     suspend fun requestParentHelp(operationId: String, offerId: String): ParentHelpRequestResult =

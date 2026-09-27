@@ -67,6 +67,10 @@ internal class PetProfileStorage(
         putString(PROFILE_KEY, payload)
     }
 
+    fun resetProfile() {
+        forceClear()
+    }
+
     private companion object {
         const val PROFILE_KEY = "pet_profile"
         const val VERSION_KEY = "version"

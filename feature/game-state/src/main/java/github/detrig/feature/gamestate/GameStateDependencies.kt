@@ -6,7 +6,6 @@ import github.detrig.feature.gamestate.data.local.GameStateDao
 import github.detrig.feature.gamestate.data.local.RoomZoneDao
 import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.feature.economy.api.EconomyApi
-import github.detrig.feature.gamestate.domain.model.PetNeedDecayConfig
 
 interface GameStateDependencies {
 
@@ -26,5 +25,7 @@ interface GameStateDependencies {
 
     fun currentTimeMillis(): Long
 
-    fun needDecayConfig(): PetNeedDecayConfig = PetNeedDecayConfig()
+    /** Game-week number for the mini-game XP limit. */
+    suspend fun currentWeekNumber(): Long
+
 }

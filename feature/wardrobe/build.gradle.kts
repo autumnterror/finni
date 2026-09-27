@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":core:designsystem"))
     implementation(project(":feature:pet"))
+    implementation(project(":feature:game-state"))
     implementation(project(":feature:room"))
     implementation(project(":feature:economy"))
     implementation(project(":feature:planning"))

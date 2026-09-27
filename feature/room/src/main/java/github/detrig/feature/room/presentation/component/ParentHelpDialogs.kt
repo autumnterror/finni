@@ -40,6 +40,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -56,6 +58,7 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
+import github.detrig.feature.economy.domain.ParentHelpUnavailableReason
 import github.detrig.feature.room.R
 import github.detrig.feature.room.presentation.AllowanceNoticeState
 import github.detrig.feature.room.presentation.ParentHelpDialogState
@@ -125,27 +128,33 @@ fun ParentHelpDialog(
                         ) {
                             val active = state.activeHelp
                             if (active == null) {
-                                ParentHelpDescription()
                                 if (state.offers.isEmpty()) {
-                                    val unavailableMessage = when {
-                                        state.debtRub > 0 -> R.string.parent_help_unavailable_payments
-                                        state.minimumRequiredBalanceRub > 0 &&
-                                            state.availableRub >= state.minimumRequiredBalanceRub ->
-                                            R.string.parent_help_unavailable_wallet
-                                        state.savingsRub >= state.minimumRequiredBalanceRub ->
-                                            R.string.parent_help_unavailable_savings
-                                        else -> R.string.parent_help_unavailable_other
-                                    }
                                     FinPetModalSection(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = stringResource(unavailableMessage),
+                                        Column(
                                             modifier = Modifier.padding(AppTheme.spacing.md),
-                                            style = AppTheme.typography.body,
-                                        )
+                                            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+                                        ) {
+                                            val reasons = state.unavailableReasons
+                                            if (reasons.isEmpty()) {
+                                                Text(
+                                                    text = stringResource(R.string.parent_help_unavailable_other),
+                                                    style = AppTheme.typography.body,
+                                                )
+                                            } else {
+                                                reasons.forEach { reason ->
+                                                    Text(
+                                                        text = stringResource(reason.messageResource()),
+                                                        style = AppTheme.typography.body,
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
-                                }
-                                state.offers.forEach { offer ->
-                                    ParentHelpOfferCard(offer, isRequesting, onOfferSelected)
+                                } else {
+                                    ParentHelpDescription()
+                                    state.offers.forEach { offer ->
+                                        ParentHelpOfferCard(offer, isRequesting, onOfferSelected)
+                                    }
                                 }
                             } else {
                                 ActiveParentHelpCard(
@@ -171,6 +180,14 @@ fun ParentHelpDialog(
             }
         }
     }
+}
+
+private fun ParentHelpUnavailableReason.messageResource(): Int = when (this) {
+    ParentHelpUnavailableReason.WALLET_HAS_ENOUGH -> R.string.parent_help_unavailable_wallet
+    ParentHelpUnavailableReason.SAVINGS_CAN_COVER -> R.string.parent_help_unavailable_savings
+    ParentHelpUnavailableReason.ACTIVE_REPAYMENT -> R.string.parent_help_unavailable_payments
+    ParentHelpUnavailableReason.FOOD_IN_FRIDGE -> R.string.parent_help_unavailable_food
+    ParentHelpUnavailableReason.SATIETY_ALLOWS_SLEEP -> R.string.parent_help_unavailable_satiety
 }
 
 @Composable
@@ -356,7 +373,6 @@ private fun ParentHelpMoneyRow(labelRes: Int, amountRub: Long) {
 @Composable
 internal fun AllowanceReceiptDialog(
     notice: AllowanceNoticeState,
-    firstRun: Boolean = false,
     onDismiss: () -> Unit,
 ) {
     FinPetModalVisibilityEffect()
@@ -420,26 +436,14 @@ internal fun AllowanceReceiptDialog(
                         contentScale = ContentScale.Fit,
                     )
                 }
-                Column(
+                FinPetMoneyAmount(
+                    amount = notice.grossRub.toString(),
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .offset(x = 20.dp, y = 76.dp)
-                        .width(maxWidth * 0.45f),
-                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xl),
-                ) {
-                    FinPetMoneyAmount(
-                        amount = notice.grossRub.toString(),
-                        modifier = Modifier.fillMaxWidth().height(60.dp),
-                    )
-                    Text(
-                        text = stringResource(
-                            if (firstRun) R.string.allowance_notice_first_received
-                            else R.string.allowance_notice_received,
-                            notice.grossRub,
-                        ),
-                        style = AppTheme.typography.bodyStrong,
-                    )
-                }
+                        .offset(x = 20.dp, y = 92.dp)
+                        .width(maxWidth * 0.45f)
+                        .height(60.dp),
+                )
                 Image(
                     painter = painterResource(R.drawable.allowance_wallet),
                     contentDescription = null,
@@ -477,24 +481,16 @@ internal fun AllowanceReceiptDialog(
                     }
                 }
                 FinPetButton(
+                    text = stringResource(R.string.allowance_notice_get),
                     onClick = onDismiss,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .offset(y = (-12).dp)
+                        .offset(y = (-24).dp)
                         .fillMaxWidth()
-                        .height(100.dp),
-                    style = allowanceArtworkButtonStyle(),
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.allowance_continue),
-                        contentDescription = stringResource(R.string.allowance_notice_continue),
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .graphicsLayer(scaleX = 1.25f, scaleY = 1.25f),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
+                        .padding(horizontal = AppTheme.spacing.md)
+                        .height(72.dp),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
                 Image(
                     painter = painterResource(R.drawable.allowance_hamster),
                     contentDescription = null,
@@ -559,21 +555,45 @@ internal fun EarlyWeekParentHelpDialog(onDismiss: () -> Unit) {
 
 @Preview(name = "Помощь от родителей", widthDp = 360, heightDp = 760, showBackground = true)
 @Composable
-private fun ParentHelpDialogPreview() {
+private fun ParentHelpDialogPreview(
+    @PreviewParameter(ParentHelpDialogPreviewProvider::class) state: ParentHelpDialogState,
+) {
     FinPetTheme {
         ParentHelpDialog(
-            state = ParentHelpDialogState(
-                offers = listOf(
-                    ParentHelpOffer("two-weeks", 600, 2, 720),
-                    ParentHelpOffer("three-weeks", 600, 3, 690),
-                ),
-                activeHelp = null,
-            ),
+            state = state,
             isRequesting = false,
             onOfferSelected = {},
             onDismiss = {},
+            onPayOffNow = {},
         )
     }
+}
+
+private class ParentHelpDialogPreviewProvider : PreviewParameterProvider<ParentHelpDialogState> {
+    override val values = sequenceOf(
+        ParentHelpDialogState(
+            offers = listOf(
+                ParentHelpOffer("two-weeks", 600, 2, 720),
+                ParentHelpOffer("three-weeks", 600, 3, 690),
+            ),
+            activeHelp = null,
+        ),
+        ParentHelpDialogState(
+            offers = emptyList(),
+            activeHelp = null,
+            availableRub = 45,
+            minimumRequiredBalanceRub = 100,
+            unavailableReasons = listOf(
+                ParentHelpUnavailableReason.FOOD_IN_FRIDGE,
+                ParentHelpUnavailableReason.SATIETY_ALLOWS_SLEEP,
+            ),
+        ),
+        ParentHelpDialogState(
+            offers = emptyList(),
+            activeHelp = ParentHelpState("active-help", 600, 720, 360, 2),
+            availableRub = 500,
+        ),
+    )
 }
 
 @Preview(name = "Карманные деньги", widthDp = 360, heightDp = 740, showBackground = true)
@@ -582,7 +602,6 @@ private fun AllowanceReceiptDialogPreview() {
     FinPetTheme {
         AllowanceReceiptDialog(
             notice = AllowanceNoticeState(grossRub = 500, parentHelpRepaidRub = 0, receivedRub = 500),
-            firstRun = true,
             onDismiss = {},
         )
     }

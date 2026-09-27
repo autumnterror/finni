@@ -24,6 +24,13 @@ import github.detrig.feature.learning.data.local.LearningDao
 import github.detrig.feature.learning.data.local.LearningExplanationEntity
 import github.detrig.feature.learning.data.local.LearningMetricOccurrenceEntity
 import github.detrig.feature.learning.data.local.LearningMetricProgressEntity
+import github.detrig.feature.learningtests.data.local.LearningTestAnswerEntity
+import github.detrig.feature.learningtests.data.local.LearningTestAttemptEntity
+import github.detrig.feature.learningtests.data.local.LearningTestCompletionRewardOutboxEntity
+import github.detrig.feature.learningtests.data.local.LearningTestDailyOfferEntity
+import github.detrig.feature.learningtests.data.local.LearningTestMasteryEntity
+import github.detrig.feature.learningtests.data.local.LearningTestQuestionXpOutboxEntity
+import github.detrig.feature.learningtests.data.local.LearningTestsDao
 
 @Database(
     entities = [GameStateEntity::class, ExperienceGrantEntity::class, RoomZoneEntity::class,
@@ -33,8 +40,11 @@ import github.detrig.feature.learning.data.local.LearningMetricProgressEntity
         WeekStateEntity::class, WeeklyPlanEntity::class, PlanActualOperationEntity::class,
         LearningActionEntity::class, LearningMetricOccurrenceEntity::class,
         LearningMetricProgressEntity::class, AchievementUnlockEntity::class,
-        LearningExplanationEntity::class, AchievementXpOutboxEntity::class],
-    version = 16,
+        LearningExplanationEntity::class, AchievementXpOutboxEntity::class,
+        LearningTestDailyOfferEntity::class, LearningTestAttemptEntity::class,
+        LearningTestAnswerEntity::class, LearningTestMasteryEntity::class,
+        LearningTestQuestionXpOutboxEntity::class, LearningTestCompletionRewardOutboxEntity::class],
+    version = 18,
     exportSchema = false,
 )
 abstract class FinPetDatabase : RoomDatabase() {
@@ -44,6 +54,8 @@ abstract class FinPetDatabase : RoomDatabase() {
     abstract fun weekDao(): WeekDao
     abstract fun planningDao(): PlanningDao
     abstract fun learningDao(): LearningDao
+
+    abstract fun learningTestsDao(): LearningTestsDao
 
     abstract fun roomZoneDao(): RoomZoneDao
 

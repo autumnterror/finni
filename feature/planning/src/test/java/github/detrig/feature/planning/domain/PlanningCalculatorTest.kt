@@ -22,6 +22,28 @@ class PlanningCalculatorTest {
         assertEquals(PlanProgressTone.OVER_LIMIT, progress.category(PlanCategory.SAVINGS).tone)
     }
 
+    @Test fun underspendingWithinThePlanIsReportedAsOnTrack() {
+        val plan = WeeklyPlan(weekNumber = 2, availableRub = 500, percentages = PlanPercentages.DEFAULT)
+        val progress = PlanningCalculator.progress(plan, mapOf(
+            PlanCategory.MANDATORY to 0,
+            PlanCategory.WANTS to 0,
+            PlanCategory.SAVINGS to 0,
+        ))
+
+        PlanCategory.entries.forEach { category ->
+            assertEquals(PlanProgressTone.ON_TRACK, progress.category(category).tone)
+        }
+    }
+
+    @Test fun exactSpendingMatchesAreReportedAsFollowingThePlan() {
+        val plan = WeeklyPlan(weekNumber = 2, availableRub = 500, percentages = PlanPercentages.DEFAULT)
+        val progress = PlanningCalculator.progress(plan, PlanCategory.entries.associateWith(plan::plannedRub))
+
+        PlanCategory.entries.forEach { category ->
+            assertEquals(PlanProgressTone.ON_TRACK, progress.category(category).tone)
+        }
+    }
+
     @Test fun planPercentagesMayLeaveAReserveButCannotExceedOneHundred() {
         assertEquals(10, PlanPercentages(50, 20, 20).reserve)
         assertThrows(IllegalArgumentException::class.java) { PlanPercentages(50, 40, 20) }
@@ -30,22 +52,49 @@ class PlanningCalculatorTest {
 
     @Test fun assessmentExplainsTheFirstUnsafePartOfThePlan() {
         val config = PlanningConfig()
+        assertEquals(ReserveLevel.ALMOST_NONE, config.reserveLevel(49))
+        assertEquals(ReserveLevel.SMALL, config.reserveLevel(50))
+        assertEquals(ReserveLevel.ADEQUATE, config.reserveLevel(100))
+        assertEquals(ReserveLevel.STRONG, config.reserveLevel(150))
+        fun plan(
+            availableRub: Long,
+            mandatory: Int,
+            wants: Int,
+            savings: Int,
+            knownExpenseRub: Long = 0,
+            hasGoal: Boolean = false,
+        ) = WeeklyPlan(
+            1, availableRub, PlanPercentages(mandatory, wants, savings),
+            PlanWeekContext(knownExpenseRub, hasGoal),
+        )
 
         assertEquals(
-            PlanAssessment.NeedsChanges(PlanAdjustmentReason.MANDATORY_TOO_LOW, 40),
-            PlanningCalculator.assess(PlanPercentages(30, 30, 20), config),
+            PlanAssessment.NeedsChanges(PlanAdjustmentReason.MANDATORY_TOO_LOW, 400),
+            PlanningCalculator.assess(plan(900, 30, 30, 20), config),
         )
         assertEquals(
-            PlanAssessment.NeedsChanges(PlanAdjustmentReason.RESERVE_TOO_LOW, 10),
-            PlanningCalculator.assess(PlanPercentages(50, 30, 20), config),
-        )
-        assertEquals(
-            PlanAssessment.Adequate,
-            PlanningCalculator.assess(PlanPercentages(50, 20, 0), config),
+            PlanAssessment.NeedsChanges(PlanAdjustmentReason.RESERVE_TOO_LOW, 100),
+            PlanningCalculator.assess(plan(900, 50, 30, 20), config),
         )
         assertEquals(
             PlanAssessment.Adequate,
-            PlanningCalculator.assess(PlanPercentages.DEFAULT, config),
+            PlanningCalculator.assess(plan(900, 45, 20, 0), config),
+        )
+        assertEquals(
+            PlanAssessment.Adequate,
+            PlanningCalculator.assess(plan(900, 45, 20, 20, hasGoal = true), config),
+        )
+        assertEquals(
+            PlanAssessment.NeedsChanges(PlanAdjustmentReason.MANDATORY_TOO_LOW, 480),
+            PlanningCalculator.assess(plan(900, 45, 20, 20, knownExpenseRub = 80), config),
+        )
+        assertEquals(
+            PlanAssessment.NeedsChanges(PlanAdjustmentReason.SAVINGS_TOO_LOW, 1),
+            PlanningCalculator.assess(plan(900, 50, 20, 0, hasGoal = true), config),
+        )
+        assertEquals(
+            PlanAssessment.Adequate,
+            PlanningCalculator.assess(plan(2_200, 20, 70, 5), config),
         )
     }
 }

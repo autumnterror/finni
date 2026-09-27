@@ -29,13 +29,16 @@ internal class GameStateRepositoryImpl(
 
     override suspend fun adjustPetDirtStageForDebug(delta: Int): Int =
         localDataSource.adjustPetDirtStageForDebug(delta)
+    override suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int =
+        localDataSource.rewardMiniGameLaunch(gameId, absoluteDay)
+
+    override suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int =
+        localDataSource.rewardClothingPurchase(purchaseOperationId, happinessPoints)
 
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         localDataSource.feedPet(completion)
 
-    override suspend fun consumeHungerForSleep(): Int = localDataSource.consumeHungerForSleep()
-
-    override suspend fun reconcileTimedNeeds(nowMillis: Long) = localDataSource.reconcileTimedNeeds(nowMillis)
+    override suspend fun applyDayNeeds() = localDataSource.applyDayNeeds()
 
     override suspend fun hungerAlertState() = localDataSource.hungerAlertState()
 

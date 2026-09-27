@@ -14,6 +14,9 @@ interface PetApi {
     fun observeProfile(): Flow<PetProfile?>
     fun currentProfile(): PetProfile?
 
+    /** Clears the current pet profile for a debug/demo progress reset. */
+    fun resetProfile()
+
     suspend fun clothingItems(): List<ClothingItem>
     fun cachedClothingItems(): List<ClothingItem>
     fun recordClothingPurchase(itemId: String)

@@ -61,6 +61,7 @@ internal fun ShopCartScreen(
             state = state,
             artworkResolver = component.artworkResolver,
             itemDetailsResolver = component.itemDetailsResolver,
+            petPortrait = component.petPortrait,
             onEvent = viewModel::perform,
             onBack = handleBack,
             modifier = if (onBack == null) Modifier.shopSafeDrawingPadding() else Modifier,

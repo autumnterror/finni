@@ -16,6 +16,12 @@ internal class PetRepositoryImpl(
     override fun currentProfile(): PetProfile? = profile.value
 
     @Synchronized
+    override fun resetProfile() {
+        storage.resetProfile()
+        profile.value = null
+    }
+
+    @Synchronized
     override fun saveProfile(value: PetProfile) {
         storage.saveProfile(value)
         profile.value = value

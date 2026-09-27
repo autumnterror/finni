@@ -15,16 +15,19 @@ import github.detrig.feature.room.domain.furniture.FurnitureStore
 import github.detrig.feature.room.domain.surface.SurfaceCatalog
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.room.presentation.furniture.FurnitureStoreScreen
+import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
 
 internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
     private val resources: Resources,
     private val purchaseSavingsGoal: PurchaseSavingsGoalInteractor,
+    private val repository: github.detrig.feature.room.domain.repository.RoomRepository,
     override val firstRunGuide: FirstRunGuideApi,
     private val furnitureCatalog: FurnitureCatalog,
     private val surfaceCatalog: SurfaceCatalog,
     private val furnitureStore: FurnitureStore,
     private val economyApi: EconomyApi,
+    private val parentHelpPromptRepository: ParentHelpPromptRepository,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)
@@ -42,6 +45,12 @@ internal class RoomApiImpl(
     }
 
     override fun requestZonePreview(zoneId: String) = requests.request(zoneId)
+    override fun notifyParentHelpSettled() = parentHelpPromptRepository.resetAfterParentHelpSettlement()
+    override suspend fun resetProgress(skipOnboarding: Boolean) {
+        firstRunGuide.reset(skipOnboarding)
+        parentHelpPromptRepository.resetAfterParentHelpSettlement()
+        repository.initialize()
+    }
     override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
         purchaseSavingsGoal(goal)
     @Composable

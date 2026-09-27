@@ -63,6 +63,15 @@ internal class LearningRepositoryImpl(
                 ruleEngine.evaluate(
                     rule = rule,
                     qualifyingPeriods = dao.getQualifyingPeriods(action.profileId, rule.metricId),
+                    milestonePeriods = rule.milestones.mapNotNull { milestone ->
+                        milestone.qualifyingActionTypes?.let { types ->
+                            milestone.progressSteps to dao.getQualifyingPeriodsForTypes(
+                                action.profileId,
+                                rule.metricId,
+                                types.map { it.value },
+                            )
+                        }
+                    }.toMap(),
                 ).also { progress ->
                     dao.upsertMetricProgress(progress.toEntity(action.profileId))
                 }
