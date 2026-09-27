@@ -24,15 +24,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect as ComposeRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.IntOffset
@@ -334,6 +337,7 @@ internal fun HamsterPreview(
     flightPhase: Float? = null,
     limbAmplitude: Float = 1f,
     clothingLayers: List<ClothingDrawLayer> = emptyList(),
+    dirtStage: Int = 0,
 ) {
     val drawLayers = remember(assets, appearance, blink) {
         assets.resolve(appearance, blink)
@@ -341,6 +345,7 @@ internal fun HamsterPreview(
     val mouthOutline = AppTheme.colors.storefront.outline
     val mouthInterior = AppTheme.colors.textPrimary
     val mouthBlush = AppTheme.colors.house.blush
+    val dirtLayers = rememberDirtLayers(appearance, clothingLayers, dirtStage)
     val mouthOpenness by animateFloatAsState(
         targetValue = if (mouthOpen) 1f else 0f,
         animationSpec = tween(durationMillis = 75),
@@ -350,6 +355,39 @@ internal fun HamsterPreview(
         val factor = minOf(size.width, size.height) / assets.canvasSize
         val dx = (size.width - assets.canvasSize * factor) / 2f
         val dy = (size.height - assets.canvasSize * factor) / 2f
+        val dirtMask = if (dirtStage in 1..2) Path().apply {
+            val spots = listOf(
+                Triple(258f, 499f, 80f),
+                Triple(553f, 717f, 88f),
+                Triple(741f, 519f, 81f),
+                Triple(278f, 692f, 101f),
+                Triple(751f, 717f, 90f),
+                Triple(368f, 880f, 76f),
+                Triple(754f, 183f, 62f),
+            )
+            spots.take(if (dirtStage == 1) 2 else 7).forEach { (x, y, radius) ->
+                val cx = dx + x * factor
+                val cy = dy + y * factor
+                val r = radius * factor
+                addOval(ComposeRect(cx - r, cy - r, cx + r, cy + r))
+            }
+        } else null
+        fun drawDirt(image: ImageBitmap?) {
+            if (image == null || dirtStage == 0) return
+            val drawLayer = {
+                drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
+                    dstSize = IntSize((assets.canvasSize * factor).toInt(),
+                        (assets.canvasSize * factor).toInt()),
+                    filterQuality = FilterQuality.High)
+                if (dirtStage == 3) {
+                    drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
+                        dstSize = IntSize((assets.canvasSize * factor).toInt(),
+                            (assets.canvasSize * factor).toInt()),
+                        alpha = 0.45f, filterQuality = FilterQuality.High)
+                }
+            }
+            if (dirtMask == null) drawLayer() else clipPath(dirtMask) { drawLayer() }
+        }
         val eyeOffset = lookAt?.let { target ->
             val horizontal = ((target.x - 0.5f) * 2f).coerceIn(-1f, 1f)
             val vertical = ((target.y - 0.40f) * 1.8f).coerceIn(-1f, 1f)
@@ -366,6 +404,7 @@ internal fun HamsterPreview(
                 dstSize = IntSize((assets.canvasSize * factor).toInt(), (assets.canvasSize * factor).toInt()),
                 filterQuality = FilterQuality.High,
             )
+            drawDirt(dirtLayers?.clothing?.get(layer.sourceKey))
         }
         drawLayers.forEach { layer ->
             val isOpenEye = layer.id.startsWith("eyes_") && !layer.id.startsWith("eyes_closed")
@@ -400,6 +439,9 @@ internal fun HamsterPreview(
                 )
             }
         }
+        drawDirt(dirtLayers?.head)
+        drawDirt(dirtLayers?.body)
+        drawDirt(dirtLayers?.ears)
         clothingLayers.filter { it.z >= 0 }.forEach { layer ->
             drawImage(
                 image = layer.image,
@@ -407,6 +449,7 @@ internal fun HamsterPreview(
                 dstSize = IntSize((assets.canvasSize * factor).toInt(), (assets.canvasSize * factor).toInt()),
                 filterQuality = FilterQuality.High,
             )
+            drawDirt(dirtLayers?.clothing?.get(layer.sourceKey))
         }
         if (mouthOpenness > 0.05f) {
             val center = Offset(dx + 498f * factor, dy + 460f * factor)

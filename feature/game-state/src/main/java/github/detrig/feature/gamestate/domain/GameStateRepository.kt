@@ -17,6 +17,8 @@ internal interface GameStateRepository {
     suspend fun buyZone(offer: ZoneOffer, useSavings: Boolean = false): ZoneBuyResult
 
     suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int
+    suspend fun washPet()
+    suspend fun adjustPetDirtStageForDebug(delta: Int): Int
 
     suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int
     suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int

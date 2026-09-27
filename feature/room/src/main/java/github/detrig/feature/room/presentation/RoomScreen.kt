@@ -1,6 +1,8 @@
 package github.detrig.feature.room.presentation
 
 import androidx.compose.runtime.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -18,6 +20,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -28,6 +34,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.core.mvvm.command.CommandsQueueEffect
 import github.detrig.core.mvvm.command.ImmutableCommandsQueue
 import github.detrig.feature.room.RoomFeature
+import github.detrig.feature.room.domain.furniture.FurnitureVariant
+import github.detrig.feature.room.domain.surface.SurfaceKind
+import github.detrig.feature.room.presentation.component.RoomSurfaceCache
+import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
+import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
@@ -44,6 +55,7 @@ import github.detrig.feature.room.presentation.component.ParentGateDialog
 import github.detrig.feature.room.presentation.component.ParentCabinetDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
 import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
+import github.detrig.feature.room.presentation.component.BathroomScreen
 import github.detrig.feature.room.presentation.component.RoomMoneyEventDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
@@ -91,6 +103,44 @@ internal fun RoomScreen(
     petBaselineFraction: Float? = null,
 ) {
     val viewModel: RoomViewModel = viewModel { RoomFeature.component().getRoomViewModel() }
+    val furnitureComponent = RoomFeature.component()
+    val furnitureOwnership by furnitureComponent.furnitureStore.state.collectAsState()
+    LaunchedEffect(furnitureComponent) { furnitureComponent.furnitureStore.reconcilePending() }
+    val furnitureByPlacement = remember(furnitureOwnership, furnitureComponent) {
+        furnitureOwnership.equipped.values.mapNotNull { furnitureComponent.furnitureCatalog.byId[it] }
+            .associateBy(FurnitureVariant::placementId)
+    }
+    val houseFurnitureByPlacement = remember(furnitureByPlacement) {
+        furnitureByPlacement.filterKeys { id ->
+            github.detrig.feature.room.presentation.model.HouseLayout.objects.any { it.id == id }
+        }
+    }
+    val bathroomFurnitureByPlacement = remember(furnitureByPlacement, houseFurnitureByPlacement) {
+        furnitureByPlacement - houseFurnitureByPlacement.keys
+    }
+    val resources = LocalResources.current
+    val surfaceBitmaps by RoomSurfaceCache.full.collectAsState()
+    val equippedSurfaces = remember(furnitureOwnership, furnitureComponent) {
+        furnitureOwnership.equippedSurfaces.values.mapNotNull(furnitureComponent.surfaceCatalog.byId::get)
+    }
+    val missingSurfaces = equippedSurfaces.filterNot { it.id in surfaceBitmaps }
+    LaunchedEffect(resources, missingSurfaces.map { it.id }) {
+        RoomSurfaceCache.awaitFull(resources, missingSurfaces)
+    }
+    val surfaceTextures = remember(equippedSurfaces, surfaceBitmaps) {
+        HouseSurfaceTextures(
+            walls = equippedSurfaces.filter { it.kind == SurfaceKind.WALL }
+                .mapNotNull { variant ->
+                    val room = HouseSurfaceLayout.Room.fromId(variant.roomId)
+                    room?.let { surfaceBitmaps[variant.id]?.let { bitmap -> it to bitmap } }
+                }.toMap(),
+            floors = equippedSurfaces.filter { it.kind == SurfaceKind.FLOOR }
+                .mapNotNull { variant ->
+                    val room = HouseSurfaceLayout.Room.fromId(variant.roomId)
+                    room?.let { surfaceBitmaps[variant.id]?.let { bitmap -> it to bitmap } }
+                }.toMap(),
+        )
+    }
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
     var dialogZoneId by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -133,6 +183,9 @@ internal fun RoomScreen(
     }
     val requestedZoneId by previewRequests.zoneId.collectAsState()
     val content = state as? RoomViewState.Content
+    BackHandler(enabled = content?.bathroomView == BathroomView.WASHING) {
+        viewModel.perform(RoomViewEvent.BathroomBackClicked)
+    }
     val onboarding = content?.onboarding
     var petLookingAround by remember { mutableStateOf(false) }
     LaunchedEffect(petLookingAround) {
@@ -162,7 +215,7 @@ internal fun RoomScreen(
     }
     val hasAllowedOnboardingObjects = onboarding?.allowedObjectIds?.isNotEmpty() == true
     val showPhoneNotificationPrompt = phoneNotificationPrompt != null && onboarding == null &&
-        content != null && !content.sleeping && canShowDialogs
+        content != null && content.bathroomView == BathroomView.HOUSE && !content.sleeping && canShowDialogs
     val openPhoneFromTutorial = {
         viewModel.perform(RoomViewEvent.FirstRunOpenPhone)
         onPhoneClick()
@@ -176,7 +229,25 @@ internal fun RoomScreen(
             roomOriginInWindow = coordinates.positionInWindow()
         },
     ) {
-        RoomContent(
+        if (content?.bathroomView == BathroomView.WASHING) {
+            BathroomScreen(
+                washStep = content.bathStep,
+                equipped = bathroomFurnitureByPlacement,
+                petContent = petContent,
+                onBack = { viewModel.perform(RoomViewEvent.BathroomBackClicked) },
+                onToolCompleted = { viewModel.perform(RoomViewEvent.BathToolClicked(it)) },
+                onToolSoundChanged = { step, running ->
+                    viewModel.perform(RoomViewEvent.BathToolSoundChanged(step, running))
+                },
+                onDryerRunningChanged = {
+                    viewModel.perform(RoomViewEvent.BathDryerRunningChanged(it))
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else RoomContent(
+            furnitureByPlacement = houseFurnitureByPlacement,
+            bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
+            surfaces = surfaceTextures,
             state = state,
             onEvent = viewModel::perform,
             modifier = Modifier.fillMaxSize(),
@@ -233,12 +304,13 @@ internal fun RoomScreen(
                 }
             },
         )
-        if (onboarding?.step?.let(spotlightSteps::contains) == true &&
+        if (content?.bathroomView == BathroomView.HOUSE &&
+            onboarding?.step?.let(spotlightSteps::contains) == true &&
             focusedObjectId == activeFocusObjectId && spotlightBounds != null
         ) {
             TutorialSpotlight(spotlightBounds)
         }
-        if ((externalActive || showHud) && content != null) {
+        if ((externalActive || showHud) && content != null && content.bathroomView == BathroomView.HOUSE) {
             HouseHud(
                 progress = content.progress,
                 showMenu = externalActive && onboarding == null,
@@ -285,7 +357,7 @@ internal fun RoomScreen(
     val visibleOnboarding = onboarding?.takeIf { firstRun ->
         val spotlightRequired = firstRun.step in spotlightSteps
         val tableTapInstruction = firstRun.step == FirstRunOnboardingStep.TABLE_GUIDANCE
-        canShowDialogs &&
+        canShowDialogs && content?.bathroomView == BathroomView.HOUSE &&
             (tableTapInstruction || firstRun.focusObjectId == null || focusedObjectId == firstRun.focusObjectId) &&
             (tableTapInstruction || !spotlightRequired || spotlightBounds != null)
     }

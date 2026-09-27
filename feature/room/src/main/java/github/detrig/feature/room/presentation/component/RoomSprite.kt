@@ -31,7 +31,13 @@ internal class RoomSprite private constructor(
         private const val HIT_ALPHA = 96
         private const val DECODE_HEADROOM = 1.1f
 
-        fun load(resources: Resources, @DrawableRes resource: Int, width: Int, height: Int): RoomSprite {
+        fun load(
+            resources: Resources,
+            @DrawableRes resource: Int,
+            width: Int,
+            height: Int,
+            preserveCanvas: Boolean = false,
+        ): RoomSprite {
             val dimensions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeResource(resources, resource, dimensions)
             var sample = 1
@@ -60,7 +66,7 @@ internal class RoomSprite private constructor(
                 }
             }
             require(right >= left && bottom >= top) { "Room sprite has no visible content: $resource" }
-            val content = IntRect(
+            val content = if (preserveCanvas) IntRect(0, 0, bitmap.width, bitmap.height) else IntRect(
                 (left - 2).coerceAtLeast(0),
                 (top - 2).coerceAtLeast(0),
                 (right + 3).coerceAtMost(bitmap.width),

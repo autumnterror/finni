@@ -20,6 +20,7 @@ internal class GameSessionModule(
     override val petApi: PetApi by lazy { dependencies.petApi() }
     override val phoneApi: PhoneApi by lazy { dependencies.phoneApi() }
     override val fridgeApi: FridgeApi by lazy { dependencies.fridgeApi() }
+    override val gameStateApi by lazy { dependencies.gameStateApi() }
 
     override val api: GameSessionApi by lazy {
         GameSessionApiImpl(router)

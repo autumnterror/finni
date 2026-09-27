@@ -8,15 +8,23 @@ import github.detrig.feature.gamestate.domain.model.ZoneOffer
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
 import github.detrig.feature.gamestate.domain.model.PetFeedingCompletion
 import github.detrig.feature.gamestate.domain.model.PetFeedingResult
+import kotlinx.coroutines.flow.onEach
 
 internal class GameStateApiImpl(
     private val repository: GameStateRepository,
     private val buyZoneInteractor: BuyZoneInteractor,
 ) : GameStateApi {
 
+    @Volatile
+    private var observedState: GameState? = null
+
+    override val latestObservedState: GameState? get() = observedState
+
     override suspend fun initialize(): GameState = repository.initialize()
 
-    override fun observeState(): Flow<GameState?> = repository.observeState()
+    override fun observeState(): Flow<GameState?> = repository.observeState().onEach {
+        observedState = it
+    }
 
     override suspend fun buyZone(offer: ZoneOffer, useSavings: Boolean): ZoneBuyResult =
         buyZoneInteractor(offer, useSavings)
@@ -24,6 +32,10 @@ internal class GameStateApiImpl(
     override suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int =
         repository.completePetPlay(completion)
 
+    override suspend fun washPet() = repository.washPet()
+
+    override suspend fun adjustPetDirtStageForDebug(delta: Int): Int =
+        repository.adjustPetDirtStageForDebug(delta)
     override suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int =
         repository.rewardMiniGameLaunch(gameId, absoluteDay)
 

@@ -53,6 +53,7 @@ import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseObjectPlacement
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
+import github.detrig.feature.room.domain.furniture.FurnitureVariant
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -72,6 +73,8 @@ internal fun RoomObjectLayers(
     exposeInteractions: Boolean = true,
     rotationByObjectId: Map<String, Float> = emptyMap(),
     nightMode: Boolean = false,
+    furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    objectLabels: Map<String, String> = emptyMap(),
 ) {
     val resources = LocalResources.current
     val density = LocalDensity.current
@@ -80,6 +83,9 @@ internal fun RoomObjectLayers(
     val highlightedBoundsChanged by rememberUpdatedState(onHighlightedObjectBoundsChanged)
     val canInteract by rememberUpdatedState(enabled && exposeInteractions && buyingZoneId == null)
     val orderedPlacements = remember(placements) { placements.sortedBy { it.layer } }
+    LaunchedEffect(resources, furnitureByPlacement) {
+        RoomSpriteCache.awaitVariants(resources, furnitureByPlacement.values)
+    }
     val zonesById = remember(zones) { zones.associateBy { it.id } }
     val labels = mapOf(
         "phone" to stringResource(R.string.house_market),
@@ -147,22 +153,36 @@ internal fun RoomObjectLayers(
     BoxWithConstraints(modifier) {
         val widthPx = with(density) { maxWidth.toPx() }
         val heightPx = with(density) { maxHeight.toPx() }
-        val destinations = remember(orderedPlacements, widthPx, heightPx) {
-            orderedPlacements.associate { placement ->
+        val sprites by RoomSpriteCache.sprites(resources).collectAsState()
+        val visibleVariants = furnitureByPlacement.filterValues { it.id in sprites }
+        val destinations = remember(orderedPlacements, widthPx, heightPx, visibleVariants) {
+            val original = orderedPlacements.associate { placement ->
                 val bounds = requireNotNull(placement.bounds)
                 placement.id to Rect(
                     bounds.left * widthPx, bounds.top * heightPx,
                     bounds.right * widthPx, bounds.bottom * heightPx,
                 )
             }
+            original.mapValues { (id, bounds) ->
+                val parentId = supportParentByChild[id] ?: return@mapValues bounds
+                val parent = original[parentId] ?: return@mapValues bounds
+                val delta = (visibleVariants[parentId]?.supportDelta ?: 0f) * parent.height
+                Rect(bounds.left, bounds.top + delta, bounds.right, bounds.bottom + delta)
+            }
         }
-        val sprites by RoomSpriteCache.sprites(resources).collectAsState()
+
+        fun visualDestination(id: String): Rect = destinations.getValue(id).let { bounds ->
+            if (id == "phone" && id in visibleVariants) bounds.phoneStationArea() else bounds
+        }
+
+        fun spriteId(placement: HouseObjectPlacement): String =
+            visibleVariants[placement.id]?.id ?: placement.spriteId(nightMode)
 
         fun hitObject(position: Offset): String? {
             // A foreground decoration blocks objects behind it, but transparent gaps pass through.
             for (placement in orderedPlacements.asReversed()) {
-                val sprite = sprites[placement.spriteId(nightMode)] ?: continue
-                val base = destinations.getValue(placement.id)
+                val sprite = sprites[spriteId(placement)] ?: continue
+                val base = visualDestination(placement.id)
                 val destination = if (pressedId == placement.id) base.scaledFromBottom(pressScale.value) else base
                 if (sprite.contains(position, destination)) {
                     return placement.id.takeIf { placement.interactive }
@@ -197,8 +217,27 @@ internal fun RoomObjectLayers(
         ) {
             orderedPlacements.forEach { placement ->
                 if (drawObjectIds != null && placement.id !in drawObjectIds) return@forEach
-                val sprite = sprites[placement.spriteId(nightMode)] ?: return@forEach
-                val destination = destinations.getValue(placement.id)
+                val sprite = sprites[spriteId(placement)] ?: return@forEach
+                if (placement.id == "phone" && placement.id in visibleVariants) {
+                    // The original sprite also contains the socket and cord. Keep their
+                    // original pixels in place while replacing only the phone and dock.
+                    sprites["phone"]?.let { original ->
+                        val bounds = destinations.getValue("phone")
+                        val cableWidth = (original.content.width * PHONE_STATION_LEFT_FRACTION).roundToInt()
+                        drawImage(
+                            image = original.image,
+                            srcOffset = IntOffset(original.content.left, original.content.top),
+                            srcSize = IntSize(cableWidth, original.content.height),
+                            dstOffset = IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()),
+                            dstSize = IntSize(
+                                (bounds.width * PHONE_STATION_LEFT_FRACTION).roundToInt(),
+                                bounds.height.roundToInt(),
+                            ),
+                            filterQuality = FilterQuality.High,
+                        )
+                    }
+                }
+                val destination = visualDestination(placement.id)
                 val factor = if (pressedId == placement.id) pressScale.value else 1f
                 scale(factor, pivot = Offset(destination.center.x, destination.bottom)) {
                     rotate(rotationByObjectId[placement.id] ?: 0f, pivot = Offset(destination.center.x, destination.bottom)) {
@@ -217,7 +256,7 @@ internal fun RoomObjectLayers(
 
         if (exposeInteractions) orderedPlacements.filter { it.interactive }.forEach { placement ->
             val zone = placement.zoneId?.let(zonesById::get)
-            val label = zone?.let { stringResource(it.appearance.titleRes) } ?: labels[placement.id]
+            val label = zone?.let { stringResource(it.appearance.titleRes) } ?: objectLabels[placement.id] ?: labels[placement.id]
                 ?: return@forEach
             val accessDescription = when (val access = zone?.access) {
                 RoomZoneAccess.Open -> stringResource(R.string.room_open)
@@ -225,7 +264,7 @@ internal fun RoomObjectLayers(
                 is RoomZoneAccess.Buyable -> stringResource(R.string.room_locked)
                 null -> null
             }
-            val destination = destinations.getValue(placement.id)
+            val destination = visualDestination(placement.id)
             val targetWidth = maxOf(with(density) { destination.width.toDp() }, touchTarget)
             val targetHeight = maxOf(with(density) { destination.height.toDp() }, touchTarget)
             val targetWidthPx = with(density) { targetWidth.toPx() }
@@ -293,7 +332,7 @@ internal fun RoomObjectLayers(
         }
 
         val highlightedBounds = orderedPlacements.mapNotNull { placement ->
-            destinations[placement.id]?.takeIf {
+            visualDestination(placement.id).takeIf {
                 placement.id in highlightedObjectIds ||
                     placement.zoneId?.let(highlightedObjectIds::contains) == true
             }
@@ -334,11 +373,33 @@ internal fun RoomObjectLayers(
 private fun HouseObjectPlacement.spriteId(nightMode: Boolean): String =
     if (nightMode && id == "decor_window") "decor_window_night" else id
 
+private val supportParentByChild = mapOf(
+    "decor_lamp" to "decor_bedside_table",
+    "piggy_bank" to "decor_cabinet",
+    "task_board" to "decor_coffee_table",
+    "decor_pencil" to "decor_coffee_table",
+    "phone" to "decor_shelf_phone",
+    "decor_plant" to "decor_shelf_phone",
+    "decor_cutting_board" to "sink",
+)
+
 private fun Rect.scaledFromBottom(scale: Float) = Rect(
     center.x - width * scale / 2f,
     bottom - height * scale,
     center.x + width * scale / 2f,
     bottom,
+)
+
+// Fractions measured against the visible bounds of room_phone_charging_cluster.
+// All phone station variants use the same 215x296 canvas as the original phone+dock.
+private const val PHONE_STATION_LEFT_FRACTION = 0.47f
+private const val PHONE_STATION_HEIGHT_FRACTION = 0.82f
+
+private fun Rect.phoneStationArea() = Rect(
+    left + width * PHONE_STATION_LEFT_FRACTION,
+    top,
+    right,
+    top + height * PHONE_STATION_HEIGHT_FRACTION,
 )
 
 private const val PRESS_SCALE = 1.045f

@@ -153,7 +153,17 @@ MVP apartment objects:
 - **wardrobe** — customization;
 - **fridge** — food inventory;
 - **table** — feeding;
-- **bed** — end current game day.
+- **bed** — end current game day;
+- **bathtub** — open pet washing.
+
+The bathroom extends the apartment to the right of the kitchen on the same
+scrollable room scene. Tapping its bathtub opens a close-up bath scene. The player
+drags soap from the shelf across the pet, moves the showerhead to rinse the soap,
+then moves the hair dryer over the pet to dry it gradually in no more than five
+seconds of active drying. The hair dryer plays a short sound while operating.
+The player may repeat the full cycle in the same bath visit, including when the
+pet is already clean. Washing is free and does not advance the game
+day or change money. The bed keeps the End day action.
 
 Do not reintroduce old room metaphors such as calendar/task-board/bowl as primary MVP objects unless an approved newer design explicitly requires them.
 
@@ -406,7 +416,17 @@ clothes, or using an unlocked mini-game. A costly wish may appear despite a
 tight budget. Dismissing an unaffordable paid wish can count as a prudent
 impulse decision; it never removes happiness.
 
-### 7.3. Food tiers
+### 7.3. Dirt and washing
+
+The pet has a clean state and three visible dirt stages. From the last completed
+bath, real elapsed time reaches stages 1, 2, and 3 after 2, 5, and 9 hours.
+Each five distinct completed mini-game rounds adds one stage, capped at 3.
+Repeated completion IDs do not add dirt. Observing pet state refreshes dirt
+while the app is open and on return.
+Completing the soap, rinse, and dryer cycle resets dirt to clean and restarts
+both the clock and the mini-game count. Washing remains free.
+
+### 7.4. Food tiers
 
 Basic food fully covers the mandatory need.
 
@@ -1170,6 +1190,7 @@ At minimum:
 - pet identity/customization;
 - hunger;
 - happiness if enabled;
+- last completed bath time and mini-game completion baseline for dirt;
 - the current zero-hunger alert episode and last delivered episode;
 - current week;
 - current day;
@@ -1501,6 +1522,7 @@ Values likely to change in balancing must be configurable:
 - item prices;
 - food effects;
 - hunger change per day;
+- dirt stage thresholds and completed mini-game rounds per stage;
 - happiness change per day;
 - happiness effects;
 - side-job limits;

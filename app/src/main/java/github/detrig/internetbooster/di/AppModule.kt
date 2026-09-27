@@ -96,7 +96,7 @@ internal class AppModuleImpl(
     }
 
     private val gameStateMediator: GameStateMediator by lazy {
-        GameStateMediator(databaseModule, economyMediator)
+        GameStateMediator(databaseModule, economyMediator, coreComponent.context)
     }
 
     private val hungerNotifications: HungerNotificationDispatcher by lazy {

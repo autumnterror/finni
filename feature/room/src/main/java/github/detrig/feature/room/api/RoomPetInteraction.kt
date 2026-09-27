@@ -7,6 +7,9 @@ enum class RoomPetPose { IDLE, HELD, AIRBORNE, LANDED, GETTING_UP }
 
 data class RoomPetInteraction(
     val pose: RoomPetPose = RoomPetPose.IDLE,
+    val showShadow: Boolean = true,
+    val isBathing: Boolean = false,
+    val dirtStageOverride: Int? = null,
     val canGrab: Boolean = false,
     val onGrab: () -> Unit = {},
     val onDrag: (Offset) -> Unit = {},

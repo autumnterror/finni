@@ -21,6 +21,7 @@ data class FinPetHouseColors(
     val woodShade: Color = Color(0xFFBA8C50),
     val fabric: Color = Color(0xFF66B8D3),
     val fabricLight: Color = Color(0xFFACE4EC),
+    val wetShade: Color = Color(0xFF4D7185),
     val warmAccent: Color = Color(0xFFEC8459),
     val sunnyAccent: Color = Color(0xFFF5CE54),
     val leaf: Color = Color(0xFF8DBA69),

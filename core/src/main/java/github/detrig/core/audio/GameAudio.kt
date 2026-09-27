@@ -1,6 +1,6 @@
 package github.detrig.core.audio
 
-/** A short, non-looping effect. Assets from feature modules are merged into the app APK. */
+/** An effect, optionally looped until its owner stops it. Feature assets merge into the APK. */
 data class AudioCue(
     val id: String,
     val owner: String,
@@ -9,6 +9,7 @@ data class AudioCue(
     val priority: Int = 1,
     val cooldownMillis: Long = 0,
     val blockMillis: Long = 350,
+    val looping: Boolean = false,
 ) {
     init {
         require(id.isNotBlank() && owner.isNotBlank() && assetPath.isNotBlank())

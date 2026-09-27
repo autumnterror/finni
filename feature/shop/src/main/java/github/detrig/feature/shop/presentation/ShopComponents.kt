@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
@@ -83,9 +84,8 @@ import github.detrig.products.StoreCategory
 import github.detrig.products.StoreCategoryId
 import github.detrig.products.StorefrontDefinition
 
-private val ProductCardHeight = 198.dp
+private val ProductCardBaseHeight = 162.dp
 private val ProductArtworkHeight = 82.dp
-private val ProductTitleHeight = 36.dp
 private val ProductDetailHeight = 22.dp
 private val ProductPriceHeight = 34.dp
 private val PromotionBadgeSize = 64.dp
@@ -102,32 +102,28 @@ internal fun ShopHeader(
     balanceRub: Long?,
     onBack: () -> Unit,
 ) {
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
     ) {
         FinPetBackButton(
             onClick = onBack,
             contentDescription = stringResource(R.string.shop_back),
-            modifier = Modifier.align(Alignment.CenterStart),
             size = AppTheme.sizes.preferredTouchTarget - 4.dp,
         )
         Text(
             text = title,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 96.dp),
-            style = AppTheme.typography.screenTitle,
+            modifier = Modifier.weight(1f),
+            style = if (title.length > 10) AppTheme.typography.sectionTitle else AppTheme.typography.screenTitle,
             color = AppTheme.colors.storefront.onSurface,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        ShopBalanceBadge(
-            balanceRub = balanceRub,
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
+        ShopBalanceBadge(balanceRub = balanceRub)
     }
 }
 
@@ -261,6 +257,9 @@ private fun ShopProductCard(
     decisionEvent: ShopDecisionEvent?,
     tutorialHighlighted: Boolean = false,
 ) {
+    val titleHeight = with(LocalDensity.current) {
+        (AppTheme.typography.bodyStrong.lineHeight * 2).toDp()
+    } + AppTheme.spacing.xs
     val itemDescription = stringResource(
         R.string.shop_item_accessibility,
         item.title,
@@ -272,7 +271,7 @@ private fun ShopProductCard(
     FinPetCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(ProductCardHeight)
+            .height(ProductCardBaseHeight + titleHeight)
             .shadow(
                 elevation = AppTheme.elevation.low,
                 shape = AppTheme.shapes.storefrontControl,
@@ -320,7 +319,7 @@ private fun ShopProductCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(ProductTitleHeight),
+                        .height(titleHeight),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(

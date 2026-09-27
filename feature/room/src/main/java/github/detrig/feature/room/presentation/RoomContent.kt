@@ -11,11 +11,16 @@ import github.detrig.feature.room.presentation.component.HouseScene
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.component.RoomErrorState
 import github.detrig.feature.room.api.RoomPetInteraction
+import github.detrig.feature.room.domain.furniture.FurnitureVariant
+import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
 
 @Composable
 internal fun RoomContent(
     state: RoomViewState,
     onEvent: (RoomViewEvent) -> Unit,
+    furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    bathroomFurnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     petLookingAround: Boolean = false,
@@ -47,6 +52,7 @@ internal fun RoomContent(
                 onZoneClick = {},
                 onPhoneClick = {},
                 onBedClick = {},
+                onBathtubClick = {},
                 onCalendarClick = {},
                 onPiggyBankClick = {},
                 onTestsClick = {},
@@ -71,6 +77,9 @@ internal fun RoomContent(
                 tableFoodContent = tableFoodContent,
                 petLookingAround = petLookingAround,
                 phoneUnreadCount = phoneUnreadCount,
+                furnitureByPlacement = furnitureByPlacement,
+                bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
+                surfaces = surfaces,
             )
             RoomViewState.Error -> RoomErrorState(
                 onRetry = { onEvent(RoomViewEvent.RetryClicked) }, modifier = Modifier.fillMaxSize())
@@ -83,6 +92,7 @@ internal fun RoomContent(
                     onFoodClick = onFoodClick,
                     tableFoodContent = tableFoodContent,
                     onBedClick = { onEvent(RoomViewEvent.BedClicked) },
+                    onBathtubClick = { onEvent(RoomViewEvent.BathtubClicked) },
                     onCalendarClick = { onEvent(RoomViewEvent.CalendarClicked) },
                     onPiggyBankClick = { onEvent(RoomViewEvent.PiggyBankClicked) },
                     onTestsClick = { onEvent(RoomViewEvent.TestsClicked) },
@@ -105,6 +115,9 @@ internal fun RoomContent(
                     petContent = petContent,
                     petLookingAround = petLookingAround,
                     phoneUnreadCount = phoneUnreadCount,
+                    furnitureByPlacement = furnitureByPlacement,
+                    bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
+                    surfaces = surfaces,
                 )
                 if (state.sleeping) {
                     Box(

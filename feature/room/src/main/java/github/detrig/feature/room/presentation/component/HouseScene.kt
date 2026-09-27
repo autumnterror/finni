@@ -38,11 +38,14 @@ import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.room.api.RoomPetPose
 import github.detrig.feature.room.presentation.model.HouseLayout
+import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
+import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
 import github.detrig.feature.room.presentation.model.HouseMotionState
 import github.detrig.feature.room.presentation.model.PetFlightFrame
 import github.detrig.feature.room.presentation.model.PetFlightPhysics
 import github.detrig.feature.room.presentation.model.HouseObjectPlacement
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
+import github.detrig.feature.room.domain.furniture.FurnitureVariant
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
@@ -64,6 +67,7 @@ internal fun HouseScene(
     onZoneClick: (String) -> Unit,
     onPhoneClick: () -> Unit,
     onBedClick: () -> Unit,
+    onBathtubClick: () -> Unit = {},
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
     onTestsClick: () -> Unit,
@@ -88,6 +92,9 @@ internal fun HouseScene(
     tableFoodContent: @Composable (Modifier) -> Unit = {},
     petLookingAround: Boolean = false,
     phoneUnreadCount: Int = 0,
+    furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    bathroomFurnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
     val appMotion = AppTheme.motion
@@ -320,7 +327,7 @@ internal fun HouseScene(
                         } else Modifier,
                     ),
                 ) {
-                    HouseBackground(Modifier.fillMaxSize())
+                    HouseBackground(Modifier.fillMaxSize(), surfaces)
                     val tableBounds = if (feedingScene) feedingTableBounds else diningTableBounds
                     val tableFoodTopFraction = tableBounds.top - if (feedingScene) {
                         0f
@@ -354,6 +361,7 @@ internal fun HouseScene(
                             exposeInteractions = false,
                             nightMode = nightMode,
                             rotationByObjectId = mapOf("decor_chair" to FEEDING_CHAIR_ROTATION),
+                            furnitureByPlacement = furnitureByPlacement,
                         )
 
                         petContent(
@@ -374,6 +382,7 @@ internal fun HouseScene(
                             drawObjectIds = DINING_TABLE_OBJECT,
                             exposeInteractions = false,
                             nightMode = nightMode,
+                            furnitureByPlacement = furnitureByPlacement,
                         )
 
                         tableFoodContent(tableFoodModifier)
@@ -405,7 +414,21 @@ internal fun HouseScene(
                                 }
                             },
                             nightMode = nightMode,
+                            furnitureByPlacement = furnitureByPlacement,
                             modifier = Modifier.fillMaxSize(),
+                        )
+                        val bathroom = HouseSurfaceLayout.Room.BATHROOM
+                        BathroomScene(
+                            closeUp = false,
+                            compactRoom = true,
+                            equipped = bathroomFurnitureByPlacement,
+                            onBathtubClick = onBathtubClick.takeIf { active && ready },
+                            modifier = Modifier
+                                .offset(x = unitDp * bathroom.left * HouseLayout.WORLD_WIDTH /
+                                    HouseSurfaceLayout.SCENE_WIDTH)
+                                .size(unitDp * bathroom.width * HouseLayout.WORLD_WIDTH /
+                                    HouseSurfaceLayout.SCENE_WIDTH, sceneHeightDp)
+                                .testTag("house_bathroom"),
                         )
                         if (petPose != RoomPetPose.IDLE) {
                             Canvas(
@@ -535,7 +558,7 @@ private const val PHONE_BADGE_Z_INDEX = 8f
 private val PHONE_BADGE_SIZE = 28.dp
 private const val ROOM_TABLE_FOOD_RAISE_FRACTION = 0.02f
 private const val FEEDING_SCENE_ZOOM = 1.32f
-private const val HOUSE_REFERENCE_WIDTH = 2048f
+private val HOUSE_REFERENCE_WIDTH = HouseSurfaceLayout.SCENE_WIDTH.toFloat()
 private const val FEEDING_CHAIR_CENTER_X = 1877.5f
 private const val FEEDING_CHAIR_BACK_SHIFT = 0.018f
 private const val FEEDING_CHAIR_ROTATION = -6f

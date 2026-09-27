@@ -7,6 +7,7 @@ import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.gamestate.api.ProgressionApiImpl
 import github.detrig.feature.gamestate.data.GameStateRepositoryImpl
 import github.detrig.feature.gamestate.data.local.GameStateLocalDataSource
+import github.detrig.feature.gamestate.data.local.PetDirtStorage
 import github.detrig.feature.gamestate.domain.interactor.BuyZoneInteractor
 
 internal class GameStateModule(
@@ -22,6 +23,7 @@ internal class GameStateModule(
             transactionRunner = dependencies.transactionRunner(),
             initialConfig = dependencies.initialConfig(),
             currentTimeMillis = dependencies::currentTimeMillis,
+            dirtStorage = PetDirtStorage(dependencies.petDirtPreferences()),
             currentWeekNumber = dependencies::currentWeekNumber,
         )
     }

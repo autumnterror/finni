@@ -82,28 +82,32 @@ internal class PetApiImpl(
         modifier: Modifier,
         onClick: (() -> Unit)?,
         animateIdle: Boolean,
+        freezeAnimation: Boolean,
         mouthOpen: Boolean,
         lookAt: Offset?,
         pose: PetPose,
         gestureCallbacks: PetGestureCallbacks?,
         showShadow: Boolean,
+        dirtStage: Int,
     ) {
         PetScene(
             profile = profile,
             modifier = modifier,
             animateIdle = animateIdle,
+            freezeAnimation = freezeAnimation,
             mouthOpen = mouthOpen,
             lookAt = lookAt,
             onClick = onClick,
             pose = pose,
             gestureCallbacks = gestureCallbacks,
             showShadow = showShadow,
+            dirtStage = dirtStage,
         )
     }
 
     @Composable
-    override fun Portrait(profile: PetProfile, modifier: Modifier) {
-        PetPortrait(profile, modifier)
+    override fun Portrait(profile: PetProfile, modifier: Modifier, dirtStage: Int) {
+        PetPortrait(profile, modifier, dirtStage)
     }
 
     @Composable

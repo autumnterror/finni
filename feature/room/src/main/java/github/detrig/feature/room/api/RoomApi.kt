@@ -19,6 +19,8 @@ interface RoomApi {
 
     suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult
 
+    @Composable
+    fun InteriorStore(onBack: () -> Unit, modifier: Modifier = Modifier)
     /** Resets in-room onboarding and initializes the fresh demo game state. */
     suspend fun resetProgress(skipOnboarding: Boolean)
 

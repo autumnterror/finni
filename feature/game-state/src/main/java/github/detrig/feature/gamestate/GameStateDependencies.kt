@@ -1,5 +1,6 @@
 package github.detrig.feature.gamestate
 
+import android.content.SharedPreferences
 import github.detrig.core.database.RoomTransactionRunner
 import github.detrig.feature.gamestate.data.local.GameStateDao
 import github.detrig.feature.gamestate.data.local.RoomZoneDao
@@ -7,6 +8,8 @@ import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.feature.economy.api.EconomyApi
 
 interface GameStateDependencies {
+
+    fun petDirtPreferences(): SharedPreferences
 
     fun gameStateDao(): GameStateDao
 

@@ -25,8 +25,19 @@ import github.detrig.feature.room.domain.interactor.PurchaseSavingsGoalInteracto
 import github.detrig.feature.room.data.local.RoomMoneyEventStorage
 import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
+import github.detrig.feature.room.domain.furniture.FurnitureCatalog
+import github.detrig.feature.room.domain.furniture.FurnitureStore
+import github.detrig.feature.room.domain.surface.SurfaceCatalog
 
 internal class RoomModule(private val dependencies: RoomDependencies) : RoomComponent {
+    override val furnitureCatalog by lazy { FurnitureCatalog(dependencies.resources()) }
+    override val surfaceCatalog by lazy { SurfaceCatalog(dependencies.resources()) }
+    override val furnitureStore by lazy {
+        FurnitureStore(
+            dependencies.housePreferences(), furnitureCatalog, surfaceCatalog, dependencies.economyApi(),
+            dependencies.planningApi(), dependencies.weekApi(),
+        )
+    }
     private val minimumProductPriceRub = dependencies.minimumProductPriceRub()
     private val moneyEventStorage by lazy { RoomMoneyEventStorage(dependencies.housePreferences()) }
     private val positions by lazy { github.detrig.feature.room.data.local.HousePositionStorage(dependencies.housePreferences()) }
@@ -53,6 +64,10 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
             repository = repository,
             firstRunGuide = firstRunGuide,
             parentHelpPromptRepository = parentHelpPrompt,
+            furnitureCatalog = furnitureCatalog,
+            surfaceCatalog = surfaceCatalog,
+            furnitureStore = furnitureStore,
+            economyApi = dependencies.economyApi(),
         )
     }
     private val router by lazy {
@@ -88,5 +103,6 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         firstRunGuide,
         dependencies.inventoryApi(),
         dependencies.gameAudio(),
+        dependencies.gameStateApi(),
     )
 }
