@@ -71,6 +71,8 @@ import github.detrig.feature.room.domain.surface.SurfaceKind
 import github.detrig.feature.room.domain.surface.SurfaceVariant
 import github.detrig.feature.room.domain.surface.surfaceSlotId
 import github.detrig.feature.room.presentation.component.HouseBackground
+import github.detrig.feature.room.presentation.component.BathroomScene
+import github.detrig.feature.room.presentation.component.bathOriginalDrawable
 import github.detrig.feature.room.presentation.component.RoomObjectLayers
 import github.detrig.feature.room.presentation.component.RoomSprite
 import github.detrig.feature.room.presentation.component.RoomSpriteCache
@@ -97,7 +99,9 @@ internal fun FurnitureStoreScreen(
     val surfaceFull by RoomSurfaceCache.full.collectAsState()
     LaunchedEffect(viewModel) { viewModel.perform(FurnitureStoreViewEvent.Load) }
     LaunchedEffect(state.slotId) {
-        RoomSpriteCache.awaitVariants(resources, catalog.bySlot[state.slotId].orEmpty())
+        if (state.roomId != "bathroom") {
+            RoomSpriteCache.awaitVariants(resources, catalog.bySlot[state.slotId].orEmpty())
+        }
     }
     val room = HouseSurfaceLayout.Room.fromId(state.roomId)
     val activeKind = state.surfaceKind
@@ -124,20 +128,20 @@ private fun FurnitureStoreContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val rooms = listOf("living" to "Гостиная", "bedroom" to "Спальня", "kitchen" to "Кухня", "playroom" to "Игровая")
-    val room = HouseSurfaceLayout.Room.fromId(state.roomId) ?: HouseSurfaceLayout.Room.BEDROOM
+    val rooms = listOf("living" to "Гостиная", "bedroom" to "Спальня", "kitchen" to "Кухня", "bathroom" to "Ванная", "playroom" to "Игровая")
+    val room = HouseSurfaceLayout.Room.fromId(state.roomId)
     val slots = remember(catalog, state.roomId) { catalog.slots.filter { it.roomId == state.roomId } }
     val slot = slots.firstOrNull { it.id == state.slotId } ?: slots.firstOrNull()
     val variants = slot?.let { catalog.bySlot[it.id] }.orEmpty()
     val shown = if (state.mode == FurnitureMode.SHOP) variants else variants.filter { state.ownership.owns(it.id) }
     val selected = state.selectedVariantId?.let(catalog.byId::get)
     val kind = state.surfaceKind
-    val surfaceVariants = kind?.let { surfaceCatalog.bySlot[surfaceSlotId(room.id, it)] }.orEmpty()
+    val surfaceVariants = kind?.let { surfaceKind -> room?.let { surfaceCatalog.bySlot[surfaceSlotId(it.id, surfaceKind)] } }.orEmpty()
     val shownSurfaces = if (state.mode == FurnitureMode.SHOP) surfaceVariants
         else surfaceVariants.filter { state.ownership.ownsSurface(it.id) }
     val selectedSurface = state.selectedSurfaceId?.let(surfaceCatalog.byId::get)
     val equipped = if (kind == null) state.ownership.equipped[slot?.id]
-        else state.ownership.equippedSurfaces[surfaceSlotId(room.id, kind)]
+        else room?.let { state.ownership.equippedSurfaces[surfaceSlotId(it.id, kind)] }
     val selectedOriginal = if (kind == null) state.originalSelected else state.surfaceOriginalSelected
     val selectedId = if (kind == null) selected?.id else selectedSurface?.id
     val selectedPrice = if (kind == null) selected?.priceRub else selectedSurface?.priceRub
@@ -219,7 +223,7 @@ private fun FurnitureStoreContent(
             modifier = Modifier.fillMaxWidth().padding(vertical = AppTheme.spacing.xs),
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
         ) {
-            items(SurfaceKind.entries, key = { "surface:${it.id}" }) { item ->
+            items(if (state.roomId == "bathroom") emptyList() else SurfaceKind.entries, key = { "surface:${it.id}" }) { item ->
                 FinPetFilterChip(
                     text = item.label,
                     selected = state.surfaceKind == item,
@@ -272,7 +276,8 @@ private fun FurnitureStoreContent(
                         FurnitureCard(
                             title = "Исходный", price = null, selected = selectedOriginal,
                             equipped = equipped == null, original = true,
-                            drawableId = roomObjectAsset(slot.placementId),
+                            drawableId = if (state.roomId == "bathroom") bathOriginalDrawable(slot.placementId)
+                                else roomObjectAsset(slot.placementId),
                             onClick = { onEvent(FurnitureStoreViewEvent.OriginalSelected) },
                         )
                     }
@@ -430,7 +435,9 @@ private fun FurnitureRoomPreview(
         val selectedPlacement = catalog.slots.firstOrNull { it.id == state.slotId }?.placementId
         if (selectedPlacement != null) {
             if (state.originalSelected) current.remove(selectedPlacement)
-            else state.selectedVariantId?.let(catalog.byId::get)?.takeIf { it.id in sprites }
+            else state.selectedVariantId?.let(catalog.byId::get)?.takeIf {
+                state.roomId == "bathroom" || it.id in sprites
+            }
                 ?.let { current[selectedPlacement] = it }
         }
         current
@@ -455,7 +462,11 @@ private fun FurnitureRoomPreview(
         HouseSurfaceTextures(walls, floors)
     }
     Box(modifier.clip(AppTheme.shapes.card).background(AppTheme.colors.house.floor)) {
-        FurnitureRoomScene(catalog, state.roomId, previewVariants, previewSurfaces, onSlotSelected, Modifier.fillMaxSize())
+        if (state.roomId == "bathroom") {
+            BathroomScene(closeUp = false, equipped = previewVariants,
+                modifier = Modifier.fillMaxSize(), onSlotClick = onSlotSelected)
+        } else FurnitureRoomScene(catalog, state.roomId, previewVariants, previewSurfaces,
+            onSlotSelected, Modifier.fillMaxSize())
         FinPetOutlinedButton(
             text = "⌕", onClick = { zoomed = true },
             modifier = Modifier.align(Alignment.TopEnd).padding(AppTheme.spacing.xs)
@@ -471,7 +482,11 @@ private fun FurnitureRoomPreview(
                     style = FinPetButtonDefaults.storefrontPrimaryStyle())
             },
         ) {
-            FurnitureRoomScene(catalog, state.roomId, previewVariants, previewSurfaces, onSlotSelected,
+            if (state.roomId == "bathroom") {
+                BathroomScene(closeUp = false, equipped = previewVariants,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1600f / 1050f),
+                    onSlotClick = onSlotSelected)
+            } else FurnitureRoomScene(catalog, state.roomId, previewVariants, previewSurfaces, onSlotSelected,
                 Modifier.fillMaxWidth().aspectRatio(roomSegmentWidth(state.roomId) / ROOM_SCENE_HEIGHT),
                 topInset = 0f)
         }
@@ -520,7 +535,7 @@ private fun FurnitureRoomScene(
                     catalog.slotByPlacement[placementId]?.let { onSlotSelected(it.id) }
                 },
                 placements = placements,
-                furnitureByPlacement = variants,
+                furnitureByPlacement = variants.filterKeys { id -> HouseLayout.objects.any { it.id == id } },
                 objectLabels = labels,
                 exposeInteractions = slots.isNotEmpty(),
                 modifier = Modifier.fillMaxSize(),
@@ -539,7 +554,9 @@ private fun roomSegment(roomId: String): Pair<Float, Float> =
         it.left.toFloat() to it.right.toFloat()
     }
 
-private fun roomSegmentWidth(roomId: String): Float = roomSegment(roomId).let { it.second - it.first }
+private fun roomSegmentWidth(roomId: String): Float =
+    if (roomId == "bathroom") 1600f * ROOM_PREVIEW_HEIGHT / 1050f
+    else roomSegment(roomId).let { it.second - it.first }
 
 @Preview(name = "Магазин интерьера", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable

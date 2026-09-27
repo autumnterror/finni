@@ -30,7 +30,8 @@ internal class RoomApiImpl(
         RoomSpriteCache.preload(resources)
         RoomSpriteCache.preloadVariants(resources, furnitureCatalog.bySlot["room_lamp"].orEmpty())
         RoomSpriteCache.preloadVariants(resources,
-            furnitureStore.state.value.equipped.values.mapNotNull(furnitureCatalog.byId::get))
+            furnitureStore.state.value.equipped.values.mapNotNull(furnitureCatalog.byId::get)
+                .filter { it.slotId !in furnitureCatalog.slots.filter { slot -> slot.roomId == "bathroom" }.map { slot -> slot.id } })
         RoomSurfaceCache.preloadThumbnails(resources, surfaceCatalog)
     }
 

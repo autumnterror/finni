@@ -123,6 +123,12 @@ internal class RoomViewModel(
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
             RoomViewEvent.WardrobeClicked -> launchOnce { router.openWardrobe() }
             RoomViewEvent.BedClicked -> showSleepConfirmation()
+            RoomViewEvent.BathroomBackClicked -> backFromBathroom()
+            RoomViewEvent.BathtubClicked -> openBathCloseup()
+            is RoomViewEvent.BathToolClicked -> useBathTool(viewEvent.step)
+            RoomViewEvent.BathRestartClicked -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(bathStep = BathStep.SOAP))
+            }
             RoomViewEvent.SleepConfirmed -> sleep()
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
@@ -337,6 +343,8 @@ internal class RoomViewModel(
                             buyingZoneId = current?.buyingZoneId,
                             savingGoalZoneId = current?.savingGoalZoneId,
                             sleepConfirmationVisible = current?.sleepConfirmationVisible ?: false,
+                            bathroomView = current?.bathroomView ?: BathroomView.HOUSE,
+                            bathStep = current?.bathStep ?: BathStep.SOAP,
                             sleeping = current?.sleeping ?: false,
                             planEditor = editor,
                             planTutorialStep = tutorialStep,
@@ -806,6 +814,35 @@ internal class RoomViewModel(
             onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
         ) return
         updateState(content.copy(sleepConfirmationVisible = true))
+    }
+
+    private fun openBathCloseup() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.sleeping || content.buyingZoneId != null) return
+        if (content.bathroomView != BathroomView.HOUSE) return
+        if (onboardingStep != FirstRunOnboardingStep.COMPLETED &&
+            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_BED &&
+            onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
+        ) return
+        updateState(content.copy(bathroomView = BathroomView.WASHING, bathStep = BathStep.SOAP))
+    }
+
+    private fun backFromBathroom() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.sleeping) return
+        updateState(content.copy(bathroomView = BathroomView.HOUSE))
+    }
+
+    private fun useBathTool(step: BathStep) {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        if (content.bathroomView != BathroomView.WASHING || content.bathStep != step) return
+        val next = when (step) {
+            BathStep.SOAP -> BathStep.RINSE
+            BathStep.RINSE -> BathStep.DRY
+            BathStep.DRY -> BathStep.CLEAN
+            BathStep.CLEAN -> return
+        }
+        updateState(content.copy(bathStep = next))
     }
 
     private fun hideSleepConfirmation() {

@@ -63,7 +63,7 @@ internal class FurnitureCatalog(resources: Resources) {
         bySlot = variants.groupBy { it.slotId }
         slotByPlacement = slots.associateBy { it.placementId }
         require(slots.isNotEmpty() && variants.isNotEmpty())
-        require(slots.all { it.roomId in setOf("bedroom", "living", "kitchen") && bySlot[it.id].orEmpty().isNotEmpty() })
+        require(slots.all { it.roomId in setOf("bedroom", "living", "kitchen", "bathroom") && bySlot[it.id].orEmpty().isNotEmpty() })
         require(byId.size == variants.size && slotByPlacement.size == slots.size)
     }
 }

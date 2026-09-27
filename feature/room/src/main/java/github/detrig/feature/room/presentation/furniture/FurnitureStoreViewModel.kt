@@ -124,10 +124,10 @@ internal class FurnitureStoreViewModel(
     }
 
     private fun selectRoom(id: String) {
-        val room = HouseSurfaceLayout.Room.fromId(id) ?: return
+        if (id != "bathroom" && HouseSurfaceLayout.Room.fromId(id) == null) return
         val firstSlot = catalog.slots.firstOrNull { it.roomId == id }
         updateState {
-            copy(roomId = id, slotId = firstSlot?.id ?: "", surfaceKind = if (room == HouseSurfaceLayout.Room.PLAYROOM) SurfaceKind.WALL else null,
+            copy(roomId = id, slotId = firstSlot?.id ?: "", surfaceKind = if (id == HouseSurfaceLayout.Room.PLAYROOM.id) SurfaceKind.WALL else null,
                 selectedVariantId = null, originalSelected = false, selectedSurfaceId = null, surfaceOriginalSelected = false)
         }
     }

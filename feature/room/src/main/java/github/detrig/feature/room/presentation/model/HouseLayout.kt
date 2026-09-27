@@ -50,7 +50,7 @@ internal object HouseLayout {
     const val VERSION = 3
     private val SCENE_WIDTH = HouseSurfaceLayout.SCENE_WIDTH.toFloat()
     private val SCENE_HEIGHT = HouseSurfaceLayout.SCENE_HEIGHT.toFloat()
-    const val WORLD_WIDTH = 6.65f
+    const val WORLD_WIDTH = 6.65f * HouseSurfaceLayout.SCENE_WIDTH / 2048f
     const val VIEWPORT_WIDTH = 1f
     const val INITIAL_CAMERA_X = 3.05f
     const val IMAGE_ASPECT = 2169f / 725f
@@ -176,16 +176,16 @@ internal object HouseLayout {
     fun clampCamera(x: Float): Float = x.coerceIn(0f, WORLD_WIDTH - VIEWPORT_WIDTH)
     fun clampPet(x: Float): Float = x.coerceIn(PET_WALK_MARGIN, WORLD_WIDTH - PET_WALK_MARGIN)
 
-    /** The three visible partitions split the room into four soft flight arenas. */
+    /** Partitions split the house into soft flight arenas, including the bathroom. */
     fun petFlightBounds(x: Float): Pair<Float, Float> {
-        val partitions = floatArrayOf(0f, 318f, 854f, 1548f, 2048f)
-        val referenceX = x / WORLD_WIDTH * 2048f
+        val partitions = floatArrayOf(0f, 318f, 854f, 1548f, 2048f, SCENE_WIDTH)
+        val referenceX = x / WORLD_WIDTH * SCENE_WIDTH
         val index = (0 until partitions.lastIndex).firstOrNull {
             referenceX <= partitions[it + 1]
         } ?: partitions.lastIndex - 1
         val radius = PET_WIDTH * 0.36f
-        return (partitions[index] / 2048f * WORLD_WIDTH + radius) to
-            (partitions[index + 1] / 2048f * WORLD_WIDTH - radius)
+        return (partitions[index] / SCENE_WIDTH * WORLD_WIDTH + radius) to
+            (partitions[index + 1] / SCENE_WIDTH * WORLD_WIDTH - radius)
     }
 
     fun restored(position: HousePosition?): HousePosition =

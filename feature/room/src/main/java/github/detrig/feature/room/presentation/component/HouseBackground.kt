@@ -50,6 +50,7 @@ internal fun HouseBackground(
                         HouseSurfaceLayout.Room.BEDROOM -> colors.bedroomWall
                         HouseSurfaceLayout.Room.LIVING -> colors.hallWall
                         HouseSurfaceLayout.Room.KITCHEN -> colors.kitchenWall
+                        HouseSurfaceLayout.Room.BATHROOM -> colors.hallWall
                     }
                     wall(room.left.toFloat(), room.right.toFloat(), color, colors)
                 }
@@ -86,7 +87,7 @@ internal fun HouseBackground(
                     listOf(colors.floorHighlight, colors.floor, colors.floorShade),
                     startY = 472f, endY = 685f,
                 ),
-                Offset(0f, 472f), Size(2048f, 213f),
+                Offset(0f, 472f), Size(HouseSurfaceLayout.SCENE_WIDTH.toFloat(), 213f),
             )
             HouseSurfaceLayout.Room.entries.forEach { room ->
                 surfaces.floors[room]?.let { image ->
@@ -97,9 +98,9 @@ internal fun HouseBackground(
                 }
             }
             // The floor bleeds two scene pixels under the skirting, so fractional scaling cannot expose a gap.
-            drawLine(colors.skirting, Offset(0f, 474f), Offset(2048f, 474f), 2f)
+            drawLine(colors.skirting, Offset(0f, 474f), Offset(HouseSurfaceLayout.SCENE_WIDTH.toFloat(), 474f), 2f)
 
-            listOf(308f, 844f, 1539f).forEach { x ->
+            listOf(308f, 844f, 1539f, 2039f).forEach { x ->
                 drawRect(
                     Brush.horizontalGradient(
                         listOf(colors.outline.copy(alpha = 0.10f), Color.Transparent),

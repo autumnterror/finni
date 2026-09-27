@@ -38,6 +38,7 @@ import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.room.api.RoomPetPose
 import github.detrig.feature.room.presentation.model.HouseLayout
+import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
 import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
 import github.detrig.feature.room.presentation.model.HouseMotionState
 import github.detrig.feature.room.presentation.model.PetFlightFrame
@@ -66,6 +67,7 @@ internal fun HouseScene(
     onZoneClick: (String) -> Unit,
     onPhoneClick: () -> Unit,
     onBedClick: () -> Unit,
+    onBathtubClick: () -> Unit = {},
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
     onTestsClick: () -> Unit,
@@ -91,6 +93,7 @@ internal fun HouseScene(
     petLookingAround: Boolean = false,
     phoneUnreadCount: Int = 0,
     furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    bathroomFurnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
     surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
@@ -414,6 +417,20 @@ internal fun HouseScene(
                             furnitureByPlacement = furnitureByPlacement,
                             modifier = Modifier.fillMaxSize(),
                         )
+                        val bathroom = HouseSurfaceLayout.Room.BATHROOM
+                        BathroomScene(
+                            closeUp = false,
+                            equipped = bathroomFurnitureByPlacement,
+                            onBathtubClick = onBathtubClick.takeIf {
+                                active && ready && allowedObjectIds.isEmpty()
+                            },
+                            modifier = Modifier
+                                .offset(x = unitDp * bathroom.left * HouseLayout.WORLD_WIDTH /
+                                    HouseSurfaceLayout.SCENE_WIDTH)
+                                .size(unitDp * bathroom.width * HouseLayout.WORLD_WIDTH /
+                                    HouseSurfaceLayout.SCENE_WIDTH, sceneHeightDp)
+                                .testTag("house_bathroom"),
+                        )
                         if (petPose != RoomPetPose.IDLE) {
                             Canvas(
                                 Modifier.offset {
@@ -542,7 +559,7 @@ private const val PHONE_BADGE_Z_INDEX = 8f
 private val PHONE_BADGE_SIZE = 28.dp
 private const val ROOM_TABLE_FOOD_RAISE_FRACTION = 0.02f
 private const val FEEDING_SCENE_ZOOM = 1.32f
-private const val HOUSE_REFERENCE_WIDTH = 2048f
+private val HOUSE_REFERENCE_WIDTH = HouseSurfaceLayout.SCENE_WIDTH.toFloat()
 private const val FEEDING_CHAIR_CENTER_X = 1877.5f
 private const val FEEDING_CHAIR_BACK_SHIFT = 0.018f
 private const val FEEDING_CHAIR_ROTATION = -6f

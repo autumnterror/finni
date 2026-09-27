@@ -135,6 +135,10 @@ internal data class PlanAchievementFeedback(
 
 internal enum class RoomMenuDestination { NONE, MENU, ALL_ACHIEVEMENTS, PARENT_GATE, PARENT_CABINET }
 
+internal enum class BathroomView { HOUSE, WASHING }
+
+internal enum class BathStep { SOAP, RINSE, DRY, CLEAN }
+
 internal data class ParentGateState(
     val firstNumber: Int,
     val secondNumber: Int,
@@ -173,6 +177,8 @@ internal sealed interface RoomViewState : CoreViewState {
         val buyingZoneId: String? = null,
         val savingGoalZoneId: String? = null,
         val sleepConfirmationVisible: Boolean = false,
+        val bathroomView: BathroomView = BathroomView.HOUSE,
+        val bathStep: BathStep = BathStep.SOAP,
         val sleeping: Boolean = false,
         val planEditor: PlanEditorState? = null,
         val planTutorialStep: PlanTutorialStep? = null,

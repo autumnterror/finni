@@ -19,6 +19,7 @@ internal fun RoomContent(
     state: RoomViewState,
     onEvent: (RoomViewEvent) -> Unit,
     furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    bathroomFurnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
     surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
@@ -51,6 +52,7 @@ internal fun RoomContent(
                 onZoneClick = {},
                 onPhoneClick = {},
                 onBedClick = {},
+                onBathtubClick = {},
                 onCalendarClick = {},
                 onPiggyBankClick = {},
                 onTestsClick = {},
@@ -76,6 +78,7 @@ internal fun RoomContent(
                 petLookingAround = petLookingAround,
                 phoneUnreadCount = phoneUnreadCount,
                 furnitureByPlacement = furnitureByPlacement,
+                bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
                 surfaces = surfaces,
             )
             RoomViewState.Error -> RoomErrorState(
@@ -89,6 +92,7 @@ internal fun RoomContent(
                     onFoodClick = onFoodClick,
                     tableFoodContent = tableFoodContent,
                     onBedClick = { onEvent(RoomViewEvent.BedClicked) },
+                    onBathtubClick = { onEvent(RoomViewEvent.BathtubClicked) },
                     onCalendarClick = { onEvent(RoomViewEvent.CalendarClicked) },
                     onPiggyBankClick = { onEvent(RoomViewEvent.PiggyBankClicked) },
                     onTestsClick = { onEvent(RoomViewEvent.TestsClicked) },
@@ -112,6 +116,7 @@ internal fun RoomContent(
                     petLookingAround = petLookingAround,
                     phoneUnreadCount = phoneUnreadCount,
                     furnitureByPlacement = furnitureByPlacement,
+                    bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
                     surfaces = surfaces,
                 )
                 if (state.sleeping) {

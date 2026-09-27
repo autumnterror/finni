@@ -38,10 +38,12 @@ internal fun GameSessionScreen() {
                     tableFoodContent = { tableModifier -> component.fridgeApi.TableContent(tableModifier) },
                     petContent = { petModifier, interaction ->
                         component.petApi.Content(
-                            profile = petProfile,
+                            profile = if (interaction.isBathing) {
+                                petProfile.copy(clothing = petProfile.clothing.copy(equippedBySlot = emptyMap()))
+                            } else petProfile,
                             modifier = petModifier,
                             onClick = onPetClick.takeIf {
-                                firstRunStep == FirstRunOnboardingStep.COMPLETED
+                                firstRunStep == FirstRunOnboardingStep.COMPLETED && !interaction.isBathing
                             },
                             pose = when (interaction.pose) {
                                 RoomPetPose.IDLE -> PetPose.IDLE
@@ -59,7 +61,7 @@ internal fun GameSessionScreen() {
                                     interaction.onTouchStart,
                                 )
                             } else null,
-                            showShadow = interaction.pose == RoomPetPose.IDLE,
+                            showShadow = interaction.showShadow && interaction.pose == RoomPetPose.IDLE,
                         )
                     },
                     petPortrait = { portraitModifier ->
