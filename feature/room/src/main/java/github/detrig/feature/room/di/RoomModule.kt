@@ -25,12 +25,14 @@ import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
 import github.detrig.feature.room.domain.furniture.FurnitureCatalog
 import github.detrig.feature.room.domain.furniture.FurnitureStore
+import github.detrig.feature.room.domain.surface.SurfaceCatalog
 
 internal class RoomModule(private val dependencies: RoomDependencies) : RoomComponent {
     override val furnitureCatalog by lazy { FurnitureCatalog(dependencies.resources()) }
+    override val surfaceCatalog by lazy { SurfaceCatalog(dependencies.resources()) }
     override val furnitureStore by lazy {
         FurnitureStore(
-            dependencies.housePreferences(), furnitureCatalog, dependencies.economyApi(),
+            dependencies.housePreferences(), furnitureCatalog, surfaceCatalog, dependencies.economyApi(),
             dependencies.planningApi(), dependencies.weekApi(),
         )
     }
@@ -52,7 +54,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     private val purchaseSavingsGoal by lazy { PurchaseSavingsGoalInteractor(repository) }
     override val api: RoomApi by lazy {
         RoomApiImpl(previewRequests, dependencies.resources(), purchaseSavingsGoal, firstRunGuide,
-            furnitureCatalog, furnitureStore, dependencies.economyApi())
+            furnitureCatalog, surfaceCatalog, furnitureStore, dependencies.economyApi())
     }
     private val router by lazy {
         RoomRouterImpl(dependencies.gameLauncher(), dependencies.globalMessageController(), dependencies.resources(),

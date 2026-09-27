@@ -84,18 +84,19 @@ internal fun HouseBackground(
             drawRect(
                 Brush.verticalGradient(
                     listOf(colors.floorHighlight, colors.floor, colors.floorShade),
-                    startY = 474f, endY = 685f,
+                    startY = 472f, endY = 685f,
                 ),
-                Offset(0f, 474f), Size(2048f, 211f),
+                Offset(0f, 472f), Size(2048f, 213f),
             )
             HouseSurfaceLayout.Room.entries.forEach { room ->
                 surfaces.floors[room]?.let { image ->
                     drawSurfaceImage(
-                        image, room.left, HouseSurfaceLayout.WALL_HEIGHT,
-                        room.width, HouseSurfaceLayout.FLOOR_HEIGHT,
+                        image, room.left, HouseSurfaceLayout.WALL_HEIGHT - 2,
+                        room.width, HouseSurfaceLayout.FLOOR_HEIGHT + 2,
                     )
                 }
             }
+            // The floor bleeds two scene pixels under the skirting, so fractional scaling cannot expose a gap.
             drawLine(colors.skirting, Offset(0f, 474f), Offset(2048f, 474f), 2f)
 
             listOf(308f, 844f, 1539f).forEach { x ->

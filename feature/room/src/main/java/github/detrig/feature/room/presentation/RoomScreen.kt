@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -32,6 +33,10 @@ import github.detrig.core.mvvm.command.CommandsQueueEffect
 import github.detrig.core.mvvm.command.ImmutableCommandsQueue
 import github.detrig.feature.room.RoomFeature
 import github.detrig.feature.room.domain.furniture.FurnitureVariant
+import github.detrig.feature.room.domain.surface.SurfaceKind
+import github.detrig.feature.room.presentation.component.RoomSurfaceCache
+import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
+import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
@@ -102,6 +107,29 @@ internal fun RoomScreen(
         furnitureOwnership.equipped.values.mapNotNull { furnitureComponent.furnitureCatalog.byId[it] }
             .associateBy(FurnitureVariant::placementId)
     }
+    val resources = LocalResources.current
+    val surfaceBitmaps by RoomSurfaceCache.full.collectAsState()
+    val equippedSurfaces = remember(furnitureOwnership, furnitureComponent) {
+        furnitureOwnership.equippedSurfaces.values.mapNotNull(furnitureComponent.surfaceCatalog.byId::get)
+    }
+    val missingSurfaces = equippedSurfaces.filterNot { it.id in surfaceBitmaps }
+    LaunchedEffect(resources, missingSurfaces.map { it.id }) {
+        RoomSurfaceCache.awaitFull(resources, missingSurfaces)
+    }
+    val surfaceTextures = remember(equippedSurfaces, surfaceBitmaps) {
+        HouseSurfaceTextures(
+            walls = equippedSurfaces.filter { it.kind == SurfaceKind.WALL }
+                .mapNotNull { variant ->
+                    val room = HouseSurfaceLayout.Room.fromId(variant.roomId)
+                    room?.let { surfaceBitmaps[variant.id]?.let { bitmap -> it to bitmap } }
+                }.toMap(),
+            floors = equippedSurfaces.filter { it.kind == SurfaceKind.FLOOR }
+                .mapNotNull { variant ->
+                    val room = HouseSurfaceLayout.Room.fromId(variant.roomId)
+                    room?.let { surfaceBitmaps[variant.id]?.let { bitmap -> it to bitmap } }
+                }.toMap(),
+        )
+    }
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
     var dialogZoneId by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -169,6 +197,7 @@ internal fun RoomScreen(
     ) {
         RoomContent(
             furnitureByPlacement = furnitureByPlacement,
+            surfaces = surfaceTextures,
             state = state,
             onEvent = viewModel::perform,
             modifier = Modifier.fillMaxSize(),

@@ -12,12 +12,14 @@ import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.component.RoomErrorState
 import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.room.domain.furniture.FurnitureVariant
+import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
 
 @Composable
 internal fun RoomContent(
     state: RoomViewState,
     onEvent: (RoomViewEvent) -> Unit,
     furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
+    surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     petLookingAround: Boolean = false,
@@ -74,6 +76,7 @@ internal fun RoomContent(
                 petLookingAround = petLookingAround,
                 phoneUnreadCount = phoneUnreadCount,
                 furnitureByPlacement = furnitureByPlacement,
+                surfaces = surfaces,
             )
             RoomViewState.Error -> RoomErrorState(
                 onRetry = { onEvent(RoomViewEvent.RetryClicked) }, modifier = Modifier.fillMaxSize())
@@ -109,6 +112,7 @@ internal fun RoomContent(
                     petLookingAround = petLookingAround,
                     phoneUnreadCount = phoneUnreadCount,
                     furnitureByPlacement = furnitureByPlacement,
+                    surfaces = surfaces,
                 )
                 if (state.sleeping) {
                     Box(

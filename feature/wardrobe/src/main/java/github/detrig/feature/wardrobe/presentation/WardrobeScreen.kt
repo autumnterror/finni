@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -314,6 +315,9 @@ private fun ClothingCard(
     onClick: () -> Unit,
 ) {
     val colors = AppTheme.colors
+    val captionLineHeight = with(LocalDensity.current) { AppTheme.typography.caption.lineHeight.toDp() }
+    val titleHeight = captionLineHeight * 2 + AppTheme.spacing.xs
+    val badgeHeight = maxOf(25.dp, captionLineHeight + AppTheme.spacing.xs)
     val nameStyle = AppTheme.typography.caption.let { base ->
         if (item.name.split(' ').maxOf(String::length) >= 14) {
             base.copy(fontSize = base.fontSize * 0.80f)
@@ -324,7 +328,9 @@ private fun ClothingCard(
         containerColor = if (selected) colors.storefront.selectedSurface else colors.storefront.surface,
     ) {
         Column(
-            Modifier.fillMaxWidth().height(139.dp).padding(5.dp),
+            Modifier.fillMaxWidth()
+                .height(71.dp + titleHeight + badgeHeight + 10.dp + AppTheme.spacing.sm)
+                .padding(5.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -333,7 +339,7 @@ private fun ClothingCard(
             }
             Text(
                 item.name,
-                modifier = Modifier.fillMaxWidth().height(35.dp),
+                modifier = Modifier.fillMaxWidth().height(titleHeight),
                 style = nameStyle,
                 color = colors.storefront.onSurface,
                 textAlign = TextAlign.Center,
@@ -341,7 +347,7 @@ private fun ClothingCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Box(
-                Modifier.fillMaxWidth().height(25.dp)
+                Modifier.fillMaxWidth().height(badgeHeight)
                     .background(
                         if (owned) colors.storefront.primaryAction.copy(alpha = 0.35f) else colors.currencyContainer,
                         AppTheme.shapes.badge,
@@ -400,7 +406,7 @@ private fun WardrobeActionBar(state: WardrobeViewState, onEvent: (WardrobeViewEv
                 modifier = Modifier.weight(1f),
                 style = AppTheme.typography.bodyStrong,
                 color = AppTheme.colors.storefront.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (item != null && !owned) {
