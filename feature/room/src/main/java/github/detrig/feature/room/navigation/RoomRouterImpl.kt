@@ -6,6 +6,7 @@ import github.detrig.feature.room.R
 import github.detrig.core.presentation.message.GlobalMessageController
 import github.detrig.feature.room.api.RoomGameLauncher
 import github.detrig.feature.room.api.RoomWardrobeLauncher
+import github.detrig.feature.room.api.RoomTestsLauncher
 
 internal class RoomRouterImpl(
     private val gameLauncher: RoomGameLauncher,
@@ -13,10 +14,12 @@ internal class RoomRouterImpl(
     private val resources: Resources,
     private val marketLauncher: github.detrig.feature.room.api.RoomMarketLauncher,
     private val wardrobeLauncher: RoomWardrobeLauncher,
+    private val testsLauncher: RoomTestsLauncher,
 ) : RoomRouter {
     override fun openMarket() = marketLauncher.openMarket()
     override fun openWardrobe() = wardrobeLauncher.openWardrobe()
     override fun openGame(gameId: String) = gameLauncher.openGame(gameId)
+    override fun openTests() = testsLauncher.openTests()
     override fun showLevelRequired(level: Int) =
         messageController.showMessage(resources.getString(R.string.room_level_required, level))
     override fun showNotEnoughMoney(missingRub: Int) =

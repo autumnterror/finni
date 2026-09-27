@@ -28,6 +28,7 @@ internal class RoomMediator(
     private val wardrobeMediator: WardrobeMediator,
     private val inventoryMediator: InventoryMediator,
     private val gameAudio: GameAudio,
+    private val learningTestsMediator: LearningTestsMediator,
 ) : Mediator<RoomApi> {
     fun init() {
         RoomFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -46,40 +47,45 @@ internal class RoomMediator(
                 override fun wardrobeLauncher() = github.detrig.feature.room.api.RoomWardrobeLauncher {
                     wardrobeMediator.getApi().open()
                 }
+                override fun testsLauncher() = github.detrig.feature.room.api.RoomTestsLauncher {
+                    learningTestsMediator.getApi().open()
+                }
                 override fun impulseWishSource() = object : RoomImpulseWishSource {
                     override suspend fun claimCurrentWish(): RoomImpulseWish? {
-                    val scheduled = shopMediator.currentPetWish() ?: return null
-                    return if (scheduled.kind == PetWishSchedule.Kind.GROCERY) {
-                        shopMediator.claimRoomImpulseWish()?.let { wish ->
+                        val scheduled = shopMediator.currentPetWish() ?: return null
+                        return if (scheduled.kind == PetWishSchedule.Kind.GROCERY) {
+                            shopMediator.claimRoomImpulseWish()?.let { wish ->
+                                RoomImpulseWish(
+                                    eventId = wish.eventId,
+                                    productTitle = wish.productTitle,
+                                    phraseVariant = wish.phraseVariant,
+                                    showIntroduction = wish.showIntroduction,
+                                    kind = RoomImpulseWish.Kind.GROCERY,
+                                    priceRub = scheduled.priceRub,
+                                    productId = scheduled.productId,
+                                )
+                            }
+                        } else {
+                            val learning = learningMediator.getApi()
+                            val fresh = learning.claimFirstExplanation(
+                                "current", "purchase.impulse.room:${scheduled.eventId}",
+                            )
+                            if (!fresh) return null
                             RoomImpulseWish(
-                                eventId = wish.eventId,
-                                productTitle = wish.productTitle,
-                                phraseVariant = wish.phraseVariant,
-                                showIntroduction = wish.showIntroduction,
-                                kind = RoomImpulseWish.Kind.GROCERY,
+                                eventId = scheduled.eventId,
+                                productTitle = scheduled.title,
+                                phraseVariant = Math.floorMod(
+                                    scheduled.eventId.hashCode(), RoomImpulseWish.PHRASE_VARIANT_COUNT,
+                                ),
+                                showIntroduction = scheduled.kind != PetWishSchedule.Kind.FREE &&
+                                    learning.claimFirstExplanation("current", "purchase.impulse.introduction"),
+                                kind = if (scheduled.kind == PetWishSchedule.Kind.CLOTHING) {
+                                    RoomImpulseWish.Kind.CLOTHING
+                                } else RoomImpulseWish.Kind.FREE,
                                 priceRub = scheduled.priceRub,
                                 productId = scheduled.productId,
                             )
                         }
-                    } else {
-                        val learning = learningMediator.getApi()
-                        val fresh = learning.claimFirstExplanation("current",
-                            "purchase.impulse.room:${scheduled.eventId}")
-                        if (!fresh) return null
-                        RoomImpulseWish(
-                            eventId = scheduled.eventId,
-                            productTitle = scheduled.title,
-                            phraseVariant = Math.floorMod(scheduled.eventId.hashCode(),
-                                RoomImpulseWish.PHRASE_VARIANT_COUNT),
-                            showIntroduction = scheduled.kind != PetWishSchedule.Kind.FREE &&
-                                learning.claimFirstExplanation("current", "purchase.impulse.introduction"),
-                            kind = if (scheduled.kind == PetWishSchedule.Kind.CLOTHING) {
-                                RoomImpulseWish.Kind.CLOTHING
-                            } else RoomImpulseWish.Kind.FREE,
-                            priceRub = scheduled.priceRub,
-                            productId = scheduled.productId,
-                        )
-                    }
                     }
 
                     override suspend fun recordDeclined(wish: RoomImpulseWish) {
