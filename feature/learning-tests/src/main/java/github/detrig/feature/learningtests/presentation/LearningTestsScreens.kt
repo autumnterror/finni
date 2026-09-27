@@ -1,6 +1,7 @@
 package github.detrig.feature.learningtests.presentation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,7 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -192,26 +195,27 @@ private fun DailyTestCard(
 ) {
     val isFinished = offer.status == LearningTestOfferStatus.COMPLETED_WITH_MISTAKES
     val enabled = !isFinished
+    val isInProgress = offer.status == LearningTestOfferStatus.IN_PROGRESS
     FinPetCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(98.dp)
             .alpha(if (isFinished) 0.72f else 1f)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
-        containerColor = Color.Transparent,
-        borderColor = null,
+        containerColor = if (isInProgress) AppTheme.colors.storefront.selectedSurface
+        else AppTheme.colors.storefront.surface,
+        borderColor = if (isInProgress) AppTheme.colors.statusPositive.accent
+        else AppTheme.colors.storefront.outline,
+        borderWidth = AppTheme.sizes.borderStrong,
+        elevation = AppTheme.elevation.low,
         shape = AppTheme.shapes.storefrontControl,
     ) {
-        Box(Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(
-                    if (offer.status == LearningTestOfferStatus.IN_PROGRESS) R.drawable.quiz_answer_selected
-                    else R.drawable.quiz_answer_normal,
-                ),
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier = Modifier.matchParentSize(),
-            )
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DailyTestRadio(selected = isInProgress)
+            Spacer(Modifier.width(AppTheme.spacing.sm))
             val statusText = when (offer.status) {
                 LearningTestOfferStatus.NEW -> stringResource(R.string.learning_tests_start)
                 LearningTestOfferStatus.IN_PROGRESS -> stringResource(
@@ -225,7 +229,7 @@ private fun DailyTestCard(
                 )
             }
             Column(
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = 58.dp, end = 10.dp),
+                modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xxs),
             ) {
                 Text(
@@ -258,6 +262,26 @@ private fun DailyTestCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DailyTestRadio(selected: Boolean) {
+    val radioSurface = AppTheme.colors.storefront.surface
+    val radioOutline = AppTheme.colors.storefront.outline
+    val radioFill = AppTheme.colors.statusPositive.accent
+    val radioBorderWidth = AppTheme.sizes.borderStrong
+    Canvas(Modifier.size(34.dp)) {
+        val center = Offset(size.width / 2f, size.height / 2f)
+        drawCircle(color = radioSurface, radius = size.minDimension / 2f)
+        drawCircle(
+            color = radioOutline,
+            radius = size.minDimension / 2f - radioBorderWidth.toPx() / 2f,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = radioBorderWidth.toPx()),
+        )
+        if (selected) {
+            drawCircle(color = radioFill, radius = 10.dp.toPx(), center = center)
         }
     }
 }
@@ -553,6 +577,7 @@ private fun QuizAnswerCard(
     onClick: () -> Unit,
 ) {
     val accessibilityText = text
+    val incorrectColors = AppTheme.colors.statusCritical
     FinPetCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -577,12 +602,35 @@ private fun QuizAnswerCard(
                 modifier = Modifier.matchParentSize(),
             )
             if (incorrectSelection) {
-                Text(
-                    text = "×",
-                    style = AppTheme.typography.screenTitle,
-                    color = AppTheme.colors.statusCritical.accent,
-                    modifier = Modifier.align(Alignment.CenterStart).padding(start = 21.dp),
-                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 13.dp)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(incorrectColors.container)
+                        .border(AppTheme.sizes.borderThin, incorrectColors.border, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Canvas(Modifier.size(12.dp)) {
+                        val inset = 1.5.dp.toPx()
+                        val stroke = 2.dp.toPx()
+                        drawLine(
+                            color = incorrectColors.onContainer,
+                            start = Offset(inset, inset),
+                            end = Offset(size.width - inset, size.height - inset),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                        drawLine(
+                            color = incorrectColors.onContainer,
+                            start = Offset(size.width - inset, inset),
+                            end = Offset(inset, size.height - inset),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                    }
+                }
             }
             Text(
                 text = text,
