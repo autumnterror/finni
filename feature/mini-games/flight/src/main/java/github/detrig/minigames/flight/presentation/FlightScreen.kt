@@ -23,16 +23,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.*
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.minigames.flight.FlightFeature
 import github.detrig.minigames.flight.R
 import github.detrig.minigames.flight.domain.FlightOutcome
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -66,15 +67,11 @@ internal fun FlightScreen() {
             if (view.viewTreeObserver.isAlive) view.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
         }
     }
-    LaunchedEffect(state.page, state.foreground, state.countdownGeneration, artwork, petBitmap, model) {
+    LaunchedEffect(state.page, state.foreground, artwork, petBitmap, model) {
         if (!state.foreground || artwork == null || petBitmap == null) return@LaunchedEffect
         val id = model.frames.value?.id ?: return@LaunchedEffect
         if (state.page == FlightPage.PLAYING) {
             while (true) withFrameNanos { model.perform(FlightViewEvent.Frame(id, it)) }
-        }
-        if (state.page == FlightPage.COUNTDOWN) {
-            val generation = state.countdownGeneration
-            while (true) { delay(1000); model.perform(FlightViewEvent.CountdownTick(id, generation)) }
         }
     }
     BackHandler { onEvent(FlightViewEvent.Back) }
@@ -85,11 +82,13 @@ internal fun FlightScreen() {
     CompositionLocalProvider(LocalContentColor provides colors.textPrimary) {
         Box(Modifier.fillMaxSize().testTag("flight_screen")) {
             FlightScene(frames, model.engine.config, artwork,
-                state.settings.reducedMotion, state.page == FlightPage.PLAYING && state.foreground,
-                stringResource(R.string.flight_flap), onFlap, Modifier.fillMaxSize().testTag("flight_scene"),
+                state.settings.reducedMotion,
+                state.page in listOf(FlightPage.READY, FlightPage.PLAYING) && state.foreground,
+                stringResource(if (state.page == FlightPage.READY) R.string.flight_first_tap else R.string.flight_flap),
+                onFlap, Modifier.fillMaxSize().testTag("flight_scene"),
                 petBitmap = petBitmap)
 
-            if (state.page == FlightPage.COUNTDOWN || state.page == FlightPage.PLAYING) {
+            if (state.page == FlightPage.READY || state.page == FlightPage.PLAYING) {
                 val scoreLabel = stringResource(R.string.flight_score, state.score)
                 Text(state.score.toString(),
                     Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(AppTheme.spacing.xl)
@@ -97,21 +96,19 @@ internal fun FlightScreen() {
                     style = AppTheme.typography.gameScore.copy(shadow = hudShadow),
                     color = colors.flightCloud)
             }
-            if (state.page == FlightPage.COUNTDOWN) {
-                Column(Modifier.align(Alignment.Center).padding(AppTheme.spacing.lg),
-                    horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(state.countdown.toString(), Modifier.testTag("flight_countdown"),
-                        style = AppTheme.typography.gameCountdown.copy(shadow = hudShadow),
-                        color = colors.flightCloud)
-                    Text(stringResource(R.string.flight_hint),
-                        style = AppTheme.typography.bodyStrong, color = colors.textPrimary,
-                        textAlign = TextAlign.Center)
-                }
+            if (state.page == FlightPage.READY) {
+                Text(stringResource(if (frames.value.session?.started == true) R.string.flight_resume_tap
+                    else R.string.flight_first_tap),
+                    Modifier.align(Alignment.BottomCenter).safeDrawingPadding()
+                        .padding(AppTheme.spacing.xl).testTag("flight_ready_hint"),
+                    style = AppTheme.typography.bodyStrong.copy(shadow = hudShadow),
+                    color = colors.flightCloud,
+                    textAlign = TextAlign.Center)
             }
             if (state.page == FlightPage.LOADING || state.page == FlightPage.SAVING || petBitmap == null) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center), color = colors.flightCloud)
             }
-            if (state.page in listOf(FlightPage.RESULTS, FlightPage.RECORDS, FlightPage.ERROR, FlightPage.LOCKED)) {
+            if (state.page in listOf(FlightPage.RECORDS, FlightPage.ERROR, FlightPage.LOCKED)) {
                 Box(Modifier.matchParentSize().background(colors.roomBackground.copy(alpha = .32f)))
                 Box(Modifier.fillMaxSize().safeDrawingPadding().padding(AppTheme.spacing.lg),
                     contentAlignment = Alignment.Center) {
@@ -122,10 +119,81 @@ internal fun FlightScreen() {
                 }
             }
         }
+        if (state.page == FlightPage.RESULTS) {
+            val result = state.progress?.lastResult
+            FlightResultsDialog(
+                title = stringResource(if (result?.outcome == FlightOutcome.FINISHED)
+                    R.string.flight_finished else R.string.flight_landed),
+                score = result?.score ?: 0,
+                record = state.progress?.records?.get(model.engine.config.rulesVersion)?.score ?: 0,
+                newRecord = result?.newRecord == true,
+                onAgain = { onEvent(FlightViewEvent.Start) },
+                onRoom = { onEvent(FlightViewEvent.Exit) },
+            )
+        }
     }
 }
 
 private const val PET_BITMAP_SIZE_PX = 256
+
+@Composable
+private fun FlightResultsDialog(
+    title: String,
+    score: Int,
+    record: Int,
+    newRecord: Boolean,
+    onAgain: () -> Unit,
+    onRoom: () -> Unit,
+) {
+    FinPetModalDialog(
+        title = title,
+        onDismissRequest = null,
+        actions = {
+            FinPetButton(stringResource(R.string.flight_again), onAgain,
+                Modifier.fillMaxWidth().testTag("flight_again"),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle())
+            FinPetOutlinedButton(stringResource(R.string.flight_room), onRoom,
+                Modifier.fillMaxWidth().testTag("flight_room"),
+                style = FinPetButtonDefaults.storefrontOutlinedStyle())
+        },
+    ) {
+        FinPetModalSection(Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
+            Column(Modifier.fillMaxWidth().padding(AppTheme.spacing.lg),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs)) {
+                Text(stringResource(R.string.flight_current_result),
+                    style = AppTheme.typography.bodyStrong,
+                    color = AppTheme.colors.storefront.onSurface)
+                Text(score.toString(), Modifier.testTag("flight_result_score"),
+                    style = AppTheme.typography.gameScore,
+                    color = AppTheme.colors.storefront.onSurface)
+            }
+        }
+        FinPetModalSection(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(AppTheme.spacing.md),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.md)) {
+                Text(stringResource(if (newRecord) R.string.flight_new_record else R.string.flight_record_label),
+                    Modifier.weight(1f), style = AppTheme.typography.bodyStrong,
+                    color = if (newRecord) AppTheme.colors.statusPositive.accent
+                    else AppTheme.colors.storefront.onSurface)
+                Text(record.toString(), Modifier.testTag("flight_result_record"),
+                    style = AppTheme.typography.metricValue,
+                    color = AppTheme.colors.storefront.onSurface)
+            }
+        }
+    }
+}
+
+@Preview(name = "Flight result", widthDp = 360, heightDp = 700, showBackground = true)
+@Composable
+private fun FlightResultsPreview() {
+    FinPetTheme {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            FlightResultsDialog("Полёт окончен", 4, 4, true, {}, {})
+        }
+    }
+}
 
 @Composable
 private fun FlightOverlay(state: FlightViewState, rules: Int, onEvent: (FlightViewEvent) -> Unit) {
@@ -133,29 +201,6 @@ private fun FlightOverlay(state: FlightViewState, rules: Int, onEvent: (FlightVi
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
         horizontalAlignment = Alignment.CenterHorizontally) {
         when (state.page) {
-            FlightPage.RESULTS -> {
-                val result = state.progress?.lastResult
-                Text(stringResource(if (result?.outcome == FlightOutcome.FINISHED)
-                    R.string.flight_finished else R.string.flight_landed),
-                    style = AppTheme.typography.sectionTitle, textAlign = TextAlign.Center)
-                Text((result?.score ?: 0).toString(), Modifier.testTag("flight_result_score"),
-                    style = AppTheme.typography.gameScore)
-                Text(if (result?.newRecord == true) stringResource(R.string.flight_new_record)
-                    else stringResource(R.string.flight_record, state.progress?.records?.get(rules)?.score ?: 0),
-                    style = AppTheme.typography.bodyStrong)
-                if ((result?.happinessDelta ?: 0) > 0)
-                    Text(stringResource(R.string.flight_happiness, result!!.happinessDelta!!),
-                        style = AppTheme.typography.caption)
-                if (state.effectPending) {
-                    Text(stringResource(R.string.flight_effect_pending), style = AppTheme.typography.caption)
-                    Action(R.string.flight_retry_effect, FlightViewEvent.RetryEffect, onEvent, false)
-                }
-                Action(R.string.flight_again, FlightViewEvent.Start, onEvent)
-                Row(horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm)) {
-                    FinPetOutlinedButton(stringResource(R.string.flight_records), { onEvent(FlightViewEvent.Records) }, Modifier.weight(1f))
-                    FinPetOutlinedButton(stringResource(R.string.flight_room), { onEvent(FlightViewEvent.Exit) }, Modifier.weight(1f))
-                }
-            }
             FlightPage.RECORDS -> {
                 Text(stringResource(R.string.flight_records), style = AppTheme.typography.sectionTitle)
                 if (state.progress?.records.isNullOrEmpty())

@@ -6,15 +6,13 @@ import github.detrig.minigames.flight.api.FlightFeedbackSettings
 import github.detrig.minigames.flight.domain.FlightProgress
 import github.detrig.minigames.flight.domain.FlightSession
 
-internal enum class FlightPage { LOADING, ERROR, LOCKED, COUNTDOWN, PLAYING, SAVING, RESULTS, RECORDS }
+internal enum class FlightPage { LOADING, ERROR, LOCKED, READY, PLAYING, SAVING, RESULTS, RECORDS }
 
 internal data class FlightViewState(
     val page: FlightPage = FlightPage.LOADING,
     val environment: FlightEnvironment? = null,
     val progress: FlightProgress? = null,
     val settings: FlightFeedbackSettings = FlightFeedbackSettings(),
-    val countdown: Int = 0,
-    val countdownGeneration: Int = 0,
     val foreground: Boolean = true,
     val score: Int = 0,
     val effectPending: Boolean = false,

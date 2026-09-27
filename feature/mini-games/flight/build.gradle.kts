@@ -19,6 +19,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures { compose = true }
+    androidResources { noCompress += "wav" }
     testOptions { targetSdk = 35 }
 }
 kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_11 } }
@@ -29,6 +30,7 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.runtime.livedata)

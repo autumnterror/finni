@@ -9,7 +9,6 @@ internal sealed interface FlightViewEvent : CoreViewEvent {
     data object Start : FlightViewEvent
     data object Flap : FlightViewEvent
     data class Frame(val sessionId: String, val nanos: Long) : FlightViewEvent
-    data class CountdownTick(val sessionId: String, val generation: Int) : FlightViewEvent
     data class Foreground(val active: Boolean) : FlightViewEvent
     data object Back : FlightViewEvent
     data object Exit : FlightViewEvent
@@ -18,4 +17,4 @@ internal sealed interface FlightViewEvent : CoreViewEvent {
     data object RetryEffect : FlightViewEvent
     data class Settings(val value: FlightFeedbackSettings) : FlightViewEvent
 }
-internal enum class FlightCue : ViewCommand { GATE, LAND }
+internal enum class FlightCue : ViewCommand { FLAP, GATE, LAND }

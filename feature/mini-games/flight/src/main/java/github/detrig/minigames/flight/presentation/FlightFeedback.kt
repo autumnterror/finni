@@ -19,20 +19,28 @@ internal fun FlightFeedback(viewModel: FlightViewModel, settings: FlightFeedback
     val haptics = LocalHapticFeedback.current
     val audio = remember { FlightFeature.component().gameAudio }
     DisposableEffect(audio) {
-        audio.preload(listOf(GATE_CUE, LAND_CUE))
+        audio.preload(listOf(FLAP_CUE, GATE_CUE, LAND_CUE))
         onDispose { audio.stop("flight") }
     }
     LaunchedEffect(settings.sound) {
         if (!settings.sound) audio.stop("flight")
     }
     CommandsQueueEffect(remember(viewModel) { ImmutableCommandsQueue(viewModel.commands<FlightCue>()) }) { cue ->
-        if (currentSettings.value.sound) audio.play(if (cue == FlightCue.GATE) GATE_CUE else LAND_CUE)
+        if (currentSettings.value.sound) audio.play(when (cue) {
+            FlightCue.FLAP -> FLAP_CUE
+            FlightCue.GATE -> GATE_CUE
+            FlightCue.LAND -> LAND_CUE
+        })
         if (currentSettings.value.haptics && cue == FlightCue.GATE) {
             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         }
     }
 }
 
+private val FLAP_CUE = AudioCue(
+    id = "flight.flap", owner = "flight", assetPath = "flight/audio/soft_flap.wav",
+    volume = 0.12f, priority = 2, blockMillis = 110,
+)
 private val GATE_CUE = AudioCue(
     id = "flight.gate", owner = "flight", assetPath = "audio/kenney/confirmation_001.ogg",
     volume = 0.25f, priority = 2, cooldownMillis = 120, blockMillis = 320,

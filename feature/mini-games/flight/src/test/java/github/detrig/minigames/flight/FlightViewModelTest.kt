@@ -42,68 +42,64 @@ class FlightViewModelTest {
     @After fun cleanup() { Dispatchers.resetMain() }
     private fun event(event: FlightViewEvent) { model.perform(event); dispatcher.scheduler.runCurrent() }
     private fun state() = model.state().value!!
-    private fun countdown() {
-        val id = model.frames.value!!.id
-        repeat(3) { event(FlightViewEvent.CountdownTick(id, model.countdownGeneration)) }
-    }
+    private fun tapToStart() = event(FlightViewEvent.Flap)
 
-    @Test fun firstEntryGoesDirectlyToThreeSecondCountdownAndLaunchesWithoutTap() {
+    @Test fun firstEntryWaitsForTapAndStartsWithOneFlap() {
         assertFalse(repository.progress.tutorialSeen)
-        assertEquals(FlightPage.COUNTDOWN, state().page)
-        assertEquals(3, state().countdown)
+        assertEquals(FlightPage.READY, state().page)
         assertFalse(model.frames.value!!.started)
-        countdown()
+        val id = model.frames.value!!.id
+        event(FlightViewEvent.Frame(id, 100_000_000))
+        assertEquals(0, model.frames.value!!.tick)
+        tapToStart()
         assertEquals(FlightPage.PLAYING, state().page)
         assertTrue(model.frames.value!!.started)
-        assertEquals(0, model.frames.value!!.flapCount)
-        val id = model.frames.value!!.id
+        assertEquals(1, model.frames.value!!.flapCount)
         event(FlightViewEvent.Frame(id, 0))
         event(FlightViewEvent.Frame(id, 100_000_000))
         assertEquals(12, model.frames.value!!.tick)
     }
 
-    @Test fun doubleLoadStartAndOldCountdownDoNotCreateAnotherAttempt() {
+    @Test fun doubleLoadAndStartBeforeResultDoNotCreateAnotherAttempt() {
         val id = model.frames.value!!.id
         event(FlightViewEvent.Load)
         event(FlightViewEvent.Start)
         assertEquals(1, repository.begins)
         assertEquals(id, model.frames.value!!.id)
-        event(FlightViewEvent.CountdownTick("wrong", model.countdownGeneration))
-        assertEquals(3, state().countdown)
+        assertEquals(FlightPage.READY, state().page)
     }
 
-    @Test fun backgroundFreezesWorldAndReturningAutomaticallyCountsDown() {
-        countdown()
+    @Test fun backgroundFreezesWorldAndReturningWaitsForTap() {
+        tapToStart()
         val id = model.frames.value!!.id
         event(FlightViewEvent.Frame(id, 0))
         event(FlightViewEvent.Frame(id, 100_000_000))
-        val generation = model.countdownGeneration
         event(FlightViewEvent.Foreground(false))
         val snapshot = model.frames.value
         event(FlightViewEvent.Frame(id, 10_000_000_000))
-        event(FlightViewEvent.CountdownTick(id, model.countdownGeneration))
         event(FlightViewEvent.Flap)
         assertEquals(snapshot, model.frames.value)
-        assertEquals(3, state().countdown)
+        assertEquals(FlightPage.READY, state().page)
         event(FlightViewEvent.Foreground(true))
-        event(FlightViewEvent.CountdownTick(id, generation))
-        assertEquals(3, state().countdown)
-        countdown()
-        assertEquals(FlightPage.PLAYING, state().page)
-        assertEquals(snapshot, model.frames.value)
         event(FlightViewEvent.Frame(id, 100_000_000_000))
         assertEquals(snapshot, model.frames.value)
+        tapToStart()
+        assertEquals(FlightPage.PLAYING, state().page)
+        assertEquals(snapshot!!.tick, model.frames.value!!.tick)
+        event(FlightViewEvent.Frame(id, 100_000_000_000))
+        assertEquals(snapshot.tick, model.frames.value!!.tick)
     }
 
-    @Test fun countdownDoesNotConsumeTimeOrAcceptInput() {
+    @Test fun readyDoesNotConsumeTimeBeforeFirstTap() {
         val snapshot = model.frames.value
         event(FlightViewEvent.Frame(snapshot!!.id, 1_000_000_000))
-        event(FlightViewEvent.Flap)
         assertEquals(snapshot, model.frames.value)
+        tapToStart()
+        assertEquals(FlightPage.PLAYING, state().page)
     }
 
     @Test fun stalledFrameDoesNotOpenMenuOrSimulateWholeStall() {
-        countdown()
+        tapToStart()
         val id = model.frames.value!!.id
         event(FlightViewEvent.Frame(id, 0))
         event(FlightViewEvent.Frame(id, 2_000_000_000))
@@ -112,22 +108,22 @@ class FlightViewModelTest {
     }
 
     @Test fun backExitsImmediatelyAndKeepsActiveSnapshot() {
-        countdown()
-        event(FlightViewEvent.Flap)
+        tapToStart()
         event(FlightViewEvent.Back)
         assertEquals(1, exits)
         assertEquals(model.frames.value, repository.progress.active)
     }
 
-    @Test fun restoredSessionUsesAutomaticThreeSecondCountdown() {
+    @Test fun restoredSessionWaitsForTap() {
         val saved = FlightEngine(config).create("restore", "p", "pet", 44, 0).copy(started = true, tick = 25)
         repository.progress = repository.progress.copy(active = saved)
         val restored = createModel()
         restored.perform(FlightViewEvent.Load)
         dispatcher.scheduler.runCurrent()
-        assertEquals(FlightPage.COUNTDOWN, restored.state().value!!.page)
-        assertEquals(3, restored.state().value!!.countdown)
+        assertEquals(FlightPage.READY, restored.state().value!!.page)
         assertEquals(saved, restored.frames.value)
+        restored.perform(FlightViewEvent.Flap)
+        assertEquals(FlightPage.PLAYING, restored.state().value!!.page)
     }
 
     @Test fun backgroundDuringLoadingDoesNotStartHiddenGame() {
@@ -135,14 +131,13 @@ class FlightViewModelTest {
         restored.perform(FlightViewEvent.Load)
         restored.perform(FlightViewEvent.Foreground(false))
         dispatcher.scheduler.runCurrent()
-        repeat(3) { restored.perform(FlightViewEvent.CountdownTick(restored.frames.value!!.id, restored.countdownGeneration)) }
         assertFalse(restored.state().value!!.foreground)
-        assertEquals(3, restored.state().value!!.countdown)
+        assertEquals(FlightPage.READY, restored.state().value!!.page)
         assertFalse(restored.frames.value!!.started)
     }
 
     @Test fun failedBackgroundSaveCanExitWithoutRepeatingFailedWrite() {
-        countdown()
+        tapToStart()
         val saved = repository.progress.active
         event(FlightViewEvent.Flap)
         repository.failCheckpoint = true
@@ -155,7 +150,7 @@ class FlightViewModelTest {
     }
 
     @Test fun lossAndDoubleRetryStartOnlyOneNewRound() {
-        countdown()
+        tapToStart()
         val id = model.frames.value!!.id
         event(FlightViewEvent.Frame(id, 0))
         repeat(25) { event(FlightViewEvent.Frame(id, (it + 1) * 100_000_000L)) }
@@ -168,7 +163,7 @@ class FlightViewModelTest {
         assertNotEquals(id, nextId)
         assertEquals(2, repository.begins)
         assertEquals(0, model.frames.value!!.tick)
-        assertEquals(FlightPage.COUNTDOWN, state().page)
+        assertEquals(FlightPage.READY, state().page)
     }
 
     private inner class MemoryRepository : FlightRepository {
