@@ -26,15 +26,12 @@ internal class FlightViewModel(
     private var retry: (() -> Unit)? = null
     private var lastCheckpointTick = 0
     private var exitRequested = false
-    val countdownGeneration get() = stateData.countdownGeneration
-
     override fun perform(viewEvent: FlightViewEvent) {
         when (viewEvent) {
             FlightViewEvent.Load -> if (stateData.page == FlightPage.LOADING) load()
             FlightViewEvent.Start -> if (stateData.page == FlightPage.RESULTS) begin()
             FlightViewEvent.Flap -> flap()
             is FlightViewEvent.Frame -> frame(viewEvent)
-            is FlightViewEvent.CountdownTick -> countdown(viewEvent)
             is FlightViewEvent.Foreground -> foreground(viewEvent.active)
             FlightViewEvent.Back -> if (stateData.page == FlightPage.RECORDS)
                 updateState { copy(page = FlightPage.RESULTS) } else exit()
@@ -83,7 +80,7 @@ internal class FlightViewModel(
             environment.appearanceId, UUID.randomUUID().hashCode(), now())
         progress = interactor.repository.begin(session)
         updateState { copy(progress = progress, effectPending = progress.pendingEffects.isNotEmpty()) }
-        prepareCountdown(session)
+        prepareReady(session)
     }
 
     private fun begin() {
@@ -96,7 +93,7 @@ internal class FlightViewModel(
             check(current.profileId == environment.profileId && current.unlocked)
             val progress = interactor.repository.begin(session)
             updateState { copy(progress = progress) }
-            prepareCountdown(session)
+            prepareReady(session)
         }
     }
 
@@ -105,30 +102,23 @@ internal class FlightViewModel(
         mutableRender.value = FlightRenderFrame(session, fraction)
     }
 
-    private fun prepareCountdown(session: FlightSession) {
+    private fun prepareReady(session: FlightSession) {
         setFrame(session)
         lastCheckpointTick = session.tick
         clock.reset()
-        updateState { copy(page = FlightPage.COUNTDOWN, score = session.score,
-            countdown = engine.config.round.countdownSeconds, countdownGeneration = countdownGeneration + 1) }
-    }
-
-    private fun countdown(event: FlightViewEvent.CountdownTick) {
-        if (!stateData.foreground || stateData.page != FlightPage.COUNTDOWN ||
-            event.sessionId != frames.value?.id || event.generation != countdownGeneration) return
-        if (stateData.countdown > 1) updateState { copy(countdown = countdown - 1) }
-        else {
-            setFrame(engine.launch(requireNotNull(frames.value)))
-            clock.reset()
-            updateState { copy(countdown = 0, page = FlightPage.PLAYING) }
-        }
+        updateState { copy(page = FlightPage.READY, score = session.score) }
     }
 
     private fun flap() {
-        if (!stateData.foreground || stateData.page != FlightPage.PLAYING) return
+        if (!stateData.foreground || stateData.page !in listOf(FlightPage.READY, FlightPage.PLAYING)) return
         val before = frames.value ?: return
         val after = engine.flap(before)
         if (after !== before) setFrame(after)
+        commands.onNext(FlightCue.FLAP)
+        if (stateData.page == FlightPage.READY) {
+            clock.reset()
+            updateState { copy(page = FlightPage.PLAYING) }
+        }
     }
 
     private fun frame(event: FlightViewEvent.Frame) {
@@ -155,7 +145,7 @@ internal class FlightViewModel(
             clock.reset()
             retry = { runOperation {
                 interactor.repository.checkpoint(requireNotNull(frames.value))
-                prepareCountdown(requireNotNull(frames.value))
+                prepareReady(requireNotNull(frames.value))
             } }
             updateState { copy(page = FlightPage.ERROR) }
             true
@@ -190,15 +180,15 @@ internal class FlightViewModel(
         if (stateData.foreground == active) return
         updateState { copy(foreground = active) }
         clock.reset()
-        if (!active && stateData.page in listOf(FlightPage.COUNTDOWN, FlightPage.PLAYING)) {
+        if (!active && stateData.page in listOf(FlightPage.READY, FlightPage.PLAYING)) {
             val session = frames.value ?: return
-            prepareCountdown(session)
-            // Запись идёт независимо от отсчёта; поздний снимок не откатывает более новый.
+            prepareReady(session)
+            // Запись идёт независимо от ожидания нажатия; поздний снимок не откатывает более новый.
             val previous = checkpointJob
             checkpointJob = launchCoroutine(ExceptionConsumer {
                 retry = { runOperation {
                     interactor.repository.checkpoint(requireNotNull(frames.value))
-                    prepareCountdown(requireNotNull(frames.value))
+                    prepareReady(requireNotNull(frames.value))
                 } }
                 updateState { copy(page = FlightPage.ERROR) }
                 true

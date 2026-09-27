@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.IntSize
 import github.detrig.minigames.flight.R
 
 internal data class FlightSprite(val bitmap: ImageBitmap, val offset: IntOffset, val size: IntSize)
-internal data class FlightArtwork(val sky: ImageBitmap, val pillar: FlightSprite)
+internal data class FlightArtwork(val sky: ImageBitmap, val pillar: FlightSprite, val wings: FlightSprite)
 
 /** Вызывается в Default: декодирование и поиск границ прозрачного спрайта вне main. */
 internal fun loadFlightArtwork(resources: Resources): FlightArtwork {
@@ -24,24 +24,28 @@ internal fun loadFlightArtwork(resources: Resources): FlightArtwork {
             inScaled = false
         }))
     }
-    val column = decode(R.drawable.img_flight_pillar_v2, 2048)
-    val pixels = IntArray(column.width * column.height)
-    column.getPixels(pixels, 0, column.width, 0, 0, column.width, column.height)
-    var left = column.width
+    return FlightArtwork(
+        decode(R.drawable.img_flight_sky_v2, 2048).asImageBitmap(),
+        cropOpaque(decode(R.drawable.img_flight_pillar_v2, 2048)),
+        cropOpaque(decode(R.drawable.img_flight_wings_blue, 1254)),
+    )
+}
+
+private fun cropOpaque(bitmap: Bitmap): FlightSprite {
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    var left = bitmap.width
     var right = 0
-    var top = column.height
+    var top = bitmap.height
     var bottom = 0
-    for (y in 0 until column.height) for (x in 0 until column.width) {
-        if (pixels[y * column.width + x] ushr 24 >= 128) {
+    for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) {
+        if (pixels[y * bitmap.width + x] ushr 24 >= 128) {
             left = minOf(left, x); right = maxOf(right, x)
             top = minOf(top, y); bottom = maxOf(bottom, y)
         }
     }
     check(left <= right && top <= bottom)
-    val croppedColumn = Bitmap.createBitmap(column, left, top, right - left + 1, bottom - top + 1)
-    if (croppedColumn !== column) column.recycle()
-    return FlightArtwork(
-        decode(R.drawable.img_flight_sky_v2, 2048).asImageBitmap(),
-        FlightSprite(croppedColumn.asImageBitmap(), IntOffset.Zero, IntSize(croppedColumn.width, croppedColumn.height)),
-    )
+    val cropped = Bitmap.createBitmap(bitmap, left, top, right - left + 1, bottom - top + 1)
+    if (cropped !== bitmap) bitmap.recycle()
+    return FlightSprite(cropped.asImageBitmap(), IntOffset.Zero, IntSize(cropped.width, cropped.height))
 }

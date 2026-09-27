@@ -18,7 +18,7 @@ import org.junit.runner.RunWith
 class RoomFlightNavigationTest {
     @get:Rule val ui = createAndroidComposeRule<MainActivity>()
 
-    @Test fun countdownAutomaticallyStartsAndNoInputEndsAttempt() {
+    @Test fun firstTapStartsAttemptAndRetryWaitsForTap() {
         ui.waitUntil(15_000) {
             ui.onAllNodesWithTag("house_scroll").fetchSemanticsNodes()
                 .any { it.config.contains(SemanticsActions.ScrollBy) }
@@ -26,12 +26,17 @@ class RoomFlightNavigationTest {
         ui.onNodeWithTag("room_zone_flight").performScrollTo()
         ui.onNodeWithTag("room_zone_flight").performClick()
         ui.waitUntil(15_000) {
+            ui.onAllNodesWithTag("flight_ready_hint").fetchSemanticsNodes().isNotEmpty()
+        }
+        ui.onNodeWithTag("flight_score").assertTextEquals("0")
+        ui.onNodeWithTag("flight_scene").performClick()
+        ui.waitUntil(15_000) {
             ui.onAllNodesWithTag("flight_result_score").fetchSemanticsNodes().isNotEmpty()
         }
         ui.onNodeWithTag("flight_result_score").assertTextEquals("0")
         ui.onNodeWithText("Ещё раз").performClick()
         ui.waitUntil(5_000) {
-            ui.onAllNodesWithTag("flight_countdown").fetchSemanticsNodes().isNotEmpty()
+            ui.onAllNodesWithTag("flight_ready_hint").fetchSemanticsNodes().isNotEmpty()
         }
         ui.onNodeWithText("Полетели").assertDoesNotExist()
         ui.onNodeWithText("Пауза").assertDoesNotExist()

@@ -87,11 +87,21 @@ internal fun FlightScene(
                     Offset(x - (31 + i * 12) * spriteScale, y + i * 3 * spriteScale),
                     Size((10 - i * 2) * spriteScale, 2 * spriteScale))
             }
-            val angle = if (reducedMotion) 0f else ((session?.velocity ?: 0.0) / 19.0).toFloat().coerceIn(-18f, 28f)
-            // TODO: Добавить отдельные полётные анимации для каждого нового вида питомца.
+            // The same transform is applied to the complete dressed pet and its flight wings.
+            val angle = 30f + if (reducedMotion) 0f else
+                ((session?.velocity ?: 0.0) / 35.0).toFloat().coerceIn(-9f, 10f)
             petBitmap?.let { bitmap ->
                 val side = (52 * spriteScale).toInt().coerceAtLeast(1)
                 rotate(angle, Offset(x, y)) {
+                    artwork?.wings?.let { wings ->
+                        val wingWidth = (side * 1.3f).roundToInt().coerceAtLeast(1)
+                        val wingHeight = (wingWidth.toFloat() * wings.size.height / wings.size.width)
+                            .roundToInt().coerceAtLeast(1)
+                        drawImage(wings.bitmap,
+                            dstOffset = IntOffset((x - side * 0.65f).roundToInt(),
+                                (y - side * 0.5f).roundToInt()),
+                            dstSize = IntSize(wingWidth, wingHeight), filterQuality = FilterQuality.Low)
+                    }
                     drawImage(bitmap, dstOffset = IntOffset((x - side / 2).toInt(), (y - side / 2).toInt()),
                         dstSize = IntSize(side, side), filterQuality = FilterQuality.Low)
                 }
