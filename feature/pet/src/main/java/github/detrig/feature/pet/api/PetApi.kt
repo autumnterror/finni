@@ -14,6 +14,12 @@ interface PetApi {
     fun observeProfile(): Flow<PetProfile?>
     fun currentProfile(): PetProfile?
 
+    fun observeGrowthState(): Flow<PetGrowthState>
+
+    /** Debug builds only: changes appearance without mutating XP or the real level. */
+    suspend fun adjustGrowthStageForDebug(delta: Int): PetGrowthState
+    suspend fun useLevelGrowthStageForDebug(): PetGrowthState
+
     /** Clears the current pet profile for a debug/demo progress reset. */
     fun resetProfile()
 

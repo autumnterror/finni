@@ -11,10 +11,19 @@ class ProgressionRulesTest {
         assertProgress(0, 1, PetGrowthStage.BABY)
         assertProgress(99, 1, PetGrowthStage.BABY)
         assertProgress(100, 2, PetGrowthStage.BABY)
-        assertProgress(250, 3, PetGrowthStage.EXPLORER)
-        assertProgress(450, 4, PetGrowthStage.EXPLORER)
-        assertProgress(700, 5, PetGrowthStage.COMPANION)
-        assertProgress(900, 5, PetGrowthStage.COMPANION)
+        assertProgress(250, 3, PetGrowthStage.TEEN)
+        assertProgress(450, 4, PetGrowthStage.TEEN)
+        assertProgress(700, 5, PetGrowthStage.ADULT)
+        assertProgress(900, 5, PetGrowthStage.ADULT)
+    }
+
+    @Test
+    fun growthBandsStayEvenWhenMoreLevelsAreConfigured() {
+        assertEquals(5, ProgressionRules.levels.size)
+        assertEquals(PetGrowthStage.BABY, ProgressionRules.stageForLevel(8, 24))
+        assertEquals(PetGrowthStage.TEEN, ProgressionRules.stageForLevel(9, 24))
+        assertEquals(PetGrowthStage.TEEN, ProgressionRules.stageForLevel(16, 24))
+        assertEquals(PetGrowthStage.ADULT, ProgressionRules.stageForLevel(17, 24))
     }
 
     @Test

@@ -45,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.domain.model.HamsterAppearance
+import github.detrig.feature.pet.domain.model.GrowthStage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -87,24 +88,32 @@ internal class HamsterAssets(
     val options: Map<String, Set<String>>,
     val thumbnails: Map<String, ImageBitmap>,
 ) {
-    fun resolve(appearance: HamsterAppearance, blink: Boolean): List<HamsterDrawLayer> {
+    fun resolve(
+        appearance: HamsterAppearance,
+        blink: Boolean,
+        stage: GrowthStage = GrowthStage.BABY,
+    ): List<HamsterDrawLayer> {
         val properties = appearance.properties()
         properties.forEach { (key, value) ->
             require(value in options.getValue(key)) { "Invalid $key: $value" }
         }
         val palette = palettes.getValue(appearance.palette)
+        val state = properties + mapOf(
+            "stage" to stage.assetId,
+            "bodyStage" to stage.assetId,
+        )
         return rules
             .filter { rule ->
                 rule.conditions.all { (key, expected) ->
                     when (key) {
                         "blink" -> blink == expected
                         "markNot" -> appearance.mark != expected
-                        else -> properties[key] == expected
+                        else -> state[key] == expected
                     }
                 }
             }
             .map { rule ->
-                val id = PLACEHOLDER.replace(rule.id) { properties.getValue(it.groupValues[1]) }
+                val id = PLACEHOLDER.replace(rule.id) { state.getValue(it.groupValues[1]) }
                 HamsterDrawLayer(
                     id = id,
                     sprite = layers.getValue(id),
@@ -121,6 +130,7 @@ internal class HamsterAssets(
         targetSidePx: Int,
         blink: Boolean,
         clothingLayers: List<ClothingDrawLayer> = emptyList(),
+        stage: GrowthStage = GrowthStage.BABY,
     ): Bitmap {
         val output = Bitmap.createBitmap(targetSidePx, targetSidePx, Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(output)
@@ -130,7 +140,7 @@ internal class HamsterAssets(
         clothingLayers.filter { it.z < 0 }.forEach {
             canvas.drawBitmap(it.image.asAndroidBitmap(), null, clothingTarget, clothingPaint)
         }
-        resolve(appearance, blink).forEach { layer ->
+        resolve(appearance, blink, stage).forEach { layer ->
             val bitmap = layer.sprite.image.asAndroidBitmap()
             val destination = Rect(
                 (layer.sprite.x * scale).toInt(),
@@ -157,6 +167,7 @@ internal class HamsterAssets(
         position: Offset,
         containerSize: Size,
         blink: Boolean = false,
+        stage: GrowthStage = GrowthStage.BABY,
     ): Boolean {
         if (containerSize.width <= 0f || containerSize.height <= 0f ||
             position.x !in 0f..containerSize.width || position.y !in 0f..containerSize.height
@@ -164,7 +175,7 @@ internal class HamsterAssets(
 
         val canvasX = (position.x / containerSize.width * canvasSize).toInt()
         val canvasY = (position.y / containerSize.height * canvasSize).toInt()
-        return resolve(appearance, blink).any { layer ->
+        return resolve(appearance, blink, stage).any { layer ->
             val bitmap = layer.sprite.image.asAndroidBitmap()
             val localX = canvasX - layer.sprite.x
             val localY = canvasY - layer.sprite.y
@@ -227,27 +238,29 @@ internal suspend fun loadHamsterAssets(
     val json = assetManager.open("$root/manifest.json").bufferedReader().use { reader ->
         JSONObject(reader.readText())
     }
-    require(json.getInt("schemaVersion") == 1)
+    require(json.getInt("schemaVersion") == 3)
 
     val canvas = json.getJSONObject("canvas")
     require(canvas.getInt("width") == canvas.getInt("height"))
 
     val sourceLayers = json.getJSONObject("layers")
+    val decodedByFile = mutableMapOf<String, ImageBitmap>()
     val layers = sourceLayers.keys().asSequence().associateWith { id ->
         val item = sourceLayers.getJSONObject(id)
-        val bitmap = assetManager.open("$root/${item.getString("file")}").use { stream ->
-            requireNotNull(
-                BitmapFactory.decodeStream(
+        val file = item.getString("file")
+        val image = decodedByFile.getOrPut(file) {
+            assetManager.open("$root/$file").use { stream ->
+                requireNotNull(BitmapFactory.decodeStream(
                     stream,
                     null,
                     BitmapFactory.Options().apply { inScaled = false },
-                ),
-            )
+                )).asImageBitmap()
+            }
         }
-        require(bitmap.width == item.getInt("width"))
-        require(bitmap.height == item.getInt("height"))
+        require(image.width == item.getInt("width"))
+        require(image.height == item.getInt("height"))
         HamsterSprite(
-            image = bitmap.asImageBitmap(),
+            image = image,
             x = item.getInt("x"),
             y = item.getInt("y"),
         )
@@ -337,10 +350,11 @@ internal fun HamsterPreview(
     flightPhase: Float? = null,
     limbAmplitude: Float = 1f,
     clothingLayers: List<ClothingDrawLayer> = emptyList(),
+    stage: GrowthStage = GrowthStage.BABY,
     dirtStage: Int = 0,
 ) {
-    val drawLayers = remember(assets, appearance, blink) {
-        assets.resolve(appearance, blink)
+    val drawLayers = remember(assets, appearance, blink, stage) {
+        assets.resolve(appearance, blink, stage)
     }
     val mouthOutline = AppTheme.colors.storefront.outline
     val mouthInterior = AppTheme.colors.textPrimary
@@ -409,11 +423,29 @@ internal fun HamsterPreview(
         drawLayers.forEach { layer ->
             val isOpenEye = layer.id.startsWith("eyes_") && !layer.id.startsWith("eyes_closed")
             val layerOffset = if (isOpenEye) eyeOffset else Offset.Zero
-            // The nose and closed V-mouth share a sprite. Keep the nose and
-            // upper stem, but replace the V with the animated open mouth.
-            val spriteHeight = if (layer.id == "face_nose_mouth" && mouthOpenness > 0.05f) {
-                minOf(layer.sprite.image.height, MOUTH_SPRITE_NOSE_HEIGHT)
-            } else layer.sprite.image.height
+            // Replace only the stage mouth. The following shared nose layer stays on top.
+            if (layer.id.startsWith("face_mouth_") && mouthOpenness > 0.05f) {
+                val center = Offset(dx + 498f * factor, dy + 460f * factor)
+                val mouthWidth = 48f * factor
+                val mouthHeight = (8f + 42f * mouthOpenness) * factor
+                val topLeft = Offset(center.x - mouthWidth / 2f, center.y - 7f * factor)
+                drawOval(
+                    color = mouthOutline,
+                    topLeft = topLeft,
+                    size = Size(mouthWidth, mouthHeight),
+                )
+                drawOval(
+                    color = mouthInterior,
+                    topLeft = topLeft + Offset(5f * factor, 5f * factor),
+                    size = Size(mouthWidth - 10f * factor, (mouthHeight - 10f * factor).coerceAtLeast(1f)),
+                )
+                drawOval(
+                    color = mouthBlush,
+                    topLeft = Offset(center.x - 13f * factor, topLeft.y + mouthHeight * 0.66f),
+                    size = Size(26f * factor, mouthHeight * 0.24f),
+                )
+                return@forEach
+            }
             val (angle, anchor) = when (layer.id) {
                 "arm_left_detail" -> 7f * armWave to Offset(420f, 570f)
                 "arm_right_detail" -> -7f * armWave to Offset(590f, 675f)
@@ -425,14 +457,14 @@ internal fun HamsterPreview(
                 drawImage(
                     image = layer.sprite.image,
                     srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(layer.sprite.image.width, spriteHeight),
+                    srcSize = IntSize(layer.sprite.image.width, layer.sprite.image.height),
                     dstOffset = IntOffset(
                         (dx + layer.sprite.x * factor + layerOffset.x).toInt(),
                         (dy + layer.sprite.y * factor + layerOffset.y).toInt(),
                     ),
                     dstSize = IntSize(
                         (layer.sprite.image.width * factor).toInt(),
-                        (spriteHeight * factor).toInt(),
+                        (layer.sprite.image.height * factor).toInt(),
                     ),
                     colorFilter = layer.colorFilter,
                     filterQuality = FilterQuality.High,
@@ -451,31 +483,8 @@ internal fun HamsterPreview(
             )
             drawDirt(dirtLayers?.clothing?.get(layer.sourceKey))
         }
-        if (mouthOpenness > 0.05f) {
-            val center = Offset(dx + 498f * factor, dy + 460f * factor)
-            val mouthWidth = 48f * factor
-            val mouthHeight = (8f + 42f * mouthOpenness) * factor
-            val topLeft = Offset(center.x - mouthWidth / 2f, center.y - 7f * factor)
-            drawOval(
-                color = mouthOutline,
-                topLeft = topLeft,
-                size = Size(mouthWidth, mouthHeight),
-            )
-            drawOval(
-                color = mouthInterior,
-                topLeft = topLeft + Offset(5f * factor, 5f * factor),
-                size = Size(mouthWidth - 10f * factor, (mouthHeight - 10f * factor).coerceAtLeast(1f)),
-            )
-            drawOval(
-                color = mouthBlush,
-                topLeft = Offset(center.x - 13f * factor, topLeft.y + mouthHeight * 0.66f),
-                size = Size(26f * factor, mouthHeight * 0.24f),
-            )
-        }
     }
 }
-
-private const val MOUTH_SPRITE_NOSE_HEIGHT = 82
 
 @Preview(name = "Хомяк с открытым ртом", widthDp = 220, heightDp = 220)
 @Composable

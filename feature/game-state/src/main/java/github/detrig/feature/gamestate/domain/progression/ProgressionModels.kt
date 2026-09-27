@@ -2,14 +2,13 @@ package github.detrig.feature.gamestate.domain.progression
 
 enum class PetGrowthStage {
     BABY,
-    EXPLORER,
-    COMPANION,
+    TEEN,
+    ADULT,
 }
 
 data class LevelDefinition(
     val level: Int,
     val totalXpRequired: Int,
-    val petStage: PetGrowthStage,
 )
 
 data class GameProgress(
@@ -27,11 +26,11 @@ data class GameProgress(
 
 object ProgressionRules {
     val levels: List<LevelDefinition> = listOf(
-        LevelDefinition(level = 1, totalXpRequired = 0, petStage = PetGrowthStage.BABY),
-        LevelDefinition(level = 2, totalXpRequired = 100, petStage = PetGrowthStage.BABY),
-        LevelDefinition(level = 3, totalXpRequired = 250, petStage = PetGrowthStage.EXPLORER),
-        LevelDefinition(level = 4, totalXpRequired = 450, petStage = PetGrowthStage.EXPLORER),
-        LevelDefinition(level = 5, totalXpRequired = 700, petStage = PetGrowthStage.COMPANION),
+        LevelDefinition(level = 1, totalXpRequired = 0),
+        LevelDefinition(level = 2, totalXpRequired = 100),
+        LevelDefinition(level = 3, totalXpRequired = 250),
+        LevelDefinition(level = 4, totalXpRequired = 450),
+        LevelDefinition(level = 5, totalXpRequired = 700),
     )
 
     init {
@@ -51,7 +50,7 @@ object ProgressionRules {
         return GameProgress(
             totalXp = totalXp,
             level = current.level,
-            petStage = current.petStage,
+            petStage = stageForLevel(current.level),
             currentLevelXp = earnedAtLevel,
             nextLevelXp = requiredAtLevel,
             levelProgress = requiredAtLevel?.let { earnedAtLevel.toFloat() / it } ?: 1f,
@@ -60,6 +59,13 @@ object ProgressionRules {
 
     fun minimumXpForLevel(level: Int): Int =
         requireNotNull(levels.getOrNull(level - 1)) { "Unknown player level $level" }.totalXpRequired
+
+    /** Divide the configured levels into three consecutive growth bands. */
+    fun stageForLevel(level: Int, levelCount: Int = levels.size): PetGrowthStage {
+        require(levelCount >= PetGrowthStage.entries.size)
+        require(level in 1..levelCount)
+        return PetGrowthStage.entries[(level - 1) * PetGrowthStage.entries.size / levelCount]
+    }
 }
 
 object XpRewards {

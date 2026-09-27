@@ -85,6 +85,7 @@ import github.detrig.feature.phone.PhoneFeature
 import github.detrig.feature.phone.api.MESSAGES_APP_ID
 import github.detrig.feature.phone.navigation.PhoneRoute
 import github.detrig.feature.phone.R
+import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.shop.api.ShopApi
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.GroceryCatalog
@@ -149,8 +150,8 @@ internal fun PhoneScreen(route: PhoneRoute) {
             )
             PhoneDevice(
                 route = route,
-                showDebugApp = component.isDebugBuild,
                 activeAppId = activeAppId,
+                showDebugApp = component.isDebugBuild,
                 shopApi = component.shopApi,
                 roomApi = component.roomApi,
                 messagesState = messagesState,
@@ -238,8 +239,8 @@ internal fun PhoneScreen(route: PhoneRoute) {
 @Composable
 private fun PhoneDevice(
     route: PhoneRoute,
-    showDebugApp: Boolean,
     activeAppId: String?,
+    showDebugApp: Boolean,
     shopApi: ShopApi,
     roomApi: RoomApi,
     messagesState: MessagesViewState,
@@ -321,6 +322,7 @@ private fun PhoneDevice(
                 } else {
                     PhoneAppContent(
                         appId = openAppId,
+                        showDebugApp = showDebugApp,
                         scale = scale,
                         shopApi = shopApi,
                         roomApi = roomApi,
@@ -606,6 +608,7 @@ private fun PhoneStatusIcons(scale: Float) {
 @Composable
 private fun PhoneAppContent(
     appId: String,
+    showDebugApp: Boolean,
     scale: Float,
     shopApi: ShopApi,
     roomApi: RoomApi,
@@ -653,7 +656,12 @@ private fun PhoneAppContent(
                 onParentHelpPaidOff = { onMessagesEvent(MessagesViewEvent.ParentHelpPaidOff) },
                 onParentHelpDismissed = { onMessagesEvent(MessagesViewEvent.ParentHelpDismissed) },
             )
-            DEBUG_APP -> DebugMenuApp(onBack = onBack)
+            DEBUG_APP -> if (showDebugApp) DebugMenuApp(onBack = onBack) else PhonePlaceholderApp(
+                title = "Приложение",
+                iconRes = R.drawable.phone_icon_tile_hd,
+                scale = scale,
+                onBack = onBack,
+            )
             else -> PhonePlaceholderApp(
                 title = "Приложение",
                 iconRes = R.drawable.phone_icon_tile_hd,
@@ -676,6 +684,8 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         state = state,
         onBack = onBack,
         onChangeBalance = { viewModel.perform(DebugMenuViewEvent.ChangeBalance(it)) },
+        onChangeGrowthStage = { viewModel.perform(DebugMenuViewEvent.ChangeGrowthStage(it)) },
+        onUseLevelGrowthStage = { viewModel.perform(DebugMenuViewEvent.UseLevelGrowthStage) },
         onChangeDirtStage = { viewModel.perform(DebugMenuViewEvent.ChangeDirtStage(it)) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
         onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
@@ -690,6 +700,8 @@ private fun DebugMenuContent(
     state: DebugMenuViewState,
     onBack: () -> Unit,
     onChangeBalance: (Long) -> Unit,
+    onChangeGrowthStage: (Int) -> Unit,
+    onUseLevelGrowthStage: () -> Unit,
     onChangeDirtStage: (Int) -> Unit,
     onResetBalance: () -> Unit,
     onEndWeek: () -> Unit,
@@ -754,6 +766,52 @@ private fun DebugMenuContent(
                 modifier = Modifier.padding(AppTheme.spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
             ) {
+                Text("Рост питомца", style = AppTheme.typography.body)
+                Text(
+                    text = "Стадия ${state.growthStage.ordinal + 1} / 3 · ${state.growthStage.title()}",
+                    style = AppTheme.typography.currency,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                Text(
+                    text = if (state.isGrowthStageOverridden) {
+                        "Проверка вручную · по уровню: ${state.growthStageFromLevel.title()}"
+                    } else "Автоматически по уровню",
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            FinPetButton(
+                text = "−1 стадия",
+                onClick = { onChangeGrowthStage(-1) },
+                enabled = !state.isChangingGrowthStage && !state.isResettingProgress && state.growthStage != GrowthStage.BABY,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+            FinPetButton(
+                text = "+1 стадия",
+                onClick = { onChangeGrowthStage(1) },
+                enabled = !state.isChangingGrowthStage && !state.isResettingProgress && state.growthStage != GrowthStage.ADULT,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+        }
+        FinPetOutlinedButton(
+            text = "Вернуть рост по уровню",
+            onClick = onUseLevelGrowthStage,
+            enabled = !state.isChangingGrowthStage && !state.isResettingProgress && state.isGrowthStageOverridden,
+            modifier = Modifier.fillMaxWidth(),
+            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            ) {
                 Text("Загрязнение питомца", style = AppTheme.typography.body)
                 Text(
                     text = "Стадия ${state.dirtStage} / 3",
@@ -769,14 +827,14 @@ private fun DebugMenuContent(
             FinPetButton(
                 text = "− стадия",
                 onClick = { onChangeDirtStage(-1) },
-                enabled = !state.isChangingDirtStage && state.dirtStage > 0,
+                enabled = !state.isChangingDirtStage && !state.isResettingProgress && state.dirtStage > 0,
                 modifier = Modifier.weight(1f),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
             FinPetButton(
                 text = "+ стадия",
                 onClick = { onChangeDirtStage(1) },
-                enabled = !state.isChangingDirtStage && state.dirtStage < 3,
+                enabled = !state.isChangingDirtStage && !state.isResettingProgress && state.dirtStage < 3,
                 modifier = Modifier.weight(1f),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -865,6 +923,12 @@ private fun DebugMenuContent(
             )
         }
     }
+}
+
+private fun GrowthStage.title(): String = when (this) {
+    GrowthStage.BABY -> "Малыш"
+    GrowthStage.TEEN -> "Подросток"
+    GrowthStage.ADULT -> "Взрослый"
 }
 
 @Composable
@@ -1112,9 +1176,17 @@ private fun DebugMenuPreview() {
     FinPetTheme {
         Box(Modifier.background(AppTheme.colors.storefront.background)) {
             DebugMenuContent(
-                state = DebugMenuViewState(balanceRub = 350, dirtStage = 2),
+                state = DebugMenuViewState(
+                    balanceRub = 350,
+                    dirtStage = 2,
+                    growthStage = GrowthStage.TEEN,
+                    growthStageFromLevel = GrowthStage.BABY,
+                    isGrowthStageOverridden = true,
+                ),
                 onBack = {},
                 onChangeBalance = {},
+                onChangeGrowthStage = {},
+                onUseLevelGrowthStage = {},
                 onChangeDirtStage = {},
                 onResetBalance = {},
                 onEndWeek = {},

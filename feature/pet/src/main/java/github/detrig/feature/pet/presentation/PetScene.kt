@@ -73,6 +73,7 @@ import github.detrig.feature.pet.R
 import github.detrig.feature.pet.api.PetGestureCallbacks
 import github.detrig.feature.pet.api.PetPose
 import github.detrig.feature.pet.domain.model.HamsterAppearance
+import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.domain.model.PetSpecies
@@ -90,6 +91,7 @@ import kotlin.math.sin
 fun PetScene(
     profile: PetProfile,
     modifier: Modifier = Modifier,
+    growthStage: GrowthStage = GrowthStage.BABY,
     animateIdle: Boolean = true,
     freezeAnimation: Boolean = false,
     mouthOpen: Boolean = false,
@@ -185,6 +187,7 @@ fun PetScene(
             assets = hamsterAssets,
             appearance = profile.hamsterAppearance,
             blink = visibleBlink,
+            stage = growthStage,
             contentDescription = description,
             onClick = reactThenClick.takeIf { pose == PetPose.IDLE },
             gestureCallbacks = gestureCallbacks,
@@ -227,6 +230,7 @@ fun PetScene(
                     HamsterPreview(
                         assets = hamsterAssets,
                         appearance = profile.hamsterAppearance,
+                        stage = growthStage,
                         modifier = Modifier.fillMaxSize(),
                         blink = visibleBlink || pose == PetPose.LANDED || visibleReaction > 0.7f,
                         mouthOpen = mouthOpen,
@@ -265,6 +269,7 @@ private fun Modifier.hamsterClickable(
     assets: HamsterAssets,
     appearance: HamsterAppearance,
     blink: Boolean,
+    stage: GrowthStage,
     contentDescription: String,
     onClick: (() -> Unit)?,
     gestureCallbacks: PetGestureCallbacks?,
@@ -277,6 +282,7 @@ private fun Modifier.hamsterClickable(
         assets = assets,
         appearance = appearance,
         blink = blink,
+        stage = stage,
         onClick = onClick,
         gestureCallbacks = gestureCallbacks,
         touchSlop = touchSlop,
@@ -307,6 +313,7 @@ private data class HamsterClickableElement(
     val assets: HamsterAssets,
     val appearance: HamsterAppearance,
     val blink: Boolean,
+    val stage: GrowthStage,
     val onClick: (() -> Unit)?,
     val gestureCallbacks: PetGestureCallbacks?,
     val touchSlop: Float,
@@ -318,6 +325,7 @@ private data class HamsterClickableElement(
         assets = assets,
         appearance = appearance,
         blink = blink,
+        stage = stage,
         onClick = onClick,
         gestureCallbacks = gestureCallbacks,
         touchSlop = touchSlop,
@@ -331,6 +339,7 @@ private data class HamsterClickableElement(
             assets = assets,
             appearance = appearance,
             blink = blink,
+            stage = stage,
             onClick = onClick,
             gestureCallbacks = gestureCallbacks,
             touchSlop = touchSlop,
@@ -345,6 +354,7 @@ private class HamsterClickableNode(
     private var assets: HamsterAssets,
     private var appearance: HamsterAppearance,
     private var blink: Boolean,
+    private var stage: GrowthStage,
     private var onClick: (() -> Unit)?,
     private var gestureCallbacks: PetGestureCallbacks?,
     private var touchSlop: Float,
@@ -370,7 +380,7 @@ private class HamsterClickableNode(
         if (pressedPointerId == null) {
             val down = pointerEvent.changes.firstOrNull { it.changedToDownIgnoreConsumed() } ?: return
             if ((onClick != null || gestureCallbacks != null) &&
-                assets.contains(appearance, unscale(down.position, containerSize), containerSize, blink)
+                assets.contains(appearance, unscale(down.position, containerSize), containerSize, blink, stage)
             ) {
                 pressedPointerId = down.id
                 dragCallbacks = gestureCallbacks
@@ -430,7 +440,7 @@ private class HamsterClickableNode(
             } else {
                 callbacks?.onCancel()
                 if (!tapCancelled && !change.isConsumed && assets.contains(
-                        appearance, unscale(change.position, containerSize), containerSize, blink,
+                        appearance, unscale(change.position, containerSize), containerSize, blink, stage,
                     )
                 ) {
                     change.consume()
@@ -474,6 +484,7 @@ private class HamsterClickableNode(
         assets: HamsterAssets,
         appearance: HamsterAppearance,
         blink: Boolean,
+        stage: GrowthStage,
         onClick: (() -> Unit)?,
         gestureCallbacks: PetGestureCallbacks?,
         touchSlop: Float,
@@ -481,12 +492,13 @@ private class HamsterClickableNode(
         scaleX: Float,
         scaleY: Float,
     ) {
-        if (this.assets !== assets || this.appearance != appearance) {
+        if (this.assets !== assets || this.appearance != appearance || this.stage != stage) {
             onCancelPointerInput()
         }
         this.assets = assets
         this.appearance = appearance
         this.blink = blink
+        this.stage = stage
         this.onClick = onClick
         this.gestureCallbacks = gestureCallbacks
         this.touchSlop = touchSlop
@@ -500,6 +512,7 @@ private class HamsterClickableNode(
 internal fun rememberPetAppearanceBitmap(
     profile: PetProfile,
     maxSidePx: Int,
+    growthStage: GrowthStage = GrowthStage.BABY,
 ): ImageBitmap? {
     require(maxSidePx > 0)
     if (profile.species == PetSpecies.Hamster) {
@@ -510,6 +523,7 @@ internal fun rememberPetAppearanceBitmap(
             initialValue = null,
             assets,
             profile.hamsterAppearance,
+            growthStage,
             profile.clothing.equippedBySlot,
             blink,
             maxSidePx,
@@ -521,7 +535,7 @@ internal fun rememberPetAppearanceBitmap(
                     profile.hamsterAppearance,
                 )
                 withContext(Dispatchers.Default) {
-                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes).asImageBitmap()
+                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes, growthStage).asImageBitmap()
                 }
             }
         }

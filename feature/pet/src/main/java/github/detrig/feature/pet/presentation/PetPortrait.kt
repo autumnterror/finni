@@ -14,17 +14,24 @@ import androidx.compose.foundation.layout.size
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
+import github.detrig.feature.pet.domain.model.GrowthStage
 import kotlin.math.roundToInt
 
 /** Цветной крупный план мордочки для диалогов и будущих экранов обучения. */
 @Composable
-fun PetPortrait(profile: PetProfile, modifier: Modifier = Modifier, dirtStage: Int = 0) {
+fun PetPortrait(
+    profile: PetProfile,
+    modifier: Modifier = Modifier,
+    growthStage: GrowthStage = GrowthStage.BABY,
+    dirtStage: Int = 0,
+) {
     if (profile.species == github.detrig.feature.pet.domain.model.PetSpecies.Hamster) {
         val assets = rememberHamsterAssets()
         if (assets != null) {
             HamsterPreview(
                 assets = assets,
                 appearance = profile.hamsterAppearance,
+                stage = growthStage,
                 modifier = modifier,
                 clothingLayers = rememberClothingLayers(profile.clothing.equippedBySlot, profile.hamsterAppearance),
                 dirtStage = dirtStage,

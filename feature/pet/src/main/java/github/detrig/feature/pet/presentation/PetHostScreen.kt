@@ -23,11 +23,13 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.feature.pet.PetFeature
 import github.detrig.feature.pet.R
 import github.detrig.feature.pet.domain.model.PetProfile
+import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.pet.presentation.component.PetCreationScreen
 
 @Composable
 internal fun PetHostScreen(
     modifier: Modifier = Modifier,
+    growthStage: GrowthStage = GrowthStage.BABY,
     content: @Composable (PetProfile, () -> Unit, () -> Unit, Boolean) -> Unit,
 ) {
     val viewModel: PetViewModel = viewModel { PetFeature.component().getPetViewModel() }
@@ -69,7 +71,7 @@ internal fun PetHostScreen(
                         stringResource(R.string.pet_welcome_second),
                     ),
                     portrait = { portraitModifier ->
-                        PetPortrait(current.profile, portraitModifier)
+                        PetPortrait(current.profile, portraitModifier, growthStage)
                     },
                     onFinished = { greetingVisible = false },
                 )
