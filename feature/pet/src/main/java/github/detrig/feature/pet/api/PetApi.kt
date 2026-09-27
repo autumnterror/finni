@@ -14,6 +14,12 @@ interface PetApi {
     fun observeProfile(): Flow<PetProfile?>
     fun currentProfile(): PetProfile?
 
+    fun observeGrowthState(): Flow<PetGrowthState>
+
+    /** Debug builds only: changes appearance without mutating XP or the real level. */
+    suspend fun adjustGrowthStageForDebug(delta: Int): PetGrowthState
+    suspend fun useLevelGrowthStageForDebug(): PetGrowthState
+
     suspend fun clothingItems(): List<ClothingItem>
     fun cachedClothingItems(): List<ClothingItem>
     fun recordClothingPurchase(itemId: String)

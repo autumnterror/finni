@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +80,7 @@ import github.detrig.feature.phone.PhoneFeature
 import github.detrig.feature.phone.api.MESSAGES_APP_ID
 import github.detrig.feature.phone.navigation.PhoneRoute
 import github.detrig.feature.phone.R
+import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.shop.api.ShopApi
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.GroceryCatalog
@@ -143,6 +146,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
             PhoneDevice(
                 route = route,
                 activeAppId = activeAppId,
+                showDebugApp = component.isDebugBuild,
                 shopApi = component.shopApi,
                 roomApi = component.roomApi,
                 messagesState = messagesState,
@@ -231,6 +235,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
 private fun PhoneDevice(
     route: PhoneRoute,
     activeAppId: String?,
+    showDebugApp: Boolean,
     shopApi: ShopApi,
     roomApi: RoomApi,
     messagesState: MessagesViewState,
@@ -301,6 +306,7 @@ private fun PhoneDevice(
                     PhoneHomeContent(
                         scale = scale,
                         unreadMessages = messagesState.inbox.unreadCount,
+                        showDebugApp = showDebugApp,
                         onClose = onClose,
                         onOpenApp = onOpenApp,
                         highlightedAppId = GROCERY_APP.takeIf {
@@ -311,6 +317,7 @@ private fun PhoneDevice(
                 } else {
                     PhoneAppContent(
                         appId = openAppId,
+                        showDebugApp = showDebugApp,
                         scale = scale,
                         shopApi = shopApi,
                         roomApi = roomApi,
@@ -414,6 +421,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStretchablePhon
 private fun PhoneHomeContent(
     scale: Float,
     unreadMessages: Int,
+    showDebugApp: Boolean = false,
     onClose: () -> Unit,
     onOpenApp: (String) -> Unit,
     highlightedAppId: String? = null,
@@ -436,8 +444,9 @@ private fun PhoneHomeContent(
         PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP),
         PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP),
         PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 129f, 620f, MESSAGES_APP_ID),
+    ) + if (showDebugApp) listOf(
         PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 382f, 620f, DEBUG_APP),
-    )
+    ) else emptyList()
     apps.forEach { app ->
         Box(
             modifier = Modifier
@@ -581,6 +590,7 @@ private fun PhoneStatusIcons(scale: Float) {
 @Composable
 private fun PhoneAppContent(
     appId: String,
+    showDebugApp: Boolean,
     scale: Float,
     shopApi: ShopApi,
     roomApi: RoomApi,
@@ -628,7 +638,12 @@ private fun PhoneAppContent(
                 onParentHelpPaidOff = { onMessagesEvent(MessagesViewEvent.ParentHelpPaidOff) },
                 onParentHelpDismissed = { onMessagesEvent(MessagesViewEvent.ParentHelpDismissed) },
             )
-            DEBUG_APP -> DebugMenuApp(onBack = onBack)
+            DEBUG_APP -> if (showDebugApp) DebugMenuApp(onBack = onBack) else PhonePlaceholderApp(
+                title = "Приложение",
+                iconRes = R.drawable.phone_icon_tile_hd,
+                scale = scale,
+                onBack = onBack,
+            )
             else -> PhonePlaceholderApp(
                 title = "Приложение",
                 iconRes = R.drawable.phone_icon_tile_hd,
@@ -651,6 +666,8 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         state = state,
         onBack = onBack,
         onChangeBalance = { viewModel.perform(DebugMenuViewEvent.ChangeBalance(it)) },
+        onChangeGrowthStage = { viewModel.perform(DebugMenuViewEvent.ChangeGrowthStage(it)) },
+        onUseLevelGrowthStage = { viewModel.perform(DebugMenuViewEvent.UseLevelGrowthStage) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
         onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
     )
@@ -661,12 +678,15 @@ private fun DebugMenuContent(
     state: DebugMenuViewState,
     onBack: () -> Unit,
     onChangeBalance: (Long) -> Unit,
+    onChangeGrowthStage: (Int) -> Unit,
+    onUseLevelGrowthStage: () -> Unit,
     onResetBalance: () -> Unit,
     onEndWeek: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(AppTheme.spacing.lg),
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
     ) {
@@ -714,6 +734,52 @@ private fun DebugMenuContent(
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            ) {
+                Text("Рост питомца", style = AppTheme.typography.body)
+                Text(
+                    text = "Стадия ${state.growthStage.ordinal + 1} / 3 · ${state.growthStage.title()}",
+                    style = AppTheme.typography.currency,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                Text(
+                    text = if (state.isGrowthStageOverridden) {
+                        "Проверка вручную · по уровню: ${state.growthStageFromLevel.title()}"
+                    } else "Автоматически по уровню",
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            FinPetButton(
+                text = "−1 стадия",
+                onClick = { onChangeGrowthStage(-1) },
+                enabled = !state.isChangingGrowthStage && state.growthStage != GrowthStage.BABY,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+            FinPetButton(
+                text = "+1 стадия",
+                onClick = { onChangeGrowthStage(1) },
+                enabled = !state.isChangingGrowthStage && state.growthStage != GrowthStage.ADULT,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+        }
+        FinPetOutlinedButton(
+            text = "Вернуть рост по уровню",
+            onClick = onUseLevelGrowthStage,
+            enabled = !state.isChangingGrowthStage && state.isGrowthStageOverridden,
+            modifier = Modifier.fillMaxWidth(),
+            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
         FinPetButton(
             text = if (state.isEndingWeek) "Завершаем неделю…" else "Завершить неделю",
             onClick = onEndWeek,
@@ -736,6 +802,12 @@ private fun DebugMenuContent(
             )
         }
     }
+}
+
+private fun GrowthStage.title(): String = when (this) {
+    GrowthStage.BABY -> "Малыш"
+    GrowthStage.TEEN -> "Подросток"
+    GrowthStage.ADULT -> "Взрослый"
 }
 
 @Composable
@@ -983,9 +1055,16 @@ private fun DebugMenuPreview() {
     FinPetTheme {
         Box(Modifier.background(AppTheme.colors.storefront.background)) {
             DebugMenuContent(
-                state = DebugMenuViewState(balanceRub = 350),
+                state = DebugMenuViewState(
+                    balanceRub = 350,
+                    growthStage = GrowthStage.TEEN,
+                    growthStageFromLevel = GrowthStage.BABY,
+                    isGrowthStageOverridden = true,
+                ),
                 onBack = {},
                 onChangeBalance = {},
+                onChangeGrowthStage = {},
+                onUseLevelGrowthStage = {},
                 onResetBalance = {},
                 onEndWeek = {},
             )

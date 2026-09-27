@@ -50,6 +50,7 @@ internal class PhoneMediator(
                 }
                 override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
                 override fun globalMessageController() = coreComponent.globalMessageController
+                override fun isDebugBuild() = BuildConfig.DEBUG
             }
         }
         PhoneFeature.getApi().initialize()

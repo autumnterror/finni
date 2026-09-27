@@ -7,6 +7,8 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.pet.api.PetApi
+import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.week.api.WeekApi
 import java.util.UUID
 import kotlinx.coroutines.Job
@@ -14,7 +16,11 @@ import kotlinx.coroutines.flow.collect
 
 internal data class DebugMenuViewState(
     val balanceRub: Long = 0,
+    val growthStage: GrowthStage = GrowthStage.BABY,
+    val growthStageFromLevel: GrowthStage = GrowthStage.BABY,
+    val isGrowthStageOverridden: Boolean = false,
     val isChanging: Boolean = false,
+    val isChangingGrowthStage: Boolean = false,
     val isEndingWeek: Boolean = false,
     val errorMessage: String? = null,
     val statusMessage: String? = null,
@@ -24,21 +30,31 @@ internal sealed interface DebugMenuViewEvent : CoreViewEvent {
     data object Load : DebugMenuViewEvent
     data class ChangeBalance(val deltaRub: Long) : DebugMenuViewEvent
     data object ResetBalance : DebugMenuViewEvent
+    data class ChangeGrowthStage(val delta: Int) : DebugMenuViewEvent
+    data object UseLevelGrowthStage : DebugMenuViewEvent
     data object EndWeek : DebugMenuViewEvent
 }
 
 internal class DebugMenuViewModel(
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
+    private val petApi: PetApi,
 ) : CoreViewModel<DebugMenuViewState, DebugMenuViewEvent>(DebugMenuViewState()) {
     private var observationJob: Job? = null
     private var changeJob: Job? = null
+    private var growthObservationJob: Job? = null
+    private var growthChangeJob: Job? = null
     private var endWeekJob: Job? = null
 
     override fun perform(viewEvent: DebugMenuViewEvent) {
         when (viewEvent) {
-            DebugMenuViewEvent.Load -> observeBalance()
+            DebugMenuViewEvent.Load -> {
+                observeBalance()
+                observeGrowthStage()
+            }
             is DebugMenuViewEvent.ChangeBalance -> changeBalance(viewEvent.deltaRub)
+            is DebugMenuViewEvent.ChangeGrowthStage -> changeGrowthStage(viewEvent.delta)
+            DebugMenuViewEvent.UseLevelGrowthStage -> useLevelGrowthStage()
             DebugMenuViewEvent.ResetBalance -> {
                 val balance = stateData.balanceRub
                 if (balance > 0) changeBalance(-balance)
@@ -59,6 +75,71 @@ internal class DebugMenuViewModel(
             economyApi.observeState().collect { economy ->
                 updateState { copy(balanceRub = economy.availableRub) }
             }
+        }
+    }
+
+    private fun observeGrowthStage() {
+        if (growthObservationJob?.isActive == true) return
+        growthObservationJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(errorMessage = "Не удалось загрузить стадию роста") }
+                true
+            },
+        ) {
+            petApi.observeGrowthState().collect { growth ->
+                updateState {
+                    copy(
+                        growthStage = growth.stage,
+                        growthStageFromLevel = growth.stageFromLevel,
+                        isGrowthStageOverridden = growth.isDebugOverride,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun changeGrowthStage(delta: Int) {
+        if (delta !in listOf(-1, 1) || growthChangeJob?.isActive == true) return
+        updateState { copy(isChangingGrowthStage = true, errorMessage = null) }
+        growthChangeJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(isChangingGrowthStage = false, errorMessage = "Не удалось изменить стадию роста") }
+                growthChangeJob = null
+                true
+            },
+        ) {
+            val growth = petApi.adjustGrowthStageForDebug(delta)
+            updateState {
+                copy(
+                    growthStage = growth.stage,
+                    isGrowthStageOverridden = growth.isDebugOverride,
+                    isChangingGrowthStage = false,
+                )
+            }
+            growthChangeJob = null
+        }
+    }
+
+    private fun useLevelGrowthStage() {
+        if (growthChangeJob?.isActive == true) return
+        updateState { copy(isChangingGrowthStage = true, errorMessage = null) }
+        growthChangeJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(isChangingGrowthStage = false, errorMessage = "Не удалось вернуть рост по уровню") }
+                growthChangeJob = null
+                true
+            },
+        ) {
+            val growth = petApi.useLevelGrowthStageForDebug()
+            updateState {
+                copy(
+                    growthStage = growth.stage,
+                    growthStageFromLevel = growth.stageFromLevel,
+                    isGrowthStageOverridden = false,
+                    isChangingGrowthStage = false,
+                )
+            }
+            growthChangeJob = null
         }
     }
 

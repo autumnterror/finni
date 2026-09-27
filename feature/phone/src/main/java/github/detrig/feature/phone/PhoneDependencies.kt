@@ -26,4 +26,5 @@ interface PhoneDependencies {
     fun dailySecurityEventProbability(): Double
     fun minimumHelpBalanceRub(): Long
     fun globalMessageController(): GlobalMessageController
+    fun isDebugBuild(): Boolean
 }

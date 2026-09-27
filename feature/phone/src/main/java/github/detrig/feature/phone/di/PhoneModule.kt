@@ -21,6 +21,7 @@ internal class PhoneModule(
     override val shopApi = dependencies.shopApi()
     private val weekApi = dependencies.weekApi()
     override val globalMessageController = dependencies.globalMessageController()
+    override val isDebugBuild = dependencies.isDebugBuild()
     private val economyApi = dependencies.economyApi()
     private val messagesRepository by lazy {
         PersistentMessagesRepository(
@@ -53,7 +54,7 @@ internal class PhoneModule(
         )
     }
 
-    override fun debugMenuViewModel() = DebugMenuViewModel(economyApi, weekApi)
+    override fun debugMenuViewModel() = DebugMenuViewModel(economyApi, weekApi, petApi)
 
     override fun messagesViewModel() = MessagesViewModel(
         repository = messagesRepository,

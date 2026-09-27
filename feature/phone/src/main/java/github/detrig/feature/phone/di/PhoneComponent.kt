@@ -17,6 +17,7 @@ internal interface PhoneComponent {
     val petApi: PetApi
     val shopApi: ShopApi
     val globalMessageController: GlobalMessageController
+    val isDebugBuild: Boolean
     fun debugMenuViewModel(): DebugMenuViewModel
     fun messagesViewModel(): MessagesViewModel
     fun roomNotificationsViewModel(): RoomNotificationsViewModel

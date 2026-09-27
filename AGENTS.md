@@ -908,8 +908,9 @@ Primary XP sources may include:
 
 Mini-games may award a small amount of XP.
 
-Current level thresholds are 0, 100, 250, 450 and 700 total XP. Levels 1-2
-use the baby stage, levels 3-4 use explorer, and level 5 uses companion. The
+Current level thresholds are 0, 100, 250, 450 and 700 total XP. The configured
+levels are divided into three consecutive growth bands: currently levels 1-2
+use baby, levels 3-4 use teen, and level 5 uses adult. The
 room HUD shows the XP bar at its top and the amount remaining to the next
 level; at level 5 it shows that the maximum level is reached. The first unlock
 of an introductory achievement grants 50 XP, and the first unlock of a learned
@@ -917,8 +918,15 @@ achievement grants 20 XP. Replaying the same unlock never grants XP again.
 
 MVP pet progression needs at least 3 visible stages:
 - baby;
-- explorer;
-- companion.
+- teen;
+- adult.
+
+The visual stage is derived from persisted XP progression and uses the shared
+hamster appearance, eyes, clothing, animation, and hit geometry. Stage changes
+must not reset the chosen appearance or equipped items.
+The debug menu may override the visual stage for testing and must offer a way
+back to level-based growth without changing XP or the saved level. The debug
+menu is available only in debug builds.
 
 Pet growth must be explainable by a series of financial/game decisions across multiple weeks.
 
