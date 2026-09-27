@@ -21,6 +21,8 @@ internal class PhoneApiImpl(
 
     override fun openMessages() = router.openApp(MESSAGES_APP_ID)
 
+    override suspend fun resetProgress(resetGame: suspend () -> Unit) = coordinator.resetProgress(resetGame)
+
     override fun entries(): EntryHostProviderInstaller = {
         composable<PhoneRoute.Home> { PhoneScreen(PhoneRoute.Home) }
         composable<PhoneRoute.App> { route -> PhoneScreen(route) }

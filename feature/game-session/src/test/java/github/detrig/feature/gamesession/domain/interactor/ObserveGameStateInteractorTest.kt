@@ -89,7 +89,15 @@ class ObserveGameStateInteractorTest {
         override suspend fun getGoalProgress(id: String): SavingsGoalProgress? = null
     }
     private abstract class ObserveOnlyApi : GameStateApi {
-        override suspend fun buyZone(offer: github.detrig.feature.gamestate.domain.model.ZoneOffer): github.detrig.feature.gamestate.domain.model.ZoneBuyResult = error("Not used by observation")
+        override suspend fun buyZone(offer: github.detrig.feature.gamestate.domain.model.ZoneOffer, useSavings: Boolean): github.detrig.feature.gamestate.domain.model.ZoneBuyResult = error("Not used by observation")
         override suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int = error("Not used by observation")
+        override suspend fun washPet() = error("Not used by observation")
+        override suspend fun adjustPetDirtStageForDebug(delta: Int): Int = error("Not used by observation")
+        override suspend fun feedPet(completion: github.detrig.feature.gamestate.domain.model.PetFeedingCompletion): github.detrig.feature.gamestate.domain.model.PetFeedingResult = error("Not used by observation")
+        override suspend fun applyDayNeeds() = error("Not used by observation")
+        override suspend fun hungerAlertState(): github.detrig.feature.gamestate.domain.model.HungerAlertState? = error("Not used by observation")
+        override suspend fun markHungerAlertDelivered(episode: Long): Boolean = error("Not used by observation")
+        override suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int = error("Not used by observation")
+        override suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int = error("Not used by observation")
     }
 }

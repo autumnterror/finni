@@ -4,6 +4,7 @@ import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.RejectionReason
+import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.pet.api.ClothingItem
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.planning.api.PlanningApi
@@ -16,7 +17,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal sealed interface ClothingPurchaseResult {
-    data object Purchased : ClothingPurchaseResult
+    data class Purchased(val happinessGained: Int) : ClothingPurchaseResult
     data object AlreadyOwned : ClothingPurchaseResult
     data class NotEnoughMoney(val missingRub: Long) : ClothingPurchaseResult
     data object Failed : ClothingPurchaseResult
@@ -27,6 +28,7 @@ internal class ClothingPurchaseInteractor(
     private val economy: EconomyApi,
     private val planning: PlanningApi,
     private val week: WeekApi,
+    private val gameState: GameStateApi,
 ) {
     private val mutex = Mutex()
 
@@ -48,8 +50,9 @@ internal class ClothingPurchaseInteractor(
             is FinancialOperationResult.AlreadyApplied -> {
                 pet.recordClothingPurchase(item.id)
                 pet.equipClothing(item.slot, item.id)
+                val happinessGained = tryRewardHappiness(item)
                 tryRecordPlanActual(operationId(item.id), weekNumber, item.priceRub)
-                ClothingPurchaseResult.Purchased
+                ClothingPurchaseResult.Purchased(happinessGained)
             }
             is FinancialOperationResult.Rejected -> when (result.reason) {
                 RejectionReason.INSUFFICIENT_AVAILABLE_FUNDS ->
@@ -71,10 +74,20 @@ internal class ClothingPurchaseInteractor(
                 val slot = itemsById.getValue(id).slot
                 pet.equipClothing(slot, id)
             }
+            tryRewardHappiness(itemsById.getValue(id))
             operation.context.metadata?.toLongOrNull()?.takeIf { it > 0 }?.let { weekNumber ->
                 tryRecordPlanActual(operation.id, weekNumber, operation.amountRub)
             }
         }
+    }
+
+    private suspend fun tryRewardHappiness(item: ClothingItem): Int = try {
+        gameState.rewardClothingPurchase(operationId(item.id), ClothingHappinessRewards.points(item))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        // The committed economy operation is replayed by reconcile after restoration.
+        0
     }
 
     private suspend fun tryRecordPlanActual(operationId: String, weekNumber: Long, amountRub: Long) {

@@ -29,6 +29,13 @@ internal class InventoryRepositoryImpl(
 
     override fun observeTable(): Flow<List<StagedFoodItem>> = table.asStateFlow()
 
+    override suspend fun resetProgress() = mutex.withLock {
+        storage.forceClear()
+        deliveredOperations.clear()
+        stock.value = emptyList()
+        table.value = emptyList()
+    }
+
     override suspend fun deliver(
         operationId: String,
         items: List<ProductQuantity>,

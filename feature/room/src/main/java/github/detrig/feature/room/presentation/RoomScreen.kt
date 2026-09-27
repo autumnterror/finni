@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.core.mvvm.command.CommandsQueueEffect
@@ -49,20 +50,20 @@ import github.detrig.feature.room.presentation.component.EarlyWeekParentHelpDial
 import github.detrig.feature.room.presentation.component.HouseHud
 import github.detrig.feature.room.presentation.component.AchievementsDialog
 import github.detrig.feature.room.presentation.component.RoomMenuDialog
+import github.detrig.feature.room.presentation.component.RoomSettingsDialog
 import github.detrig.feature.room.presentation.component.ParentGateDialog
 import github.detrig.feature.room.presentation.component.ParentCabinetDialog
 import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialog
 import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.BathroomScreen
+import github.detrig.feature.room.presentation.component.RoomMoneyEventDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
 import github.detrig.feature.room.presentation.component.DayTransitionDialog
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetDialogueAction
-import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
-import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetStorefrontCard
-import github.detrig.feature.room.domain.model.RoomProgress
 import github.detrig.feature.room.presentation.preview.RoomPreviewData
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.room.api.RoomPetInteraction
@@ -143,6 +144,8 @@ internal fun RoomScreen(
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
     var dialogZoneId by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val processLifecycle = ProcessLifecycleOwner.get().lifecycle
+    RoomAppEntryCoordinator.initialize()
     var resumed by remember(lifecycle) { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     val focused = LocalWindowInfo.current.isWindowFocused
     DisposableEffect(lifecycle) {
@@ -152,6 +155,17 @@ internal fun RoomScreen(
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
+    DisposableEffect(processLifecycle, viewModel, externalActive) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START && externalActive &&
+                RoomAppEntryCoordinator.consumePendingEntry()
+            ) {
+                viewModel.perform(RoomViewEvent.AppEntered)
+            }
+        }
+        processLifecycle.addObserver(observer)
+        onDispose { processLifecycle.removeObserver(observer) }
+    }
     val commands = remember(viewModel) { ImmutableCommandsQueue(viewModel.commands<RoomCommand>()) }
     CommandsQueueEffect(commands) { command ->
         when (command) {
@@ -159,7 +173,14 @@ internal fun RoomScreen(
             is RoomCommand.CloseBuyConfirmation -> if (dialogZoneId == command.zoneId) dialogZoneId = null
         }
     }
-    LaunchedEffect(viewModel) { viewModel.perform(RoomViewEvent.Load) }
+    LaunchedEffect(viewModel) {
+        viewModel.perform(RoomViewEvent.Load)
+    }
+    LaunchedEffect(viewModel, externalActive) {
+        if (externalActive && RoomAppEntryCoordinator.consumePendingEntry()) {
+            viewModel.perform(RoomViewEvent.AppEntered)
+        }
+    }
     val requestedZoneId by previewRequests.zoneId.collectAsState()
     val content = state as? RoomViewState.Content
     BackHandler(enabled = content?.bathroomView == BathroomView.WASHING) {
@@ -215,6 +236,9 @@ internal fun RoomScreen(
                 petContent = petContent,
                 onBack = { viewModel.perform(RoomViewEvent.BathroomBackClicked) },
                 onToolCompleted = { viewModel.perform(RoomViewEvent.BathToolClicked(it)) },
+                onToolSoundChanged = { step, running ->
+                    viewModel.perform(RoomViewEvent.BathToolSoundChanged(step, running))
+                },
                 onDryerRunningChanged = {
                     viewModel.perform(RoomViewEvent.BathDryerRunningChanged(it))
                 },
@@ -255,11 +279,12 @@ internal fun RoomScreen(
                 content?.firstWeekNeedHint == null &&
                 content?.firstWeekGoalHint == null &&
                 content?.parentHelpDialog == null && content?.allowanceNotice == null &&
-                content?.dayTransitionNotice == null &&
                 content?.savingsRecoveryPrompt == null &&
                 content?.parentHelpPhonePrompt == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
                 content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
+                content?.moneyEvent == null &&
+                content?.rulesRecapVisible != true &&
                 !showPhoneNotificationPrompt &&
                 (onboarding == null || hasAllowedOnboardingObjects),
             previewZoneId = requestedZoneId,
@@ -337,9 +362,10 @@ internal fun RoomScreen(
             (tableTapInstruction || !spotlightRequired || spotlightBounds != null)
     }
     when {
+        content?.weekResult != null -> Unit
         content?.sleepConfirmationVisible == true && canShowDialogs -> {
             SleepConfirmationDialog(
-                canSleep = content.progress.petHunger > 0,
+                canSleep = PetSatietyRules.canSleep(content.progress.petHunger),
                 onConfirm = { viewModel.perform(RoomViewEvent.SleepConfirmed) },
                 onPostpone = { viewModel.perform(RoomViewEvent.SleepPostponed) },
             )
@@ -357,10 +383,25 @@ internal fun RoomScreen(
                 onSaveAsGoal = { title -> viewModel.perform(RoomViewEvent.SaveZoneAsGoal(zone.id, title)) },
                 onDismiss = { dialogZoneId = null })
         }
+        content?.parentHelpDialog != null && canShowDialogs && externalActive && resumed &&
+            onboarding == null && content.planEditor == null && content.planDialogue == null &&
+            content.weekResult == null &&
+            content.menuDestination == RoomMenuDestination.NONE && !showPhoneNotificationPrompt -> {
+            LaunchedEffect(content.progress.weekNumber) {
+                viewModel.perform(RoomViewEvent.ClaimParentHelpDialog)
+            }
+            if (content.isParentHelpDialogClaimed) {
+                ParentHelpDialog(
+                    state = content.parentHelpDialog,
+                    isRequesting = content.isRequestingParentHelp,
+                    onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
+                    onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
+                )
+            }
+        }
         firstMoneyNotice != null -> {
             AllowanceReceiptDialog(
                 notice = firstMoneyNotice,
-                firstRun = true,
                 onDismiss = {
                     if (content?.allowanceNotice != null) {
                         viewModel.perform(RoomViewEvent.CloseAllowanceNotice)
@@ -402,20 +443,6 @@ internal fun RoomScreen(
                 onFinished = { viewModel.perform(RoomViewEvent.DismissSavingsRecoveryPrompt) },
             )
         }
-        content?.parentHelpDialog != null && canShowDialogs && externalActive && resumed &&
-            onboarding == null && content.planEditor == null && content.planDialogue == null &&
-            content.weekResult == null && content.dayTransitionNotice == null &&
-            content.menuDestination == RoomMenuDestination.NONE && !showPhoneNotificationPrompt -> {
-            LaunchedEffect(content.progress.weekNumber) {
-                viewModel.perform(RoomViewEvent.ParentHelpDialogShown)
-            }
-            ParentHelpDialog(
-                state = content.parentHelpDialog,
-                isRequesting = content.isRequestingParentHelp,
-                onOfferSelected = { viewModel.perform(RoomViewEvent.ParentHelpOfferClicked(it)) },
-                onDismiss = { viewModel.perform(RoomViewEvent.CloseParentHelpDialog) },
-            )
-        }
         content?.parentHelpPhonePrompt != null && canShowDialogs -> {
             FinPetDialogueDialog(
                 speakerName = petName,
@@ -425,7 +452,25 @@ internal fun RoomScreen(
                 onFinished = { viewModel.perform(RoomViewEvent.CloseParentHelpPhonePrompt) },
             )
         }
-        content?.impulseWish != null && canShowDialogs -> {
+        content?.moneyEvent != null && canShowDialogs && content.dayTransitionNotice == null -> {
+            RoomMoneyEventDialog(
+                event = content.moneyEvent,
+                availableRub = content.progress.balanceRub.toLong(),
+                savingsRub = content.progress.savingsRub,
+                canAskParents = content.progress.debtRub == 0L,
+                hasActiveGoal = content.activeSavingsGoal != null,
+                error = content.moneyEventError,
+                isResolving = content.resolvingMoneyEvent,
+                petName = petName,
+                petPortrait = petPortrait,
+                onResolve = { viewModel.perform(RoomViewEvent.ResolveMoneyEvent(it)) },
+                onLater = { viewModel.perform(RoomViewEvent.CloseMoneyEvent) },
+                onOpenSavings = { viewModel.perform(RoomViewEvent.OpenSavingsForMoneyEvent) },
+                onAskParents = { viewModel.perform(RoomViewEvent.RequestParentHelpForMoneyEvent) },
+                onParentCoverage = { viewModel.perform(RoomViewEvent.CoverMoneyEventWithParents) },
+            )
+        }
+        content?.impulseWish != null && canShowDialogs && content.dayTransitionNotice == null -> {
             RoomImpulseWishDialog(
                 wish = content.impulseWish,
                 petName = petName,
@@ -493,15 +538,16 @@ internal fun RoomScreen(
                 editor = content.planEditor,
                 weekNumber = content.progress.weekNumber,
                 availableRub = content.progress.balanceRub.toLong(),
+                knownMandatoryExpenseRub = content.progress.knownMandatoryExpenseRub,
                 isSaving = content.isSavingPlan,
                 petName = petName,
                 petPortrait = petPortrait,
+                newWeekPromptVisible = content.newWeekPlanPromptVisible,
                 tutorialStep = content.planTutorialStep,
-                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(
-                    availableRub = content.progress.balanceRub.toLong(),
-                ),
+                feedbackCards = (content.planDialogue as? PlanDialogueState.NeedsChanges)?.cards(),
                 dialogueTopInset = 0.dp,
                 onTutorialNext = { viewModel.perform(RoomViewEvent.PlanTutorialNext) },
+                onNewWeekPromptDismiss = { viewModel.perform(RoomViewEvent.DismissNewWeekPlanPrompt) },
                 onFeedbackEdit = { viewModel.perform(RoomViewEvent.PlanDialogueEditRequested) },
                 onFeedbackFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
                 onPercentChanged = { category, percent ->
@@ -518,14 +564,6 @@ internal fun RoomScreen(
                 viewModel.perform(RoomViewEvent.ClosePlanSummary)
             }
         }
-        content?.weekResult != null && canShowDialogs -> {
-            WeeklyPlanProgressDialog(
-                progress = content.weekResult,
-                isWeekResult = true,
-                remainingRub = content.progress.balanceRub.toLong(),
-                onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
-            )
-        }
         content?.menuDestination == RoomMenuDestination.MENU && canShowDialogs -> {
             RoomMenuDialog(
                 progress = content.progress,
@@ -533,8 +571,16 @@ internal fun RoomScreen(
                 showAllUnlocked = content.areMenuAchievementsExpanded,
                 onToggleUnlocked = { viewModel.perform(RoomViewEvent.ToggleMenuAchievements) },
                 onShowAllAchievements = { viewModel.perform(RoomViewEvent.ShowAllAchievements) },
+                onSettings = { viewModel.perform(RoomViewEvent.SettingsClicked) },
                 onParentCabinet = { viewModel.perform(RoomViewEvent.ParentCabinetClicked) },
                 onDismiss = { viewModel.perform(RoomViewEvent.CloseMenu) },
+            )
+        }
+        content?.menuDestination == RoomMenuDestination.SETTINGS && canShowDialogs -> {
+            RoomSettingsDialog(
+                isSoundEnabled = content.isSoundEnabled,
+                onSoundEnabledChange = { viewModel.perform(RoomViewEvent.SoundSettingChanged(it)) },
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseSettings) },
             )
         }
         content?.menuDestination == RoomMenuDestination.ALL_ACHIEVEMENTS && canShowDialogs -> {
@@ -567,6 +613,19 @@ internal fun RoomScreen(
                 onFinished = { viewModel.perform(RoomViewEvent.PlanDialogueFinished) },
             )
         }
+        content?.rulesRecapVisible == true && canShowDialogs && content.dayTransitionNotice == null -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(
+                    stringResource(R.string.finance_rules_plan),
+                    stringResource(R.string.finance_rules_purchase),
+                    stringResource(R.string.finance_rules_event),
+                    stringResource(R.string.finance_rules_wish),
+                ),
+                portrait = petPortrait,
+                onFinished = { viewModel.perform(RoomViewEvent.CloseRulesRecap) },
+            )
+        }
         visibleOnboarding != null -> {
             FirstRunOnboardingDialog(
                 state = visibleOnboarding,
@@ -584,9 +643,6 @@ internal fun RoomScreen(
                 },
                 onShowWeekSummary = {
                     viewModel.perform(RoomViewEvent.FirstRunShowWeekSummary)
-                },
-                onStartNewWeekPlan = {
-                    viewModel.perform(RoomViewEvent.FirstRunStartNewWeekPlan)
                 },
             )
         }
@@ -608,76 +664,26 @@ internal fun RoomScreen(
             )
         }
     }
-    if (content?.dayTransitionNotice != null && canShowDialogs) {
+    if (content?.dayTransitionNotice != null && content.weekResult == null &&
+        content.parentHelpDialog == null && content.allowanceNotice == null &&
+        externalActive && canShowDialogs
+    ) {
         DayTransitionDialog(content.dayTransitionNotice) {
             viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
         }
     }
-    if (content?.weekSummaryTutorialStep != null && canShowDialogs) {
-        FinPetDialogueDialog(
-            speakerName = petName,
-            cards = listOf(stringResource(when (content.weekSummaryTutorialStep) {
-                WeekSummaryTutorialStep.INCOME -> R.string.onboarding_week_summary_income
-                WeekSummaryTutorialStep.EXPENSES -> R.string.onboarding_week_summary_expenses
-                WeekSummaryTutorialStep.REMAINDER -> R.string.onboarding_week_summary_remainder
-            })),
-            portrait = petPortrait,
-            advanceOnTap = false,
-            actions = listOf(FinPetDialogueAction(
-                id = "next",
-                label = stringResource(R.string.onboarding_next),
-            )),
-            onActionSelected = {
-                viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext)
-            },
-            onFinished = { viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext) },
+    if (content?.weekResult != null && canShowDialogs) {
+        WeeklyPlanProgressDialog(
+            progress = content.weekResult,
+            isWeekResult = true,
+            remainingRub = content.progress.balanceRub.toLong(),
+            tutorialStep = content.weekSummaryTutorialStep,
+            onTutorialNext = { viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext) },
+            onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },
         )
     }
     LaunchedEffect(zone?.access, content != null) {
         if (content != null && zone?.access !is RoomZoneAccess.Buyable) dialogZoneId = null
-    }
-}
-
-@Composable
-private fun RoomTopStatus(
-    progress: RoomProgress,
-    showDay: Boolean = true,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier.fillMaxWidth()) {
-        val balanceDescription = stringResource(R.string.house_balance_accessibility, progress.balanceRub)
-        FinPetStorefrontBalanceBadge(
-            balanceRub = progress.balanceRub.toLong(),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(AppTheme.spacing.md)
-                .semantics { contentDescription = balanceDescription }
-                .testTag("house_balance"),
-        )
-        if (showDay) {
-            FinPetCard(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
-                    .padding(AppTheme.spacing.md)
-                    .testTag("house_day_counter"),
-            ) {
-                Text(
-                    text = stringResource(R.string.house_current_day, progress.dayOfWeek),
-                    modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
-                    style = AppTheme.typography.bodyStrong,
-                )
-            }
-        }
-    }
-}
-
-@Preview(name = "Баланс и день комнаты", widthDp = 360, heightDp = 120, showBackground = true)
-@Composable
-private fun RoomTopStatusPreview() {
-    FinPetTheme {
-        RoomTopStatus(RoomPreviewData.state.progress)
     }
 }
 
@@ -700,21 +706,18 @@ private val spotlightSteps = setOf(
 )
 
 @Composable
-private fun PlanDialogueState.cards(availableRub: Long = 0): List<String> = when (this) {
+private fun PlanDialogueState.cards(): List<String> = when (this) {
     is PlanDialogueState.NeedsChanges -> listOf(
         when (reason) {
             PlanAdjustmentReason.MANDATORY_TOO_LOW -> stringResource(
                 R.string.plan_feedback_mandatory,
-                recommendedPercent,
+                requiredRub,
             )
             PlanAdjustmentReason.RESERVE_TOO_LOW -> stringResource(
                 R.string.plan_feedback_reserve,
-                availableRub * recommendedPercent / 100,
+                requiredRub,
             )
-            PlanAdjustmentReason.SAVINGS_TOO_LOW -> stringResource(
-                R.string.plan_feedback_savings,
-                availableRub * recommendedPercent / 100,
-            )
+            PlanAdjustmentReason.SAVINGS_TOO_LOW -> stringResource(R.string.plan_feedback_savings)
         },
     )
     is PlanDialogueState.Saved -> listOf(stringResource(
@@ -730,8 +733,8 @@ private fun PlanDialoguePreview() {
             speakerName = "Барсик",
             cards = PlanDialogueState.NeedsChanges(
                 reason = PlanAdjustmentReason.MANDATORY_TOO_LOW,
-                recommendedPercent = 40,
-            ).cards(availableRub = 500),
+                requiredRub = 400,
+            ).cards(),
             portrait = { modifier ->
                 Box(
                     modifier = modifier.background(AppTheme.colors.actionSecondary),

@@ -3,6 +3,7 @@ package github.detrig.feature.room.presentation
 import github.detrig.core.mvvm.CoreViewEvent
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.room.domain.model.MoneyAllocation
 
 internal sealed interface RoomViewEvent : CoreViewEvent {
     data class SavePosition(val position: HousePosition) : RoomViewEvent
@@ -12,6 +13,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object BathroomBackClicked : RoomViewEvent
     data object BathtubClicked : RoomViewEvent
     data class BathToolClicked(val step: BathStep) : RoomViewEvent
+    data class BathToolSoundChanged(val step: BathStep, val running: Boolean) : RoomViewEvent
     data class BathDryerRunningChanged(val running: Boolean) : RoomViewEvent
     data object SleepConfirmed : RoomViewEvent
     data object SleepPostponed : RoomViewEvent
@@ -24,7 +26,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object OpenSavingsFromRecoveryPrompt : RoomViewEvent
     data object DismissSavingsRecoveryPrompt : RoomViewEvent
     data class ParentHelpOfferClicked(val offerId: String) : RoomViewEvent
-    data object ParentHelpDialogShown : RoomViewEvent
+    data object ClaimParentHelpDialog : RoomViewEvent
     data object CloseParentHelpDialog : RoomViewEvent
     data object CloseParentHelpPhonePrompt : RoomViewEvent
     data object FeedingClicked : RoomViewEvent
@@ -32,22 +34,32 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object CloseEarlyWeekParentHelpNotice : RoomViewEvent
     data object CloseDayTransitionNotice : RoomViewEvent
     data object CloseImpulseWish : RoomViewEvent
+    data object CloseMoneyEvent : RoomViewEvent
+    data class ResolveMoneyEvent(val allocation: MoneyAllocation? = null) : RoomViewEvent
+    data object OpenSavingsForMoneyEvent : RoomViewEvent
+    data object RequestParentHelpForMoneyEvent : RoomViewEvent
+    data object CoverMoneyEventWithParents : RoomViewEvent
+    data object CloseRulesRecap : RoomViewEvent
     data object FirstRunOnboardingContinue : RoomViewEvent
     data object FirstRunOpenPhone : RoomViewEvent
     data object FirstRunOpenFridge : RoomViewEvent
     data object FirstRunOpenTable : RoomViewEvent
     data object FirstRunShowWeekSummary : RoomViewEvent
-    data object FirstRunStartNewWeekPlan : RoomViewEvent
+    data object DismissNewWeekPlanPrompt : RoomViewEvent
     data object FirstRunMoneyNoticeClosed : RoomViewEvent
     data class FirstRunDepositSelected(val depositNow: Boolean) : RoomViewEvent
     data object Resumed : RoomViewEvent
     data object Paused : RoomViewEvent
+    data object AppEntered : RoomViewEvent
     data object SavePlanClicked : RoomViewEvent
     data object PlanTutorialNext : RoomViewEvent
     data object PlanDialogueFinished : RoomViewEvent
     data object PlanDialogueEditRequested : RoomViewEvent
     data object MenuClicked : RoomViewEvent
     data object CloseMenu : RoomViewEvent
+    data object SettingsClicked : RoomViewEvent
+    data object CloseSettings : RoomViewEvent
+    data class SoundSettingChanged(val enabled: Boolean) : RoomViewEvent
     data object ToggleMenuAchievements : RoomViewEvent
     data object ShowAllAchievements : RoomViewEvent
     data object CloseAchievements : RoomViewEvent

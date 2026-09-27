@@ -115,7 +115,7 @@ fun ShopDecisionEvent?.priceLine(
 
 /** Probabilities are intentionally independent so debug builds can force each scenario separately. */
 data class ShopLearningEventConfig(
-    val promotionEventProbability: Double = 0.25,
+    val promotionEventProbability: Double = 0.15,
     val impulseWishEventProbability: Double = 0.25,
     /** Day 1 plus this delay is the first day on which a promotion may appear. */
     val firstPromotionDelayDays: Long = 3,
@@ -123,7 +123,7 @@ data class ShopLearningEventConfig(
     val receiptCheckEventProbability: Double = 0.0,
     val promotionDiscountPercent: Int = 30,
     /** Conditional probability of 2+1 after a promotion event has already been selected. */
-    val buyTwoGetOnePromotionProbability: Double = 0.5,
+    val buyTwoGetOnePromotionProbability: Double = 0.25,
     val randomSeed: Long = 6_202L,
     val forcedEventType: ShopDecisionEventType? = null,
     val forcedPromotionKind: ShopPromotionKind? = null,

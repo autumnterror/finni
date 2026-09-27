@@ -23,6 +23,7 @@ fun PetPortrait(
     profile: PetProfile,
     modifier: Modifier = Modifier,
     growthStage: GrowthStage = GrowthStage.BABY,
+    dirtStage: Int = 0,
 ) {
     if (profile.species == github.detrig.feature.pet.domain.model.PetSpecies.Hamster) {
         val assets = rememberHamsterAssets()
@@ -33,6 +34,7 @@ fun PetPortrait(
                 stage = growthStage,
                 modifier = modifier,
                 clothingLayers = rememberClothingLayers(profile.clothing.equippedBySlot, profile.hamsterAppearance),
+                dirtStage = dirtStage,
             )
         }
         return

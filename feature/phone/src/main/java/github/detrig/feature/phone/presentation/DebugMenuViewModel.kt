@@ -7,9 +7,11 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.week.api.WeekApi
+import github.detrig.feature.phone.navigation.PhoneRouter
 import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
@@ -19,9 +21,13 @@ internal data class DebugMenuViewState(
     val growthStage: GrowthStage = GrowthStage.BABY,
     val growthStageFromLevel: GrowthStage = GrowthStage.BABY,
     val isGrowthStageOverridden: Boolean = false,
-    val isChanging: Boolean = false,
     val isChangingGrowthStage: Boolean = false,
+    val dirtStage: Int = 0,
+    val isChanging: Boolean = false,
+    val isChangingDirtStage: Boolean = false,
     val isEndingWeek: Boolean = false,
+    val isResettingProgress: Boolean = false,
+    val pendingReset: DebugProgressResetMode? = null,
     val errorMessage: String? = null,
     val statusMessage: String? = null,
 ) : CoreViewState
@@ -32,34 +38,57 @@ internal sealed interface DebugMenuViewEvent : CoreViewEvent {
     data object ResetBalance : DebugMenuViewEvent
     data class ChangeGrowthStage(val delta: Int) : DebugMenuViewEvent
     data object UseLevelGrowthStage : DebugMenuViewEvent
+    data class ChangeDirtStage(val delta: Int) : DebugMenuViewEvent
     data object EndWeek : DebugMenuViewEvent
+    data class RequestProgressReset(val mode: DebugProgressResetMode) : DebugMenuViewEvent
+    data object CancelProgressReset : DebugMenuViewEvent
+    data object ConfirmProgressReset : DebugMenuViewEvent
+}
+
+internal enum class DebugProgressResetMode(val skipOnboarding: Boolean) {
+    BEFORE_ONBOARDING(skipOnboarding = false),
+    AFTER_ONBOARDING(skipOnboarding = true),
 }
 
 internal class DebugMenuViewModel(
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
+    private val gameStateApi: GameStateApi,
+    private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
     private val petApi: PetApi,
+    private val router: PhoneRouter,
 ) : CoreViewModel<DebugMenuViewState, DebugMenuViewEvent>(DebugMenuViewState()) {
     private var observationJob: Job? = null
+    private var dirtObservationJob: Job? = null
     private var changeJob: Job? = null
     private var growthObservationJob: Job? = null
     private var growthChangeJob: Job? = null
+    private var dirtChangeJob: Job? = null
     private var endWeekJob: Job? = null
+    private var resetProgressJob: Job? = null
 
     override fun perform(viewEvent: DebugMenuViewEvent) {
         when (viewEvent) {
             DebugMenuViewEvent.Load -> {
                 observeBalance()
                 observeGrowthStage()
+                observeDirtStage()
             }
             is DebugMenuViewEvent.ChangeBalance -> changeBalance(viewEvent.deltaRub)
             is DebugMenuViewEvent.ChangeGrowthStage -> changeGrowthStage(viewEvent.delta)
             DebugMenuViewEvent.UseLevelGrowthStage -> useLevelGrowthStage()
+            is DebugMenuViewEvent.ChangeDirtStage -> changeDirtStage(viewEvent.delta)
             DebugMenuViewEvent.ResetBalance -> {
                 val balance = stateData.balanceRub
                 if (balance > 0) changeBalance(-balance)
             }
             DebugMenuViewEvent.EndWeek -> endWeek()
+            is DebugMenuViewEvent.RequestProgressReset ->
+                updateState { copy(pendingReset = viewEvent.mode, errorMessage = null) }
+            DebugMenuViewEvent.CancelProgressReset ->
+                if (!stateData.isResettingProgress) updateState { copy(pendingReset = null) }
+            DebugMenuViewEvent.ConfirmProgressReset ->
+                stateData.pendingReset?.let(::resetProgress)
         }
     }
 
@@ -98,8 +127,24 @@ internal class DebugMenuViewModel(
         }
     }
 
+    private fun observeDirtStage() {
+        if (dirtObservationJob?.isActive == true) return
+        dirtObservationJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(errorMessage = "Не удалось загрузить загрязнение") }
+                true
+            },
+        ) {
+            val gameState = gameStateApi.initialize()
+            updateState { copy(dirtStage = gameState.pet.dirtStage) }
+            gameStateApi.observeState().collect { state ->
+                state?.let { updateState { copy(dirtStage = it.pet.dirtStage) } }
+            }
+        }
+    }
+
     private fun changeGrowthStage(delta: Int) {
-        if (delta !in listOf(-1, 1) || growthChangeJob?.isActive == true) return
+        if (delta !in listOf(-1, 1) || growthChangeJob?.isActive == true || stateData.isResettingProgress) return
         updateState { copy(isChangingGrowthStage = true, errorMessage = null) }
         growthChangeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -121,7 +166,7 @@ internal class DebugMenuViewModel(
     }
 
     private fun useLevelGrowthStage() {
-        if (growthChangeJob?.isActive == true) return
+        if (growthChangeJob?.isActive == true || stateData.isResettingProgress) return
         updateState { copy(isChangingGrowthStage = true, errorMessage = null) }
         growthChangeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -143,8 +188,24 @@ internal class DebugMenuViewModel(
         }
     }
 
+    private fun changeDirtStage(delta: Int) {
+        if (delta !in listOf(-1, 1) || dirtChangeJob?.isActive == true || stateData.isResettingProgress) return
+        updateState { copy(isChangingDirtStage = true, errorMessage = null) }
+        dirtChangeJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(isChangingDirtStage = false, errorMessage = "Не удалось изменить загрязнение") }
+                dirtChangeJob = null
+                true
+            },
+        ) {
+            val stage = gameStateApi.adjustPetDirtStageForDebug(delta)
+            updateState { copy(dirtStage = stage, isChangingDirtStage = false) }
+            dirtChangeJob = null
+        }
+    }
+
     private fun changeBalance(deltaRub: Long) {
-        if (deltaRub == 0L || changeJob?.isActive == true) return
+        if (deltaRub == 0L || changeJob?.isActive == true || stateData.isResettingProgress) return
         updateState { copy(isChanging = true, errorMessage = null) }
         changeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -176,7 +237,7 @@ internal class DebugMenuViewModel(
     }
 
     private fun endWeek() {
-        if (endWeekJob?.isActive == true) return
+        if (endWeekJob?.isActive == true || stateData.isResettingProgress) return
         updateState { copy(isEndingWeek = true, errorMessage = null, statusMessage = null) }
         endWeekJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -204,6 +265,33 @@ internal class DebugMenuViewModel(
                 )
             }
             endWeekJob = null
+        }
+    }
+
+    private fun resetProgress(mode: DebugProgressResetMode) {
+        if (resetProgressJob?.isActive == true || changeJob?.isActive == true ||
+            endWeekJob?.isActive == true || growthChangeJob?.isActive == true ||
+            dirtChangeJob?.isActive == true) return
+        updateState {
+            copy(isResettingProgress = true, pendingReset = null, errorMessage = null, statusMessage = null)
+        }
+        resetProgressJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState {
+                    copy(
+                        isResettingProgress = false,
+                        errorMessage = "Не удалось сбросить прогресс",
+                    )
+                }
+                resetProgressJob = null
+                true
+            },
+        ) {
+            resetDemoProgress(mode.skipOnboarding)
+            updateState { copy(isResettingProgress = false) }
+            petApi.resetProfile()
+            router.close()
+            resetProgressJob = null
         }
     }
 }

@@ -1,5 +1,10 @@
 package github.detrig.feature.room.domain.model
 
+import github.detrig.feature.economy.domain.EconomyState
+import github.detrig.feature.economy.domain.ParentHelpRequestResult
+import github.detrig.feature.economy.domain.ParentHelpState
+import github.detrig.feature.economy.domain.PeriodicIncome
+import github.detrig.feature.economy.domain.RejectionReason
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,6 +31,51 @@ class AutomaticParentHelpPromptTest {
         assertFalse(canShow(hasActiveParentHelp = true))
     }
 
+    @Test
+    fun requestInProgressKeepsHelpWindowVisibleWhileBalanceStateUpdates() {
+        assertTrue(shouldRetainParentHelpDialog(
+            hasActiveParentHelp = false,
+            isRequestingParentHelp = true,
+            helpIsAvailable = false,
+        ))
+    }
+
+    @Test
+    fun helpWindowClosesWhenHelpIsNoLongerAvailableAndNoRequestIsRunning() {
+        assertFalse(shouldRetainParentHelpDialog(
+            hasActiveParentHelp = false,
+            isRequestingParentHelp = false,
+            helpIsAvailable = false,
+        ))
+        assertTrue(shouldRetainParentHelpDialog(
+            hasActiveParentHelp = true,
+            isRequestingParentHelp = false,
+            helpIsAvailable = false,
+        ))
+    }
+
+    @Test
+    fun acceptedOrAlreadyActiveRequestClosesTheAutomaticOfferDialog() {
+        val help = parentHelpState()
+
+        assertTrue(shouldCloseAutomaticParentHelpDialog(
+            ParentHelpRequestResult.Accepted(help, economyState()),
+            hasActiveParentHelp = false,
+        ))
+        assertTrue(shouldCloseAutomaticParentHelpDialog(
+            ParentHelpRequestResult.AlreadyActive(help),
+            hasActiveParentHelp = true,
+        ))
+    }
+
+    @Test
+    fun rejectedRequestClosesOnlyWhenHelpWasTakenElsewhere() {
+        val rejected = ParentHelpRequestResult.Rejected(RejectionReason.INVALID_AMOUNT, economyState())
+
+        assertFalse(shouldCloseAutomaticParentHelpDialog(rejected, hasActiveParentHelp = false))
+        assertTrue(shouldCloseAutomaticParentHelpDialog(rejected, hasActiveParentHelp = true))
+    }
+
     private fun canShow(
         onboardingCompleted: Boolean = true,
         availableRub: Long = 20,
@@ -41,5 +91,20 @@ class AutomaticParentHelpPromptTest {
         hasActiveParentHelp = hasActiveParentHelp,
         minimumRequiredBalanceRub = 100,
         alreadyShownInWeek = alreadyShownInWeek,
+    )
+
+    private fun economyState() = EconomyState(
+        availableRub = 20,
+        savingsRub = 0,
+        debtRub = 0,
+        periodicIncome = PeriodicIncome(amountRub = 1, periodMillis = 1, nextAtMillis = 1),
+    )
+
+    private fun parentHelpState() = ParentHelpState(
+        offerId = "offer",
+        receivedRub = 100,
+        totalRepaymentRub = 110,
+        remainingRub = 110,
+        paymentsRemaining = 2,
     )
 }

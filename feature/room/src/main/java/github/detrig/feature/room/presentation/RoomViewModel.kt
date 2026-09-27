@@ -5,6 +5,8 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.core.audio.GameAudio
 import github.detrig.core.audio.SilentGameAudio
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
+import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
 import github.detrig.feature.room.domain.interactor.EndDayInteractor
 import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
@@ -18,6 +20,9 @@ import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
+import github.detrig.feature.room.domain.interactor.RoomMoneyEventInteractor
+import github.detrig.feature.room.domain.model.MoneyAllocation
+import github.detrig.feature.room.domain.model.MoneyEventResolution
 import github.detrig.feature.room.domain.interactor.ObserveRoomZonesInteractor
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.domain.model.RoomData
@@ -30,17 +35,23 @@ import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
+import github.detrig.feature.room.domain.model.shouldCloseAutomaticParentHelpDialog
 import github.detrig.feature.room.domain.model.shouldOfferAutomaticParentHelp
+import github.detrig.feature.room.domain.model.shouldRetainParentHelpDialog
 import github.detrig.feature.room.api.FirstRunGuideApi
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.inventory.api.InventoryApi
+import github.detrig.products.GroceryCatalog
 import kotlinx.coroutines.flow.first
 import github.detrig.feature.room.presentation.model.HouseLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
+import github.detrig.feature.planning.domain.WeeklyPlan
+import github.detrig.feature.planning.domain.PlanWeekContext
 import github.detrig.feature.economy.domain.LowBalanceRecoveryAction
 import github.detrig.feature.economy.domain.lowBalanceRecoveryAction
 import github.detrig.feature.economy.domain.canOfferParentHelp
@@ -55,6 +66,8 @@ private data class ObservedRoomData(
     val achievements: List<WeeklyPlanAchievement>,
     val parentRows: List<ParentProgressRow>,
     val guideStep: FirstRunOnboardingStep,
+    val resetVersion: Int,
+    val hasFoodInFridge: Boolean = false,
 )
 
 internal class RoomViewModel(
@@ -74,29 +87,42 @@ internal class RoomViewModel(
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
     private val minimumProductPriceRub: Long,
     private val loadRoomImpulseWish: LoadRoomImpulseWishInteractor,
+    private val moneyEvents: RoomMoneyEventInteractor,
     private val router: RoomRouter,
     private val positions: HousePositionRepository,
     private val onboardingRepository: FirstRunOnboardingRepository,
     private val firstRunGuide: FirstRunGuideApi,
     private val inventoryApi: InventoryApi,
     private val gameAudio: GameAudio = SilentGameAudio,
+    private val gameStateApi: GameStateApi,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
     private var buyJob: Job? = null
     private var sleepJob: Job? = null
+    private var washJob: Job? = null
     private var savePlanJob: Job? = null
     private var parentHelpJob: Job? = null
     private var lowBalanceJob: Job? = null
+    private var pendingLowBalanceProgress: github.detrig.feature.room.domain.model.RoomProgress? = null
+    private val observedRoomProgress = MutableStateFlow<github.detrig.feature.room.domain.model.RoomProgress?>(null)
     private var onboardingRefreshJob: Job? = null
     private var firstWeekNeedHintJob: Job? = null
     private var firstWeekGoalHintJob: Job? = null
     private var impulseWishJob: Job? = null
+    private var moneyEventJob: Job? = null
+    private var rulesRecapJob: Job? = null
+    private var rulesRecapChecked = false
+    private val checkedMoneyEventDays = mutableSetOf<Long>()
     private val checkedImpulseWishDays = mutableSetOf<Long>()
     private val promptedSavingsRecoveryWeeks = mutableSetOf<Long>()
     private val hintedHungerDays = mutableSetOf<Long>()
+    private val greetedPlanWeeks = mutableSetOf<Long>()
+    private val groceryCatalog = GroceryCatalog()
     private var firstWeekGoalHintShown = false
+    private var appEntryNoticePending = false
     private val reconciledPlanWeeks = mutableSetOf<Long>()
     private var reconcilingPlanWeek: Long? = null
+    private var observedResetVersion = firstRunGuide.resetVersion.value
     // Read this small preference before the first composition of HouseScene. Loading it
     // from Dispatchers.IO after rendering caused one frame at the default center position.
     private var savedPosition = HouseLayout.restored(positions.load())
@@ -126,10 +152,22 @@ internal class RoomViewModel(
             RoomViewEvent.BathroomBackClicked -> backFromBathroom()
             RoomViewEvent.BathtubClicked -> openBathCloseup()
             is RoomViewEvent.BathToolClicked -> useBathTool(viewEvent.step)
+            is RoomViewEvent.BathToolSoundChanged -> {
+                val cue = when (viewEvent.step) {
+                    BathStep.SOAP -> RoomAudioCues.SoapRubbing
+                    BathStep.RINSE -> RoomAudioCues.ShowerWater
+                    else -> return
+                }
+                val content = nullableState<RoomViewState.Content>()
+                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING) {
+                    gameAudio.play(cue)
+                } else {
+                    gameAudio.stop(cue.owner)
+                }
+            }
             is RoomViewEvent.BathDryerRunningChanged -> {
                 val content = nullableState<RoomViewState.Content>()
-                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING &&
-                    content.bathStep == BathStep.DRY) {
+                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING) {
                     gameAudio.play(RoomAudioCues.HairDryer)
                 } else {
                     gameAudio.stop(RoomAudioCues.HairDryer.owner)
@@ -139,9 +177,9 @@ internal class RoomViewModel(
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openPiggyBank()
-            RoomViewEvent.TestsClicked,
             RoomViewEvent.FoodClicked,
             RoomViewEvent.FeedingClicked -> router.showEntryComingSoon()
+            RoomViewEvent.TestsClicked -> router.openTests()
             RoomViewEvent.DishesClicked -> router.showEntryComingSoon()
             RoomViewEvent.OpenSavingsFromRecoveryPrompt -> {
                 nullableState<RoomViewState.Content>()?.let {
@@ -154,13 +192,22 @@ internal class RoomViewModel(
                 handleLowBalance(it.progress)
             }
             is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
-            RoomViewEvent.ParentHelpDialogShown -> nullableState<RoomViewState.Content>()?.let {
-                if (it.parentHelpDialog != null) parentHelpPromptRepository.markShownInWeek(it.progress.weekNumber)
+            RoomViewEvent.ClaimParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
+                if (it.parentHelpDialog != null && !it.isParentHelpDialogClaimed) {
+                    if (parentHelpPromptRepository.tryMarkShownInWeek(it.progress.weekNumber)) {
+                        updateState(it.copy(isParentHelpDialogClaimed = true))
+                    } else {
+                        updateState(it.copy(
+                            parentHelpDialog = null,
+                            isParentHelpDialogClaimed = false,
+                        ))
+                    }
+                }
             }
             RoomViewEvent.CloseParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
-                parentHelpPromptRepository.markShownInWeek(it.progress.weekNumber)
                 updateState(it.copy(
                     parentHelpDialog = null,
+                    isParentHelpDialogClaimed = false,
                     parentHelpPhonePrompt = if (it.parentHelpDialog?.activeHelp == null) {
                         ParentHelpPhonePromptState
                     } else {
@@ -181,14 +228,35 @@ internal class RoomViewModel(
                 updateState(it.copy(dayTransitionNotice = null))
             }
             RoomViewEvent.CloseImpulseWish -> nullableState<RoomViewState.Content>()?.let {
+                val wish = it.impulseWish
                 updateState(it.copy(impulseWish = null))
+                if (wish != null && wish.kind !=
+                    github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.FREE
+                ) launchCoroutine(handleAction = ExceptionConsumer { true }) {
+                    loadRoomImpulseWish.recordDeclined(wish)
+                }
+            }
+            RoomViewEvent.CloseMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(moneyEvent = null, moneyEventError = null))
+            }
+            is RoomViewEvent.ResolveMoneyEvent -> resolveMoneyEvent(viewEvent.allocation)
+            RoomViewEvent.OpenSavingsForMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(moneyEvent = null, moneyEventError = null))
+                openPiggyBank()
+            }
+            RoomViewEvent.RequestParentHelpForMoneyEvent -> showParentHelpForMoneyEvent()
+            RoomViewEvent.CoverMoneyEventWithParents -> resolveMoneyEvent(null, coverWithParents = true)
+            RoomViewEvent.CloseRulesRecap -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(rulesRecapVisible = false))
             }
             RoomViewEvent.FirstRunOnboardingContinue -> continueFirstRunOnboarding()
             RoomViewEvent.FirstRunOpenPhone -> transitionOnboarding(FirstRunOnboardingStep.PHONE_STORE_GUIDANCE)
             RoomViewEvent.FirstRunOpenFridge -> transitionOnboarding(FirstRunOnboardingStep.FRIDGE_EXPLANATION)
             RoomViewEvent.FirstRunOpenTable -> transitionOnboarding(FirstRunOnboardingStep.FEEDING)
             RoomViewEvent.FirstRunShowWeekSummary -> showFirstWeekSummary()
-            RoomViewEvent.FirstRunStartNewWeekPlan -> startNextWeekPlan()
+            RoomViewEvent.DismissNewWeekPlanPrompt -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(newWeekPlanPromptVisible = false))
+            }
             RoomViewEvent.FirstRunMoneyNoticeClosed -> {
                 if (onboardingStep == FirstRunOnboardingStep.FIRST_MONEY) {
                     transitionOnboarding(FirstRunOnboardingStep.MONEY_EXPLANATION)
@@ -202,6 +270,7 @@ internal class RoomViewModel(
                 }
             }
             RoomViewEvent.Paused -> Unit
+            RoomViewEvent.AppEntered -> showDayTransitionNoticeOnAppEntry()
             RoomViewEvent.SavePlanClicked -> savePlan()
             RoomViewEvent.PlanTutorialNext -> advancePlanTutorial()
             RoomViewEvent.PlanDialogueFinished -> closePlanDialogue()
@@ -209,10 +278,27 @@ internal class RoomViewModel(
                 updateState(it.copy(planDialogue = null))
             }
             RoomViewEvent.MenuClicked -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(menuDestination = RoomMenuDestination.MENU, areMenuAchievementsExpanded = false))
+                updateState(it.copy(
+                    menuDestination = RoomMenuDestination.MENU,
+                    areMenuAchievementsExpanded = false,
+                    isSoundEnabled = gameAudio.isSoundEnabled(),
+                ))
             }
             RoomViewEvent.CloseMenu -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(menuDestination = RoomMenuDestination.NONE))
+            }
+            RoomViewEvent.SettingsClicked -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(
+                    menuDestination = RoomMenuDestination.SETTINGS,
+                    isSoundEnabled = gameAudio.isSoundEnabled(),
+                ))
+            }
+            RoomViewEvent.CloseSettings -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(menuDestination = RoomMenuDestination.MENU))
+            }
+            is RoomViewEvent.SoundSettingChanged -> nullableState<RoomViewState.Content>()?.let {
+                gameAudio.setSoundEnabled(viewEvent.enabled)
+                updateState(it.copy(isSoundEnabled = viewEvent.enabled))
             }
             RoomViewEvent.ToggleMenuAchievements -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(areMenuAchievementsExpanded = !it.areMenuAchievementsExpanded))
@@ -299,15 +385,27 @@ internal class RoomViewModel(
             onboardingSuggestedGoalZoneId = onboardingRepository.loadSuggestedGoalZoneId()
                 ?.takeIf(FIRST_SAVINGS_GOAL_ZONE_IDS::contains)
             reconcileSavingsLearning()
-            combine(
+            val roomAndLearningData = combine(
                 observeZones(),
                 weeklyPlanLearning.observeAchievements(),
                 weeklyPlanLearning.observeParentRows(),
                 firstRunGuide.step,
-            ) { roomData, achievements, parentRows, guideStep ->
-                ObservedRoomData(roomData, achievements, parentRows, guideStep)
-            }.collect { (roomData, achievements, parentRows, guideStep) ->
-                    onboardingStep = guideStep
+                firstRunGuide.resetVersion,
+            ) { roomData, achievements, parentRows, guideStep, resetVersion ->
+                ObservedRoomData(roomData, achievements, parentRows, guideStep, resetVersion)
+            }
+            combine(roomAndLearningData, inventoryApi.observeStock()) { observed, stock ->
+                observed.copy(hasFoodInFridge = stock.any { it.quantity > 0 })
+            }.collect { (roomData, achievements, parentRows, guideStep, resetVersion, hasFoodInFridge) ->
+                if (resetVersion != observedResetVersion) {
+                    observedResetVersion = resetVersion
+                    resetTransientProgressState()
+                    updateState(RoomViewState.Loading)
+                }
+                onboardingProgress = onboardingRepository.load()
+                onboardingSuggestedGoalZoneId = onboardingRepository.loadSuggestedGoalZoneId()
+                    ?.takeIf(FIRST_SAVINGS_GOAL_ZONE_IDS::contains)
+                onboardingStep = guideStep
                     reconcileCommittedOnboardingActions(roomData.progress)
                     val activeGoal = loadActiveSavingsGoal()
                     onboardingGoal = activeGoal
@@ -331,6 +429,10 @@ internal class RoomViewModel(
                         else -> null
                     }
                     val startsPlanning = editor != null && current?.planEditor == null
+                    val showNewWeekPlanPrompt = editor != null &&
+                        roomData.progress.weekNumber > 1L &&
+                        roomData.progress.weekNumber !in greetedPlanWeeks
+                    if (showNewWeekPlanPrompt) greetedPlanWeeks += roomData.progress.weekNumber
                     val shouldStartPlanTutorial = startsPlanning &&
                         onboardingProgress.currentChapter == FirstRunOnboardingChapter.BUDGET_PLANNING &&
                         onboardingStep == FirstRunOnboardingStep.PLAN
@@ -340,6 +442,30 @@ internal class RoomViewModel(
                             PlanTutorialStep.MANDATORY
                         editor == null -> null
                         else -> current?.planTutorialStep
+                    }
+                    val appEntryNotice = if (
+                        appEntryNoticePending && current?.dayTransitionNotice == null
+                    ) {
+                        DayTransitionNoticeState(
+                            dayOfWeek = roomData.progress.dayOfWeek,
+                            weekNumber = roomData.progress.weekNumber,
+                        )
+                    } else null
+                    val retainedParentHelpDialog = current?.parentHelpDialog?.takeIf { dialog ->
+                        shouldRetainParentHelpDialog(
+                            hasActiveParentHelp = dialog.activeHelp != null,
+                            isRequestingParentHelp = current.isRequestingParentHelp,
+                            helpIsAvailable = canOfferParentHelp(
+                                availableRub = roomData.progress.balanceRub.toLong(),
+                                savingsRub = roomData.progress.savingsRub,
+                                debtRub = roomData.progress.debtRub,
+                                hasActiveParentHelp = false,
+                                minimumRequiredBalanceRub = dialog.minimumRequiredBalanceRub,
+                                hasFoodInFridge = !dialog.forMandatoryEvent && hasFoodInFridge,
+                                canSleepUntilAllowance = !dialog.forMandatoryEvent &&
+                                    PetSatietyRules.canSleep(roomData.progress.petHunger),
+                            ),
+                        )
                     }
                     updateState(
                         RoomViewState.Content(
@@ -353,6 +479,11 @@ internal class RoomViewModel(
                             bathStep = current?.bathStep ?: BathStep.SOAP,
                             sleeping = current?.sleeping ?: false,
                             planEditor = editor,
+                            newWeekPlanPromptVisible = editor != null && (
+                                showNewWeekPlanPrompt ||
+                                    (current?.progress?.weekNumber == roomData.progress.weekNumber &&
+                                        current?.newWeekPlanPromptVisible == true)
+                            ),
                             planTutorialStep = tutorialStep,
                             planDialogue = current?.planDialogue,
                             isSavingPlan = current?.isSavingPlan ?: false,
@@ -380,33 +511,43 @@ internal class RoomViewModel(
                             },
                             parentRows = parentRows,
                             menuDestination = current?.menuDestination ?: RoomMenuDestination.NONE,
+                            isSoundEnabled = gameAudio.isSoundEnabled(),
                             areMenuAchievementsExpanded = current?.areMenuAchievementsExpanded ?: false,
                             parentGate = current?.parentGate,
-                            parentHelpDialog = current?.parentHelpDialog?.takeIf { dialog ->
-                                dialog.activeHelp != null || canOfferParentHelp(
-                                    availableRub = roomData.progress.balanceRub.toLong(),
-                                    savingsRub = roomData.progress.savingsRub,
-                                    debtRub = roomData.progress.debtRub,
-                                    hasActiveParentHelp = false,
-                                    minimumRequiredBalanceRub = minimumProductPriceRub,
-                                )
-                            },
+                            parentHelpDialog = retainedParentHelpDialog,
+                            isParentHelpDialogClaimed = current?.isParentHelpDialogClaimed == true &&
+                                retainedParentHelpDialog != null,
                             isRequestingParentHelp = current?.isRequestingParentHelp ?: false,
                             parentHelpPhonePrompt = current?.parentHelpPhonePrompt,
                             savingsRecoveryPrompt = current?.savingsRecoveryPrompt,
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
-                            dayTransitionNotice = current?.dayTransitionNotice,
+                            dayTransitionNotice = current?.dayTransitionNotice ?: appEntryNotice,
                             impulseWish = current?.impulseWish,
+                            moneyEvent = current?.moneyEvent?.takeIf {
+                                it.weekNumber == roomData.progress.weekNumber
+                            },
+                            moneyEventError = current?.moneyEventError,
+                            resolvingMoneyEvent = current?.resolvingMoneyEvent ?: false,
+                            rulesRecapVisible = current?.rulesRecapVisible ?: false,
                             onboarding = onboardingUiState(),
                         ),
                     )
+                    appEntryNoticePending = false
+                    observedRoomProgress.value = roomData.progress
                     showFirstWeekNeedHintIfNeeded(roomData.progress)
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 handleLowBalance(roomData.progress)
                 if (onboardingStep == FirstRunOnboardingStep.COMPLETED) {
                     loadImpulseWishForDay(roomData.progress.absoluteDay)
                 }
+                if (roomData.progress.planProgress != null &&
+                    onboardingStep in setOf(FirstRunOnboardingStep.COMPLETED,
+                        FirstRunOnboardingStep.WAITING_FOR_WEEK_END)
+                ) loadMoneyEventForDay(roomData.progress.absoluteDay)
+                if (onboardingStep == FirstRunOnboardingStep.COMPLETED &&
+                    roomData.progress.weekNumber >= 4L && roomData.progress.planProgress != null
+                ) maybeShowRulesRecap()
             }
         }
     }
@@ -431,10 +572,119 @@ internal class RoomViewModel(
         }
     }
 
+    private fun loadMoneyEventForDay(absoluteDay: Long) {
+        if (absoluteDay in checkedMoneyEventDays || moneyEventJob?.isActive == true) return
+        checkedMoneyEventDays += absoluteDay
+        moneyEventJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                checkedMoneyEventDays -= absoluteDay
+                moneyEventJob = null
+                true
+            },
+        ) {
+            val event = moneyEvents.pending()
+            nullableState<RoomViewState.Content>()?.let { content ->
+                if (content.progress.absoluteDay == absoluteDay && content.progress.planProgress != null) {
+                    updateState(content.copy(moneyEvent = event, moneyEventError = null))
+                }
+            }
+            moneyEventJob = null
+        }
+    }
+
+    private fun resolveMoneyEvent(allocation: MoneyAllocation?, coverWithParents: Boolean = false) {
+        if (moneyEventJob?.isActive == true) return
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val event = content.moneyEvent ?: return
+        updateState(content.copy(resolvingMoneyEvent = true, moneyEventError = null))
+        moneyEventJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let {
+                    updateState(it.copy(resolvingMoneyEvent = false))
+                }
+                moneyEventJob = null
+                true
+            },
+        ) {
+            val result = if (coverWithParents) moneyEvents.coverWithParents(event.id)
+                else moneyEvents.resolve(event.id, allocation)
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    moneyEvent = if (result == MoneyEventResolution.Completed) null else event,
+                    moneyEventError = result.takeUnless { it == MoneyEventResolution.Completed },
+                    resolvingMoneyEvent = false,
+                ))
+            }
+            moneyEventJob = null
+        }
+    }
+
+    private fun showParentHelpForMoneyEvent() {
+        val content = nullableState<RoomViewState.Content>() ?: return
+        val event = content.moneyEvent ?: return
+        if (content.progress.balanceRub.toLong() >= event.amountRub ||
+            content.progress.savingsRub + content.progress.balanceRub >= event.amountRub ||
+            content.progress.debtRub > 0
+        ) return
+        val offers = loadParentHelpInteractor.offers()
+        if (offers.isEmpty()) return
+        updateState(content.copy(
+            moneyEvent = null,
+            moneyEventError = null,
+            parentHelpDialog = ParentHelpDialogState(
+                offers = offers,
+                activeHelp = null,
+                availableRub = content.progress.balanceRub.toLong(),
+                savingsRub = content.progress.savingsRub,
+                debtRub = content.progress.debtRub,
+                minimumRequiredBalanceRub = event.amountRub,
+                forMandatoryEvent = true,
+            ),
+            isParentHelpDialogClaimed = true,
+        ))
+    }
+
+    private fun maybeShowRulesRecap() {
+        if (rulesRecapChecked || rulesRecapJob?.isActive == true) return
+        rulesRecapChecked = true
+        rulesRecapJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                rulesRecapChecked = false
+                rulesRecapJob = null
+                true
+            },
+        ) {
+            if (weeklyPlanLearning.claimFinalRulesRecap()) {
+                nullableState<RoomViewState.Content>()?.let { latest ->
+                    if (latest.progress.planProgress != null && latest.planEditor == null) {
+                        updateState(latest.copy(rulesRecapVisible = true))
+                    }
+                }
+            }
+            rulesRecapJob = null
+        }
+    }
+
+    private fun showDayTransitionNoticeOnAppEntry() {
+        val content = nullableState<RoomViewState.Content>()
+        if (content == null) {
+            appEntryNoticePending = true
+            return
+        }
+        updateState(content.copy(
+            dayTransitionNotice = DayTransitionNoticeState(
+                dayOfWeek = content.progress.dayOfWeek,
+                weekNumber = content.progress.weekNumber,
+            ),
+        ))
+    }
+
     private fun onboardingUiState(): FirstRunOnboardingState? {
         if (onboardingStep == FirstRunOnboardingStep.COMPLETED ||
             onboardingStep == FirstRunOnboardingStep.WAITING_FOR_WEEK_END ||
-            onboardingStep == FirstRunOnboardingStep.WEEK_SUMMARY_VIEW
+            onboardingStep == FirstRunOnboardingStep.WEEK_SUMMARY_VIEW ||
+            onboardingStep == FirstRunOnboardingStep.NEW_WEEK_INTRO ||
+            onboardingStep == FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE
         ) return null
         return FirstRunOnboardingState(
             step = onboardingStep,
@@ -458,7 +708,37 @@ internal class RoomViewModel(
         }
     }
 
+    private fun resetTransientProgressState() {
+        buyJob?.cancel()
+        sleepJob?.cancel()
+        savePlanJob?.cancel()
+        parentHelpJob?.cancel()
+        lowBalanceJob?.cancel()
+        onboardingRefreshJob?.cancel()
+        firstWeekNeedHintJob?.cancel()
+        firstWeekGoalHintJob?.cancel()
+        impulseWishJob?.cancel()
+        buyJob = null
+        sleepJob = null
+        savePlanJob = null
+        parentHelpJob = null
+        lowBalanceJob = null
+        onboardingRefreshJob = null
+        firstWeekNeedHintJob = null
+        firstWeekGoalHintJob = null
+        impulseWishJob = null
+        checkedImpulseWishDays.clear()
+        promptedSavingsRecoveryWeeks.clear()
+        hintedHungerDays.clear()
+        reconciledPlanWeeks.clear()
+        reconcilingPlanWeek = null
+        firstWeekGoalHintShown = false
+        appEntryNoticePending = false
+        onboardingGoal = null
+    }
+
     private fun transitionOnboarding(step: FirstRunOnboardingStep) {
+        if (step != FirstRunOnboardingStep.COMPLETED && onboardingRepository.load().isCompleted) return
         onboardingStep = step
         firstRunGuide.moveTo(step)
         nullableState<RoomViewState.Content>()?.let { content ->
@@ -528,8 +808,6 @@ internal class RoomViewModel(
                 completeOnboardingChapter(FirstRunOnboardingChapter.SECOND_DAY_MORNING)
                 transitionOnboarding(onboardingProgress.firstStep)
             }
-            FirstRunOnboardingStep.NEW_WEEK_INTRO ->
-                transitionOnboarding(FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE)
             FirstRunOnboardingStep.GAMES,
             FirstRunOnboardingStep.FINISH,
             -> transitionOnboarding(onboardingProgress.firstStep)
@@ -560,6 +838,7 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.WEEK_END_INTRO,
             FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
             FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE,
+            FirstRunOnboardingStep.NEW_WEEK_INTRO,
             FirstRunOnboardingStep.COMPLETED,
             -> Unit
         }
@@ -574,6 +853,7 @@ internal class RoomViewModel(
                 FirstRunOnboardingChapter.FIRST_BEDTIME -> progress.absoluteDay > 1L
                 FirstRunOnboardingChapter.SECOND_DAY_MORNING -> progress.absoluteDay > 2L
                 FirstRunOnboardingChapter.FIRST_WEEK_SUMMARY -> progress.weekNumber > 1L
+                FirstRunOnboardingChapter.NEXT_WEEK_PLANNING -> progress.weekNumber > 1L
                 else -> false
             }
             if (reconciled) {
@@ -584,12 +864,17 @@ internal class RoomViewModel(
 
     private fun guideToAvailableFood() {
         launchCoroutine {
-            val hasFood = inventoryApi.observeStock().first().any { it.quantity > 0 }
+            val hasFood = hasCareFoodInFridge()
             transitionOnboarding(
                 if (hasFood) FirstRunOnboardingStep.FRIDGE_GUIDANCE
                 else FirstRunOnboardingStep.PHONE_GUIDANCE,
             )
         }
+    }
+
+    private suspend fun hasCareFoodInFridge(): Boolean = inventoryApi.observeStock().first().any { stock ->
+        stock.quantity > 0 &&
+            (groceryCatalog.find(stock.productId)?.effects?.satietyPercent ?: 0) > 0
     }
 
     private fun showFirstWeekNeedHintIfNeeded(
@@ -602,7 +887,7 @@ internal class RoomViewModel(
         ) return
         hintedHungerDays += progress.absoluteDay
         firstWeekNeedHintJob = launchCoroutine {
-            val fridgeIsEmpty = inventoryApi.observeStock().first().none { it.quantity > 0 }
+            val fridgeIsEmpty = !hasCareFoodInFridge()
             nullableState<RoomViewState.Content>()?.let { content ->
                 if (content.progress.absoluteDay == progress.absoluteDay &&
                     content.firstWeekNeedHint == null
@@ -826,6 +1111,8 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping || content.buyingZoneId != null) return
         if (content.bathroomView != BathroomView.HOUSE) return
+        gameAudio.preload(listOf(RoomAudioCues.SoapRubbing, RoomAudioCues.ShowerWater,
+            RoomAudioCues.HairDryer))
         updateState(content.copy(bathroomView = BathroomView.WASHING, bathStep = BathStep.SOAP))
     }
 
@@ -833,22 +1120,40 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping) return
         gameAudio.stop(RoomAudioCues.HairDryer.owner)
+        gameAudio.stop(RoomAudioCues.SoapRubbing.owner)
+        gameAudio.stop(RoomAudioCues.ShowerWater.owner)
         updateState(content.copy(bathroomView = BathroomView.HOUSE))
     }
 
     private fun useBathTool(step: BathStep) {
         val content = nullableState<RoomViewState.Content>() ?: return
-        if (content.bathroomView != BathroomView.WASHING ||
-            (content.bathStep != step &&
-                !(content.bathStep == BathStep.CLEAN && step == BathStep.SOAP))) return
-        val next = when (step) {
-            BathStep.SOAP -> BathStep.RINSE
-            BathStep.RINSE -> BathStep.DRY
-            BathStep.DRY -> BathStep.CLEAN
-            BathStep.CLEAN -> return
+        if (content.bathroomView != BathroomView.WASHING) return
+        when (step) {
+            BathStep.SOAP -> {
+                gameAudio.stop(RoomAudioCues.SoapRubbing.owner)
+                if (content.bathStep != BathStep.RINSE) {
+                    updateState(content.copy(bathStep = BathStep.RINSE))
+                }
+            }
+            BathStep.RINSE -> {
+                gameAudio.stop(RoomAudioCues.ShowerWater.owner)
+                if (content.bathStep == BathStep.RINSE) {
+                    updateState(content.copy(bathStep = BathStep.DRY))
+                }
+            }
+            BathStep.DRY -> {
+                if (content.bathStep != BathStep.DRY || washJob?.isActive == true) return
+                gameAudio.stop(RoomAudioCues.HairDryer.owner)
+                washJob = launchCoroutine {
+                    gameStateApi.washPet()
+                    val latest = nullableState<RoomViewState.Content>() ?: return@launchCoroutine
+                    if (latest.bathroomView == BathroomView.WASHING && latest.bathStep == BathStep.DRY) {
+                        updateState(latest.copy(bathStep = BathStep.CLEAN))
+                    }
+                }
+            }
+            BathStep.CLEAN -> Unit
         }
-        if (step == BathStep.DRY) gameAudio.stop(RoomAudioCues.HairDryer.owner)
-        updateState(content.copy(bathStep = next))
     }
 
     private fun hideSleepConfirmation() {
@@ -861,7 +1166,7 @@ internal class RoomViewModel(
         if (sleepJob?.isActive == true) return
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping || content.buyingZoneId != null) return
-        if (content.progress.petHunger <= 0) {
+        if (!PetSatietyRules.canSleep(content.progress.petHunger)) {
             updateState(content.copy(sleepConfirmationVisible = true))
             return
         }
@@ -873,7 +1178,17 @@ internal class RoomViewModel(
                 true
             },
         ) {
+            var awakenedAbsoluteDay: Long? = null
             try {
+                val pending = moneyEvents.pending()
+                if (pending != null && (pending.kind !=
+                    github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.EXTRA_INCOME ||
+                    content.progress.dayOfWeek == 7)) {
+                    nullableState<RoomViewState.Content>()?.let { latest ->
+                        updateState(latest.copy(moneyEvent = pending, sleeping = false))
+                    }
+                    return@launchCoroutine
+                }
                 delay(800)
                 if (content.progress.dayOfWeek == 7 &&
                     onboardingStep == FirstRunOnboardingStep.WAITING_FOR_WEEK_END
@@ -891,6 +1206,7 @@ internal class RoomViewModel(
                     return@launchCoroutine
                 }
                 val result = advanceDay(expectedDay)
+                if (result is EndDayResult.Advanced) awakenedAbsoluteDay = result.state.absoluteDay
                 if (result is EndDayResult.Advanced &&
                     onboardingStep == FirstRunOnboardingStep.WAITING_FOR_BED
                 ) {
@@ -900,6 +1216,7 @@ internal class RoomViewModel(
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
+            awakenedAbsoluteDay?.let { handleLowBalanceAfterWake(it) }
         }
     }
 
@@ -908,23 +1225,37 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.weekResult == null) return
         val expectedDay = content.progress.absoluteDay
-        updateState(content.copy(weekResult = null, sleeping = true))
+        updateState(content.copy(weekResult = null, weekSummaryTutorialStep = null, sleeping = true))
         sleepJob = launchCoroutine(
             handleAction = ExceptionConsumer {
                 router.showSleepError()
                 true
             },
         ) {
+            var awakenedAbsoluteDay: Long? = null
             try {
-                advanceDay(expectedDay, showAllowanceNotice = onboardingStep != FirstRunOnboardingStep.WEEK_SUMMARY_VIEW)
+                val result = advanceDay(
+                    expectedDay,
+                    showAllowanceNotice = onboardingStep != FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
+                )
+                if (result is EndDayResult.Advanced) awakenedAbsoluteDay = result.state.absoluteDay
                 if (onboardingStep == FirstRunOnboardingStep.WEEK_SUMMARY_VIEW) {
                     completeOnboardingChapter(FirstRunOnboardingChapter.FIRST_WEEK_SUMMARY)
+                    completeOnboardingChapter(FirstRunOnboardingChapter.NEXT_WEEK_PLANNING)
                     transitionOnboarding(onboardingProgress.firstStep)
                 }
             } finally {
                 nullableState<RoomViewState.Content>()?.let { updateState(it.copy(sleeping = false)) }
             }
+            awakenedAbsoluteDay?.let { handleLowBalanceAfterWake(it) }
         }
+    }
+
+    private suspend fun handleLowBalanceAfterWake(absoluteDay: Long) {
+        val progress = observedRoomProgress.first { observed ->
+            observed?.absoluteDay?.let { it >= absoluteDay } == true
+        } ?: return
+        handleLowBalance(progress)
     }
 
     private suspend fun advanceDay(
@@ -938,10 +1269,12 @@ internal class RoomViewModel(
         ) {
             nullableState<RoomViewState.Content>()?.let { latest ->
                 updateState(latest.copy(
-                    dayTransitionNotice = DayTransitionNoticeState(
-                        dayOfWeek = result.state.dayOfWeek,
-                        weekNumber = result.state.weekNumber,
-                    ),
+                    dayTransitionNotice = if (result.state.dayOfWeek == 1) null else {
+                        DayTransitionNoticeState(
+                            dayOfWeek = result.state.dayOfWeek,
+                            weekNumber = result.state.weekNumber,
+                        )
+                    },
                     allowanceNotice = if (result.allowanceGrossRub > 0) {
                         AllowanceNoticeState(
                             grossRub = result.allowanceGrossRub,
@@ -1037,17 +1370,6 @@ internal class RoomViewModel(
         commands.onNext(RoomCommand.ShowBuyConfirmation(zoneId))
     }
 
-    private fun startNextWeekPlan() {
-        if (onboardingStep != FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE) return
-        val content = nullableState<RoomViewState.Content>() ?: return
-        completeOnboardingChapter(FirstRunOnboardingChapter.NEXT_WEEK_PLANNING)
-        updateState(content.copy(
-            onboarding = null,
-            planEditor = content.planEditor ?: PlanEditorState(),
-            planTutorialStep = null,
-        ))
-    }
-
     private fun updatePlanPercent(category: github.detrig.feature.planning.domain.PlanCategory, percent: Int) {
         val content = nullableState<RoomViewState.Content>() ?: return
         val editor = content.planEditor ?: return
@@ -1093,13 +1415,14 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         val editor = content.planEditor ?: return
         if (editor.total > 100 || content.planTutorialStep != null) return
-        when (val assessment = assessWeeklyPlan(editor.toPercentages())) {
+        val draft = content.draftPlan(editor.toPercentages())
+        when (val assessment = assessWeeklyPlan(draft)) {
             PlanAssessment.Adequate -> Unit
             is PlanAssessment.NeedsChanges -> {
                 updateState(content.copy(
                     planDialogue = PlanDialogueState.NeedsChanges(
                         reason = assessment.reason,
-                        recommendedPercent = assessment.recommendedPercent,
+                        requiredRub = assessment.requiredRub,
                     ),
                 ))
                 return
@@ -1125,6 +1448,7 @@ internal class RoomViewModel(
                 weekNumber = content.progress.weekNumber,
                 availableRub = content.progress.balanceRub.toLong(),
                 percentages = editor.toPercentages(),
+                context = content.draftPlan(editor.toPercentages()).context,
             )
             val plan = outcome.progress
             val feedback = outcome.learningFeedback
@@ -1154,7 +1478,7 @@ internal class RoomViewModel(
     private fun reconcilePlanLearning(progress: WeeklyPlanProgress) {
         val weekNumber = progress.plan.weekNumber
         if (savePlanJob?.isActive == true) return
-        if (assessWeeklyPlan(progress.plan.percentages) !is PlanAssessment.Adequate) return
+        if (progress.planAssessment !is PlanAssessment.Adequate) return
         if (weekNumber in reconciledPlanWeeks || reconcilingPlanWeek == weekNumber) return
         reconcilingPlanWeek = weekNumber
         launchCoroutine(
@@ -1168,6 +1492,18 @@ internal class RoomViewModel(
             reconcilingPlanWeek = null
         }
     }
+
+    private fun RoomViewState.Content.draftPlan(
+        percentages: github.detrig.feature.planning.domain.PlanPercentages,
+    ): WeeklyPlan = WeeklyPlan(
+        weekNumber = progress.weekNumber,
+        availableRub = progress.balanceRub.toLong(),
+        percentages = percentages,
+        context = PlanWeekContext(
+            knownMandatoryExpenseRub = progress.knownMandatoryExpenseRub,
+            hasActiveGoal = activeSavingsGoal != null,
+        ),
+    )
 
     private fun showPlanSummary() {
         val content = nullableState<RoomViewState.Content>() ?: return
@@ -1192,21 +1528,29 @@ internal class RoomViewModel(
             },
         ) {
             val result = requestParentHelpInteractor(offerId)
-            val activeHelp = when (result) {
-                is ParentHelpRequestResult.Accepted -> result.help
-                is ParentHelpRequestResult.AlreadyActive -> result.help
-                is ParentHelpRequestResult.Rejected -> loadParentHelpInteractor()
-            }
+            val activeHelp = if (result is ParentHelpRequestResult.Rejected) {
+                loadParentHelpInteractor()
+            } else null
             nullableState<RoomViewState.Content>()?.let { latest ->
+                val closeOfferDialog = shouldCloseAutomaticParentHelpDialog(
+                    requestResult = result,
+                    hasActiveParentHelp = activeHelp != null,
+                )
                 updateState(latest.copy(
-                    parentHelpDialog = latest.parentHelpDialog?.copy(activeHelp = activeHelp),
+                    parentHelpDialog = if (closeOfferDialog) null else latest.parentHelpDialog,
+                    isParentHelpDialogClaimed = latest.isParentHelpDialogClaimed && !closeOfferDialog,
                     isRequestingParentHelp = false,
+                    parentHelpPhonePrompt = if (closeOfferDialog) null else latest.parentHelpPhonePrompt,
                 ))
             }
         }
     }
 
     private fun handleLowBalance(progress: github.detrig.feature.room.domain.model.RoomProgress) {
+        if (lowBalanceJob?.isActive == true) {
+            pendingLowBalanceProgress = progress
+            return
+        }
         val recoveryAction = lowBalanceRecoveryAction(
             availableRub = progress.balanceRub.toLong(),
             savingsRub = progress.savingsRub,
@@ -1214,87 +1558,95 @@ internal class RoomViewModel(
         )
         if (recoveryAction == LowBalanceRecoveryAction.NONE ||
             (recoveryAction == LowBalanceRecoveryAction.ASK_PARENTS &&
-                onboardingStep != FirstRunOnboardingStep.COMPLETED) ||
-            lowBalanceJob?.isActive == true
+                onboardingStep != FirstRunOnboardingStep.COMPLETED)
         ) return
         lowBalanceJob = launchCoroutine(
-            handleAction = ExceptionConsumer {
-                lowBalanceJob = null
-                true
-            },
+            handleAction = ExceptionConsumer { true },
         ) {
-            if (progress.savingsRub > 0) {
-                val current = nullableState<RoomViewState.Content>()
-                if (current?.savingsRecoveryPrompt != null) {
-                    lowBalanceJob = null
+            try {
+                if (progress.savingsRub > 0) {
+                    val current = nullableState<RoomViewState.Content>()
+                    if (current?.savingsRecoveryPrompt != null) {
+                        return@launchCoroutine
+                    }
+                    if (progress.weekNumber !in promptedSavingsRecoveryWeeks &&
+                        current != null &&
+                        current.earlyWeekParentHelpNotice == null
+                    ) {
+                        promptedSavingsRecoveryWeeks += progress.weekNumber
+                        updateState(current.copy(
+                            savingsRecoveryPrompt = SavingsRecoveryPromptState,
+                        ))
+                        return@launchCoroutine
+                    }
+                }
+                if (recoveryAction == LowBalanceRecoveryAction.USE_SAVINGS) {
                     return@launchCoroutine
                 }
-                if (progress.weekNumber !in promptedSavingsRecoveryWeeks &&
-                    current != null &&
-                    current.earlyWeekParentHelpNotice == null
-                ) {
-                    promptedSavingsRecoveryWeeks += progress.weekNumber
-                    updateState(current.copy(
-                        savingsRecoveryPrompt = SavingsRecoveryPromptState,
-                    ))
-                    lowBalanceJob = null
-                    return@launchCoroutine
-                }
-            }
-            if (recoveryAction == LowBalanceRecoveryAction.USE_SAVINGS) {
-                lowBalanceJob = null
-                return@launchCoroutine
-            }
 
-            val activeHelp = loadParentHelpInteractor()
-            if (activeHelp == null) {
-                val canOfferHelp = shouldOfferAutomaticParentHelp(
-                    onboardingCompleted = onboardingStep == FirstRunOnboardingStep.COMPLETED,
-                    availableRub = progress.balanceRub.toLong(),
-                    savingsRub = progress.savingsRub,
-                    debtRub = progress.debtRub,
-                    hasActiveParentHelp = false,
-                    minimumRequiredBalanceRub = minimumProductPriceRub,
-                    alreadyShownInWeek = parentHelpPromptRepository.wasShownInWeek(progress.weekNumber),
-                )
-                val current = nullableState<RoomViewState.Content>()
-                if (canOfferHelp &&
-                    current?.parentHelpDialog == null &&
-                    current?.earlyWeekParentHelpNotice == null
-                ) {
-                    val offers = loadParentHelpInteractor.offers()
-                    if (offers.isNotEmpty()) updateState(checkNotNull(current).copy(
-                        parentHelpDialog = ParentHelpDialogState(
-                            offers = offers,
-                            activeHelp = null,
-                            availableRub = progress.balanceRub.toLong(),
-                            savingsRub = progress.savingsRub,
-                            debtRub = progress.debtRub,
-                            minimumRequiredBalanceRub = minimumProductPriceRub,
-                        ),
-                    ))
-                }
-            } else {
-                when (val result = endWeekEarlyWithParentHelp(
-                    expectedAbsoluteDay = progress.absoluteDay,
-                    minimumProductPriceRub = minimumProductPriceRub,
-                )) {
-                    is EarlyWeekEndResult.Completed -> nullableState<RoomViewState.Content>()?.let { latest ->
-                        updateState(latest.copy(
-                            earlyWeekParentHelpNotice = EarlyWeekParentHelpNoticeState,
-                            allowanceNotice = AllowanceNoticeState(
-                                grossRub = result.allowanceGrossRub,
-                                parentHelpRepaidRub = result.parentHelpRepaidRub,
-                                receivedRub = result.allowanceReceivedRub,
+                val activeHelp = loadParentHelpInteractor()
+                if (activeHelp == null) {
+                    val hasFoodInFridge = inventoryApi.observeStock().first().any { it.quantity > 0 }
+                    val canSleepUntilAllowance = PetSatietyRules.canSleep(progress.petHunger)
+                    val canOfferHelp = shouldOfferAutomaticParentHelp(
+                        onboardingCompleted = onboardingStep == FirstRunOnboardingStep.COMPLETED,
+                        availableRub = progress.balanceRub.toLong(),
+                        savingsRub = progress.savingsRub,
+                        debtRub = progress.debtRub,
+                        hasActiveParentHelp = false,
+                        minimumRequiredBalanceRub = minimumProductPriceRub,
+                        alreadyShownInWeek = parentHelpPromptRepository.wasShownInWeek(progress.weekNumber),
+                        hasFoodInFridge = hasFoodInFridge,
+                        canSleepUntilAllowance = canSleepUntilAllowance,
+                    )
+                    val current = nullableState<RoomViewState.Content>()
+                    if (canOfferHelp &&
+                        current?.parentHelpDialog == null &&
+                        current?.earlyWeekParentHelpNotice == null
+                    ) {
+                        val offers = loadParentHelpInteractor.offers()
+                        if (offers.isNotEmpty()) updateState(checkNotNull(current).copy(
+                            parentHelpDialog = ParentHelpDialogState(
+                                offers = offers,
+                                activeHelp = null,
+                                availableRub = progress.balanceRub.toLong(),
+                                savingsRub = progress.savingsRub,
+                                debtRub = progress.debtRub,
+                                minimumRequiredBalanceRub = minimumProductPriceRub,
                             ),
                         ))
                     }
-                    is EarlyWeekEndResult.AlreadyCompleted,
-                    is EarlyWeekEndResult.NotNeeded,
-                    -> Unit
+                } else {
+                    val hasFoodInFridge = inventoryApi.observeStock().first().any { it.quantity > 0 }
+                    val canSleepUntilAllowance = PetSatietyRules.canSleep(progress.petHunger)
+                    if (hasFoodInFridge || canSleepUntilAllowance) {
+                        return@launchCoroutine
+                    }
+                    when (val result = endWeekEarlyWithParentHelp(
+                        expectedAbsoluteDay = progress.absoluteDay,
+                        minimumProductPriceRub = minimumProductPriceRub,
+                    )) {
+                        is EarlyWeekEndResult.Completed -> nullableState<RoomViewState.Content>()?.let { latest ->
+                            updateState(latest.copy(
+                                earlyWeekParentHelpNotice = EarlyWeekParentHelpNoticeState,
+                                allowanceNotice = AllowanceNoticeState(
+                                    grossRub = result.allowanceGrossRub,
+                                    parentHelpRepaidRub = result.parentHelpRepaidRub,
+                                    receivedRub = result.allowanceReceivedRub,
+                                ),
+                            ))
+                        }
+                        is EarlyWeekEndResult.AlreadyCompleted,
+                        is EarlyWeekEndResult.NotNeeded,
+                        -> Unit
+                    }
                 }
+            } finally {
+                lowBalanceJob = null
+                val pendingProgress = pendingLowBalanceProgress
+                pendingLowBalanceProgress = null
+                if (pendingProgress != null) handleLowBalance(pendingProgress)
             }
-            lowBalanceJob = null
         }
     }
 }

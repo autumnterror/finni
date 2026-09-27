@@ -31,6 +31,18 @@ internal class FirstRunOnboardingStorage(preferences: SharedPreferences) :
         return updated
     }
 
+    override fun reset(skipOnboarding: Boolean): FirstRunOnboardingProgress {
+        val progress = FirstRunOnboardingProgress(
+            completedChapters = if (skipOnboarding) FirstRunOnboardingChapter.entries.toSet() else emptySet(),
+        )
+        putStringSet(COMPLETED_CHAPTERS_KEY, progress.completedChapters.mapTo(linkedSetOf()) { it.name })
+        remove(LEGACY_STEP_KEY)
+        remove(SUGGESTED_GOAL_ZONE_KEY)
+        remove(FIRST_GAME_PURCHASE_EXPLAINED_KEY)
+        remove(FIRST_GAME_READY_INTRODUCED_KEY)
+        return progress
+    }
+
     override fun loadSuggestedGoalZoneId(): String? =
         readString(SUGGESTED_GOAL_ZONE_KEY, null)
 

@@ -22,4 +22,7 @@ interface PetPlayEffectDao {
     suspend fun find(operationId: String): PetPlayEffectEntity?
     @Insert
     suspend fun insert(effect: PetPlayEffectEntity)
+
+    @Query("SELECT COUNT(*) FROM pet_play_effects WHERE gameId IN ('fishing', 'flight')")
+    suspend fun completedMiniGameCount(): Long
 }

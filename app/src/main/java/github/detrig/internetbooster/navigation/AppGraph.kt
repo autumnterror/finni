@@ -12,6 +12,7 @@ fun appGraph(): Nav3HostGraphSpec {
         github.detrig.feature.savings.SavingsFeature.getApi().entries()(this)
         github.detrig.feature.shop.ShopFeature.getApi().entries()(this)
         github.detrig.feature.wardrobe.WardrobeFeature.getApi().entries()(this)
+        github.detrig.feature.learningtests.LearningTestsFeature.getApi().entries()(this)
         github.detrig.minigames.fishing.FishingFeature.getApi().entries()(this)
         github.detrig.minigames.flight.FlightFeature.getApi().installEntries(this)
     })

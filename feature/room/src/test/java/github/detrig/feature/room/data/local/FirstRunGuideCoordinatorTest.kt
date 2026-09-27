@@ -5,6 +5,7 @@ import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FirstRunGuideCoordinatorTest {
@@ -45,6 +46,28 @@ class FirstRunGuideCoordinatorTest {
             FirstRunGuideCoordinator(repository).step.value,
         )
     }
+
+    @Test
+    fun resettingAnInterruptedOnboardingCanSkipTheWholeGuide() {
+        val repository = FakeOnboardingRepository(FirstRunOnboardingProgress())
+        val coordinator = FirstRunGuideCoordinator(repository)
+        coordinator.moveTo(FirstRunOnboardingStep.FEEDING)
+
+        coordinator.reset(skipOnboarding = true)
+        coordinator.moveTo(FirstRunOnboardingStep.FEEDING)
+
+        assertEquals(FirstRunOnboardingStep.COMPLETED, coordinator.step.value)
+        assertEquals(1, coordinator.resetVersion.value)
+        assertTrue(repository.load().isCompleted)
+
+        coordinator.reset(skipOnboarding = false)
+        assertEquals(FirstRunOnboardingStep.INTRODUCTION, coordinator.step.value)
+        coordinator.moveTo(FirstRunOnboardingStep.FEEDING)
+
+        assertEquals(FirstRunOnboardingStep.FEEDING, coordinator.step.value)
+        assertEquals(2, coordinator.resetVersion.value)
+        assertEquals(FirstRunOnboardingStep.INTRODUCTION, repository.load().firstStep)
+    }
 }
 
 private class FakeOnboardingRepository(
@@ -54,6 +77,10 @@ private class FakeOnboardingRepository(
 
     override fun markChapterCompleted(chapter: FirstRunOnboardingChapter): FirstRunOnboardingProgress =
         progress.complete(chapter).also { progress = it }
+
+    override fun reset(skipOnboarding: Boolean): FirstRunOnboardingProgress = FirstRunOnboardingProgress(
+        completedChapters = if (skipOnboarding) FirstRunOnboardingChapter.entries.toSet() else emptySet(),
+    ).also { progress = it }
 
     override fun loadSuggestedGoalZoneId(): String? = null
 

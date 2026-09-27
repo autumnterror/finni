@@ -17,10 +17,14 @@ internal interface GameStateRepository {
     suspend fun buyZone(offer: ZoneOffer, useSavings: Boolean = false): ZoneBuyResult
 
     suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int
+    suspend fun washPet()
+    suspend fun adjustPetDirtStageForDebug(delta: Int): Int
+
+    suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int
+    suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int
 
     suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult
-    suspend fun consumeHungerForSleep(): Int
-    suspend fun reconcileTimedNeeds(nowMillis: Long)
+    suspend fun applyDayNeeds()
     suspend fun hungerAlertState(): github.detrig.feature.gamestate.domain.model.HungerAlertState?
     suspend fun markHungerAlertDelivered(episode: Long): Boolean
 

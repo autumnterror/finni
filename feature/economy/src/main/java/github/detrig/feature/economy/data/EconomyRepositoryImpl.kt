@@ -247,8 +247,9 @@ internal class EconomyRepositoryImpl(
         PeriodicIncomeResult(cycles, gross, repaid, gross - repaid, operations, state)
     }
 
-    override suspend fun grantWeeklyAllowance(weekNumber: Long): WeeklyAllowanceResult = atomic {
+    override suspend fun grantWeeklyAllowance(weekNumber: Long, playerLevel: Int): WeeklyAllowanceResult = atomic {
         require(weekNumber >= 2) { "The first week uses the opening balance" }
+        val amount = config.weeklyAllowanceForLevel(playerLevel)
         var state = ensureState()
         val incomeId = "week:$weekNumber:allowance"
         val parentHelpDebtId = "week:$weekNumber:parent-help-repayment"
@@ -263,7 +264,6 @@ internal class EconomyRepositoryImpl(
                 parentHelpRepaidRub = parentHelpRepayment,
             )
         }
-        val amount = config.weeklyAllowanceRub
         val beforeIncome = state
         state = state.copy(availableRub = Math.addExact(state.availableRub, amount))
         dao.insertOperation(operation(

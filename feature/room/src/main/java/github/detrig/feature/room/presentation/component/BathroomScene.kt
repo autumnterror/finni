@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -93,7 +94,7 @@ private val compactOverview = listOf(
     BathFrame("room_soap_dish", 280f, 279f, 42f, 19f),
     BathFrame("room_soap", 286f, 266f, 33f, 20f),
     BathFrame("room_bath_vanity", 395f, 420f, 113f, 108f),
-    BathFrame("room_bath_sink", 411f, 379f, 81f, 56f),
+    BathFrame("room_bath_sink", 411f, 389f, 81f, 56f),
     BathFrame("room_bath_mat", 349f, 531f, 146f, 47f),
     BathFrame("room_bathtub", 103f, 448f, 278f, 93f),
 )
@@ -110,7 +111,7 @@ private val overview = listOf(
     BathFrame("room_soap_dish", 855f, 376f, 125f, 56f),
     BathFrame("room_soap", 872f, 353f, 100f, 61f),
     BathFrame("room_bath_vanity", 1200f, 590f, 340f, 327f),
-    BathFrame("room_bath_sink", 1250f, 470f, 245f, 169f),
+    BathFrame("room_bath_sink", 1250f, 490f, 245f, 169f),
     BathFrame("room_bath_mat", 1060f, 892f, 440f, 142f),
     BathFrame("room_bathtub", 320f, 664f, 840f, 280f),
 )
@@ -139,6 +140,7 @@ internal fun BathroomScene(
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     washStep: BathStep = BathStep.SOAP,
     onToolCompleted: ((BathStep) -> Unit)? = null,
+    onToolSoundChanged: (BathStep, Boolean) -> Unit = { _, _ -> },
     onDryerRunningChanged: (Boolean) -> Unit = {},
     onBathtubClick: (() -> Unit)? = null,
     onSlotClick: ((String) -> Unit)? = null,
@@ -158,11 +160,21 @@ internal fun BathroomScene(
     var contactDistance by remember(washStep) { mutableFloatStateOf(0f) }
     val foamSpots = remember { mutableStateListOf<FoamSpot>() }
     var foamPeakCount by remember { mutableIntStateOf(0) }
-    var cleanCycleStarted by remember(washStep) { mutableStateOf(false) }
     var waterPhase by remember { mutableFloatStateOf(0f) }
     var dryProgress by remember(washStep) { mutableFloatStateOf(0f) }
     var dryerOverPet by remember(washStep) { mutableStateOf(false) }
+    var soapOverPet by remember(washStep) { mutableStateOf(false) }
+    var soapTouchedThisDrag by remember { mutableStateOf(false) }
     var dryerPhase by remember { mutableFloatStateOf(0f) }
+    DisposableEffect(closeUp) {
+        onDispose {
+            if (closeUp) {
+                onToolSoundChanged(BathStep.SOAP, false)
+                onToolSoundChanged(BathStep.RINSE, false)
+                onDryerRunningChanged(false)
+            }
+        }
+    }
     LaunchedEffect(washStep) {
         if (washStep == BathStep.SOAP) {
             foamSpots.clear()
@@ -170,7 +182,7 @@ internal fun BathroomScene(
         }
     }
     LaunchedEffect(closeUp, washStep, draggedSlot) {
-        if (closeUp && washStep == BathStep.RINSE && draggedSlot == "room_showerhead") {
+        if (closeUp && draggedSlot == "room_showerhead") {
             val start = withFrameNanos { it }
             while (true) {
                 withFrameNanos { waterPhase = ((it - start) / 920_000_000f) % 1f }
@@ -179,28 +191,26 @@ internal fun BathroomScene(
             waterPhase = 0f
         }
     }
-    LaunchedEffect(closeUp, washStep, draggedSlot, dryerOverPet) {
-        val running = closeUp && washStep == BathStep.DRY &&
-            draggedSlot == "room_bath_dryer" && dryerOverPet
-        onDryerRunningChanged(running)
-        if (running) {
+    LaunchedEffect(closeUp, draggedSlot) {
+        if (closeUp && draggedSlot == "room_bath_dryer") {
             var lastFrame = withFrameNanos { it }
-            var soundElapsed = 0L
-            try {
-                while (true) {
-                    val frame = withFrameNanos { it }
-                    val elapsed = (frame - lastFrame).coerceAtLeast(0L)
-                    lastFrame = frame
-                    dryProgress = (dryProgress + elapsed / 4_500_000_000f).coerceAtMost(1f)
-                    dryerPhase = (dryerPhase + elapsed / 500_000_000f) % 1f
-                    soundElapsed += elapsed
-                    if (soundElapsed >= 4_800_000_000L) {
-                        soundElapsed %= 4_800_000_000L
-                        onDryerRunningChanged(true)
-                    }
-                }
-            } finally {
-                onDryerRunningChanged(false)
+            while (true) {
+                val frame = withFrameNanos { it }
+                val elapsed = (frame - lastFrame).coerceAtLeast(0L)
+                lastFrame = frame
+                dryerPhase = (dryerPhase + elapsed / 500_000_000f) % 1f
+            }
+        }
+    }
+    LaunchedEffect(closeUp, washStep, draggedSlot, dryerOverPet) {
+        if (closeUp && washStep == BathStep.DRY &&
+            draggedSlot == "room_bath_dryer" && dryerOverPet) {
+            var lastFrame = withFrameNanos { it }
+            while (true) {
+                val frame = withFrameNanos { it }
+                val elapsed = (frame - lastFrame).coerceAtLeast(0L)
+                lastFrame = frame
+                dryProgress = (dryProgress + elapsed / 4_500_000_000f).coerceAtMost(1f)
             }
         }
     }
@@ -227,8 +237,7 @@ internal fun BathroomScene(
         fun reference(point: Offset) = (point - originPx) / unitPx
         fun traceTool(slot: String, previous: Offset, current: Offset) {
             if (slot != "room_soap" && slot != "room_showerhead") return
-            if ((slot == "room_soap" && washStep != BathStep.SOAP && washStep != BathStep.CLEAN) ||
-                (slot == "room_showerhead" && washStep != BathStep.RINSE)) return
+            if (slot == "room_showerhead" && washStep != BathStep.RINSE) return
             val from = reference(previous)
             val to = reference(current)
             val distance = (to - from).getDistance()
@@ -237,6 +246,7 @@ internal fun BathroomScene(
                 val point = from + (to - from) * (index.toFloat() / samples)
                 val contact = if (slot == "room_showerhead") point + Offset(10f, 45f) else point
                 if (!onPet(contact)) return@repeat
+                if (slot == "room_soap") soapTouchedThisDrag = true
                 contactDistance += distance / (samples + 1)
                 when (slot) {
                     "room_soap" -> if (foamSpots.size < 240 && foamSpots.none {
@@ -286,16 +296,21 @@ internal fun BathroomScene(
                 detectDragGestures(
                     onDragStart = { start ->
                         dragStartLocal = start
-                        if (frame.slot == "room_soap" && washStep == BathStep.CLEAN &&
-                            !cleanCycleStarted) {
+                        soapTouchedThisDrag = false
+                        if (frame.slot == "room_soap" &&
+                            (washStep == BathStep.DRY || washStep == BathStep.CLEAN)) {
                             foamSpots.clear()
                             foamPeakCount = 0
                             contactDistance = 0f
-                            cleanCycleStarted = true
                         }
                         draggedSlot = frame.slot
                         dragPosition = sourceCenter
                         lastToolCenter = sourceCenter
+                        soapOverPet = false
+                        when (frame.slot) {
+                            "room_showerhead" -> onToolSoundChanged(BathStep.RINSE, true)
+                            "room_bath_dryer" -> onDryerRunningChanged(true)
+                        }
                     },
                     onDrag = { change, _ ->
                         change.consume()
@@ -303,7 +318,14 @@ internal fun BathroomScene(
                         lastToolCenter?.let { traceTool(frame.slot, it, center) }
                         lastToolCenter = center
                         dragPosition = center
-                        if (frame.slot == "room_bath_dryer" && washStep == BathStep.DRY) {
+                        if (frame.slot == "room_soap") {
+                            val overPet = onPet(reference(center))
+                            if (soapOverPet != overPet) {
+                                soapOverPet = overPet
+                                onToolSoundChanged(BathStep.SOAP, overPet)
+                            }
+                        }
+                        if (frame.slot == "room_bath_dryer") {
                             val nozzle = center + Offset(frame.width * 0.36f,
                                 -frame.height * 0.15f) * unitPx
                             dryerOverPet = onPet(reference(nozzle)) || onPet(reference(center))
@@ -312,18 +334,16 @@ internal fun BathroomScene(
                     onDragEnd = {
                         val dryerFinished = frame.slot == "room_bath_dryer" &&
                             washStep == BathStep.DRY && dryProgress >= 1f
+                        when (frame.slot) {
+                            "room_soap" -> onToolSoundChanged(BathStep.SOAP, false)
+                            "room_showerhead" -> onToolSoundChanged(BathStep.RINSE, false)
+                            "room_bath_dryer" -> onDryerRunningChanged(false)
+                        }
                         if (frame.slot == "room_soap" &&
-                            (washStep == BathStep.SOAP || washStep == BathStep.CLEAN) &&
-                            contactDistance >= BathStep.SOAP.requiredContactDistance &&
-                            foamSpots.size >= 42 &&
-                            foamSpots.any { it.position.x < 470f &&
-                                it.position.y < 790f + CLOSEUP_PET_DROP } &&
-                            foamSpots.any { it.position.x > 470f &&
-                                it.position.y < 790f + CLOSEUP_PET_DROP } &&
-                            foamSpots.any { it.position.x < 470f &&
-                                it.position.y > 860f + CLOSEUP_PET_DROP } &&
-                            foamSpots.any { it.position.x > 470f &&
-                                it.position.y > 860f + CLOSEUP_PET_DROP }
+                            soapTouchedThisDrag &&
+                            (washStep != BathStep.SOAP ||
+                                (contactDistance >= BathStep.SOAP.requiredContactDistance &&
+                                    foamSpots.size >= 96))
                         ) onToolCompleted?.invoke(BathStep.SOAP)
                         if (frame.slot == "room_showerhead" && washStep == BathStep.RINSE &&
                             contactDistance >= 60f && foamSpots.isEmpty()
@@ -332,13 +352,22 @@ internal fun BathroomScene(
                         dragPosition = null
                         lastToolCenter = null
                         dryerOverPet = false
+                        soapOverPet = false
+                        soapTouchedThisDrag = false
                         if (dryerFinished) onToolCompleted?.invoke(BathStep.DRY)
                     },
                     onDragCancel = {
+                        when (frame.slot) {
+                            "room_soap" -> onToolSoundChanged(BathStep.SOAP, false)
+                            "room_showerhead" -> onToolSoundChanged(BathStep.RINSE, false)
+                            "room_bath_dryer" -> onDryerRunningChanged(false)
+                        }
                         draggedSlot = null
                         dragPosition = null
                         lastToolCenter = null
                         dryerOverPet = false
+                        soapOverPet = false
+                        soapTouchedThisDrag = false
                     },
                 )
             } else Modifier
@@ -391,7 +420,9 @@ internal fun BathroomScene(
                     }
                 } else Modifier)
         petContent(petModifier,
-            RoomPetInteraction(showShadow = false, isBathing = closeUp))
+            RoomPetInteraction(showShadow = false, isBathing = closeUp,
+                dirtStageOverride = if (closeUp &&
+                    (washStep == BathStep.DRY || washStep == BathStep.CLEAN)) 0 else null))
         if (closeUp) {
             Canvas(Modifier.fillMaxSize()) {
                 wetPatches.forEach { patch ->
@@ -474,8 +505,7 @@ internal fun BathroomScene(
                 contentScale = ContentScale.FillBounds,
             )
         }
-        if (closeUp && washStep == BathStep.DRY && draggedSlot == "room_bath_dryer" &&
-            dryerOverPet && dragPosition != null
+        if (closeUp && draggedSlot == "room_bath_dryer" && dragPosition != null
         ) {
             val center = requireNotNull(dragPosition)
             val dryer = closeup.first { it.slot == "room_bath_dryer" }
@@ -523,8 +553,7 @@ internal fun BathroomScene(
                 }
             }
         }
-        if (closeUp && washStep == BathStep.RINSE && draggedSlot == "room_showerhead" &&
-            dragPosition != null
+        if (closeUp && draggedSlot == "room_showerhead" && dragPosition != null
         ) {
             val center = requireNotNull(dragPosition)
             val head = closeup.first { it.slot == "room_showerhead" }

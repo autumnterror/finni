@@ -16,6 +16,7 @@ internal class WeekMediator(
     private val economyMediator: EconomyMediator,
     private val gameStateMediator: GameStateMediator,
     private val planningMediator: PlanningMediator,
+    private val learningMediator: LearningMediator,
 ) : Mediator<WeekApi> {
     fun init() {
         WeekFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -23,11 +24,13 @@ internal class WeekMediator(
                 override fun weekDao(): WeekDao = databaseModule.weekDao
                 override fun economyApi(): EconomyApi = economyMediator.getApi()
                 override fun petDayEffects(): PetDayEffects = PetDayEffects {
-                    gameStateMediator.getApi().consumeHungerForSleep()
+                    gameStateMediator.getApi().applyDayNeeds()
                 }
                 override fun transactionRunner(): RoomTransactionRunner = databaseModule.transactionRunner
                 override fun progressionApi() = gameStateMediator.getProgressionApi()
                 override fun planningApi() = planningMediator.getApi()
+                override fun learningApi() = learningMediator.getApi()
+                override suspend fun currentPlayerLevel() = gameStateMediator.getApi().initialize().playerLevel
             }
         }
     }

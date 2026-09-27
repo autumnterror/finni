@@ -17,6 +17,7 @@ internal class FishingMediator(
     private val core: CoreComponent,
     private val database: AppDatabaseModule,
     private val gameState: GameStateMediator,
+    private val week: WeekMediator,
     private val pet: PetMediator,
     private val gameAudio: GameAudio,
 ) {
@@ -27,9 +28,14 @@ internal class FishingMediator(
         object : FishingHost {
             override suspend fun environment(): FishingEnvironment {
                 val state = gameState.getApi().initialize()
+                val unlocked = github.detrig.feature.gamestate.domain.model.MiniGameAccess
+                    .isOpen("fishing", state.ownedZoneIds)
+                if (unlocked) {
+                    gameState.getApi().rewardMiniGameLaunch("fishing", week.getApi().initialize().absoluteDay)
+                }
                 return FishingEnvironment(
                     GameStateEntity.CURRENT_STATE_ID,
-                    github.detrig.feature.gamestate.domain.model.MiniGameAccess.isOpen("fishing", state.ownedZoneIds),
+                    unlocked,
                 )
             }
             override suspend fun applyPlayEffect(profileId: String, sessionId: String): Int =

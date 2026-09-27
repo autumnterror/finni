@@ -13,7 +13,6 @@ object LearningMetricIds {
     const val BUDGET_ADAPT_TO_CHANGE = "budget.adapt_to_change"
 
     const val SAVINGS_CREATE_GOAL = "savings.create_goal"
-    const val SAVINGS_PLAN = "savings.plan_saving"
     const val SAVINGS_REGULAR_CONTRIBUTION = "savings.regular_contribution"
     const val SAVINGS_REACH_GOAL = "savings.reach_goal"
 
@@ -56,6 +55,12 @@ class AchievementCatalog(
 }
 
 object MvpAchievementCatalog {
+    /** Published IDs retired from the visible catalog; old unlocks and XP grants remain persisted. */
+    private val retiredAchievementIds = setOf(
+        "savings.plan_saving.introduction",
+        "savings.plan_saving.learned",
+    )
+
     fun create(config: LearningConfig): AchievementCatalog {
         var order = 0
         fun achievement(
@@ -148,22 +153,6 @@ object MvpAchievementCatalog {
                 "Сам выбираю цель",
                 "Ты научился выбирать достижимую финансовую цель.",
                 "Ребёнок умеет самостоятельно выбирать и создавать достижимую финансовую цель.",
-            ))
-            add(achievement(
-                LearningMetricIds.SAVINGS_PLAN,
-                LearningTopicIds.SAVINGS_BUILDING,
-                AchievementStage.INTRODUCTION,
-                "Коплю по плану",
-                "Ты добавил сбережения в недельный план.",
-                "Ребёнок познакомился с включением сбережений в недельный план.",
-            ))
-            add(achievement(
-                LearningMetricIds.SAVINGS_PLAN,
-                LearningTopicIds.SAVINGS_BUILDING,
-                AchievementStage.LEARNED,
-                "Регулярный план",
-                "Ты научился заранее планировать пополнения цели.",
-                "Ребёнок умеет планировать регулярные пополнения финансовой цели.",
             ))
             add(achievement(
                 LearningMetricIds.SAVINGS_REGULAR_CONTRIBUTION,
@@ -286,6 +275,9 @@ object MvpAchievementCatalog {
         }
 
         val catalog = AchievementCatalog(definitions)
+        require(definitions.none { it.achievementId in retiredAchievementIds }) {
+            "Retired achievement IDs must not be reused"
+        }
         val unknownOverrides = config.achievementXpOverrides.keys - definitions.map { it.achievementId }.toSet()
         require(unknownOverrides.isEmpty()) { "XP overrides reference unknown achievements: $unknownOverrides" }
         config.metricRules.forEach { rule ->

@@ -11,13 +11,13 @@ import github.detrig.feature.phone.presentation.RoomNotificationsViewModel
 import github.detrig.core.presentation.message.GlobalMessageController
 
 internal interface PhoneComponent {
+    val isDebugBuild: Boolean
     val api: PhoneApi
     val router: PhoneRouter
     val roomApi: RoomApi
     val petApi: PetApi
     val shopApi: ShopApi
     val globalMessageController: GlobalMessageController
-    val isDebugBuild: Boolean
     fun debugMenuViewModel(): DebugMenuViewModel
     fun messagesViewModel(): MessagesViewModel
     fun roomNotificationsViewModel(): RoomNotificationsViewModel

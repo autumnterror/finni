@@ -10,6 +10,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -72,8 +74,11 @@ import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetOutlinedButton
+import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetHelpButton
+import github.detrig.designsystem.component.FinPetHelpDialog
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.phone.PhoneFeature
@@ -302,7 +307,7 @@ private fun PhoneDevice(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 val openAppId = activeAppId
-                if (openAppId == null) {
+                if (openAppId == null || (openAppId == DEBUG_APP && !showDebugApp)) {
                     PhoneHomeContent(
                         scale = scale,
                         unreadMessages = messagesState.inbox.unreadCount,
@@ -426,6 +431,7 @@ private fun PhoneHomeContent(
     onOpenApp: (String) -> Unit,
     highlightedAppId: String? = null,
 ) {
+    var isHelpVisible by rememberSaveable { mutableStateOf(false) }
     var highlightedAppBounds by remember { mutableStateOf<Rect?>(null) }
     LaunchedEffect(highlightedAppId) { highlightedAppBounds = null }
     PhoneAssetButton(
@@ -439,14 +445,18 @@ private fun PhoneHomeContent(
         onClick = onClose,
     )
     PhoneStatusIcons(scale)
-    val apps = listOf(
-        PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP),
-        PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP),
-        PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP),
-        PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 129f, 620f, MESSAGES_APP_ID),
-    ) + if (showDebugApp) listOf(
-        PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 382f, 620f, DEBUG_APP),
-    ) else emptyList()
+    FinPetHelpButton(
+        contentDescription = stringResource(R.string.phone_help_button),
+        onClick = { isHelpVisible = true },
+        modifier = Modifier.offset(x = (100f * scale).dp, y = (140f * scale).dp),
+    )
+    val apps = buildList {
+        add(PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 129f, 620f, MESSAGES_APP_ID))
+        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 382f, 620f, DEBUG_APP))
+    }
     apps.forEach { app ->
         Box(
             modifier = Modifier
@@ -515,6 +525,14 @@ private fun PhoneHomeContent(
     }
     highlightedAppBounds?.let { bounds ->
         PhoneAppTutorialMask(bounds = bounds)
+    }
+    if (isHelpVisible) {
+        FinPetHelpDialog(
+            title = stringResource(R.string.phone_help_title),
+            message = stringResource(R.string.phone_help_message),
+            dismissText = stringResource(R.string.phone_help_dismiss),
+            onDismissRequest = { isHelpVisible = false },
+        )
     }
 }
 
@@ -668,8 +686,12 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         onChangeBalance = { viewModel.perform(DebugMenuViewEvent.ChangeBalance(it)) },
         onChangeGrowthStage = { viewModel.perform(DebugMenuViewEvent.ChangeGrowthStage(it)) },
         onUseLevelGrowthStage = { viewModel.perform(DebugMenuViewEvent.UseLevelGrowthStage) },
+        onChangeDirtStage = { viewModel.perform(DebugMenuViewEvent.ChangeDirtStage(it)) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
         onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
+        onRequestProgressReset = { viewModel.perform(DebugMenuViewEvent.RequestProgressReset(it)) },
+        onCancelProgressReset = { viewModel.perform(DebugMenuViewEvent.CancelProgressReset) },
+        onConfirmProgressReset = { viewModel.perform(DebugMenuViewEvent.ConfirmProgressReset) },
     )
 }
 
@@ -680,8 +702,12 @@ private fun DebugMenuContent(
     onChangeBalance: (Long) -> Unit,
     onChangeGrowthStage: (Int) -> Unit,
     onUseLevelGrowthStage: () -> Unit,
+    onChangeDirtStage: (Int) -> Unit,
     onResetBalance: () -> Unit,
     onEndWeek: () -> Unit,
+    onRequestProgressReset: (DebugProgressResetMode) -> Unit,
+    onCancelProgressReset: () -> Unit,
+    onConfirmProgressReset: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -693,6 +719,7 @@ private fun DebugMenuContent(
         FinPetOutlinedButton(
             text = "Назад",
             onClick = onBack,
+            enabled = !state.isResettingProgress,
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
         Text(
@@ -730,7 +757,7 @@ private fun DebugMenuContent(
         FinPetOutlinedButton(
             text = "Обнулить баланс",
             onClick = onResetBalance,
-            enabled = !state.isChanging && !state.isEndingWeek && state.balanceRub > 0,
+            enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress && state.balanceRub > 0,
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
@@ -761,14 +788,14 @@ private fun DebugMenuContent(
             FinPetButton(
                 text = "−1 стадия",
                 onClick = { onChangeGrowthStage(-1) },
-                enabled = !state.isChangingGrowthStage && state.growthStage != GrowthStage.BABY,
+                enabled = !state.isChangingGrowthStage && !state.isResettingProgress && state.growthStage != GrowthStage.BABY,
                 modifier = Modifier.weight(1f),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
             FinPetButton(
                 text = "+1 стадия",
                 onClick = { onChangeGrowthStage(1) },
-                enabled = !state.isChangingGrowthStage && state.growthStage != GrowthStage.ADULT,
+                enabled = !state.isChangingGrowthStage && !state.isResettingProgress && state.growthStage != GrowthStage.ADULT,
                 modifier = Modifier.weight(1f),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
@@ -776,17 +803,76 @@ private fun DebugMenuContent(
         FinPetOutlinedButton(
             text = "Вернуть рост по уровню",
             onClick = onUseLevelGrowthStage,
-            enabled = !state.isChangingGrowthStage && state.isGrowthStageOverridden,
+            enabled = !state.isChangingGrowthStage && !state.isResettingProgress && state.isGrowthStageOverridden,
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            ) {
+                Text("Загрязнение питомца", style = AppTheme.typography.body)
+                Text(
+                    text = "Стадия ${state.dirtStage} / 3",
+                    style = AppTheme.typography.currency,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            FinPetButton(
+                text = "− стадия",
+                onClick = { onChangeDirtStage(-1) },
+                enabled = !state.isChangingDirtStage && !state.isResettingProgress && state.dirtStage > 0,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+            FinPetButton(
+                text = "+ стадия",
+                onClick = { onChangeDirtStage(1) },
+                enabled = !state.isChangingDirtStage && !state.isResettingProgress && state.dirtStage < 3,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+        }
         FinPetButton(
             text = if (state.isEndingWeek) "Завершаем неделю…" else "Завершить неделю",
             onClick = onEndWeek,
-            enabled = !state.isChanging && !state.isEndingWeek,
+            enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontPrimaryStyle(),
         )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            ) {
+                Text("Сброс прогресса", style = AppTheme.typography.body)
+                Text(
+                    "Удалит питомца, деньги, покупки, достижения и историю игры.",
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                FinPetOutlinedButton(
+                    text = "До обучения",
+                    onClick = { onRequestProgressReset(DebugProgressResetMode.BEFORE_ONBOARDING) },
+                    enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                )
+                FinPetOutlinedButton(
+                    text = "После обучения",
+                    onClick = { onRequestProgressReset(DebugProgressResetMode.AFTER_ONBOARDING) },
+                    enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                )
+            }
+        }
         state.errorMessage?.let { message ->
             Text(
                 text = message,
@@ -798,6 +884,41 @@ private fun DebugMenuContent(
             Text(
                 text = message,
                 style = AppTheme.typography.caption,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+        }
+    }
+
+    state.pendingReset?.let { mode ->
+        FinPetModalDialog(
+            title = "Сбросить прогресс?",
+            onDismissRequest = onCancelProgressReset.takeUnless { state.isResettingProgress },
+            dismissEnabled = !state.isResettingProgress,
+            actions = {
+                FinPetButton(
+                    text = if (state.isResettingProgress) "Сбрасываем…" else "Сбросить",
+                    onClick = onConfirmProgressReset,
+                    enabled = !state.isResettingProgress,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+                FinPetOutlinedButton(
+                    text = "Отмена",
+                    onClick = onCancelProgressReset,
+                    enabled = !state.isResettingProgress,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                )
+            },
+        ) {
+            Text(
+                text = when (mode) {
+                    DebugProgressResetMode.BEFORE_ONBOARDING ->
+                        "Игра начнётся заново. После создания питомца снова появится обучение."
+                    DebugProgressResetMode.AFTER_ONBOARDING ->
+                        "Игра начнётся заново, а обучение после создания питомца будет пропущено."
+                },
+                style = AppTheme.typography.body,
                 color = AppTheme.colors.storefront.onSurface,
             )
         }
@@ -821,7 +942,7 @@ private fun DebugBalanceButton(
     FinPetButton(
         text = label,
         onClick = { onChangeBalance(deltaRub) },
-        enabled = !state.isChanging && !state.isEndingWeek &&
+        enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress &&
             (deltaRub > 0 || state.balanceRub >= -deltaRub),
         modifier = modifier,
         style = FinPetButtonDefaults.storefrontPrimaryStyle(),
@@ -1057,6 +1178,7 @@ private fun DebugMenuPreview() {
             DebugMenuContent(
                 state = DebugMenuViewState(
                     balanceRub = 350,
+                    dirtStage = 2,
                     growthStage = GrowthStage.TEEN,
                     growthStageFromLevel = GrowthStage.BABY,
                     isGrowthStageOverridden = true,
@@ -1065,8 +1187,12 @@ private fun DebugMenuPreview() {
                 onChangeBalance = {},
                 onChangeGrowthStage = {},
                 onUseLevelGrowthStage = {},
+                onChangeDirtStage = {},
                 onResetBalance = {},
                 onEndWeek = {},
+                onRequestProgressReset = {},
+                onCancelProgressReset = {},
+                onConfirmProgressReset = {},
             )
         }
     }

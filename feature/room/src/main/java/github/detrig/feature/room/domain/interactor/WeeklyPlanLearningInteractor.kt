@@ -3,10 +3,8 @@ package github.detrig.feature.room.domain.interactor
 import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.learning.domain.AchievementUnlock
 import github.detrig.feature.learning.domain.BudgetPlanningLearning
-import github.detrig.feature.learning.domain.SavingsLearning
 import github.detrig.feature.learning.domain.RecordLearningResult
 import github.detrig.feature.planning.domain.WeeklyPlan
-import github.detrig.feature.planning.domain.PlanCategory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -50,6 +48,11 @@ internal class WeeklyPlanLearningInteractor(
         explanationId = INTRODUCTION_EXPLANATION_ID,
     )
 
+    suspend fun claimFinalRulesRecap(): Boolean = learningApi.claimFirstExplanation(
+        profileId = CURRENT_PROFILE_ID,
+        explanationId = "finance:four-rules-recap",
+    )
+
     suspend fun recordConfirmed(plan: WeeklyPlan): WeeklyPlanLearningFeedback {
         val result = learningApi.record(plan.toLearningAction())
         val newlyUnlocked = when (result) {
@@ -62,12 +65,11 @@ internal class WeeklyPlanLearningInteractor(
                 "Unsupported learning action ${result.actionType.value}",
             )
         }
-        val savingsUnlocks = recordSavingsPlan(plan)
         val showSuccessExplanation = learningApi.claimFirstExplanation(
             profileId = CURRENT_PROFILE_ID,
             explanationId = SUCCESS_EXPLANATION_ID,
         )
-        return WeeklyPlanLearningFeedback(showSuccessExplanation, newlyUnlocked + savingsUnlocks)
+        return WeeklyPlanLearningFeedback(showSuccessExplanation, newlyUnlocked)
     }
 
     suspend fun reconcile(plan: WeeklyPlan) {
@@ -81,20 +83,6 @@ internal class WeeklyPlanLearningInteractor(
             is RecordLearningResult.UnsupportedAction -> error(
                 "Unsupported learning action ${result.actionType.value}",
             )
-        }
-        recordSavingsPlan(plan)
-    }
-
-    private suspend fun recordSavingsPlan(plan: WeeklyPlan): List<AchievementUnlock> {
-        val amount = plan.plannedRub(PlanCategory.SAVINGS)
-        if (amount <= 0) return emptyList()
-        return when (val result = learningApi.record(
-            SavingsLearning.savingsPlanned(CURRENT_PROFILE_ID, plan.weekNumber, amount),
-        )) {
-            is RecordLearningResult.Processed -> result.newlyUnlocked
-            is RecordLearningResult.AlreadyProcessed -> emptyList()
-            is RecordLearningResult.OperationIdConflict -> error("Conflicting learning action ${result.actionId}")
-            is RecordLearningResult.UnsupportedAction -> error("Unsupported learning action ${result.actionType.value}")
         }
     }
 

@@ -11,7 +11,7 @@
   },
   "pose": "reference_seated",
   "currency": "RUB_GAME",
-  "pricesAreExamples": true,
+  "pricesAreExamples": false,
   "slots": {
     "body": "Одежда",
     "head": "На голову",
@@ -45,7 +45,7 @@
       "id": "01_leaf_tee",
       "name": "Футболка «Листик»",
       "slot": "body",
-      "price": 60,
+      "price": 140,
       "design": "sage-green short-sleeve T-shirt, one small cream leaf emblem on lower right belly",
       "sleeves": true,
       "layers": [
@@ -600,7 +600,7 @@
       "id": "02_sailor_tee",
       "name": "Тельняшка",
       "slot": "body",
-      "price": 70,
+      "price": 170,
       "design": "cream and muted navy horizontal striped short-sleeve sailor T-shirt, broad stripes, simple rounded neck",
       "sleeves": true,
       "layers": [
@@ -1155,7 +1155,7 @@
       "id": "03_lilac_hoodie",
       "name": "Сиреневая толстовка",
       "slot": "body",
-      "price": 110,
+      "price": 260,
       "design": "pastel lilac hoodie with hood DOWN behind neck, small kangaroo pocket, cream drawcords, short bent sleeves",
       "sleeves": true,
       "layers": [
@@ -1710,7 +1710,7 @@
       "id": "04_yellow_raincoat",
       "name": "Солнечный дождевик",
       "slot": "body",
-      "price": 120,
+      "price": 290,
       "design": "butter-yellow rain jacket, hood DOWN, teal buttons, cream lining, short close-to-body sleeves",
       "sleeves": true,
       "layers": [
@@ -2265,7 +2265,7 @@
       "id": "05_teal_cardigan",
       "name": "Мятный кардиган",
       "slot": "body",
-      "price": 95,
+      "price": 230,
       "design": "soft mint-teal cardigan with three wooden buttons, wide V neckline, simple rib hem, fitted short sleeves",
       "sleeves": true,
       "layers": [
@@ -2820,7 +2820,7 @@
       "id": "06_denim_vest",
       "name": "Джинсовый жилет",
       "slot": "body",
-      "price": 85,
+      "price": 200,
       "design": "sleeveless dusty-blue denim vest, two tiny chest pockets, warm tan stitching, open V front",
       "layers": [
         {
@@ -3374,7 +3374,7 @@
       "id": "07_plaid_shirt",
       "name": "Рубашка в клетку",
       "slot": "body",
-      "price": 90,
+      "price": 220,
       "design": "coral-and-cream large plaid shirt, small soft collar, brown buttons, short bent sleeves",
       "sleeves": true,
       "layers": [
@@ -3929,7 +3929,7 @@
       "id": "08_garden_overalls",
       "name": "Садовый комбинезон",
       "slot": "body",
-      "price": 125,
+      "price": 300,
       "design": "moss-green gardener overalls for seated hamster, two shoulder straps with wooden buttons, big front pocket with tiny embroidered carrot, single rounded bottom with no hanging trouser legs",
       "layers": [
         {
@@ -4483,7 +4483,7 @@
       "id": "09_cream_sweater",
       "name": "Уютный свитер",
       "slot": "body",
-      "price": 100,
+      "price": 240,
       "design": "cream knitted sweater with simple large rust diamond motif, round low collar and ribbed cuffs, short fitted sleeves",
       "sleeves": true,
       "layers": [
@@ -5038,7 +5038,7 @@
       "id": "10_coral_dress",
       "name": "Платье «Лепестки»",
       "slot": "body",
-      "price": 130,
+      "price": 310,
       "design": "soft coral pinafore dress for round seated hamster, scalloped cream hem, three tiny cream flower motifs, sleeveless straps, no feet",
       "layers": [
         {
@@ -5592,7 +5592,7 @@
       "id": "11_star_pajamas",
       "name": "Пижама «Звёзды»",
       "slot": "body",
-      "price": 95,
+      "price": 230,
       "design": "dusty-blue pajama shirt with a few large butter-yellow stars, soft cream piping, three buttons, short close sleeves",
       "sleeves": true,
       "layers": [
@@ -6147,7 +6147,7 @@
       "id": "12_plum_waistcoat",
       "name": "Нарядный жилет",
       "slot": "body",
-      "price": 100,
+      "price": 240,
       "design": "muted plum formal sleeveless waistcoat, cream V lapels, three small gold buttons, tiny lower pockets, rounded broad cut",
       "layers": [
         {
@@ -6701,7 +6701,7 @@
       "id": "13_sage_beret",
       "name": "Зелёный берет",
       "slot": "head",
-      "price": 55,
+      "price": 130,
       "design": "small sage-green French beret, cream stitched rim, tiny brown stalk",
       "layers": [
         {
@@ -6803,7 +6803,7 @@
       "id": "14_blue_cap",
       "name": "Кепка «Листик»",
       "slot": "head",
-      "price": 60,
+      "price": 140,
       "design": "small dusty-blue baseball cap with tiny cream leaf badge, short curved brim, no ear flaps",
       "layers": [
         {
@@ -6905,7 +6905,7 @@
       "id": "15_straw_hat",
       "name": "Соломенная шляпа",
       "slot": "head",
-      "price": 75,
+      "price": 180,
       "design": "small honey-gold straw boater hat with sage band, compact oval brim and shallow crown, no intricate texture",
       "layers": [
         {
@@ -7007,7 +7007,7 @@
       "id": "16_bobble_beanie",
       "name": "Шапка с помпоном",
       "slot": "head",
-      "price": 65,
+      "price": 160,
       "design": "small pastel sky-blue knit beanie with cream pompom and ribbed cuff, rounded soft crown",
       "layers": [
         {
@@ -7109,7 +7109,7 @@
       "id": "17_chef_hat",
       "name": "Колпак повара",
       "slot": "head",
-      "price": 80,
+      "price": 190,
       "design": "small cream-white chef toque with three puffy scallops, short cream band, gentle shading",
       "layers": [
         {
@@ -7211,7 +7211,7 @@
       "id": "18_explorer_hat",
       "name": "Панама путешественника",
       "slot": "head",
-      "price": 85,
+      "price": 200,
       "design": "small tan explorer bucket hat, moss-green band, very short curved brim, tiny stitched side patch",
       "layers": [
         {
@@ -7313,7 +7313,7 @@
       "id": "19_crown",
       "name": "Корона",
       "slot": "head",
-      "price": 150,
+      "price": 360,
       "design": "tiny soft gold three-point crown with rounded tips, three small coral and teal gems, no sharp spikes",
       "layers": [
         {
@@ -7415,7 +7415,7 @@
       "id": "20_wizard_hat",
       "name": "Колпачок звездочёта",
       "slot": "head",
-      "price": 120,
+      "price": 290,
       "design": "small floppy muted-purple wizard hat with one cream star and short soft brim, bent top, not a huge cone",
       "layers": [
         {
@@ -7522,7 +7522,7 @@
       "id": "21_cherry_bow",
       "name": "Бант «Вишенка»",
       "slot": "head",
-      "price": 45,
+      "price": 110,
       "design": "small coral-red fabric hair bow with round knot and two short tails, cream stitched edges",
       "layers": [
         {
@@ -7624,7 +7624,7 @@
       "id": "22_flower_wreath",
       "name": "Венок из ромашек",
       "slot": "head",
-      "price": 70,
+      "price": 170,
       "design": "small curved arc wreath with three cream daisies, yellow centers and sage leaves, no dangling strings",
       "layers": [
         {
@@ -7726,7 +7726,7 @@
       "id": "23_coral_bandana",
       "name": "Коралловая бандана",
       "slot": "neck",
-      "price": 40,
+      "price": 100,
       "design": "coral triangle neckerchief with cream polka dots, broad soft neckline and one short triangular point",
       "box": [
         459,
@@ -7800,7 +7800,7 @@
       "id": "24_mustard_scarf",
       "name": "Тёплый шарфик",
       "slot": "neck",
-      "price": 55,
+      "price": 130,
       "design": "mustard-yellow knitted scarf with one short tail hanging on viewer right and cream fringe, simple broad knit",
       "box": [
         456,
@@ -7874,7 +7874,7 @@
       "id": "25_teal_bowtie",
       "name": "Мятная бабочка",
       "slot": "neck",
-      "price": 45,
+      "price": 110,
       "design": "mint-teal rounded bow tie with cream tiny dots and warm-brown center knot, no collar band",
       "box": [
         492,
@@ -7948,7 +7948,7 @@
       "id": "26_sailor_collar",
       "name": "Матросский воротник",
       "slot": "neck",
-      "price": 60,
+      "price": 140,
       "design": "small muted navy sailor collar with two cream trim lines, tiny coral knot, open transparent center",
       "box": [
         443,
@@ -8022,7 +8022,7 @@
       "id": "27_lilac_snood",
       "name": "Сиреневый снуд",
       "slot": "neck",
-      "price": 50,
+      "price": 120,
       "design": "short pastel lilac chunky knit snood, soft rounded ring, no tall collar, no fur",
       "box": [
         449,
@@ -8096,7 +8096,7 @@
       "id": "28_daisy_collar",
       "name": "Воротничок «Ромашка»",
       "slot": "neck",
-      "price": 55,
+      "price": 130,
       "design": "cream scalloped pet collar with one small yellow daisy at center and pale green ribbon, low soft shape",
       "box": [
         445,
@@ -8170,7 +8170,7 @@
       "id": "29_explorer_kerchief",
       "name": "Платок путешественника",
       "slot": "neck",
-      "price": 45,
+      "price": 110,
       "design": "sage-green triangular scout neckerchief with small wooden slide ring and short cream-edged tails",
       "box": [
         467,
@@ -8244,7 +8244,7 @@
       "id": "30_star_pendant",
       "name": "Подвеска «Звезда»",
       "slot": "neck",
-      "price": 65,
+      "price": 160,
       "design": "soft teal cord necklace with one small rounded golden star pendant, cord curved downward and transparent open middle",
       "box": [
         471,
@@ -8318,7 +8318,7 @@
       "id": "31_round_glasses",
       "name": "Круглые очки",
       "slot": "face",
-      "price": 70,
+      "price": 170,
       "design": "thin honey-gold round eyeglasses with empty fully transparent lenses",
       "box": [
         310,
@@ -8415,7 +8415,7 @@
       "id": "32_teal_square_glasses",
       "name": "Бирюзовая оправа",
       "slot": "face",
-      "price": 75,
+      "price": 180,
       "design": "thin pastel-teal softly rounded square eyeglasses, empty fully transparent lenses, no tint",
       "box": [
         309,
@@ -8512,7 +8512,7 @@
       "id": "33_rose_glasses",
       "name": "Розовая оправа",
       "slot": "face",
-      "price": 70,
+      "price": 170,
       "design": "thin dusty-rose round eyeglasses, one tiny cream flower on outer temple, empty fully transparent lenses",
       "box": [
         309,
@@ -8609,7 +8609,7 @@
       "id": "34_navy_oval_glasses",
       "name": "Синяя оправа",
       "slot": "face",
-      "price": 75,
+      "price": 180,
       "design": "thin muted navy oval eyeglasses with softly rounded rectangular corners, empty fully transparent lenses",
       "box": [
         310,
@@ -8706,7 +8706,7 @@
       "id": "35_wood_glasses",
       "name": "Деревянная оправа",
       "slot": "face",
-      "price": 85,
+      "price": 200,
       "design": "light honey-brown round wooden eyeglasses, matte simple surface, empty fully transparent lenses",
       "box": [
         310,
@@ -8803,7 +8803,7 @@
       "id": "36_lilac_glasses",
       "name": "Сиреневая оправа",
       "slot": "face",
-      "price": 80,
+      "price": 190,
       "design": "thin pastel lilac rounded cat-eye eyeglasses with tiny gentle outer corners, empty fully transparent lenses",
       "box": [
         306,
@@ -8900,7 +8900,7 @@
       "id": "37_hero_cape",
       "name": "Плащ героя",
       "slot": "back",
-      "price": 130,
+      "price": 310,
       "design": "warm coral-red superhero cape seen from front, flared broad soft fabric behind seated body, golden trim, short neck tie at upper center, no emblem",
       "box": [
         30,
@@ -8991,7 +8991,7 @@
       "id": "38_blue_backpack",
       "name": "Рюкзачок",
       "slot": "back",
-      "price": 110,
+      "price": 260,
       "design": "small dusty-blue school backpack, rounded shape, mustard pocket, two cream shoulder straps, shown in front-facing wearing orientation with straps visible",
       "box": [
         175,
@@ -9082,7 +9082,7 @@
       "id": "39_fairy_wings",
       "name": "Крылышки",
       "slot": "back",
-      "price": 145,
+      "price": 350,
       "design": "pair of symmetrical small pastel lilac and mint butterfly costume wings, softly rounded lobes, warm brown outline, small cream dots, transparent gap in center, viewed straight on",
       "box": [
         102,
@@ -9156,7 +9156,7 @@
       "id": "40_explorer_satchel",
       "name": "Сумка путешественника",
       "slot": "back",
-      "price": 105,
+      "price": 250,
       "design": "small caramel leather explorer satchel with sage flap and cream buckle at viewer left hip, long narrow diagonal cream strap rising toward viewer right shoulder, one connected accessory",
       "box": [
         165,

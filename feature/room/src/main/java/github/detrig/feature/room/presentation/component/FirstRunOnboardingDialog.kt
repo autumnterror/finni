@@ -34,7 +34,6 @@ internal fun FirstRunOnboardingDialog(
     onContinue: () -> Unit,
     onDepositSelected: (Boolean) -> Unit,
     onShowWeekSummary: () -> Unit = {},
-    onStartNewWeekPlan: () -> Unit = {},
     onPageChanged: (Int) -> Unit = {},
 ) {
     val cards = state.cards(petName) ?: return
@@ -44,10 +43,6 @@ internal fun FirstRunOnboardingDialog(
         FirstRunOnboardingStep.WEEK_END_INTRO -> FinPetDialogueAction(
             id = SHOW_WEEK_SUMMARY_ACTION_ID,
             label = stringResource(R.string.onboarding_show_week_summary),
-        )
-        FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE -> FinPetDialogueAction(
-            id = START_NEW_WEEK_PLAN_ACTION_ID,
-            label = stringResource(R.string.onboarding_start_new_week_plan),
         )
         else -> null
     }
@@ -80,7 +75,6 @@ internal fun FirstRunOnboardingDialog(
                 DEPOSIT_NOW_ACTION_ID -> onDepositSelected(true)
                 DEPOSIT_LATER_ACTION_ID -> onDepositSelected(false)
                 SHOW_WEEK_SUMMARY_ACTION_ID -> onShowWeekSummary()
-                START_NEW_WEEK_PLAN_ACTION_ID -> onStartNewWeekPlan()
             }
         },
         additionalContent = {
@@ -95,7 +89,6 @@ internal fun FirstRunOnboardingDialog(
 private const val DEPOSIT_NOW_ACTION_ID = "deposit_now"
 private const val DEPOSIT_LATER_ACTION_ID = "deposit_later"
 private const val SHOW_WEEK_SUMMARY_ACTION_ID = "show_week_summary"
-private const val START_NEW_WEEK_PLAN_ACTION_ID = "start_new_week_plan"
 
 @Composable
 private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when (step) {
@@ -160,13 +153,9 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
         stringResource(R.string.onboarding_second_day_free),
     )
     FirstRunOnboardingStep.WEEK_END_INTRO -> listOf(
-        stringResource(R.string.onboarding_week_end_wait),
-        stringResource(R.string.onboarding_week_end_finished),
-        stringResource(R.string.onboarding_week_end_guidance),
+        stringResource(R.string.onboarding_week_end_finished) + "\n\n" +
+            stringResource(R.string.onboarding_week_end_guidance),
     )
-    FirstRunOnboardingStep.NEW_WEEK_INTRO -> listOf(stringResource(R.string.onboarding_new_week_intro))
-    FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE ->
-        listOf(stringResource(R.string.onboarding_new_week_plan_guidance))
     FirstRunOnboardingStep.WISH,
     FirstRunOnboardingStep.FIRST_MONEY,
     FirstRunOnboardingStep.PLAN,
@@ -195,6 +184,8 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.WAITING_FOR_BED,
     FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
     FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
+    FirstRunOnboardingStep.NEW_WEEK_INTRO,
+    FirstRunOnboardingStep.NEW_WEEK_PLAN_GUIDANCE,
     FirstRunOnboardingStep.COMPLETED,
     -> null
 }

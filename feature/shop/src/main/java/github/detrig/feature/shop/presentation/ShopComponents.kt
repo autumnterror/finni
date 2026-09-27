@@ -66,6 +66,7 @@ import github.detrig.designsystem.component.FinPetFilterChipDefaults
 import github.detrig.designsystem.component.FinPetGridColumns
 import github.detrig.designsystem.component.FinPetLazyGrid
 import github.detrig.designsystem.component.FinPetLazyRow
+import github.detrig.designsystem.component.FinPetSunIcon
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.shop.R
@@ -76,7 +77,6 @@ import github.detrig.feature.shop.api.ShopItemDetailsResolver
 import github.detrig.feature.shop.domain.ShopDecisionEvent
 import github.detrig.feature.shop.domain.ShopDecisionEventType
 import github.detrig.feature.shop.domain.ShopPromotionKind
-import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
 import github.detrig.products.SellableItem
@@ -338,19 +338,28 @@ private fun ShopProductCard(
                         .height(ProductDetailHeight),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val detail = itemDetailsResolver.details(item).firstOrNull()
-                    if (detail != null) {
+                    val details = itemDetailsResolver.details(item)
+                    if (details.isNotEmpty()) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            ShopDetailIcon(detail.icon)
-                            Text(
-                                text = detail.text,
-                                style = AppTheme.typography.bodyStrong,
-                                color = AppTheme.colors.actionPrimary,
-                                maxLines = 1,
-                            )
+                            details.forEach { detail ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    ShopDetailIcon(detail.icon)
+                                    Text(
+                                        text = detail.text,
+                                        style = AppTheme.typography.bodyStrong,
+                                        color = if (detail.icon == ShopItemDetailIcon.HAPPINESS) {
+                                            AppTheme.colors.metricHappiness
+                                        } else AppTheme.colors.actionPrimary,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -526,11 +535,7 @@ private fun ShopCartQuantityBadge(
 fun ShopDetailIcon(icon: ShopItemDetailIcon) {
     when (icon) {
         ShopItemDetailIcon.SATIETY -> SatietyAppleIcon()
-        ShopItemDetailIcon.HAPPINESS -> Text(
-            text = "♥",
-            style = AppTheme.typography.label,
-            color = AppTheme.colors.metricHappiness,
-        )
+        ShopItemDetailIcon.HAPPINESS -> FinPetSunIcon(Modifier.size(18.dp))
         ShopItemDetailIcon.NONE -> Unit
     }
 }
@@ -723,19 +728,7 @@ private object ShopArtworkBitmapCache {
 @Composable
 private fun ShopProductCardPreview() {
     val items = GroceryCatalog().storefront.items.take(3)
-    val detailsResolver = ShopItemDetailsResolver { sellable ->
-        val food = sellable as? FoodItem
-        if (food == null) {
-            emptyList()
-        } else {
-            listOf(
-                github.detrig.feature.shop.api.ShopItemDetail(
-                    text = "+${food.effects.satietyPercent}%",
-                    icon = ShopItemDetailIcon.SATIETY,
-                ),
-            )
-        }
-    }
+    val detailsResolver = ShopItemDetailsResolver { github.detrig.feature.shop.api.foodEffectDetails(it) }
     val discountEvent = ShopDecisionEvent(
         eventId = "preview-discount",
         type = ShopDecisionEventType.PROMOTION,

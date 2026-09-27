@@ -26,6 +26,7 @@ internal fun BathroomScreen(
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit,
     onBack: () -> Unit,
     onToolCompleted: (BathStep) -> Unit,
+    onToolSoundChanged: (BathStep, Boolean) -> Unit = { _, _ -> },
     onDryerRunningChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -37,6 +38,7 @@ internal fun BathroomScreen(
             petContent = petContent,
             washStep = washStep,
             onToolCompleted = onToolCompleted,
+            onToolSoundChanged = onToolSoundChanged,
             onDryerRunningChanged = onDryerRunningChanged,
         )
         FinPetBackButton(

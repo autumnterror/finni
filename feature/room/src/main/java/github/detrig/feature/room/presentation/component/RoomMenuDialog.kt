@@ -29,6 +29,7 @@ internal fun RoomMenuDialog(
     showAllUnlocked: Boolean,
     onToggleUnlocked: () -> Unit,
     onShowAllAchievements: () -> Unit,
+    onSettings: () -> Unit,
     onParentCabinet: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -105,6 +106,12 @@ internal fun RoomMenuDialog(
             modifier = Modifier.fillMaxWidth().testTag("menu_all_achievements"),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
+        FinPetButton(
+            text = stringResource(R.string.room_menu_settings),
+            onClick = onSettings,
+            modifier = Modifier.fillMaxWidth().testTag("menu_settings"),
+            style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+        )
     }
 }
 
@@ -132,13 +139,14 @@ private fun RoomMenuDialogPreview() {
                     id = "achievement-$index",
                     title = "Достижение $index",
                     description = "Новое финансовое умение питомца и игрока.",
-                    xpReward = if (index % 2 == 0) 20 else 50,
+                    xpReward = if (index % 2 == 0) 20 else 10,
                     unlockOrder = index.toLong(),
                 )
             },
             showAllUnlocked = false,
             onToggleUnlocked = {},
             onShowAllAchievements = {},
+            onSettings = {},
             onParentCabinet = {},
             onDismiss = {},
         )

@@ -71,6 +71,7 @@ dependencies {
     implementation(project(":feature:week"))
     implementation(project(":feature:planning"))
     implementation(project(":feature:learning"))
+    implementation(project(":feature:learning-tests"))
     implementation(project(":feature:savings"))
     implementation(project(":feature:room"))
     implementation(project(":feature:shop"))

@@ -89,6 +89,13 @@ internal class PetApiImpl(
 
     override fun currentProfile(): PetProfile? = repository.currentProfile()
 
+    override fun resetProfile() {
+        repository.resetProfile()
+        debugOverride.value = null
+        growthSnapshot = PetGrowthState(GrowthStage.BABY, GrowthStage.BABY, false)
+        ClothingArtwork.clearEquipped()
+    }
+
     override suspend fun clothingItems(): List<ClothingItem> = ClothingArtwork.items(assets)
 
     override fun cachedClothingItems(): List<ClothingItem> = ClothingArtwork.cachedItems()
@@ -135,29 +142,33 @@ internal class PetApiImpl(
         modifier: Modifier,
         onClick: (() -> Unit)?,
         animateIdle: Boolean,
+        freezeAnimation: Boolean,
         mouthOpen: Boolean,
         lookAt: Offset?,
         pose: PetPose,
         gestureCallbacks: PetGestureCallbacks?,
         showShadow: Boolean,
+        dirtStage: Int,
     ) {
         PetScene(
             profile = profile,
             modifier = modifier,
             growthStage = growthStage(),
             animateIdle = animateIdle,
+            freezeAnimation = freezeAnimation,
             mouthOpen = mouthOpen,
             lookAt = lookAt,
             onClick = onClick,
             pose = pose,
             gestureCallbacks = gestureCallbacks,
             showShadow = showShadow,
+            dirtStage = dirtStage,
         )
     }
 
     @Composable
-    override fun Portrait(profile: PetProfile, modifier: Modifier) {
-        PetPortrait(profile, modifier, growthStage())
+    override fun Portrait(profile: PetProfile, modifier: Modifier, dirtStage: Int) {
+        PetPortrait(profile, modifier, growthStage = growthStage(), dirtStage = dirtStage)
     }
 
     @Composable

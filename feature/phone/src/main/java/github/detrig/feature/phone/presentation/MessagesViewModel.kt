@@ -8,6 +8,7 @@ import github.detrig.feature.phone.data.MessagesRepository
 import github.detrig.feature.phone.domain.MessageSenderId
 import github.detrig.feature.phone.domain.MessagesCoordinator
 import github.detrig.feature.phone.domain.MessagesInbox
+import github.detrig.feature.phone.domain.ParentHelpDialogData
 import github.detrig.feature.phone.domain.SecurityMessageEvent
 import github.detrig.feature.phone.domain.SecurityMessageScenario
 import github.detrig.feature.phone.domain.SecurityResponseChoice
@@ -76,14 +77,7 @@ internal class MessagesViewModel(
         actionJob = launchCoroutine(handleAction = errorHandler()) {
             val data = coordinator.parentHelpDialogData()
             updateState {
-                copy(parentHelpDialog = ParentHelpDialogState(
-                    offers = data.offers,
-                    activeHelp = data.activeHelp,
-                    availableRub = data.availableRub,
-                    savingsRub = data.savingsRub,
-                    debtRub = data.debtRub,
-                    minimumRequiredBalanceRub = data.minimumRequiredBalanceRub,
-                ))
+                copy(parentHelpDialog = data.toViewState())
             }
             actionJob = null
         }
@@ -97,8 +91,11 @@ internal class MessagesViewModel(
                 is ParentHelpRequestResult.Accepted,
                 is ParentHelpRequestResult.AlreadyActive,
                 -> updateState { copy(parentHelpDialog = null) }
-                is ParentHelpRequestResult.Rejected -> updateState {
-                    copy(parentHelpDialog = parentHelpDialog?.copy(isSubmitting = false))
+                is ParentHelpRequestResult.Rejected -> {
+                    val refreshedData = coordinator.parentHelpDialogData()
+                    updateState {
+                        copy(parentHelpDialog = refreshedData.toViewState())
+                    }
                 }
             }
             actionJob = null
@@ -208,6 +205,16 @@ internal class MessagesViewModel(
         true
     }
 }
+
+private fun ParentHelpDialogData.toViewState() = ParentHelpDialogState(
+    offers = offers,
+    activeHelp = activeHelp,
+    availableRub = availableRub,
+    savingsRub = savingsRub,
+    debtRub = debtRub,
+    minimumRequiredBalanceRub = minimumRequiredBalanceRub,
+    unavailableReasons = unavailableReasons,
+)
 
 private fun SecurityMessageEvent.safeChoice(): SecurityResponseChoice = when (scenario) {
     SecurityMessageScenario.CONFIRMATION_CODE -> SecurityResponseChoice.KEEP_CODE_SECRET

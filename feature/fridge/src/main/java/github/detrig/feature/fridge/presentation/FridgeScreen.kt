@@ -426,13 +426,26 @@ private fun FridgeFoodCell(
                     horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ShopDetailIcon(ShopItemDetailIcon.SATIETY)
-                    Text(
-                        text = "+${item.effects.satietyPercent}%",
-                        style = AppTheme.typography.bodyStrong,
-                        color = AppTheme.colors.actionPrimary,
-                        maxLines = 1,
-                    )
+                    val satiety = item.effects.satietyPercent
+                    val happiness = item.effects.happinessPoints
+                    if (satiety > 0) {
+                        ShopDetailIcon(ShopItemDetailIcon.SATIETY)
+                        Text(
+                            text = "+$satiety%",
+                            style = AppTheme.typography.caption,
+                            color = AppTheme.colors.actionPrimary,
+                            maxLines = 1,
+                        )
+                    }
+                    if (happiness > 0) {
+                        ShopDetailIcon(ShopItemDetailIcon.HAPPINESS)
+                        Text(
+                            text = "+$happiness",
+                            style = AppTheme.typography.caption,
+                            color = AppTheme.colors.metricHappiness,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }

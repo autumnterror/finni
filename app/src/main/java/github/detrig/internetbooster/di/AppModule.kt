@@ -20,13 +20,14 @@ import github.detrig.internetbooster.mediators.InventoryMediator
 import github.detrig.internetbooster.mediators.FridgeMediator
 import github.detrig.internetbooster.mediators.WardrobeMediator
 import github.detrig.internetbooster.mediators.LearningMediator
+import github.detrig.internetbooster.mediators.LearningTestsMediator
 import github.detrig.internetbooster.network.AppNetworkModule
-import github.detrig.core.time.SystemWallClock
-import github.detrig.core.time.TimeDrivenTask
-import github.detrig.core.time.TimedEventProcessor
 import github.detrig.internetbooster.time.HungerNotificationDispatcher
 import github.detrig.internetbooster.audio.AppAudioCues
+import github.detrig.internetbooster.mediators.FlightMediator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 internal interface AppModule {
 
@@ -34,6 +35,7 @@ internal interface AppModule {
     fun initFeatures()
     suspend fun reconcileTimedEvents()
     suspend fun hasPetProfile(): Boolean
+    suspend fun resetDemoProgress(skipOnboarding: Boolean)
 }
 
 internal class AppModuleImpl(
@@ -56,11 +58,14 @@ internal class AppModuleImpl(
 
     private val economyMediator: EconomyMediator by lazy { EconomyMediator(databaseModule) }
     private val weekMediator: WeekMediator by lazy {
-        WeekMediator(databaseModule, economyMediator, gameStateMediator, planningMediator)
+        WeekMediator(databaseModule, economyMediator, gameStateMediator, planningMediator, learningMediator)
     }
     private val planningMediator: PlanningMediator by lazy { PlanningMediator(databaseModule) }
     private val learningMediator: LearningMediator by lazy {
         LearningMediator(databaseModule, gameStateMediator)
+    }
+    private val learningTestsMediator: LearningTestsMediator by lazy {
+        LearningTestsMediator(coreComponent, databaseModule, economyMediator, weekMediator, gameStateMediator)
     }
     private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
     private val savingsMediator: SavingsMediator by lazy {
@@ -85,21 +90,13 @@ internal class AppModuleImpl(
             inventoryApi = inventoryMediator.getApi(),
             learningMediator = learningMediator,
             petMediator = petMediator,
+            gameStateMediator = gameStateMediator,
             gameAudio = gameAudio,
         )
     }
 
     private val gameStateMediator: GameStateMediator by lazy {
-        GameStateMediator(databaseModule, economyMediator)
-    }
-
-    private val timedEventProcessor: TimedEventProcessor by lazy {
-        TimedEventProcessor(
-            SystemWallClock,
-            listOf(TimeDrivenTask { nowMillis ->
-                gameStateMediator.getApi().reconcileTimedNeeds(nowMillis)
-            }),
-        )
+        GameStateMediator(databaseModule, economyMediator, coreComponent.context)
     }
 
     private val hungerNotifications: HungerNotificationDispatcher by lazy {
@@ -107,12 +104,22 @@ internal class AppModuleImpl(
     }
 
     override suspend fun reconcileTimedEvents() {
-        timedEventProcessor.reconcile()
         learningMediator.getApi().deliverPendingXpRewards("current")
         hungerNotifications.dispatch()
     }
 
     override suspend fun hasPetProfile(): Boolean = petMediator.getApi().observeProfile().first() != null
+
+    override suspend fun resetDemoProgress(skipOnboarding: Boolean) {
+        phoneMediator.getApi().resetProgress {
+            withContext(Dispatchers.IO) {
+                databaseModule.database.clearAllTables()
+                flightMediator.resetProgress()
+            }
+            inventoryMediator.getApi().resetProgress()
+            roomMediator.getApi().resetProgress(skipOnboarding)
+        }
+    }
 
     private val phoneMediator: PhoneMediator by lazy {
         PhoneMediator(
@@ -124,6 +131,8 @@ internal class AppModuleImpl(
             weekMediator = weekMediator,
             learningMediator = learningMediator,
             gameStateMediator = gameStateMediator,
+            inventoryMediator = inventoryMediator,
+            resetDemoProgress = ::resetDemoProgress,
         )
     }
 
@@ -143,7 +152,7 @@ internal class AppModuleImpl(
         PetMediator(coreComponent, gameStateMediator)
     }
     private val wardrobeMediator: WardrobeMediator by lazy {
-        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator)
+        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator, gameStateMediator)
     }
 
     private val gameSessionMediator: GameSessionMediator by lazy {
@@ -171,6 +180,7 @@ internal class AppModuleImpl(
             wardrobeMediator,
             inventoryMediator,
             gameAudio,
+            learningTestsMediator,
         )
     }
 
@@ -181,29 +191,35 @@ internal class AppModuleImpl(
         )
     }
 
+    private val flightMediator: FlightMediator by lazy {
+        FlightMediator(
+            coreComponent,
+            gameStateMediator,
+            petMediator,
+            gameAudio,
+        )
+    }
+
     override fun initFeatures() {
         gameAudio.preload(listOf(AppAudioCues.Purchase))
         miniGamesCommonMediator.init()
         economyMediator.init()
         gameStateMediator.init()
-        weekMediator.init()
         planningMediator.init()
         learningMediator.init()
+        weekMediator.init()
+        learningTestsMediator.init()
         inventoryMediator.init()
         savingsMediator.init()
         shopMediator.init()
         petMediator.init()
         wardrobeMediator.init()
-        github.detrig.internetbooster.mediators.FlightMediator(
-            coreComponent,
-            gameStateMediator,
-            petMediator,
-            gameAudio,
-        ).init()
+        flightMediator.init()
         github.detrig.internetbooster.mediators.FishingMediator(
             coreComponent,
             databaseModule,
             gameStateMediator,
+            weekMediator,
             petMediator,
             gameAudio,
         ).init()

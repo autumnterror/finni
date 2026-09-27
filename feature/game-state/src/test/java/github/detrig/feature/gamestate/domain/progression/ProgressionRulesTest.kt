@@ -45,8 +45,10 @@ class ProgressionRulesTest {
     fun miniGameRewardStaysSmallAndRequiresCompletedPlay() {
         assertEquals(0, MiniGameXpPolicy.reward(false, 10, 90_000))
         assertEquals(0, MiniGameXpPolicy.reward(true, 0, 90_000))
-        assertEquals(5, MiniGameXpPolicy.reward(true, 1, 30_000))
-        assertEquals(10, MiniGameXpPolicy.reward(true, 1, 60_000))
+        assertEquals(2, MiniGameXpPolicy.reward(true, 1, 30_000))
+        assertEquals(2, MiniGameXpPolicy.reward(true, 1, 60_000))
+        assertEquals(2, MiniGameXpPolicy.rewardWithinWeek(8))
+        assertEquals(0, MiniGameXpPolicy.rewardWithinWeek(10))
     }
 
     private fun assertProgress(totalXp: Int, level: Int, stage: PetGrowthStage) {

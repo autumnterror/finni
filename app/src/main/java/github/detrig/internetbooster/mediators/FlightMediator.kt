@@ -60,6 +60,10 @@ internal class FlightMediator(
             }
         }
     }
+
+    suspend fun resetProgress() {
+        flightDatabase.database.clearAllTables()
+    }
 }
 
 /** Те же ключи общих настроек, что использует адаптер рыбалки. */

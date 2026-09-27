@@ -11,6 +11,7 @@ import github.detrig.feature.learning.api.XpGrantResult
 import github.detrig.feature.learning.data.local.LearningDao
 import github.detrig.feature.learning.domain.LearningConfig
 import github.detrig.feature.learning.domain.BudgetPlanningLearning
+import github.detrig.feature.learning.domain.BudgetWeekLearning
 import github.detrig.feature.learning.domain.SavingsLearning
 import github.detrig.feature.learning.domain.PurchaseLearning
 import github.detrig.feature.learning.domain.FinancialSecurityLearning
@@ -28,6 +29,7 @@ internal class LearningMediator(
 
                 override fun config(): LearningConfig = LearningConfig(
                     metricRules = listOf(BudgetPlanningLearning.reasonablePlanRule()) +
+                        BudgetWeekLearning.rules() +
                         SavingsLearning.rules() +
                         PurchaseLearning.rules() +
                         FinancialSecurityLearning.rules(),

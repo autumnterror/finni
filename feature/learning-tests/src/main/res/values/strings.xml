@@ -1,0 +1,29 @@
+<resources>
+    <string name="learning_tests_close">Закрыть тесты</string>
+    <string name="learning_tests_daily_title">Тесты на сегодня</string>
+    <string name="learning_tests_daily_count">День %1$d · выбери один из тестов</string>
+    <string name="learning_tests_loading">Загружаем тесты…</string>
+    <string name="learning_tests_load_error">Не получилось загрузить тесты. Попробуй ещё раз.</string>
+    <string name="learning_tests_retry">Повторить</string>
+    <string name="learning_tests_all_mastered">Все тесты на сегодня пройдены без ошибок. Новые появятся в следующий игровой день!</string>
+    <string name="learning_tests_try_again_later">Если в тесте были ошибки, он появится снова позже.</string>
+    <string name="learning_tests_reward_summary">Награда за все верные ответы: %1$d ₽ и %2$d XP</string>
+    <string name="learning_tests_reward_compact">%1$d ₽ · %2$d XP</string>
+    <string name="learning_tests_difficulty_summary">%1$s · %2$d вопросов</string>
+    <string name="learning_tests_start">Начать тест</string>
+    <string name="learning_tests_resume_question">Продолжить · вопрос %1$d из %2$d</string>
+    <string name="learning_tests_finished_for_today">На сегодня тест завершён · ошибок: %1$d</string>
+    <string name="learning_tests_no_longer_available">Этот тест сейчас недоступен. Вернись к списку тестов.</string>
+    <string name="learning_tests_reward_heading">Награда: %1$d ₽</string>
+    <string name="learning_tests_reward_xp">+%1$d XP за все верные ответы</string>
+    <string name="learning_tests_question_count">Вопрос %1$d из %2$d</string>
+    <string name="learning_tests_answer_correct">Верно! Можно идти дальше.</string>
+    <string name="learning_tests_correct_option">Правильный ответ: %1$s</string>
+    <string name="learning_tests_answer_button">Ответить</string>
+    <string name="learning_tests_next_question">Дальше</string>
+    <string name="learning_tests_perfect_title">Отлично! Все ответы верные!</string>
+    <string name="learning_tests_completed_title">Тест завершён</string>
+    <string name="learning_tests_perfect_reward">Награда за тест: %1$d ₽ и %2$d XP</string>
+    <string name="learning_tests_mistake_feedback">Ошибок: %1$d. Попробуй этот тест ещё раз, когда он появится в другой день.</string>
+    <string name="learning_tests_back_to_list">К тестам дня</string>
+</resources>

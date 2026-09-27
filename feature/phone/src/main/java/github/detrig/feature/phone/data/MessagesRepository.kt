@@ -20,6 +20,7 @@ import kotlin.random.Random
 
 internal interface MessagesRepository {
     fun observeInbox(): StateFlow<MessagesInbox>
+    suspend fun resetProgress()
     suspend fun ensureEventForDay(absoluteDay: Long, config: SecurityEventConfig)
     suspend fun markThreadRead(senderId: MessageSenderId)
     suspend fun consumeFirstRoomPrompt()
@@ -45,6 +46,10 @@ internal class PersistentMessagesRepository(
 
     override fun observeInbox(): StateFlow<MessagesInbox> = inbox.asStateFlow()
 
+    override suspend fun resetProgress() {
+        update { StoredMessagesState() }
+    }
+
     override suspend fun ensureEventForDay(
         absoluteDay: Long,
         config: SecurityEventConfig,
@@ -58,6 +63,11 @@ internal class PersistentMessagesRepository(
                 message.senderId == MessageSenderId.BANK || message.senderId == MessageSenderId.MOM
             },
         )
+        if (current.events.lastOrNull()?.let { last ->
+                absoluteDay - last.absoluteDay < config.minimumDaysBetweenEvents
+            } == true) {
+            return@update processed
+        }
         if (dailyRoll(absoluteDay, config.randomSeed) >= config.dailyProbability) {
             return@update processed
         }

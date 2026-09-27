@@ -1,5 +1,6 @@
 package github.detrig.internetbooster.mediators
 
+import android.content.Context
 import androidx.annotation.MainThread
 import github.detrig.core.Mediator
 import github.detrig.core.database.RoomTransactionRunner
@@ -13,16 +14,18 @@ import github.detrig.feature.gamestate.data.local.RoomZoneDao
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.gamestate.domain.GameStateInitialConfig
 import github.detrig.internetbooster.database.AppDatabaseModule
+import github.detrig.feature.week.domain.WeekState
 
 internal class GameStateMediator(
     private val databaseModule: AppDatabaseModule,
     private val economyMediator: EconomyMediator,
+    private val context: Context,
 ) : Mediator<GameStateApi> {
 
     @MainThread
     fun init() {
         GameStateFeature.dependenciesProvider = ModuleDependenciesProvider {
-            GameStateDependenciesImpl(databaseModule, economyMediator.getApi())
+            GameStateDependenciesImpl(databaseModule, economyMediator.getApi(), context)
         }
     }
 
@@ -35,7 +38,11 @@ internal class GameStateMediator(
 private class GameStateDependenciesImpl(
     private val databaseModule: AppDatabaseModule,
     private val economyApi: EconomyApi,
+    private val context: Context,
 ) : GameStateDependencies {
+
+    override fun petDirtPreferences() =
+        context.getSharedPreferences("finpet_pet_dirt", Context.MODE_PRIVATE)
 
     override fun gameStateDao(): GameStateDao = databaseModule.gameStateDao
 
@@ -50,4 +57,7 @@ private class GameStateDependenciesImpl(
     override fun initialConfig(): GameStateInitialConfig = GameStateInitialConfig()
 
     override fun currentTimeMillis(): Long = System.currentTimeMillis()
+
+    override suspend fun currentWeekNumber(): Long = databaseModule.weekDao.getState()
+        ?.let { WeekState(it.absoluteDay).weekNumber } ?: 1L
 }

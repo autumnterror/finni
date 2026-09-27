@@ -31,6 +31,8 @@ import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
+import github.detrig.designsystem.component.FinPetHelpButton
+import github.detrig.designsystem.component.FinPetHelpDialog
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetModalSection
 import github.detrig.designsystem.component.FinPetModalSectionTone
@@ -92,6 +94,7 @@ private fun SavingsContent(
     petPortrait: @Composable (Modifier) -> Unit,
     onEvent: (SavingsViewEvent) -> Unit,
 ) {
+    var isHelpVisible by rememberSaveable { mutableStateOf(false) }
     val entranceOffset = remember { Animatable(0.9f) }
     val entranceRotation = remember { Animatable(8f) }
     LaunchedEffect(Unit) {
@@ -169,7 +172,10 @@ private fun SavingsContent(
                             bottom = bottomContentInset,
                         ),
                 ) {
-                    SavingsHeader(onBack = { onEvent(SavingsViewEvent.Back) })
+                    SavingsHeader(
+                        onBack = { onEvent(SavingsViewEvent.Back) },
+                        onHelpClick = { isHelpVisible = true },
+                    )
                     when {
                         state.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                             CircularProgressIndicator(color = AppTheme.colors.storefront.outline)
@@ -224,6 +230,14 @@ private fun SavingsContent(
             petName = petName,
             petPortrait = petPortrait,
             onEvent = onEvent,
+        )
+    }
+    if (isHelpVisible && !state.loading && state.notice == null && state.transferDirection == null) {
+        FinPetHelpDialog(
+            title = stringResource(R.string.savings_help_title),
+            message = stringResource(R.string.savings_help_message),
+            dismissText = stringResource(R.string.savings_help_dismiss),
+            onDismissRequest = { isHelpVisible = false },
         )
     }
 }
@@ -404,7 +418,10 @@ private const val ONBOARDING_DEPOSIT_NOW_ACTION_ID = "deposit_now"
 private const val ONBOARDING_DEPOSIT_LATER_ACTION_ID = "deposit_later"
 
 @Composable
-private fun SavingsHeader(onBack: () -> Unit) {
+private fun SavingsHeader(
+    onBack: () -> Unit,
+    onHelpClick: () -> Unit,
+) {
     Box(
         modifier = Modifier.fillMaxWidth().height(AppTheme.sizes.preferredTouchTarget),
     ) {
@@ -423,6 +440,11 @@ private fun SavingsHeader(onBack: () -> Unit) {
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+        )
+        FinPetHelpButton(
+            contentDescription = stringResource(R.string.savings_help_button),
+            onClick = onHelpClick,
+            modifier = Modifier.align(Alignment.CenterEnd),
         )
     }
 }

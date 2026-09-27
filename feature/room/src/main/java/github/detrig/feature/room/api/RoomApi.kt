@@ -8,6 +8,9 @@ import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 interface RoomApi {
     val firstRunGuide: FirstRunGuideApi
 
+    /** Allows a new automatic parent-help offer after an existing repayment is fully settled. */
+    fun notifyParentHelpSettled()
+
     /** Blocks until the process-wide room sprites are ready for the first frame. */
     suspend fun preloadAssets()
 
@@ -18,6 +21,8 @@ interface RoomApi {
 
     @Composable
     fun InteriorStore(onBack: () -> Unit, modifier: Modifier = Modifier)
+    /** Resets in-room onboarding and initializes the fresh demo game state. */
+    suspend fun resetProgress(skipOnboarding: Boolean)
 
     /** Непрерывный дом размещает один переданный UI питомца в мировых координатах. */
     @Composable

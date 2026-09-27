@@ -20,6 +20,9 @@ interface PetApi {
     suspend fun adjustGrowthStageForDebug(delta: Int): PetGrowthState
     suspend fun useLevelGrowthStageForDebug(): PetGrowthState
 
+    /** Clears the current pet profile for a debug/demo progress reset. */
+    fun resetProfile()
+
     suspend fun clothingItems(): List<ClothingItem>
     fun cachedClothingItems(): List<ClothingItem>
     fun recordClothingPurchase(itemId: String)
@@ -50,16 +53,18 @@ interface PetApi {
         modifier: Modifier = Modifier,
         onClick: (() -> Unit)? = null,
         animateIdle: Boolean = true,
+        freezeAnimation: Boolean = false,
         mouthOpen: Boolean = false,
         lookAt: Offset? = null,
         pose: PetPose = PetPose.IDLE,
         gestureCallbacks: PetGestureCallbacks? = null,
         showShadow: Boolean = true,
+        dirtStage: Int = 0,
     )
 
     /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */
     @Composable
-    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier)
+    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier, dirtStage: Int = 0)
 
     /** Собирает актуальную внешность питомца для Canvas-сцен мини-игр. */
     @Composable
