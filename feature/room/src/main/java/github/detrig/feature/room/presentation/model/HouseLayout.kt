@@ -48,8 +48,8 @@ internal data class HouseObjectPlacement(
 /** Reference composition, rendered as resolution-independent surfaces and individual sprites. */
 internal object HouseLayout {
     const val VERSION = 3
-    private const val SCENE_WIDTH = 2048f
-    private const val SCENE_HEIGHT = 685f
+    private val SCENE_WIDTH = HouseSurfaceLayout.SCENE_WIDTH.toFloat()
+    private val SCENE_HEIGHT = HouseSurfaceLayout.SCENE_HEIGHT.toFloat()
     const val WORLD_WIDTH = 6.65f
     const val VIEWPORT_WIDTH = 1f
     const val INITIAL_CAMERA_X = 3.05f

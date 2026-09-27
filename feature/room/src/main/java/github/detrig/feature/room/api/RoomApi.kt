@@ -16,6 +16,9 @@ interface RoomApi {
 
     suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult
 
+    @Composable
+    fun InteriorStore(onBack: () -> Unit, modifier: Modifier = Modifier)
+
     /** Непрерывный дом размещает один переданный UI питомца в мировых координатах. */
     @Composable
     fun Content(

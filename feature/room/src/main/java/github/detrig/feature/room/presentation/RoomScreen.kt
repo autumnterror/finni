@@ -1,6 +1,7 @@
 package github.detrig.feature.room.presentation
 
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.core.mvvm.command.CommandsQueueEffect
 import github.detrig.core.mvvm.command.ImmutableCommandsQueue
 import github.detrig.feature.room.RoomFeature
+import github.detrig.feature.room.domain.furniture.FurnitureVariant
 import github.detrig.feature.room.domain.model.RoomZoneAccess
 import github.detrig.feature.room.navigation.RoomPreviewRequests
 import github.detrig.feature.room.presentation.component.RoomBuyDialog
@@ -93,6 +95,13 @@ internal fun RoomScreen(
     petBaselineFraction: Float? = null,
 ) {
     val viewModel: RoomViewModel = viewModel { RoomFeature.component().getRoomViewModel() }
+    val furnitureComponent = RoomFeature.component()
+    val furnitureOwnership by furnitureComponent.furnitureStore.state.collectAsState()
+    LaunchedEffect(furnitureComponent) { furnitureComponent.furnitureStore.reconcilePending() }
+    val furnitureByPlacement = remember(furnitureOwnership, furnitureComponent) {
+        furnitureOwnership.equipped.values.mapNotNull { furnitureComponent.furnitureCatalog.byId[it] }
+            .associateBy(FurnitureVariant::placementId)
+    }
     val state by viewModel.state().observeAsState(RoomViewState.Loading)
     var dialogZoneId by rememberSaveable { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -159,6 +168,7 @@ internal fun RoomScreen(
         },
     ) {
         RoomContent(
+            furnitureByPlacement = furnitureByPlacement,
             state = state,
             onEvent = viewModel::perform,
             modifier = Modifier.fillMaxSize(),

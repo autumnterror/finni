@@ -9,15 +9,25 @@ import github.detrig.feature.room.presentation.component.RoomSpriteCache
 import github.detrig.feature.economy.domain.SavingsGoal
 import github.detrig.feature.savings.api.SavingsGoalPurchaseResult
 import github.detrig.feature.room.domain.interactor.PurchaseSavingsGoalInteractor
+import github.detrig.feature.room.domain.furniture.FurnitureCatalog
+import github.detrig.feature.room.domain.furniture.FurnitureStore
+import github.detrig.feature.economy.api.EconomyApi
+import github.detrig.feature.room.presentation.furniture.FurnitureStoreScreen
 
 internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
     private val resources: Resources,
     private val purchaseSavingsGoal: PurchaseSavingsGoalInteractor,
     override val firstRunGuide: FirstRunGuideApi,
+    private val furnitureCatalog: FurnitureCatalog,
+    private val furnitureStore: FurnitureStore,
+    private val economyApi: EconomyApi,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)
+        RoomSpriteCache.preloadVariants(resources, furnitureCatalog.bySlot["room_lamp"].orEmpty())
+        RoomSpriteCache.preloadVariants(resources,
+            furnitureStore.state.value.equipped.values.mapNotNull(furnitureCatalog.byId::get))
     }
 
     override suspend fun preloadAssets() {
@@ -27,6 +37,10 @@ internal class RoomApiImpl(
     override fun requestZonePreview(zoneId: String) = requests.request(zoneId)
     override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
         purchaseSavingsGoal(goal)
+    @Composable
+    override fun InteriorStore(onBack: () -> Unit, modifier: Modifier) {
+        FurnitureStoreScreen(furnitureCatalog, furnitureStore, economyApi, onBack, modifier)
+    }
     @Composable
     override fun Content(
         modifier: Modifier,

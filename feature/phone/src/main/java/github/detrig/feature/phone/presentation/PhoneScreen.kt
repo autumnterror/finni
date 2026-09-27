@@ -83,6 +83,7 @@ import github.detrig.products.GroceryStoreIds
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
 import github.detrig.feature.room.api.FirstRunOnboardingStep
+import github.detrig.feature.room.api.RoomApi
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -143,6 +144,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 route = route,
                 activeAppId = activeAppId,
                 shopApi = component.shopApi,
+                roomApi = component.roomApi,
                 messagesState = messagesState,
                 onMessagesEvent = messagesViewModel::perform,
                 onClose = {
@@ -230,6 +232,7 @@ private fun PhoneDevice(
     route: PhoneRoute,
     activeAppId: String?,
     shopApi: ShopApi,
+    roomApi: RoomApi,
     messagesState: MessagesViewState,
     onMessagesEvent: (MessagesViewEvent) -> Unit,
     onClose: () -> Unit,
@@ -310,6 +313,7 @@ private fun PhoneDevice(
                         appId = openAppId,
                         scale = scale,
                         shopApi = shopApi,
+                        roomApi = roomApi,
                         messagesState = messagesState,
                         onMessagesEvent = onMessagesEvent,
                         onBack = onBack,
@@ -579,6 +583,7 @@ private fun PhoneAppContent(
     appId: String,
     scale: Float,
     shopApi: ShopApi,
+    roomApi: RoomApi,
     messagesState: MessagesViewState,
     onMessagesEvent: (MessagesViewEvent) -> Unit,
     onBack: () -> Unit,
@@ -609,12 +614,7 @@ private fun PhoneAppContent(
                 scale = scale,
                 onBack = onBack,
             )
-            INTERIOR_APP -> PhonePlaceholderApp(
-                title = "Интерьер",
-                iconRes = R.drawable.phone_icon_interior_hd,
-                scale = scale,
-                onBack = onBack,
-            )
+            INTERIOR_APP -> roomApi.InteriorStore(onBack = onBack)
             MESSAGES_APP_ID -> MessagesApp(
                 state = messagesState,
                 onBack = onBack,

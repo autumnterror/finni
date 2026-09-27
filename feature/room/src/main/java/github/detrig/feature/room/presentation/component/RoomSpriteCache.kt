@@ -3,6 +3,7 @@ package github.detrig.feature.room.presentation.component
 import android.content.res.Resources
 import androidx.compose.ui.geometry.Rect
 import github.detrig.feature.room.presentation.model.HouseLayout
+import github.detrig.feature.room.domain.furniture.FurnitureVariant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -10,16 +11,21 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 
-/** Process-lifetime cache for the main room only. */
+/** Process-lifetime cache shared by the room and its furniture preview. */
 internal object RoomSpriteCache {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val loadLock = Any()
     private val cachedSprites = MutableStateFlow<Map<String, RoomSprite>>(emptyMap())
     private var loadJob: Deferred<Map<String, RoomSprite>>? = null
+    private val variantMutex = Mutex()
 
     fun sprites(resources: Resources): StateFlow<Map<String, RoomSprite>> {
         preload(resources)
@@ -32,6 +38,35 @@ internal object RoomSpriteCache {
 
     suspend fun awaitPreloaded(resources: Resources): Map<String, RoomSprite> =
         getOrCreate(resources).await()
+
+    fun preloadVariants(resources: Resources, variants: Collection<FurnitureVariant>) {
+        if (variants.isNotEmpty()) scope.launch { awaitVariants(resources, variants) }
+    }
+
+    suspend fun awaitVariants(resources: Resources, variants: Collection<FurnitureVariant>) {
+        awaitPreloaded(resources)
+        variantMutex.withLock {
+            val missing = variants.filter { it.id !in cachedSprites.value }
+            if (missing.isEmpty()) return@withLock
+            val loaded = withContext(Dispatchers.Default) {
+                val metrics = resources.displayMetrics
+                val sceneWidth = (metrics.widthPixels.coerceAtLeast(1) * HouseLayout.WORLD_WIDTH).roundToInt()
+                val sceneHeight = metrics.heightPixels.coerceAtLeast(1)
+                missing.associate { variant ->
+                    val placement = HouseLayout.objects.first { it.id == variant.placementId }
+                    val bounds = requireNotNull(placement.bounds)
+                    variant.id to RoomSprite.load(
+                        resources = resources,
+                        resource = variant.drawableId,
+                        width = (bounds.width * sceneWidth).roundToInt(),
+                        height = (bounds.height * sceneHeight).roundToInt(),
+                        preserveCanvas = true,
+                    )
+                }
+            }
+            cachedSprites.value = cachedSprites.value + loaded
+        }
+    }
 
     private fun getOrCreate(resources: Resources): Deferred<Map<String, RoomSprite>> {
         synchronized(loadLock) {
