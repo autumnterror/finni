@@ -117,6 +117,7 @@ class AndroidGameAudio(context: Context) : GameAudio {
 
     private fun playLoaded(cue: AudioCue) {
         if (!foreground || !isEnabled()) return
+        if (cue.looping && currentStreamId != 0 && currentCue?.id == cue.id) return
         val now = SystemClock.elapsedRealtime()
         if (!policy.canPlay(cue, now)) return
         if (!hasFocus) {
@@ -126,7 +127,8 @@ class AndroidGameAudio(context: Context) : GameAudio {
         if (currentStreamId != 0) pool?.stop(currentStreamId)
         handler.removeCallbacks(finishCue)
         val sampleId = sampleIds[cue.assetPath] ?: return
-        val streamId = pool?.play(sampleId, cue.volume, cue.volume, cue.priority, 0, 1f) ?: 0
+        val streamId = pool?.play(sampleId, cue.volume, cue.volume, cue.priority,
+            if (cue.looping) -1 else 0, 1f) ?: 0
         if (streamId == 0) {
             stopAllInternal()
             return
@@ -134,7 +136,7 @@ class AndroidGameAudio(context: Context) : GameAudio {
         currentStreamId = streamId
         currentCue = cue
         policy.recordPlayed(cue, now)
-        handler.postDelayed(finishCue, cue.blockMillis)
+        if (!cue.looping) handler.postDelayed(finishCue, cue.blockMillis)
     }
 
     private fun stopAllInternal() {

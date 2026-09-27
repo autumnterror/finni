@@ -91,18 +91,21 @@ fun PetScene(
     profile: PetProfile,
     modifier: Modifier = Modifier,
     animateIdle: Boolean = true,
+    freezeAnimation: Boolean = false,
     mouthOpen: Boolean = false,
     lookAt: Offset? = null,
     onClick: (() -> Unit)? = null,
     pose: PetPose = PetPose.IDLE,
     gestureCallbacks: PetGestureCallbacks? = null,
     showShadow: Boolean = true,
+    dirtStage: Int = 0,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
     val hamsterAssets = if (profile.species == PetSpecies.Hamster) rememberHamsterAssets() else null
     val hamsterBlink = if (profile.species == PetSpecies.Hamster) rememberHamsterBlink() else false
+    val visibleBlink = !freezeAnimation && hamsterBlink
     val reaction = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var reacting by remember { mutableStateOf(false) }
@@ -130,8 +133,9 @@ fun PetScene(
         animationSpec = tween(if (pose == PetPose.LANDED) 65 else 180),
         label = "pet_pose_scale_y",
     )
-    val tapScaleX = 1f + reaction.value * 0.05f
-    val tapScaleY = 1f - reaction.value * 0.06f
+    val visibleReaction = if (freezeAnimation) 0f else reaction.value
+    val tapScaleX = 1f + visibleReaction * 0.05f
+    val tapScaleY = 1f - visibleReaction * 0.06f
     val flightPhase = if (pose == PetPose.HELD || pose == PetPose.AIRBORNE) {
         val flightTransition = rememberInfiniteTransition(label = "pet_flight")
         val phase by flightTransition.animateFloat(
@@ -153,21 +157,25 @@ fun PetScene(
     val viewConfiguration = LocalViewConfiguration.current
     val reactThenClick = {
         if (pose == PetPose.IDLE) {
-            reactionSerial++
-            val serial = reactionSerial
-            reactionJob?.cancel()
-            reacting = true
-            reactionJob = scope.launch {
-                try {
-                    reaction.snapTo(0f)
-                    reaction.animateTo(1f, tween(85))
-                    reaction.animateTo(
-                        0f,
-                        spring(dampingRatio = Spring.DampingRatioNoBouncy),
-                    )
-                    onClick?.invoke()
-                } finally {
-                    if (serial == reactionSerial) reacting = false
+            if (freezeAnimation) {
+                onClick?.invoke()
+            } else {
+                reactionSerial++
+                val serial = reactionSerial
+                reactionJob?.cancel()
+                reacting = true
+                reactionJob = scope.launch {
+                    try {
+                        reaction.snapTo(0f)
+                        reaction.animateTo(1f, tween(85))
+                        reaction.animateTo(
+                            0f,
+                            spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                        )
+                        onClick?.invoke()
+                    } finally {
+                        if (serial == reactionSerial) reacting = false
+                    }
                 }
             }
         }
@@ -176,7 +184,7 @@ fun PetScene(
         profile.species == PetSpecies.Hamster && hamsterAssets != null -> modifier.hamsterClickable(
             assets = hamsterAssets,
             appearance = profile.hamsterAppearance,
-            blink = hamsterBlink,
+            blink = visibleBlink,
             contentDescription = description,
             onClick = reactThenClick.takeIf { pose == PetPose.IDLE },
             gestureCallbacks = gestureCallbacks,
@@ -205,12 +213,13 @@ fun PetScene(
             }
             Box(
                 Modifier.fillMaxSize()
-                    .petCalmIdleAnimation(animateIdle && pose == PetPose.IDLE && !reacting)
+                    .petCalmIdleAnimation(animateIdle && !freezeAnimation &&
+                        pose == PetPose.IDLE && !reacting)
                     .graphicsLayer {
                         transformOrigin = TransformOrigin(0.5f, 0.94f)
                         scaleX = poseScaleX * tapScaleX
                         scaleY = poseScaleY * tapScaleY
-                        rotationZ = reaction.value * 1.5f + flightWobble * 2.5f
+                        rotationZ = visibleReaction * 1.5f + flightWobble * 2.5f
                         translationX = flightWobble * size.width * 0.008f
                     },
             ) {
@@ -219,7 +228,7 @@ fun PetScene(
                         assets = hamsterAssets,
                         appearance = profile.hamsterAppearance,
                         modifier = Modifier.fillMaxSize(),
-                        blink = hamsterBlink || pose == PetPose.LANDED || reaction.value > 0.7f,
+                        blink = visibleBlink || pose == PetPose.LANDED || visibleReaction > 0.7f,
                         mouthOpen = mouthOpen,
                         lookAt = lookAt,
                         flightPhase = flightPhase,
@@ -228,6 +237,7 @@ fun PetScene(
                             profile.clothing.equippedBySlot,
                             profile.hamsterAppearance,
                         ),
+                        dirtStage = dirtStage,
                     )
                 } else if (profile.species != PetSpecies.Hamster) {
                     Image(

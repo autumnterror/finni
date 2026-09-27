@@ -44,16 +44,18 @@ interface PetApi {
         modifier: Modifier = Modifier,
         onClick: (() -> Unit)? = null,
         animateIdle: Boolean = true,
+        freezeAnimation: Boolean = false,
         mouthOpen: Boolean = false,
         lookAt: Offset? = null,
         pose: PetPose = PetPose.IDLE,
         gestureCallbacks: PetGestureCallbacks? = null,
         showShadow: Boolean = true,
+        dirtStage: Int = 0,
     )
 
     /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */
     @Composable
-    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier)
+    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier, dirtStage: Int = 0)
 
     /** Собирает актуальную внешность питомца для Canvas-сцен мини-игр. */
     @Composable

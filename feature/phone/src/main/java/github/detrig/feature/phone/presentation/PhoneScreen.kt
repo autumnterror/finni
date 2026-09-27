@@ -10,6 +10,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -651,6 +653,7 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         state = state,
         onBack = onBack,
         onChangeBalance = { viewModel.perform(DebugMenuViewEvent.ChangeBalance(it)) },
+        onChangeDirtStage = { viewModel.perform(DebugMenuViewEvent.ChangeDirtStage(it)) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
         onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
     )
@@ -661,12 +664,14 @@ private fun DebugMenuContent(
     state: DebugMenuViewState,
     onBack: () -> Unit,
     onChangeBalance: (Long) -> Unit,
+    onChangeDirtStage: (Int) -> Unit,
     onResetBalance: () -> Unit,
     onEndWeek: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(AppTheme.spacing.lg),
         verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.md),
     ) {
@@ -714,6 +719,38 @@ private fun DebugMenuContent(
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontOutlinedStyle(),
         )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            ) {
+                Text("Загрязнение питомца", style = AppTheme.typography.body)
+                Text(
+                    text = "Стадия ${state.dirtStage} / 3",
+                    style = AppTheme.typography.currency,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+        ) {
+            FinPetButton(
+                text = "− стадия",
+                onClick = { onChangeDirtStage(-1) },
+                enabled = !state.isChangingDirtStage && state.dirtStage > 0,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+            FinPetButton(
+                text = "+ стадия",
+                onClick = { onChangeDirtStage(1) },
+                enabled = !state.isChangingDirtStage && state.dirtStage < 3,
+                modifier = Modifier.weight(1f),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+        }
         FinPetButton(
             text = if (state.isEndingWeek) "Завершаем неделю…" else "Завершить неделю",
             onClick = onEndWeek,
@@ -983,9 +1020,10 @@ private fun DebugMenuPreview() {
     FinPetTheme {
         Box(Modifier.background(AppTheme.colors.storefront.background)) {
             DebugMenuContent(
-                state = DebugMenuViewState(balanceRub = 350),
+                state = DebugMenuViewState(balanceRub = 350, dirtStage = 2),
                 onBack = {},
                 onChangeBalance = {},
+                onChangeDirtStage = {},
                 onResetBalance = {},
                 onEndWeek = {},
             )

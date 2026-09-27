@@ -215,6 +215,9 @@ internal fun RoomScreen(
                 petContent = petContent,
                 onBack = { viewModel.perform(RoomViewEvent.BathroomBackClicked) },
                 onToolCompleted = { viewModel.perform(RoomViewEvent.BathToolClicked(it)) },
+                onToolSoundChanged = { step, running ->
+                    viewModel.perform(RoomViewEvent.BathToolSoundChanged(step, running))
+                },
                 onDryerRunningChanged = {
                     viewModel.perform(RoomViewEvent.BathDryerRunningChanged(it))
                 },

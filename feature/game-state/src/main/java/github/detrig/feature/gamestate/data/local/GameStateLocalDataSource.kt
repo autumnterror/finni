@@ -13,7 +13,11 @@ import github.detrig.feature.gamestate.domain.model.PetNeedDecayConfig
 import github.detrig.feature.gamestate.domain.model.TimedPetNeeds
 import github.detrig.feature.gamestate.domain.model.reconcilePetNeeds
 import github.detrig.feature.gamestate.domain.model.HungerAlertState
+import github.detrig.feature.gamestate.domain.model.PetDirtAnchor
+import github.detrig.feature.gamestate.domain.model.PetDirtRules
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
@@ -39,24 +43,61 @@ internal class GameStateLocalDataSource(
     private val initialConfig: GameStateInitialConfig,
     private val currentTimeMillis: () -> Long,
     private val needDecayConfig: PetNeedDecayConfig,
+    private val dirtStorage: PetDirtStorage,
 ) {
+    private val dirtClock = MutableStateFlow(currentTimeMillis())
 
     suspend fun initialize(): GameState = transactionRunner.runInTransaction {
         val stored = dao.getCurrentStateWithZones()
         if (stored != null) {
             reconcileTimedNeeds(currentTimeMillis())
-            return@runInTransaction checkNotNull(dao.getCurrentStateWithZones()).toDomain()
+            val now = currentTimeMillis()
+            val plays = petPlayEffectDao.completedMiniGameCount()
+            val anchor = dirtStorage.ensureInitialized(now, plays)
+            return@runInTransaction checkNotNull(dao.getCurrentStateWithZones())
+                .toDomain().withDirt(anchor, now, plays)
         }
 
-        dao.insertInitialState(initialConfig.createState().toEntity(currentTimeMillis()))
+        val now = currentTimeMillis()
+        dao.insertInitialState(initialConfig.createState().toEntity(now))
+        dirtStorage.reset(now, petPlayEffectDao.completedMiniGameCount())
         // Возвращаем сохранённую запись; конфликт вставки не перезаписывает прогресс.
         checkNotNull(dao.getCurrentStateWithZones()).toDomain()
     }
 
     fun observeState(): Flow<GameState?> {
-        return dao.observeCurrentStateWithZones()
-            .map { it?.toDomain() }
+        return combine(dao.observeCurrentStateWithZones(), dirtStorage.anchor, dirtClock) {
+            state, anchor, now -> Triple(state, anchor, now)
+        }.map { (state, anchor, now) ->
+            state?.toDomain()?.let { game ->
+                if (anchor == null) game else game.withDirt(
+                    anchor, now, petPlayEffectDao.completedMiniGameCount())
+            }
+        }
             .distinctUntilChanged()
+    }
+
+    private fun GameState.withDirt(anchor: PetDirtAnchor, now: Long, plays: Long): GameState =
+        copy(pet = pet.copy(dirtStage = PetDirtRules.stage(anchor, now, plays)))
+
+    suspend fun washPet(): Unit = transactionRunner.runInTransaction {
+        initialize()
+        val now = currentTimeMillis()
+        dirtStorage.reset(now, petPlayEffectDao.completedMiniGameCount())
+        dirtClock.value = now
+    }
+
+    suspend fun adjustPetDirtStageForDebug(delta: Int): Int = transactionRunner.runInTransaction {
+        require(delta == -1 || delta == 1)
+        val currentStage = initialize().pet.dirtStage
+        val targetStage = (currentStage + delta).coerceIn(0, 3)
+        if (targetStage != currentStage) {
+            val now = currentTimeMillis()
+            dirtStorage.setAnchor(PetDirtRules.anchorAtStage(
+                targetStage, now, petPlayEffectDao.completedMiniGameCount()))
+            dirtClock.value = now
+        }
+        targetStage
     }
 
     fun observeProgress(profileId: String): Flow<GameProgress> = flow {
@@ -82,6 +123,9 @@ internal class GameStateLocalDataSource(
 
     suspend fun reconcileTimedNeeds(nowMillis: Long): Unit = transactionRunner.runInTransaction {
         val state = dao.getCurrentState() ?: return@runInTransaction
+        if (dirtStorage.anchor.value == null) {
+            dirtStorage.ensureInitialized(nowMillis, petPlayEffectDao.completedMiniGameCount())
+        }
         if (state.hunger == 0 && state.hungerAlertEpisode == 0L) {
             dao.seedZeroHungerAlertEpisode()
         }
@@ -96,6 +140,7 @@ internal class GameStateLocalDataSource(
                 updated.hungerCheckpointMillis, updated.happinessCheckpointMillis,
             ) == 1)
         }
+        dirtClock.value = nowMillis
     }
 
     suspend fun hungerAlertState(): HungerAlertState? = dao.hungerAlertState()

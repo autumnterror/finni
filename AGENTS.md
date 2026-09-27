@@ -381,7 +381,17 @@ Time-based changes never reduce XP or educational progress.
 
 Refusing an optional purchase must not automatically reduce happiness.
 
-### 7.3. Food tiers
+### 7.3. Dirt and washing
+
+The pet has a clean state and three visible dirt stages. From the last completed
+bath, real elapsed time reaches stages 1, 2, and 3 after 2, 5, and 9 hours.
+Each five distinct completed mini-game rounds adds one stage, capped at 3.
+Repeated completion IDs do not add dirt. The same elapsed-time processor used
+for hunger and happiness refreshes dirt while the app is open and on return.
+Completing the soap, rinse, and dryer cycle resets dirt to clean and restarts
+both the clock and the mini-game count. Washing remains free.
+
+### 7.4. Food tiers
 
 Basic food fully covers the mandatory need.
 
@@ -1046,6 +1056,7 @@ At minimum:
 - pet identity/customization;
 - hunger;
 - happiness if enabled;
+- last completed bath time and mini-game completion baseline for dirt;
 - last processed real-time checkpoint for each time-based pet need;
 - the current zero-hunger alert episode and last delivered episode;
 - current week;
@@ -1377,6 +1388,7 @@ Values likely to change in balancing must be configurable:
 - food effects;
 - hunger change per day;
 - hunger and happiness intervals based on real elapsed time;
+- dirt stage thresholds and completed mini-game rounds per stage;
 - happiness effects;
 - side-job limits;
 - side-job rewards;

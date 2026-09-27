@@ -5,6 +5,7 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.core.audio.GameAudio
 import github.detrig.core.audio.SilentGameAudio
 import github.detrig.feature.gamestate.domain.model.ZoneBuyResult
+import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.room.domain.interactor.BuyRoomZoneInteractor
 import github.detrig.feature.room.domain.interactor.EndDayInteractor
 import github.detrig.feature.room.domain.interactor.SaveWeeklyPlanInteractor
@@ -80,10 +81,12 @@ internal class RoomViewModel(
     private val firstRunGuide: FirstRunGuideApi,
     private val inventoryApi: InventoryApi,
     private val gameAudio: GameAudio = SilentGameAudio,
+    private val gameStateApi: GameStateApi,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
     private var buyJob: Job? = null
     private var sleepJob: Job? = null
+    private var washJob: Job? = null
     private var savePlanJob: Job? = null
     private var parentHelpJob: Job? = null
     private var lowBalanceJob: Job? = null
@@ -126,10 +129,22 @@ internal class RoomViewModel(
             RoomViewEvent.BathroomBackClicked -> backFromBathroom()
             RoomViewEvent.BathtubClicked -> openBathCloseup()
             is RoomViewEvent.BathToolClicked -> useBathTool(viewEvent.step)
+            is RoomViewEvent.BathToolSoundChanged -> {
+                val cue = when (viewEvent.step) {
+                    BathStep.SOAP -> RoomAudioCues.SoapRubbing
+                    BathStep.RINSE -> RoomAudioCues.ShowerWater
+                    else -> return
+                }
+                val content = nullableState<RoomViewState.Content>()
+                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING) {
+                    gameAudio.play(cue)
+                } else {
+                    gameAudio.stop(cue.owner)
+                }
+            }
             is RoomViewEvent.BathDryerRunningChanged -> {
                 val content = nullableState<RoomViewState.Content>()
-                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING &&
-                    content.bathStep == BathStep.DRY) {
+                if (viewEvent.running && content?.bathroomView == BathroomView.WASHING) {
                     gameAudio.play(RoomAudioCues.HairDryer)
                 } else {
                     gameAudio.stop(RoomAudioCues.HairDryer.owner)
@@ -826,6 +841,8 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping || content.buyingZoneId != null) return
         if (content.bathroomView != BathroomView.HOUSE) return
+        gameAudio.preload(listOf(RoomAudioCues.SoapRubbing, RoomAudioCues.ShowerWater,
+            RoomAudioCues.HairDryer))
         updateState(content.copy(bathroomView = BathroomView.WASHING, bathStep = BathStep.SOAP))
     }
 
@@ -833,22 +850,40 @@ internal class RoomViewModel(
         val content = nullableState<RoomViewState.Content>() ?: return
         if (content.sleeping) return
         gameAudio.stop(RoomAudioCues.HairDryer.owner)
+        gameAudio.stop(RoomAudioCues.SoapRubbing.owner)
+        gameAudio.stop(RoomAudioCues.ShowerWater.owner)
         updateState(content.copy(bathroomView = BathroomView.HOUSE))
     }
 
     private fun useBathTool(step: BathStep) {
         val content = nullableState<RoomViewState.Content>() ?: return
-        if (content.bathroomView != BathroomView.WASHING ||
-            (content.bathStep != step &&
-                !(content.bathStep == BathStep.CLEAN && step == BathStep.SOAP))) return
-        val next = when (step) {
-            BathStep.SOAP -> BathStep.RINSE
-            BathStep.RINSE -> BathStep.DRY
-            BathStep.DRY -> BathStep.CLEAN
-            BathStep.CLEAN -> return
+        if (content.bathroomView != BathroomView.WASHING) return
+        when (step) {
+            BathStep.SOAP -> {
+                gameAudio.stop(RoomAudioCues.SoapRubbing.owner)
+                if (content.bathStep != BathStep.RINSE) {
+                    updateState(content.copy(bathStep = BathStep.RINSE))
+                }
+            }
+            BathStep.RINSE -> {
+                gameAudio.stop(RoomAudioCues.ShowerWater.owner)
+                if (content.bathStep == BathStep.RINSE) {
+                    updateState(content.copy(bathStep = BathStep.DRY))
+                }
+            }
+            BathStep.DRY -> {
+                if (content.bathStep != BathStep.DRY || washJob?.isActive == true) return
+                gameAudio.stop(RoomAudioCues.HairDryer.owner)
+                washJob = launchCoroutine {
+                    gameStateApi.washPet()
+                    val latest = nullableState<RoomViewState.Content>() ?: return@launchCoroutine
+                    if (latest.bathroomView == BathroomView.WASHING && latest.bathStep == BathStep.DRY) {
+                        updateState(latest.copy(bathStep = BathStep.CLEAN))
+                    }
+                }
+            }
+            BathStep.CLEAN -> Unit
         }
-        if (step == BathStep.DRY) gameAudio.stop(RoomAudioCues.HairDryer.owner)
-        updateState(content.copy(bathStep = next))
     }
 
     private fun hideSleepConfirmation() {

@@ -12,6 +12,7 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object BathroomBackClicked : RoomViewEvent
     data object BathtubClicked : RoomViewEvent
     data class BathToolClicked(val step: BathStep) : RoomViewEvent
+    data class BathToolSoundChanged(val step: BathStep, val running: Boolean) : RoomViewEvent
     data class BathDryerRunningChanged(val running: Boolean) : RoomViewEvent
     data object SleepConfirmed : RoomViewEvent
     data object SleepPostponed : RoomViewEvent

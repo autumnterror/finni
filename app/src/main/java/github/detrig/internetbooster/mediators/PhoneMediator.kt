@@ -37,6 +37,7 @@ internal class PhoneMediator(
                 override fun weekApi() = weekMediator.getApi()
                 override fun learningApi() = learningMediator.getApi()
                 override fun progressionApi() = gameStateMediator.getProgressionApi()
+                override fun gameStateApi() = gameStateMediator.getApi()
                 override fun messagesStorage(): PhoneMessagesStorage = DurablePhoneMessagesStorage(
                     preferences = coreComponent.context.getSharedPreferences(
                         MESSAGES_PREFERENCES,

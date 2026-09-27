@@ -1,5 +1,6 @@
 package github.detrig.internetbooster.mediators
 
+import android.content.Context
 import androidx.annotation.MainThread
 import github.detrig.core.Mediator
 import github.detrig.core.database.RoomTransactionRunner
@@ -17,12 +18,13 @@ import github.detrig.internetbooster.database.AppDatabaseModule
 internal class GameStateMediator(
     private val databaseModule: AppDatabaseModule,
     private val economyMediator: EconomyMediator,
+    private val context: Context,
 ) : Mediator<GameStateApi> {
 
     @MainThread
     fun init() {
         GameStateFeature.dependenciesProvider = ModuleDependenciesProvider {
-            GameStateDependenciesImpl(databaseModule, economyMediator.getApi())
+            GameStateDependenciesImpl(databaseModule, economyMediator.getApi(), context)
         }
     }
 
@@ -35,7 +37,11 @@ internal class GameStateMediator(
 private class GameStateDependenciesImpl(
     private val databaseModule: AppDatabaseModule,
     private val economyApi: EconomyApi,
+    private val context: Context,
 ) : GameStateDependencies {
+
+    override fun petDirtPreferences() =
+        context.getSharedPreferences("finpet_pet_dirt", Context.MODE_PRIVATE)
 
     override fun gameStateDao(): GameStateDao = databaseModule.gameStateDao
 

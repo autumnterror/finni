@@ -87,5 +87,6 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         firstRunGuide,
         dependencies.inventoryApi(),
         dependencies.gameAudio(),
+        dependencies.gameStateApi(),
     )
 }

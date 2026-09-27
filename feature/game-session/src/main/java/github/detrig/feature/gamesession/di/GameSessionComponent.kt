@@ -7,6 +7,7 @@ import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.room.api.RoomApi
 import github.detrig.feature.phone.api.PhoneApi
 import github.detrig.feature.fridge.api.FridgeApi
+import github.detrig.feature.gamestate.api.GameStateApi
 
 internal interface GameSessionComponent {
 
@@ -15,6 +16,7 @@ internal interface GameSessionComponent {
     val roomApi: RoomApi
     val phoneApi: PhoneApi
     val fridgeApi: FridgeApi
+    val gameStateApi: GameStateApi
     val router: GameSessionRouter
 
     fun getGameSessionViewModel(): GameSessionViewModel

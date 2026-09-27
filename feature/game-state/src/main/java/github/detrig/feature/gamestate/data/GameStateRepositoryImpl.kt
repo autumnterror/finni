@@ -25,6 +25,11 @@ internal class GameStateRepositoryImpl(
     override suspend fun completePetPlay(completion: github.detrig.feature.gamestate.domain.model.PetPlayCompletion): Int =
         localDataSource.completePetPlay(completion)
 
+    override suspend fun washPet() = localDataSource.washPet()
+
+    override suspend fun adjustPetDirtStageForDebug(delta: Int): Int =
+        localDataSource.adjustPetDirtStageForDebug(delta)
+
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         localDataSource.feedPet(completion)
 

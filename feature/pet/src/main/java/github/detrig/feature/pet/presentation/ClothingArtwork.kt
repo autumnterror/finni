@@ -35,6 +35,7 @@ internal data class ClothingLayer(
     val z: Int,
     val conditions: Map<String, String>,
 ) {
+    val sourceKey: String get() = path.removePrefix("runtime/webp/").removeSuffix(".webp")
     fun fits(appearance: HamsterAppearance): Boolean =
         conditions.all { (key, value) -> appearance.properties()[key] == value }
 }
@@ -45,7 +46,7 @@ internal data class ClothingDefinition(
     val layers: List<ClothingLayer>,
 )
 
-internal data class ClothingDrawLayer(val image: ImageBitmap, val z: Int)
+internal data class ClothingDrawLayer(val image: ImageBitmap, val z: Int, val sourceKey: String)
 
 private data class EquippedClothingLayers(
     val itemId: String,
@@ -131,7 +132,7 @@ internal object ClothingArtwork {
             .flatMap { it.layers }
             .filter { it.fits(appearance) }
             .sortedBy(ClothingLayer::z)
-            .map { ClothingDrawLayer(image(assets, it.path, sampled = true), it.z) }
+            .map { ClothingDrawLayer(image(assets, it.path, sampled = true), it.z, it.sourceKey) }
     }
 
     suspend fun layersForItem(
@@ -143,7 +144,7 @@ internal object ClothingArtwork {
         ?.layers.orEmpty()
         .filter { it.fits(appearance) }
         .sortedBy(ClothingLayer::z)
-        .map { ClothingDrawLayer(image(assets, it.path, sampled = true), it.z) }
+        .map { ClothingDrawLayer(image(assets, it.path, sampled = true), it.z, it.sourceKey) }
 
     fun cachedLayersForItem(itemId: String, appearance: HamsterAppearance): List<ClothingDrawLayer>? {
         equippedLayers.values.firstOrNull { it.itemId == itemId && it.appearance == appearance }
@@ -152,7 +153,7 @@ internal object ClothingArtwork {
         val result = mutableListOf<ClothingDrawLayer>()
         definition.layers.filter { it.fits(appearance) }.sortedBy(ClothingLayer::z).forEach { layer ->
             val bitmap = cachedImage(layer.path, sampled = true) ?: return null
-            result += ClothingDrawLayer(bitmap, layer.z)
+            result += ClothingDrawLayer(bitmap, layer.z, layer.sourceKey)
         }
         return result
     }

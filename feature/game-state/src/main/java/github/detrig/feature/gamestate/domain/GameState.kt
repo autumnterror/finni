@@ -18,4 +18,5 @@ data class PetState(
     val thirst: Int,
     val happiness: Int,
     val health: Int,
+    val dirtStage: Int = 0,
 )

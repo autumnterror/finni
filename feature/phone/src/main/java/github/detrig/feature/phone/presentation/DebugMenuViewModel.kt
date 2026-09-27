@@ -7,6 +7,7 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.week.api.WeekApi
 import java.util.UUID
 import kotlinx.coroutines.Job
@@ -14,7 +15,9 @@ import kotlinx.coroutines.flow.collect
 
 internal data class DebugMenuViewState(
     val balanceRub: Long = 0,
+    val dirtStage: Int = 0,
     val isChanging: Boolean = false,
+    val isChangingDirtStage: Boolean = false,
     val isEndingWeek: Boolean = false,
     val errorMessage: String? = null,
     val statusMessage: String? = null,
@@ -24,21 +27,29 @@ internal sealed interface DebugMenuViewEvent : CoreViewEvent {
     data object Load : DebugMenuViewEvent
     data class ChangeBalance(val deltaRub: Long) : DebugMenuViewEvent
     data object ResetBalance : DebugMenuViewEvent
+    data class ChangeDirtStage(val delta: Int) : DebugMenuViewEvent
     data object EndWeek : DebugMenuViewEvent
 }
 
 internal class DebugMenuViewModel(
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
+    private val gameStateApi: GameStateApi,
 ) : CoreViewModel<DebugMenuViewState, DebugMenuViewEvent>(DebugMenuViewState()) {
     private var observationJob: Job? = null
+    private var dirtObservationJob: Job? = null
     private var changeJob: Job? = null
+    private var dirtChangeJob: Job? = null
     private var endWeekJob: Job? = null
 
     override fun perform(viewEvent: DebugMenuViewEvent) {
         when (viewEvent) {
-            DebugMenuViewEvent.Load -> observeBalance()
+            DebugMenuViewEvent.Load -> {
+                observeBalance()
+                observeDirtStage()
+            }
             is DebugMenuViewEvent.ChangeBalance -> changeBalance(viewEvent.deltaRub)
+            is DebugMenuViewEvent.ChangeDirtStage -> changeDirtStage(viewEvent.delta)
             DebugMenuViewEvent.ResetBalance -> {
                 val balance = stateData.balanceRub
                 if (balance > 0) changeBalance(-balance)
@@ -59,6 +70,38 @@ internal class DebugMenuViewModel(
             economyApi.observeState().collect { economy ->
                 updateState { copy(balanceRub = economy.availableRub) }
             }
+        }
+    }
+
+    private fun observeDirtStage() {
+        if (dirtObservationJob?.isActive == true) return
+        dirtObservationJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(errorMessage = "Не удалось загрузить загрязнение") }
+                true
+            },
+        ) {
+            val gameState = gameStateApi.initialize()
+            updateState { copy(dirtStage = gameState.pet.dirtStage) }
+            gameStateApi.observeState().collect { state ->
+                state?.let { updateState { copy(dirtStage = it.pet.dirtStage) } }
+            }
+        }
+    }
+
+    private fun changeDirtStage(delta: Int) {
+        if (delta !in listOf(-1, 1) || dirtChangeJob?.isActive == true) return
+        updateState { copy(isChangingDirtStage = true, errorMessage = null) }
+        dirtChangeJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState { copy(isChangingDirtStage = false, errorMessage = "Не удалось изменить загрязнение") }
+                dirtChangeJob = null
+                true
+            },
+        ) {
+            val stage = gameStateApi.adjustPetDirtStageForDebug(delta)
+            updateState { copy(dirtStage = stage, isChangingDirtStage = false) }
+            dirtChangeJob = null
         }
     }
 
