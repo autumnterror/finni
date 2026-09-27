@@ -44,7 +44,7 @@ import github.detrig.feature.learningtests.data.local.LearningTestsDao
         LearningTestDailyOfferEntity::class, LearningTestAttemptEntity::class,
         LearningTestAnswerEntity::class, LearningTestMasteryEntity::class,
         LearningTestQuestionXpOutboxEntity::class, LearningTestCompletionRewardOutboxEntity::class],
-    version = 17,
+    version = 18,
     exportSchema = false,
 )
 abstract class FinPetDatabase : RoomDatabase() {

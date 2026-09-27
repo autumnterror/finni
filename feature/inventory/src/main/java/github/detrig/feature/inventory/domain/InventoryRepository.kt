@@ -10,6 +10,8 @@ interface InventoryRepository {
 
     fun observeTable(): Flow<List<StagedFoodItem>>
 
+    suspend fun resetProgress()
+
     suspend fun deliver(operationId: String, items: List<ProductQuantity>): DeliveryResult
 
     suspend fun stageForTable(productId: ProductId): InventoryStageResult

@@ -19,6 +19,9 @@ interface RoomApi {
 
     suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult
 
+    /** Resets in-room onboarding and initializes the fresh demo game state. */
+    suspend fun resetProgress(skipOnboarding: Boolean)
+
     /** Непрерывный дом размещает один переданный UI питомца в мировых координатах. */
     @Composable
     fun Content(

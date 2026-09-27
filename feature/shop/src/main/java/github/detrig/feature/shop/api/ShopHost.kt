@@ -21,6 +21,7 @@ data class ShopCheckoutRequest(
     val storeId: StoreId,
     val lines: List<StoreCartLine>,
     val decisionEvent: ShopDecisionEvent? = null,
+    val confirmedConsequence: Boolean = false,
 )
 
 sealed interface ShopCheckoutResult {
@@ -38,11 +39,20 @@ sealed interface ShopCheckoutResult {
         val reason: ShopCheckoutRejection,
         override val balanceRub: Long,
     ) : ShopCheckoutResult
+
+    data class RequiresConfirmation(
+        override val balanceRub: Long,
+        val consequence: ShopPurchaseFeedback,
+        val categoryOverrunRub: Long = 0,
+        val savingsPlanReductionRub: Long = 0,
+    ) : ShopCheckoutResult
 }
 
 enum class ShopPurchaseFeedback {
+    PLAN_CHANGED,
     REQUIRED_FOOD_MISSING,
     MANDATORY_MONEY_AT_RISK,
+    RESERVE_AT_RISK,
     PROMOTION_OVERBUY,
     TOO_MANY_EXTRAS,
 }

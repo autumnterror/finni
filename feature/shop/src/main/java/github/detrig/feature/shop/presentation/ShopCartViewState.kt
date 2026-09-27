@@ -2,6 +2,7 @@ package github.detrig.feature.shop.presentation
 
 import github.detrig.core.mvvm.CoreViewState
 import github.detrig.feature.shop.api.ShopCheckoutRejection
+import github.detrig.feature.shop.api.ShopCheckoutResult
 import github.detrig.products.ProductId
 import github.detrig.products.SellableItem
 import github.detrig.products.StoreCart
@@ -34,7 +35,9 @@ internal data class ShopCartViewState(
     val error: ShopCartError? = null,
     val paymentInProgress: Boolean = false,
     val checkoutRejection: ShopCheckoutRejection? = null,
+    val purchaseConfirmation: ShopCheckoutResult.RequiresConfirmation? = null,
     val decisionEvent: ShopDecisionEvent? = null,
+    val petName: String = "Питомец",
 ) : CoreViewState {
     val lines: List<ShopCartLineUi>
         get() {

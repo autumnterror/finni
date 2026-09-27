@@ -54,7 +54,7 @@ class PurchaseLearningTest {
     }
 
     @Test
-    fun purchaseWithoutNeededFoodDoesNotQualify() {
+    fun purchaseWithoutFoodQualifiesWhenRemainingMoneyStillCoversFood() {
         val context = baseContext(
             scenario = PurchaseScenario.STANDARD_PURCHASE,
             decision = PurchaseDecision.PURCHASED,
@@ -72,8 +72,8 @@ class PurchaseLearningTest {
             context = context,
         )
 
-        assertTrue(actions.isEmpty())
-        assertEquals(PurchaseProblem.REQUIRED_FOOD_MISSING, context.purchaseProblem(PurchaseAssessmentConfig()))
+        assertEquals(listOf(PurchaseLearning.REASONABLE_DECISION), actions.map { it.type })
+        assertEquals(null, context.purchaseProblem(PurchaseAssessmentConfig()))
     }
 
     @Test
@@ -127,7 +127,7 @@ class PurchaseLearningTest {
     }
 
     @Test
-    fun purchaseProblemExplainsMandatoryReserveAndExcessExtras() {
+    fun purchaseAssessmentDistinguishesMandatoryRiskFromSafeCategoryOverrun() {
         val reserveProblem = baseContext(
             scenario = PurchaseScenario.STANDARD_PURCHASE,
             decision = PurchaseDecision.PURCHASED,
@@ -148,10 +148,7 @@ class PurchaseLearningTest {
             PurchaseProblem.MANDATORY_MONEY_AT_RISK,
             reserveProblem.purchaseProblem(PurchaseAssessmentConfig()),
         )
-        assertEquals(
-            PurchaseProblem.TOO_MANY_EXTRAS,
-            extrasProblem.purchaseProblem(PurchaseAssessmentConfig()),
-        )
+        assertEquals(PurchaseOutcome.PLAN_ADJUSTMENT, extrasProblem.assess(PurchaseAssessmentConfig()).outcome)
     }
 
     @Test

@@ -19,7 +19,7 @@ class AppDatabaseModule(
         RoomDatabaseFactory.create(
             context = context,
             databaseName = DATABASE_NAME,
-            migrations = arrayOf(MIGRATION_16_17),
+            migrations = arrayOf(MIGRATION_17_18),
             fallbackToDestructiveMigration = true,
         )
     }

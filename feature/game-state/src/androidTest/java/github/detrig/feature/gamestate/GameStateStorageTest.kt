@@ -262,6 +262,7 @@ class GameStateStorageTest {
             override fun transactionRunner(): RoomTransactionRunner = RoomTransactionRunner(testDatabase)
             override fun initialConfig(): GameStateInitialConfig = config
             override fun currentTimeMillis(): Long = 42L
+            override suspend fun currentWeekNumber(): Long = 1L
         }).api
     }
 

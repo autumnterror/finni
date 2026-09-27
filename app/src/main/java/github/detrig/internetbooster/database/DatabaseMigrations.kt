@@ -203,8 +203,14 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
     }
 }
 
-val MIGRATION_16_17 = object : Migration(16, 17) {
+val MIGRATION_17_18 = object : Migration(17, 18) {
     override fun migrate(db: SupportSQLiteDatabase) {
+        if (!db.hasColumn("weekly_plans", "knownMandatoryExpenseRub")) {
+            db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `knownMandatoryExpenseRub` INTEGER NOT NULL DEFAULT 0")
+        }
+        if (!db.hasColumn("weekly_plans", "hasActiveGoal")) {
+            db.execSQL("ALTER TABLE `weekly_plans` ADD COLUMN `hasActiveGoal` INTEGER NOT NULL DEFAULT 0")
+        }
         db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_daily_offers` (`profileId` TEXT NOT NULL, `gameDay` INTEGER NOT NULL, `position` INTEGER NOT NULL, `testId` TEXT NOT NULL, PRIMARY KEY(`profileId`, `gameDay`, `testId`))")
         db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_attempts` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `gameDay` INTEGER NOT NULL, `questionIndex` INTEGER NOT NULL, `mistakeCount` INTEGER NOT NULL, `isComplete` INTEGER NOT NULL, `isPerfect` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`, `gameDay`))")
         db.execSQL("CREATE TABLE IF NOT EXISTS `learning_test_answers` (`profileId` TEXT NOT NULL, `testId` TEXT NOT NULL, `gameDay` INTEGER NOT NULL, `questionIndex` INTEGER NOT NULL, `selectedOptionIndex` INTEGER NOT NULL, `isCorrect` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `testId`, `gameDay`, `questionIndex`))")

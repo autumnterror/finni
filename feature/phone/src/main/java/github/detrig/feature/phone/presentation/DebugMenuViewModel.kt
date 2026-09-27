@@ -7,7 +7,9 @@ import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
+import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.week.api.WeekApi
+import github.detrig.feature.phone.navigation.PhoneRouter
 import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
@@ -16,6 +18,8 @@ internal data class DebugMenuViewState(
     val balanceRub: Long = 0,
     val isChanging: Boolean = false,
     val isEndingWeek: Boolean = false,
+    val isResettingProgress: Boolean = false,
+    val pendingReset: DebugProgressResetMode? = null,
     val errorMessage: String? = null,
     val statusMessage: String? = null,
 ) : CoreViewState
@@ -25,15 +29,27 @@ internal sealed interface DebugMenuViewEvent : CoreViewEvent {
     data class ChangeBalance(val deltaRub: Long) : DebugMenuViewEvent
     data object ResetBalance : DebugMenuViewEvent
     data object EndWeek : DebugMenuViewEvent
+    data class RequestProgressReset(val mode: DebugProgressResetMode) : DebugMenuViewEvent
+    data object CancelProgressReset : DebugMenuViewEvent
+    data object ConfirmProgressReset : DebugMenuViewEvent
+}
+
+internal enum class DebugProgressResetMode(val skipOnboarding: Boolean) {
+    BEFORE_ONBOARDING(skipOnboarding = false),
+    AFTER_ONBOARDING(skipOnboarding = true),
 }
 
 internal class DebugMenuViewModel(
     private val economyApi: EconomyApi,
     private val weekApi: WeekApi,
+    private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
+    private val petApi: PetApi,
+    private val router: PhoneRouter,
 ) : CoreViewModel<DebugMenuViewState, DebugMenuViewEvent>(DebugMenuViewState()) {
     private var observationJob: Job? = null
     private var changeJob: Job? = null
     private var endWeekJob: Job? = null
+    private var resetProgressJob: Job? = null
 
     override fun perform(viewEvent: DebugMenuViewEvent) {
         when (viewEvent) {
@@ -44,6 +60,12 @@ internal class DebugMenuViewModel(
                 if (balance > 0) changeBalance(-balance)
             }
             DebugMenuViewEvent.EndWeek -> endWeek()
+            is DebugMenuViewEvent.RequestProgressReset ->
+                updateState { copy(pendingReset = viewEvent.mode, errorMessage = null) }
+            DebugMenuViewEvent.CancelProgressReset ->
+                if (!stateData.isResettingProgress) updateState { copy(pendingReset = null) }
+            DebugMenuViewEvent.ConfirmProgressReset ->
+                stateData.pendingReset?.let(::resetProgress)
         }
     }
 
@@ -63,7 +85,7 @@ internal class DebugMenuViewModel(
     }
 
     private fun changeBalance(deltaRub: Long) {
-        if (deltaRub == 0L || changeJob?.isActive == true) return
+        if (deltaRub == 0L || changeJob?.isActive == true || stateData.isResettingProgress) return
         updateState { copy(isChanging = true, errorMessage = null) }
         changeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -95,7 +117,7 @@ internal class DebugMenuViewModel(
     }
 
     private fun endWeek() {
-        if (endWeekJob?.isActive == true) return
+        if (endWeekJob?.isActive == true || stateData.isResettingProgress) return
         updateState { copy(isEndingWeek = true, errorMessage = null, statusMessage = null) }
         endWeekJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -123,6 +145,31 @@ internal class DebugMenuViewModel(
                 )
             }
             endWeekJob = null
+        }
+    }
+
+    private fun resetProgress(mode: DebugProgressResetMode) {
+        if (resetProgressJob?.isActive == true || changeJob?.isActive == true || endWeekJob?.isActive == true) return
+        updateState {
+            copy(isResettingProgress = true, pendingReset = null, errorMessage = null, statusMessage = null)
+        }
+        resetProgressJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState {
+                    copy(
+                        isResettingProgress = false,
+                        errorMessage = "Не удалось сбросить прогресс",
+                    )
+                }
+                resetProgressJob = null
+                true
+            },
+        ) {
+            resetDemoProgress(mode.skipOnboarding)
+            updateState { copy(isResettingProgress = false) }
+            petApi.resetProfile()
+            router.close()
+            resetProgressJob = null
         }
     }
 }

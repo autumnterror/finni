@@ -3,6 +3,7 @@ package github.detrig.feature.room.presentation
 import github.detrig.core.mvvm.CoreViewEvent
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.room.domain.model.MoneyAllocation
 
 internal sealed interface RoomViewEvent : CoreViewEvent {
     data class SavePosition(val position: HousePosition) : RoomViewEvent
@@ -28,12 +29,18 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object CloseEarlyWeekParentHelpNotice : RoomViewEvent
     data object CloseDayTransitionNotice : RoomViewEvent
     data object CloseImpulseWish : RoomViewEvent
+    data object CloseMoneyEvent : RoomViewEvent
+    data class ResolveMoneyEvent(val allocation: MoneyAllocation? = null) : RoomViewEvent
+    data object OpenSavingsForMoneyEvent : RoomViewEvent
+    data object RequestParentHelpForMoneyEvent : RoomViewEvent
+    data object CoverMoneyEventWithParents : RoomViewEvent
+    data object CloseRulesRecap : RoomViewEvent
     data object FirstRunOnboardingContinue : RoomViewEvent
     data object FirstRunOpenPhone : RoomViewEvent
     data object FirstRunOpenFridge : RoomViewEvent
     data object FirstRunOpenTable : RoomViewEvent
     data object FirstRunShowWeekSummary : RoomViewEvent
-    data object FirstRunStartNewWeekPlan : RoomViewEvent
+    data object DismissNewWeekPlanPrompt : RoomViewEvent
     data object FirstRunMoneyNoticeClosed : RoomViewEvent
     data class FirstRunDepositSelected(val depositNow: Boolean) : RoomViewEvent
     data object Resumed : RoomViewEvent

@@ -12,6 +12,7 @@ internal sealed interface ShopViewEvent : CoreViewEvent {
     data object ReceiptDismissed : ShopViewEvent
     data object EventDialogueFinished : ShopViewEvent
     data object PurchaseFeedbackFinished : ShopViewEvent
+    data class PromotionViewed(val eventId: String) : ShopViewEvent
     data class CategorySelected(val categoryId: StoreCategoryId?) : ShopViewEvent
     data class ProductClicked(val productId: ProductId) : ShopViewEvent
 }

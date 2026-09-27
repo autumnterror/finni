@@ -16,6 +16,8 @@ internal class InventoryApiImpl(
 
     override fun observeTable(): Flow<List<StagedFoodItem>> = repository.observeTable()
 
+    override suspend fun resetProgress() = repository.resetProgress()
+
     override suspend fun deliver(operationId: String, items: List<ProductQuantity>): DeliveryResult =
         repository.deliver(operationId, items)
 

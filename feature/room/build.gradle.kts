@@ -23,6 +23,7 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":core:products"))
     implementation(project(":core:designsystem"))
     implementation(project(":feature:game-state"))
     implementation(project(":feature:economy"))

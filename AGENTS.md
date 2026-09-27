@@ -239,22 +239,38 @@ as a fourth spending category.
 Example:
 
 ```text
-Available: 500
+Available: 900
 
-Mandatory      200
-Wants          150
-Savings        100
-Financial reserve / free remainder  50
+Mandatory      400
+Wants          200
+Savings        200
+Financial reserve / free remainder  100
 ```
 
 Rules:
 - planned total must not exceed available money;
+- plan quality uses ruble amounts for the current week, never one fixed percentage split;
+- mandatory spending must cover at least 400 ₽ for food plus any mandatory expense known before planning;
+- the financial reserve is adequate at 100 ₽ or more regardless of income level;
+- reserve guidance distinguishes below 50 ₽ (almost none), 50–99 ₽ (small), 100–149 ₽ (adequate), and 150 ₽ or more (strong);
+- when a savings goal is active at confirmation, the plan must allocate a positive amount to savings to be considered good; there is no required savings rate;
+- optional spending may be zero;
+- the goal and known mandatory expense used for assessment are saved with the confirmed plan so its quality stays stable through the week;
 - zero planned savings is allowed; a small or absent savings share may receive a neutral hint but does not block confirmation;
 - the plan can be edited before confirmation;
 - after confirmation it is fixed for that week;
+- when a new week needs a plan, open the plan editor first and show the short
+  “новая неделя - новый план!” pet dialogue above it once for that week; the
+  dialogue closes by tapping and has no action button;
 - the plan does **not** hard-block later actions;
 - actual spending may differ;
-- the end-of-week screen compares Plan ↔ Actual.
+- the end-of-week screen compares Plan ↔ Actual;
+- record unavoidable event charges separately from purchases chosen by the player;
+  compare the plan with controllable purchases and savings first, then show event
+  charges and their effect on the financial reserve as a separate result;
+- an unforeseen event alone must not turn close adherence into a plan failure or
+  prevent `follow_plan` progress. Check whether the reserve covered the charge,
+  and explain an uncovered amount without blaming the player.
 
 The system must evaluate the **reason** for deviation, not only numerical equality.
 
@@ -335,15 +351,13 @@ Suggested domain range:
 
 Rules:
 - feeding raises hunger/satiety;
-- confirming **End day** lowers it by 30 points once as part of the saved day transition, including Sunday to Monday;
-- real elapsed time lowers hunger by ten points per hour, including while the app is closed;
-- time-based changes are calculated from persisted checkpoints on foreground return and by an inexact background worker;
-- the game day and week still advance only through **End day**, never from the wall clock;
+- confirming **End day** lowers it by 50 points once as part of the saved day transition, including Sunday to Monday;
+- real elapsed time does not lower hunger; game days advance only through **End day**;
 - repeated operation IDs and repeated end-day requests do not lower it twice;
 - the value never drops below zero;
 - reaching zero hunger schedules one short, neutral local notification per zero-hunger episode;
 - if notification permission is unavailable, the alert remains pending until permission is granted while the pet is still hungry;
-- the exact decay is configurable;
+- the daily decrease is a balancing value;
 - the pet does not die;
 - low hunger does not delete progression.
 
@@ -364,27 +378,43 @@ Meaningful free sources must exist:
 - normal care.
 
 Optional purchases may add happiness.
+Buying a new clothing item grants happiness once for that item. The reward is
+independent of price: face accessories +12, neck items +15, head items +18,
+body clothing +20, and back accessories +25, capped at 100 total happiness.
+Re-equipping an owned item gives no purchase reward. A committed clothing
+purchase is the durable source for retrying a missed happiness effect.
 
-Real elapsed time lowers happiness by two points per eight hours, including while
-the app is closed. Free play and normal care remain available to restore it.
-Time-based changes never reduce XP or educational progress.
+The first actual launch of each unlocked mini-game in a game day grants
+fishing +12, drawing +15, or music +18 happiness. Reopening the same game on
+the same game day does not repeat this launch bonus; a new game day resets
+eligibility. The reward is saved idempotently with the pet state. Only games
+with an implemented launch path can currently trigger the bonus.
+
+Confirming **End day** lowers happiness by 10 points once in the same saved day
+transition as hunger. Real elapsed time does not lower happiness. Happiness stays
+within 0..100; hunger does not reduce it. Free play and normal care remain
+available to restore it. Low happiness does not reduce XP or educational progress.
 
 Refusing an optional purchase must not automatically reduce happiness.
+
+Pet wishes are suggestions, never required purchases. A day has at most one
+scheduled wish. Its chance is based on happiness at first observation that day:
+15% at 70–100, 35% at 40–69, 65% at 20–39, and 85% at 0–19. The selected
+wish remains stable for the game day. Mix requests for existing optional food
+and clothing with free actions such as petting, talking, playing, changing owned
+clothes, or using an unlocked mini-game. A costly wish may appear despite a
+tight budget. Dismissing an unaffordable paid wish can count as a prudent
+impulse decision; it never removes happiness.
 
 ### 7.3. Food tiers
 
 Basic food fully covers the mandatory need.
 
-More expensive food may provide the same hunger restoration plus a small happiness bonus.
-
-Example configuration:
-
-```text
-Basic food       60 → +40 hunger, +0 happiness
-Tasty food       80 → +40 hunger, +3 happiness
-Favorite meal   110 → +40 hunger, +6 happiness
-3 basic portions 150 → 3 × +40 hunger
-```
+More expensive food may provide comparable hunger restoration and more happiness.
+The grocery catalog is the source of current prices and effects. Items with zero
+satiety and positive happiness, such as treats and sweet drinks, are optional
+expenses; food with positive satiety counts toward mandatory expenses. Inventory
+and purchase guidance must count only food that restores satiety as mandatory care.
 
 The purpose is to create a clear **need vs optional comfort** decision.
 
@@ -432,6 +462,11 @@ Pocket money is regular weekly income.
 
 It is granted at the start of the next week.
 
+The first week starts with 900 ₽. Later weekly pocket money follows the pet's
+level at the moment the new week begins: levels 1–2 receive 900 ₽, levels 3–4
+receive 1 400 ₽, and level 5 receives 2 200 ₽. Any debt repayment is shown and
+deducted separately from the gross amount.
+
 The amount may increase with player level/configuration.
 
 Do not make all mandatory expenses increase linearly with income.
@@ -452,6 +487,8 @@ The economy domain must support:
 - planned savings amount;
 - free remainder;
 - actual categorized spending;
+- separately recorded unavoidable event expenses and their reserve impact;
+- food purchases categorized by whether they restore satiety;
 - weekly income/side-income;
 - debt impact;
 - end-of-week summary.
@@ -600,6 +637,12 @@ Useful optional context:
 - debt impact if relevant.
 
 Purchase confirmation is required.
+The cart's **Pay** action is the purchase confirmation. When a purchase goes
+beyond the plan but the wallet can still pay, first show a buttonless pet warning
+with the concrete consequence. Closing it returns to the unchanged cart; a new
+tap on **Pay** completes that same affordable purchase without another warning.
+Changing the cart requires a fresh warning. Do not repeat the warning after the
+receipt. Lack of wallet funds still prevents payment.
 
 ---
 
@@ -624,6 +667,35 @@ Competitive safety additions:
 - unknown link / request for confirmation code.
 
 Events should be data-driven where practical.
+
+Ordinary weeks schedule one or two money events with fixed ruble amounts rather
+than amounts proportional to pocket money. Week one introduces a known 80 ₽
+expense before planning; week two introduces an unexpected mandatory expense;
+week three introduces extra income. Later weeks mix known expenses, unexpected
+expenses, and extra income. Known costs are included in the plan's mandatory
+minimum and counted as controlled mandatory spending when paid. Unexpected
+costs are recorded separately from controlled purchases, so they do not by
+themselves make plan adherence poor. Every event uses a stable operation ID.
+From week four, draw the ordinary events, their amounts, and eligible days at
+random within the configured catalog. Save the full weekly draw before showing
+or applying an event, so reopening the app cannot reroll it. Keep known future
+expenses fixed and visible before the weekly plan. A regular week has one or
+two money events. A known-expense week has one ordinary event alongside the
+known cost; when there are two ordinary events, include one income and one
+unexpected expense.
+Additional income stays in the wallet until the player chooses to designate it
+for wants, reserve, a savings goal, or free money. Choosing a goal transfers it
+through the savings feature. The confirmed weekly plan is not silently edited.
+The week review considers explicit use of extra income as a possible adaptation,
+while unexpected expense amounts remain separate from controlled purchases.
+After the first known expense, unexpected expense, and extra-income cycles,
+show one short child-facing recap of four rules: adequate plan, affordable
+purchase, response to a money event, and optional pet wishes.
+An unpaid mandatory event remains visible and must be resolved before ending
+the day. If the wallet is short, the child may review savings or request the
+existing parent-help offer. With an active parent-help debt and no savings,
+parents may cover only the remaining mandatory shortfall so the week cannot
+deadlock. This rescue is recorded as an economy operation.
 
 Suggested event shape:
 
@@ -726,6 +798,16 @@ Learned achievement requires an adequate plan. A confirmed weekly plan remains
 fixed; adaptation means changing later decisions and the use of remaining money,
 not silently rewriting the confirmed plan.
 
+The current implementation grants `reasonable_plan` Introduction after the first
+adequate confirmed plan and Learned after adequate plans in three distinct game
+weeks. `follow_plan` Introduction is granted when a completed week is compared
+with its plan; Learned requires an adequate plan and good adherence in three
+distinct completed weeks. A close result permits up to the greater of 10 rubles
+or 25% deviation in each planned category and the reserve, using controllable
+spending rather than unavoidable event charges. The week summary shows the event
+charge separately and whether the reserve absorbed it. An early crisis
+finish can introduce the comparison but cannot qualify as good adherence.
+
 At the end of a period, feedback evaluates plan quality separately from adherence:
 
 - adequate plan + small justified deviation: positive explanation;
@@ -737,21 +819,30 @@ After the introductory cycles, adaptation may be checked through a known future
 expense, extra income, an unexpected mandatory expense, or a configured temporary
 price change. A price-change scenario is not mandatory until its rules and content
 are approved.
+The current qualifying change is a mandatory-expense overrun greater than the
+larger of 10 rubles or 25% of the planned mandatory amount in the completed
+week. Introduction records that change; Learned requires covering
+such an overrun with an adequate starting plan, optional spending within its
+limit, and the week's total within available money in two distinct weeks. The
+learning action is committed with the week transition and is idempotent.
 
 #### Savings building
 
 | Metric | Introduction row | Learned row |
 |---|---|---|
 | `create_goal` | Ребёнок познакомился с созданием финансовой цели. | Ребёнок умеет самостоятельно выбирать и создавать достижимую финансовую цель. |
-| `plan_saving` | Ребёнок познакомился с включением сбережений в недельный план. | Ребёнок умеет планировать регулярные пополнения финансовой цели. |
 | `regular_contribution` | Ребёнок познакомился с откладыванием денег на финансовую цель. | Ребёнок умеет пополнять финансовую цель на протяжении нескольких игровых периодов. |
 | `reach_goal` | Ребёнок познакомился с завершением накопления на выбранную цель. | Ребёнок умеет доводить план накопления до достижения цели. |
 
 The piggy-bank introduction explains its purpose but does not itself advance a
-metric. Creating a goal, confirming a plan with savings, a successful transfer,
-and reaching a target are separate learning actions. Friendly reminders are
+metric. Creating a goal, a successful transfer, and reaching a target are
+separate learning actions. The savings share remains in the weekly plan but does
+not award a savings achievement by itself. Friendly reminders are
 allowed; the pet must not guilt the child or imply that affection depends on
 buying the desired item.
+The former `savings.plan_saving` achievement IDs are retired and must not be
+reused. Existing unlock records and earned XP are retained; the retired items
+are absent from the active album and parent rows.
 
 #### Payments and purchases
 
@@ -766,11 +857,36 @@ rule must consider mandatory needs, basket contents, current and planned money,
 remaining days, and the consequence of the choice. Receipt checking is a deferred
 metric and must not be added to the active catalog until a receipt mechanic exists.
 
+Shop purchases have three outcomes. A good purchase stays within the remaining
+plan for each category and leaves enough wallet money for remaining mandatory
+expenses and the financial reserve without further reducing the amount that can
+still be saved toward the plan. A deficit caused by an earlier purchase must not
+be attributed again to a later purchase. A safe plan adjustment
+exceeds a category or reduces planned savings while preserving mandatory money
+and the reserve; it requires an explicit choice before payment but does not
+advance the reasonable-purchase achievement. A warning acknowledgement permits
+payment but does not redistribute the confirmed weekly plan. A risky purchase
+threatens mandatory money or uses the reserve for an optional item. It remains possible when the
+wallet can pay, but receives neutral feedback and does not advance the
+reasonable-purchase achievement. Small optional baskets do not bypass these
+checks. Food that restores satiety uses the mandatory category; treats that
+only raise happiness use the optional category.
+
+Promotion and impulse achievements apply the same post-purchase budget checks.
+A promotion is useful only when the item serves a current need or has a
+meaningful effect at the pet's current state. A discounted treat that barely
+changes nearly full happiness does not become a good promotion decision simply
+because its price is lower. Declining an unhelpful or unaffordable promotion
+may be a qualifying decision after the promoted item was visible to the child.
+The calculation uses the actual promotional cart total and is captured with the
+committed purchase for safe replay.
+
 For `reasonable_purchase`, the Introduction achievement requires two qualifying
 shopping trips. The Learned achievement requires qualifying shopping trips in
 three consecutive game weeks. A poor purchase remains allowed, but the pet then
-gives one short neutral explanation of the concrete problem, such as missing
-required food, risking mandatory money, or exceeding the available wants budget.
+gives one short neutral explanation of the concrete problem, such as leaving too
+little money for food or known expenses, using the reserve for a want, or
+stockpiling because of a promotion.
 
 Promotions are displayed directly on shop items rather than as a forced choice.
 The first promotion is scheduled after a configurable number of game days and
@@ -781,7 +897,11 @@ while incomplete sets keep the regular unit price. The catalog card, cart total,
 economy debit, and receipt must use the same promotion calculation. A selected
 promotion remains stable for the whole game day, including after leaving and
 reopening the shop or completing a purchase; the next game day recalculates the
-event. Buying substantially more promotion items than the quantity needed to
+event. After the first guaranteed offer on game day five, promotions have a
+15% daily chance when the shop is opened. One quarter of promotions use `2+1`;
+the others use a percentage discount. Persist the random seed so the day's
+offer does not change when the shop is reopened or the app restarts. Buying
+substantially more promotion items than the quantity needed to
 receive the offer remains allowed, but it does not count as a reasonable purchase
 or a good promotion decision. The threshold is the promotion's minimum useful
 quantity plus a small configured allowance; when it is exceeded, the pet gives
@@ -807,6 +927,9 @@ On the first occurrence, the pet points out that something looks suspicious and
 explains the nature of the risk. The second occurrence checks an independent
 choice; the third reinforces it in a later or changed situation. Only the first
 and third steps unlock achievements.
+Security messages use a 20% daily chance in both debug and release builds, with
+at least two full game days between occurrences. The processed day is saved even
+when no message appears, so reopening the phone cannot reroll that day.
 
 ### 15.4. Required learning-module contracts
 
@@ -896,16 +1019,20 @@ Primary XP sources may include:
 - completed week;
 - achieved financial goal;
 - key game task;
-- opened content.
+- completed mini-game attempt.
 
-Mini-games may award a small amount of XP.
+XP rewards are: completed week 40; good budget management 20; reached
+financial goal 40; introductory achievement 10; learned achievement 20;
+financial task 5 when guided or 10 when independent; completed mini-game
+attempt 2, capped at 10 XP per game week. Unlocking ordinary content grants
+0 XP. A mini-game session counts only once, including when it reaches the
+weekly cap, and the cap resets at the next game week.
 
 Current level thresholds are 0, 100, 250, 450 and 700 total XP. Levels 1-2
 use the baby stage, levels 3-4 use explorer, and level 5 uses companion. The
 room HUD shows the XP bar at its top and the amount remaining to the next
-level; at level 5 it shows that the maximum level is reached. The first unlock
-of an introductory achievement grants 50 XP, and the first unlock of a learned
-achievement grants 20 XP. Replaying the same unlock never grants XP again.
+level; at level 5 it shows that the maximum level is reached. Replaying the
+same achievement unlock never grants XP again.
 
 MVP pet progression needs at least 3 visible stages:
 - baby;
@@ -991,6 +1118,11 @@ At week end show:
 4. one positive observation;
 5. one next-step suggestion.
 
+The end-of-week result takes priority over room dialogs. During the first week,
+summary guidance appears inside the result; the result must remain visible and
+interactive until the player continues. Do not show a separate waiting dialog
+before the result.
+
 Do not use school grades.
 
 Do not evaluate only numeric equality.
@@ -1038,7 +1170,6 @@ At minimum:
 - pet identity/customization;
 - hunger;
 - happiness if enabled;
-- last processed real-time checkpoint for each time-based pet need;
 - the current zero-hunger alert episode and last delivered episode;
 - current week;
 - current day;
@@ -1370,7 +1501,7 @@ Values likely to change in balancing must be configurable:
 - item prices;
 - food effects;
 - hunger change per day;
-- hunger and happiness intervals based on real elapsed time;
+- happiness change per day;
 - happiness effects;
 - side-job limits;
 - side-job rewards;

@@ -34,6 +34,7 @@ internal class ShopViewModel(
     private val catalog: SellableCatalog<SellableItem>? = catalogRegistry.catalog(storeId)
     private var observationJob: Job? = null
     private var eventRefreshJob: Job? = null
+    private var eventDeclineJob: Job? = null
 
     override fun perform(viewEvent: ShopViewEvent) {
         when (viewEvent) {
@@ -48,6 +49,13 @@ internal class ShopViewModel(
             ShopViewEvent.ReceiptDismissed -> dismissReceipt()
             ShopViewEvent.EventDialogueFinished -> updateState { copy(eventDialogueVisible = false) }
             ShopViewEvent.PurchaseFeedbackFinished -> finishPurchaseFeedback()
+            is ShopViewEvent.PromotionViewed -> {
+                if (stateData.decisionEvent?.eventId == viewEvent.eventId &&
+                    stateData.seenPromotionEventId != viewEvent.eventId
+                ) {
+                    updateState { copy(seenPromotionEventId = viewEvent.eventId) }
+                }
+            }
             is ShopViewEvent.CategorySelected -> selectCategory(viewEvent.categoryId)
             is ShopViewEvent.ProductClicked -> addProductToCart(viewEvent.productId)
         }
@@ -124,12 +132,13 @@ internal class ShopViewModel(
     }
 
     private fun declineDecisionEvent(navigateAfter: Boolean = false) {
+        if (eventDeclineJob?.isActive == true) return
         val event = stateData.decisionEvent
         if (event == null) {
             if (navigateAfter) navigateBack()
             return
         }
-        launchCoroutine(
+        eventDeclineJob = launchCoroutine(
             handleAction = ExceptionConsumer {
                 finishDecliningEvent(navigateAfter)
                 true
@@ -157,10 +166,14 @@ internal class ShopViewModel(
             refreshedEvent.eventId != currentEvent?.eventId &&
             host.claimPromotionIntroduction()
         decisionEventStore.replace(storeId, refreshedEvent)
-        updateState { copy(eventDialogueVisible = showPromotionIntroduction) }
+        updateState { copy(
+            eventDialogueVisible = showPromotionIntroduction,
+            seenPromotionEventId = seenPromotionEventId.takeIf { it == refreshedEvent?.eventId },
+        ) }
     }
 
     private fun finishDecliningEvent(navigateAfter: Boolean) {
+        eventDeclineJob = null
         decisionEventStore.clear(storeId)
         if (navigateAfter) navigateBack()
     }
@@ -168,7 +181,13 @@ internal class ShopViewModel(
     private fun leaveShop() {
         when (stateData.decisionEvent?.type) {
             ShopDecisionEventType.IMPULSE_WISH -> declineDecisionEvent(navigateAfter = true)
-            ShopDecisionEventType.PROMOTION,
+            ShopDecisionEventType.PROMOTION -> {
+                if (stateData.seenPromotionEventId == stateData.decisionEvent?.eventId) {
+                    declineDecisionEvent(navigateAfter = true)
+                } else {
+                    navigateBack()
+                }
+            }
             null,
             -> navigateBack()
         }

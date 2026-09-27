@@ -4,6 +4,7 @@ import github.detrig.feature.planning.domain.PlanPercentages
 import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.SavePlanResult
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
+import github.detrig.feature.planning.domain.PlanWeekContext
 import github.detrig.feature.room.domain.repository.RoomRepository
 
 internal data class SaveWeeklyPlanOutcome(
@@ -19,13 +20,14 @@ internal class SaveWeeklyPlanInteractor(
         weekNumber: Long,
         availableRub: Long,
         percentages: PlanPercentages,
+        context: PlanWeekContext,
     ): SaveWeeklyPlanOutcome {
-        val result = repository.savePlan(weekNumber, availableRub, percentages)
+        val result = repository.savePlan(weekNumber, availableRub, percentages, context)
         val progress = when (result) {
             is SavePlanResult.Saved -> result.progress
             is SavePlanResult.AlreadySaved -> result.progress
         }
-        val learningFeedback = when (repository.assessPlan(progress.plan.percentages)) {
+        val learningFeedback = when (progress.planAssessment) {
             PlanAssessment.Adequate -> learning.recordConfirmed(progress.plan)
             is PlanAssessment.NeedsChanges -> WeeklyPlanLearningFeedback(
                 showSuccessExplanation = false,

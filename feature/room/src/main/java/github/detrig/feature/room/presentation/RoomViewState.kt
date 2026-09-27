@@ -7,11 +7,14 @@ import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.RoomZoneUiModel
 import github.detrig.feature.economy.domain.ParentHelpOffer
 import github.detrig.feature.economy.domain.ParentHelpState
+import github.detrig.feature.economy.domain.ParentHelpUnavailableReason
 import github.detrig.feature.economy.domain.SavingsGoalProgress
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.room.domain.model.RoomImpulseWish
+import github.detrig.feature.room.domain.model.RoomMoneyEvent
+import github.detrig.feature.room.domain.model.MoneyEventResolution
 import github.detrig.feature.learning.domain.ParentProgressRow
 
 data class ParentHelpDialogState(
@@ -22,6 +25,8 @@ data class ParentHelpDialogState(
     val savingsRub: Long = 0,
     val debtRub: Long = 0,
     val minimumRequiredBalanceRub: Long = 0,
+    val unavailableReasons: List<ParentHelpUnavailableReason> = emptyList(),
+    val forMandatoryEvent: Boolean = false,
 )
 
 internal data class AllowanceNoticeState(
@@ -156,7 +161,7 @@ internal enum class PlanTutorialStep {
 internal sealed interface PlanDialogueState {
     data class NeedsChanges(
         val reason: PlanAdjustmentReason,
-        val recommendedPercent: Int,
+        val requiredRub: Long,
     ) : PlanDialogueState
 
     data class Saved(
@@ -176,6 +181,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val sleepConfirmationVisible: Boolean = false,
         val sleeping: Boolean = false,
         val planEditor: PlanEditorState? = null,
+        val newWeekPlanPromptVisible: Boolean = false,
         val planTutorialStep: PlanTutorialStep? = null,
         val planDialogue: PlanDialogueState? = null,
         val isSavingPlan: Boolean = false,
@@ -203,6 +209,10 @@ internal sealed interface RoomViewState : CoreViewState {
         val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
         val dayTransitionNotice: DayTransitionNoticeState? = null,
         val impulseWish: RoomImpulseWish? = null,
+        val moneyEvent: RoomMoneyEvent? = null,
+        val moneyEventError: MoneyEventResolution? = null,
+        val resolvingMoneyEvent: Boolean = false,
+        val rulesRecapVisible: Boolean = false,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
     ) : RoomViewState

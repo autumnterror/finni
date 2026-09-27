@@ -43,4 +43,16 @@
     <string name="shop_feedback_mandatory_money">После этой покупки осталось слишком мало денег на обязательные расходы. Давай в следующий раз сначала проверим остаток.</string>
     <string name="shop_feedback_promotion_overbuy">Акция может быть выгодной, но покупать слишком много только из-за неё не стоит. В следующий раз сначала подумаем, сколько нам действительно нужно.</string>
     <string name="shop_feedback_too_many_extras">В корзине оказалось больше лишних покупок, чем позволяет наш бюджет желаний. Можно выбрать самое важное, а остальное оставить на потом.</string>
+    <string name="shop_budget_plan_change">Эта покупка выходит за сумму, которую ты отвёл на эту категорию. На обязательные расходы и финансовую подушку пока хватит.</string>
+    <string name="shop_budget_food_missing">В корзине пока нет еды, а запасы заканчиваются. Проверь, хватит ли денег купить её позже.</string>
+    <string name="shop_budget_mandatory_risk">После покупки может не хватить денег на оставшуюся еду или известные обязательные расходы.</string>
+    <string name="shop_budget_category_overrun">Сверх плана категории: %1$d ₽.</string>
+    <string name="shop_budget_reserve_risk">После покупки на желание понадобится часть финансовой подушки.</string>
+    <string name="shop_budget_promotion_overbuy">В корзине больше товаров по акции, чем нужно для выгоды. Подумай, пригодятся ли все они.</string>
+    <string name="shop_budget_too_many_extras">В корзине больше необязательных товаров, чем позволяет план. Можно оставить часть на потом.</string>
+    <string name="shop_budget_savings_change">На цель получится отложить на %1$d ₽ меньше запланированного.</string>
+    <string name="shop_budget_balance_after">После покупки в кошельке останется %1$d ₽.</string>
+    <string name="shop_budget_pay_again">Если всё равно хочешь купить, закрой подсказку и снова нажми «Оплатить».</string>
+    <string name="shop_feedback_plan_changed">Мы изменили приоритеты. На обязательные расходы и запас хватит, а к цели, возможно, пойдём медленнее.</string>
+    <string name="shop_feedback_reserve_risk">На желание ушла часть финансовой подушки. В следующий раз полезно оставить запас на неожиданности.</string>
 </resources>

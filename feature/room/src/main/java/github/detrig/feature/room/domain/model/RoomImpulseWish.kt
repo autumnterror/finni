@@ -5,7 +5,11 @@ data class RoomImpulseWish(
     val productTitle: String,
     val phraseVariant: Int,
     val showIntroduction: Boolean,
+    val kind: Kind = Kind.GROCERY,
+    val priceRub: Long = 0,
+    val productId: String? = null,
 ) {
+    enum class Kind { GROCERY, CLOTHING, FREE }
     init {
         require(eventId.isNotBlank())
         require(productTitle.isNotBlank())
@@ -19,4 +23,5 @@ data class RoomImpulseWish(
 
 fun interface RoomImpulseWishSource {
     suspend fun claimCurrentWish(): RoomImpulseWish?
+    suspend fun recordDeclined(wish: RoomImpulseWish) = Unit
 }
