@@ -13,6 +13,7 @@ import github.detrig.feature.room.presentation.component.RoomErrorState
 import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.room.domain.furniture.FurnitureVariant
 import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
+import github.detrig.feature.room.api.RoomWishArtwork
 
 @Composable
 internal fun RoomContent(
@@ -24,6 +25,7 @@ internal fun RoomContent(
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
     onPetTap: () -> Unit = {},
+    wishArtwork: RoomWishArtwork? = null,
     petLookingAround: Boolean = false,
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
@@ -117,6 +119,8 @@ internal fun RoomContent(
                     onPreviewReady = onPreviewReady,
                     modifier = Modifier.fillMaxSize(),
                     petContent = petContent,
+                    wish = state.impulseWish,
+                    wishArtwork = wishArtwork,
                     petLookingAround = petLookingAround,
                     phoneUnreadCount = phoneUnreadCount,
                     furnitureByPlacement = furnitureByPlacement,

@@ -30,13 +30,21 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.compositionLocalOf
@@ -69,6 +77,7 @@ import androidx.compose.ui.window.PopupProperties
 import github.detrig.designsystem.R
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import kotlinx.coroutines.delay
 import kotlin.math.min
 
 /** Действие под репликой. Список из 0, 1, 2 или 3 элементов задаёт режим диалога. */
@@ -118,6 +127,51 @@ fun FinPetDialogueDialog(
         if (pageIndex < lastIndex) R.string.dialogue_tap_next else R.string.dialogue_tap_finish,
     )
     val overlayTopInset = LocalFinPetDialogueTopInset.current
+    var dialogueVisible by remember { mutableStateOf(false) }
+    var finishRequested by remember { mutableStateOf(false) }
+    val currentOnFinished by rememberUpdatedState(onFinished)
+    val exitDurationMillis = AppTheme.motion.durationFastMillis
+
+    LaunchedEffect(Unit) {
+        dialogueVisible = true
+    }
+    LaunchedEffect(finishRequested) {
+        if (finishRequested) {
+            delay(exitDurationMillis.toLong())
+            currentOnFinished()
+        }
+    }
+
+    val finishDialogue = {
+        if (!finishRequested) {
+            finishRequested = true
+            dialogueVisible = false
+        }
+    }
+    val enterTransition = fadeIn(
+        animationSpec = tween(
+            durationMillis = AppTheme.motion.durationMediumMillis,
+            easing = AppTheme.motion.standardEasing,
+        ),
+    ) + slideInVertically(
+        animationSpec = tween(
+            durationMillis = AppTheme.motion.durationMediumMillis,
+            easing = AppTheme.motion.standardEasing,
+        ),
+        initialOffsetY = { -it / 8 },
+    )
+    val exitTransition = fadeOut(
+        animationSpec = tween(
+            durationMillis = exitDurationMillis,
+            easing = AppTheme.motion.standardEasing,
+        ),
+    ) + slideOutVertically(
+        animationSpec = tween(
+            durationMillis = exitDurationMillis,
+            easing = AppTheme.motion.standardEasing,
+        ),
+        targetOffsetY = { -it / 10 },
+    )
 
     Popup(
         alignment = alignment ?: if (focusable) {
@@ -125,7 +179,7 @@ fun FinPetDialogueDialog(
         } else {
             Alignment.BottomCenter
         },
-        onDismissRequest = onFinished,
+        onDismissRequest = finishDialogue,
         properties = PopupProperties(
             focusable = focusable,
             dismissOnBackPress = dismissOnBackPress,
@@ -139,7 +193,7 @@ fun FinPetDialogueDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
-                            if (canAdvanceOnTap) {
+                            if (canAdvanceOnTap && !finishRequested) {
                                 Modifier.clickable(
                                     interactionSource = interactionSource,
                                     indication = null,
@@ -150,7 +204,7 @@ fun FinPetDialogueDialog(
                                         pageIndex++
                                         onPageChanged(pageIndex)
                                     } else {
-                                        onFinished()
+                                        finishDialogue()
                                     }
                                 }
                             } else {
@@ -167,20 +221,27 @@ fun FinPetDialogueDialog(
                         .testTag("finpet_dialogue"),
                     contentAlignment = Alignment.TopCenter,
                 ) {
-                    DialogueBubble(
-                        speakerName = speakerName,
-                        text = cards[pageIndex],
-                        pageIndex = pageIndex,
-                        pageCount = cards.size,
-                        portrait = portrait,
-                        tapHint = tapHint,
-                        showTapHint = canAdvanceOnTap,
-                        actions = actions,
-                        onActionSelected = onActionSelected,
-                        scrollState = scrollState,
-                        maxHeight = maxCardHeight,
-                        additionalContent = additionalContent,
-                    )
+                    AnimatedVisibility(
+                        visible = dialogueVisible,
+                        enter = enterTransition,
+                        exit = exitTransition,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        DialogueBubble(
+                            speakerName = speakerName,
+                            text = cards[pageIndex],
+                            pageIndex = pageIndex,
+                            pageCount = cards.size,
+                            portrait = portrait,
+                            tapHint = tapHint,
+                            showTapHint = canAdvanceOnTap,
+                            actions = actions,
+                            onActionSelected = onActionSelected,
+                            scrollState = scrollState,
+                            maxHeight = maxCardHeight,
+                            additionalContent = additionalContent,
+                        )
+                    }
                 }
             }
         } else {
@@ -197,20 +258,27 @@ fun FinPetDialogueDialog(
                     .testTag("finpet_dialogue"),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                DialogueBubble(
-                    speakerName = speakerName,
-                    text = cards[pageIndex],
-                    pageIndex = pageIndex,
-                    pageCount = cards.size,
-                    portrait = portrait,
-                    tapHint = tapHint,
-                    showTapHint = canAdvanceOnTap,
-                    actions = actions,
-                    onActionSelected = onActionSelected,
-                    scrollState = scrollState,
-                    maxHeight = maxCardHeight,
-                    additionalContent = additionalContent,
-                )
+                AnimatedVisibility(
+                    visible = dialogueVisible,
+                    enter = enterTransition,
+                    exit = exitTransition,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    DialogueBubble(
+                        speakerName = speakerName,
+                        text = cards[pageIndex],
+                        pageIndex = pageIndex,
+                        pageCount = cards.size,
+                        portrait = portrait,
+                        tapHint = tapHint,
+                        showTapHint = canAdvanceOnTap,
+                        actions = actions,
+                        onActionSelected = onActionSelected,
+                        scrollState = scrollState,
+                        maxHeight = maxCardHeight,
+                        additionalContent = additionalContent,
+                    )
+                }
             }
         }
     }

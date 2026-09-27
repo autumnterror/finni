@@ -198,6 +198,7 @@ internal class AppModuleImpl(
             learningMediator,
             savingsMediator,
             shopMediator,
+            petMediator,
             wardrobeMediator,
             inventoryMediator,
             gameAudio,

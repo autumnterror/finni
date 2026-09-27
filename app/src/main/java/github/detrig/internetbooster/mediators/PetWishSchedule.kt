@@ -2,6 +2,7 @@ package github.detrig.internetbooster.mediators
 
 import github.detrig.feature.pet.api.ClothingItem
 import github.detrig.products.GroceryCatalog
+import github.detrig.products.FoodItem
 import kotlin.random.Random
 
 /** One deterministic wish per game day at most. The pet's mood changes frequency, not obligation. */
@@ -16,24 +17,16 @@ internal object PetWishSchedule {
         val productId: String? = null,
     )
 
-    private val groceryTitles = setOf(
-        "Пирожное", "Лимонад", "Какао", "Клубничный коктейль", "Роллы", "Пицца",
-    )
+    private val groceryTitles = setOf("Пирожное", "Лимонад", "Какао", "Клубничный коктейль")
     private val clothingIds = setOf(
         "23_coral_bandana", "14_blue_cap", "31_round_glasses",
         "01_leaf_tee", "19_crown", "38_blue_backpack",
     )
-    private val freeWishes = listOf(
-        "Поиграть вместе", "Погладить питомца", "Пообщаться",
-        "Надеть уже купленную одежду", "Сыграть в открытую мини-игру",
-    )
-
     fun current(
         absoluteDay: Long,
         happiness: Int,
         clothing: List<ClothingItem>,
         ownedClothingIds: Set<String>,
-        hasUnlockedGame: Boolean,
         safeOptionalRub: Long,
     ): Wish? {
         val chance = when {
@@ -45,15 +38,12 @@ internal object PetWishSchedule {
         val random = Random(0x51A7L xor absoluteDay)
         if (random.nextDouble() >= chance) return null
         val food = GroceryCatalog().storefront.items
-            .filter { it.title in groceryTitles }
+            .filterIsInstance<FoodItem>()
+            .filter { it.title in groceryTitles && it.effects.satietyPercent == 0 }
             .map { Wish("", Kind.GROCERY, it.title, it.priceRub, it.id.value) }
         val clothes = clothing.filter { it.id in clothingIds && it.id !in ownedClothingIds }
             .map { Wish("", Kind.CLOTHING, it.name, it.priceRub, it.id) }
-        val free = freeWishes.filter { title ->
-            (title != "Надеть уже купленную одежду" || ownedClothingIds.isNotEmpty()) &&
-                (title != "Сыграть в открытую мини-игру" || hasUnlockedGame)
-        }.map { Wish("", Kind.FREE, it) }
-        val candidates = (food + clothes + free).sortedWith(compareBy({ it.kind.name }, { it.title }))
+        val candidates = (food + clothes).sortedWith(compareBy({ it.kind.name }, { it.title }))
         if (candidates.isEmpty()) return null
         val chosen = if (absoluteDay % 7L == 0L) {
             candidates.filter { it.priceRub > safeOptionalRub }

@@ -67,6 +67,7 @@ import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.feature.room.presentation.preview.RoomPreviewData
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 import github.detrig.feature.room.api.RoomPetInteraction
+import github.detrig.feature.room.api.RoomWishArtwork
 import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Row
@@ -84,6 +85,7 @@ internal fun RoomScreen(
     petName: String,
     canShowDialogs: Boolean,
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
+    wishArtwork: RoomWishArtwork? = null,
     petPortrait: @Composable (Modifier) -> Unit = {},
     onMirrorClick: () -> Unit = {},
     onPhoneClick: () -> Unit = {},
@@ -253,6 +255,7 @@ internal fun RoomScreen(
             modifier = Modifier.fillMaxSize(),
             petContent = petContent,
             onPetTap = { viewModel.perform(RoomViewEvent.PetTapped) },
+            wishArtwork = wishArtwork,
             petLookingAround = petLookingAround,
             onMirrorClick = onMirrorClick,
             onPhoneClick = if (onboarding?.step == FirstRunOnboardingStep.WAITING_FOR_PHONE) {
@@ -283,7 +286,7 @@ internal fun RoomScreen(
                 content?.savingsRecoveryPrompt == null &&
                 content?.parentHelpPhonePrompt == null &&
                 content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
-                content?.impulseWish == null && content?.sleepConfirmationVisible != true &&
+                content?.sleepConfirmationVisible != true &&
                 content?.moneyEvent == null &&
                 content?.rulesRecapVisible != true &&
                 !showPhoneNotificationPrompt &&
@@ -463,6 +466,7 @@ internal fun RoomScreen(
         content?.moneyEvent != null && canShowDialogs && content.dayTransitionNotice == null -> {
             RoomMoneyEventDialog(
                 event = content.moneyEvent,
+                sleepBlockedByKnownExpense = content.sleepBlockedByKnownExpense,
                 availableRub = content.progress.balanceRub.toLong(),
                 savingsRub = content.progress.savingsRub,
                 canAskParents = content.progress.debtRub == 0L,
@@ -476,14 +480,6 @@ internal fun RoomScreen(
                 onOpenSavings = { viewModel.perform(RoomViewEvent.OpenSavingsForMoneyEvent) },
                 onAskParents = { viewModel.perform(RoomViewEvent.RequestParentHelpForMoneyEvent) },
                 onParentCoverage = { viewModel.perform(RoomViewEvent.CoverMoneyEventWithParents) },
-            )
-        }
-        content?.impulseWish != null && canShowDialogs && content.dayTransitionNotice == null -> {
-            RoomImpulseWishDialog(
-                wish = content.impulseWish,
-                petName = petName,
-                petPortrait = petPortrait,
-                onFinished = { viewModel.perform(RoomViewEvent.CloseImpulseWish) },
             )
         }
         content?.firstWeekNeedHint != null && canShowDialogs -> {

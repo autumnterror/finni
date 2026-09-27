@@ -180,29 +180,30 @@ private fun ShopBudgetWarningDialog(
     onFinished: () -> Unit,
 ) {
     FinPetModalVisibilityEffect()
-    val consequence = stringResource(when (confirmation.consequence) {
-        ShopPurchaseFeedback.PLAN_CHANGED -> R.string.shop_budget_plan_change
-        ShopPurchaseFeedback.REQUIRED_FOOD_MISSING -> R.string.shop_budget_food_missing
-        ShopPurchaseFeedback.MANDATORY_MONEY_AT_RISK -> R.string.shop_budget_mandatory_risk
-        ShopPurchaseFeedback.RESERVE_AT_RISK -> R.string.shop_budget_reserve_risk
-        ShopPurchaseFeedback.PROMOTION_OVERBUY -> R.string.shop_budget_promotion_overbuy
-        ShopPurchaseFeedback.TOO_MANY_EXTRAS -> R.string.shop_budget_too_many_extras
-    })
-    val categoryOverrun = confirmation.categoryOverrunRub.takeIf { it > 0 }?.let {
-        stringResource(R.string.shop_budget_category_overrun, it)
+    val consequence = when (confirmation.consequence) {
+        ShopPurchaseFeedback.PLAN_CHANGED -> if (confirmation.categoryOverrunRub > 0) {
+            stringResource(R.string.shop_budget_plan_change)
+        } else {
+            stringResource(R.string.shop_budget_savings_change, confirmation.savingsPlanReductionRub)
+        }
+        ShopPurchaseFeedback.REQUIRED_FOOD_MISSING -> stringResource(R.string.shop_budget_food_missing)
+        ShopPurchaseFeedback.MANDATORY_MONEY_AT_RISK -> stringResource(R.string.shop_budget_mandatory_risk)
+        ShopPurchaseFeedback.RESERVE_AT_RISK -> stringResource(R.string.shop_budget_reserve_risk)
+        ShopPurchaseFeedback.PROMOTION_OVERBUY -> stringResource(R.string.shop_budget_promotion_overbuy)
+        ShopPurchaseFeedback.TOO_MANY_EXTRAS -> stringResource(R.string.shop_budget_too_many_extras)
     }
-    val savingsChange = confirmation.savingsPlanReductionRub.takeIf { it > 0 }?.let {
-        stringResource(R.string.shop_budget_savings_change, it)
+    val message = if (confirmation.consequence == ShopPurchaseFeedback.PLAN_CHANGED) {
+        consequence
+    } else {
+        val balanceAfter = stringResource(
+            R.string.shop_budget_balance_after,
+            (confirmation.balanceRub - totalRub).coerceAtLeast(0),
+        )
+        "$consequence\n$balanceAfter"
     }
-    val balanceAfter = stringResource(
-        R.string.shop_budget_balance_after,
-        (confirmation.balanceRub - totalRub).coerceAtLeast(0),
-    )
-    val payAgain = stringResource(R.string.shop_budget_pay_again)
     FinPetDialogueDialog(
         speakerName = speakerName,
-        cards = listOf(listOfNotNull(consequence, categoryOverrun, savingsChange, balanceAfter, payAgain)
-            .joinToString("\n")),
+        cards = listOf(message),
         portrait = portrait::Content,
         onFinished = onFinished,
     )

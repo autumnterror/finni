@@ -28,6 +28,7 @@ internal class RoomApiImpl(
     private val furnitureStore: FurnitureStore,
     private val economyApi: EconomyApi,
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
+    private val wishArtwork: RoomWishArtwork,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)
@@ -85,6 +86,7 @@ internal class RoomApiImpl(
             petName = petName,
             canShowDialogs = canShowDialogs,
             petContent = petContent,
+            wishArtwork = wishArtwork,
             petPortrait = petPortrait,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,

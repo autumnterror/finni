@@ -410,11 +410,10 @@ Refusing an optional purchase must not automatically reduce happiness.
 Pet wishes are suggestions, never required purchases. A day has at most one
 scheduled wish. Its chance is based on happiness at first observation that day:
 15% at 70–100, 35% at 40–69, 65% at 20–39, and 85% at 0–19. The selected
-wish remains stable for the game day. Mix requests for existing optional food
-and clothing with free actions such as petting, talking, playing, changing owned
-clothes, or using an unlocked mini-game. A costly wish may appear despite a
-tight budget. Dismissing an unaffordable paid wish can count as a prudent
-impulse decision; it never removes happiness.
+wish remains stable for the game day. Random wishes include only optional
+purchases: food with no satiety effect and unowned clothing. The room shows the
+item artwork in a bubble beside the pet until the next game day. A costly wish
+may appear despite a tight budget. Ignoring a wish never removes happiness.
 
 ### 7.3. Dirt and washing
 
@@ -663,6 +662,11 @@ with the concrete consequence. Closing it returns to the unchanged cart; a new
 tap on **Pay** completes that same affordable purchase without another warning.
 Changing the cart requires a fresh warning. Do not repeat the warning after the
 receipt. Lack of wallet funds still prevents payment.
+If the confirmed plan already underfunds mandatory needs, a safe necessary-food
+purchase may exceed its mandatory category without a shop warning. The week
+summary explains that the original plan set aside too little for necessities.
+Actual risk to remaining necessities, or optional spending that consumes the
+reserve, still triggers a warning.
 
 ---
 
@@ -689,20 +693,22 @@ Competitive safety additions:
 Events should be data-driven where practical.
 
 Ordinary weeks schedule one or two money events with fixed ruble amounts rather
-than amounts proportional to pocket money. Week one introduces a known 80 ₽
-expense before planning; week two introduces an unexpected mandatory expense;
-week three introduces extra income. Later weeks mix known expenses, unexpected
-expenses, and extra income. Known costs are included in the plan's mandatory
-minimum and counted as controlled mandatory spending when paid. Unexpected
+than amounts proportional to pocket money. Week two introduces a known 80 ₽
+birthday gift for Mom before planning, due Wednesday. Week three introduces
+extra income. Later weeks mix unexpected expenses and extra income. Known costs
+are included in the plan's mandatory minimum and counted as controlled mandatory
+spending when paid. Unexpected
 costs are recorded separately from controlled purchases, so they do not by
 themselves make plan adherence poor. Every event uses a stable operation ID.
+The pet tells the player about the gift in the second week's planning dialogue.
+On Wednesday, bedtime stays blocked until the gift purchase is resolved, with
+a direct explanation when the player tries to sleep.
 From week four, draw the ordinary events, their amounts, and eligible days at
 random within the configured catalog. Save the full weekly draw before showing
 or applying an event, so reopening the app cannot reroll it. Keep known future
-expenses fixed and visible before the weekly plan. A regular week has one or
-two money events. A known-expense week has one ordinary event alongside the
-known cost; when there are two ordinary events, include one income and one
-unexpected expense.
+expenses fixed and visible before the weekly plan. Week two has only its known
+gift purchase. Later regular weeks have one or two ordinary events; when there
+are two, include one income and one unexpected expense.
 Additional income stays in the wallet until the player chooses to designate it
 for wants, reserve, a savings goal, or free money. Choosing a goal transfers it
 through the savings feature. The confirmed weekly plan is not silently edited.
@@ -931,10 +937,10 @@ After a successful payment, the receipt must be shown immediately, without
 requiring the player to leave an already emptied cart. Any purchase feedback is
 shown after the receipt is dismissed.
 
-Impulse wishes may appear in both the room and the
-shop. They are informational prompts without action buttons: the player responds
-through ordinary shopping behavior or by leaving the item unpurchased. The first
-wish may include a short explanation, while later wishes use varied concise copy.
+Impulse wishes may appear in both the room and the shop. The room displays the
+item in a visual bubble beside the pet for one game day; shop wishes remain
+informational prompts. The player responds through ordinary shopping behavior
+or by leaving the item unpurchased.
 
 #### Financial security
 

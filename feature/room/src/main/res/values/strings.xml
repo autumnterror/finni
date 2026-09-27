@@ -126,6 +126,7 @@
     <string name="plan_result_partially_matched">Многое получилось! На следующей неделе обрати внимание на: %1$s.</string>
     <string name="plan_result_try_again">Эта неделя помогла лучше понять расходы. Попробуй составить план ещё раз — в следующий раз будет легче.</string>
     <string name="plan_result_weak_plan">Ты сравнил план с расходами за неделю. Даже если удалось ему следовать, в нём было мало денег на важное или запаса. В следующий раз оставь больше на необходимое.</string>
+    <string name="plan_result_mandatory_plan_too_low">На необходимое ушло больше плана: ты отвёл на него слишком мало денег. В следующий раз сначала посчитай расходы на еду и другие известные траты.</string>
     <string name="plan_result_unexpected_covered">Ты почти точно следовал плану. Неожиданный расход возник не по твоей вине, а финансовый запас помог с ним справиться.</string>
     <string name="plan_result_unexpected_beyond_reserve">Ты почти точно следовал плану. Неожиданный расход оказался больше запаса на %1$d ₽. Это не ошибка в твоих покупках.</string>
     <string name="week_summary_unexpected_expenses">Неожиданные расходы</string>
@@ -311,10 +312,10 @@
     <string name="impulse_wish_intro_feeling">Иногда очень хочется купить что-нибудь сразу, как только увидишь.</string>
     <string name="impulse_wish_free">Мне хочется: %1$s. Это можно сделать бесплатно!</string>
     <string name="impulse_wish_optional">Это только желание. Можно выполнить его позже или вообще не покупать.</string>
-    <string name="plan_known_expense_notice">Через несколько дней понадобится новая миска за %1$d ₽. Учти её сверх обычных расходов на еду.</string>
+    <string name="plan_known_expense_notice">В среду у мамы день рождения. На подарок понадобится %1$d ₽. Учти эту покупку в обязательных расходах.</string>
     <string name="money_event_income">%1$s: +%2$d ₽</string>
     <string name="money_event_expense">%1$s: −%2$d ₽</string>
-    <string name="money_event_known_explanation">Об этом расходе мы знали в начале недели. Проверим, хватит ли денег из плана.</string>
+    <string name="money_event_known_explanation">Этот подарок мы запланировали заранее. Купим его сегодня.</string>
     <string name="money_event_unexpected_explanation">Эту трату нельзя было предугадать. Финансовая подушка как раз помогает в таких случаях.</string>
     <string name="money_event_income_choice">Как поступим с новыми деньгами? План на неделю останется прежним, а ты выберешь назначение этой суммы.</string>
     <string name="money_event_not_enough">Нужно %1$d ₽, а сейчас есть %2$d ₽. Можно вернуться позже, найти доход или переложить деньги из копилки.</string>
@@ -324,6 +325,8 @@
     <string name="money_event_goal">На цель</string>
     <string name="money_event_free">Оставить свободными</string>
     <string name="money_event_pay">Оплатить</string>
+    <string name="money_event_buy_gift">Купить подарок</string>
+    <string name="money_event_sleep_blocked">Сегодня нельзя лечь спать, пока мы не купим подарок маме.</string>
     <string name="money_event_open_savings">Открыть копилку</string>
     <string name="money_event_ask_parents">Попросить помощи</string>
     <string name="money_event_parent_coverage">Родители покроют нехватку</string>

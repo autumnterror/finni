@@ -68,6 +68,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
             surfaceCatalog = surfaceCatalog,
             furnitureStore = furnitureStore,
             economyApi = dependencies.economyApi(),
+            wishArtwork = dependencies.wishArtwork(),
         )
     }
     private val router by lazy {

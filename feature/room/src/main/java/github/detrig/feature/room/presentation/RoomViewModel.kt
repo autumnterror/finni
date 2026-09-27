@@ -245,7 +245,8 @@ internal class RoomViewModel(
                 }
             }
             RoomViewEvent.CloseMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(moneyEvent = null, moneyEventError = null))
+                updateState(it.copy(moneyEvent = null, moneyEventError = null,
+                    sleepBlockedByKnownExpense = false))
             }
             is RoomViewEvent.ResolveMoneyEvent -> resolveMoneyEvent(viewEvent.allocation)
             RoomViewEvent.OpenSavingsForMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
@@ -624,10 +625,14 @@ internal class RoomViewModel(
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
                             dayTransitionNotice = current?.dayTransitionNotice ?: appEntryNotice,
-                            impulseWish = current?.impulseWish,
+                            impulseWish = current?.impulseWish?.takeIf {
+                                current.progress.absoluteDay == roomData.progress.absoluteDay
+                            },
                             moneyEvent = current?.moneyEvent?.takeIf {
                                 it.weekNumber == roomData.progress.weekNumber
                             },
+                            sleepBlockedByKnownExpense = current?.sleepBlockedByKnownExpense == true &&
+                                current.progress.absoluteDay == roomData.progress.absoluteDay,
                             moneyEventError = current?.moneyEventError,
                             resolvingMoneyEvent = current?.resolvingMoneyEvent ?: false,
                             rulesRecapVisible = current?.rulesRecapVisible ?: false,
@@ -712,6 +717,8 @@ internal class RoomViewModel(
             nullableState<RoomViewState.Content>()?.let { latest ->
                 updateState(latest.copy(
                     moneyEvent = if (result == MoneyEventResolution.Completed) null else event,
+                    sleepBlockedByKnownExpense = result != MoneyEventResolution.Completed &&
+                        latest.sleepBlockedByKnownExpense,
                     moneyEventError = result.takeUnless { it == MoneyEventResolution.Completed },
                     resolvingMoneyEvent = false,
                 ))
@@ -1205,6 +1212,35 @@ internal class RoomViewModel(
             onboardingStep != FirstRunOnboardingStep.WAITING_FOR_BED &&
             onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
         ) return
+        if (content.progress.knownMandatoryExpenseRub > 0 &&
+            content.progress.dayOfWeek == 3 && content.progress.planProgress != null
+        ) {
+            val expectedDay = content.progress.absoluteDay
+            launchCoroutine(handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let {
+                    updateState(it.copy(sleepConfirmationVisible = true))
+                }
+                true
+            }) {
+                val pending = moneyEvents.pending()
+                nullableState<RoomViewState.Content>()?.takeIf {
+                    it.progress.absoluteDay == expectedDay
+                }?.let { latest ->
+                    if (pending?.kind ==
+                        github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.KNOWN_EXPENSE
+                    ) {
+                        updateState(latest.copy(
+                            moneyEvent = pending,
+                            sleepBlockedByKnownExpense = true,
+                            sleepConfirmationVisible = false,
+                        ))
+                    } else {
+                        updateState(latest.copy(sleepConfirmationVisible = true))
+                    }
+                }
+            }
+            return
+        }
         updateState(content.copy(sleepConfirmationVisible = true))
     }
 
@@ -1286,7 +1322,12 @@ internal class RoomViewModel(
                     github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.EXTRA_INCOME ||
                     content.progress.dayOfWeek == 7)) {
                     nullableState<RoomViewState.Content>()?.let { latest ->
-                        updateState(latest.copy(moneyEvent = pending, sleeping = false))
+                        updateState(latest.copy(
+                            moneyEvent = pending,
+                            sleepBlockedByKnownExpense = pending.kind ==
+                                github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.KNOWN_EXPENSE,
+                            sleeping = false,
+                        ))
                     }
                     return@launchCoroutine
                 }

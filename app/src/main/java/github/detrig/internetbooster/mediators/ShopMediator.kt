@@ -154,7 +154,8 @@ internal class ShopMediator(
                 .any { it.id == request.operationId }
             if (!request.confirmedConsequence && !alreadyPurchased &&
                 currentBalance >= prepared.totalRub &&
-                prepared.assessment.outcome != PurchaseOutcome.GOOD
+                prepared.assessment.outcome != PurchaseOutcome.GOOD &&
+                !prepared.suppressPlanWarning
             ) {
                 return github.detrig.feature.shop.api.ShopCheckoutResult.RequiresConfirmation(
                     balanceRub = currentBalance,
@@ -180,7 +181,7 @@ internal class ShopMediator(
                 }
             }
             return if (result is github.detrig.feature.shop.api.ShopCheckoutResult.Completed) {
-                result.copy(feedback = if (request.confirmedConsequence) null else {
+                result.copy(feedback = if (request.confirmedConsequence || prepared.suppressPlanWarning) null else {
                     prepared.assessment.problem.toShopFeedback()
                         ?: ShopPurchaseFeedback.PLAN_CHANGED.takeIf {
                             prepared.assessment.outcome == PurchaseOutcome.PLAN_ADJUSTMENT
@@ -220,7 +221,6 @@ internal class ShopMediator(
         val pet = petMediator.getApi()
         val storedDay = wishPreferences.getLong("day", -1L)
         val currentOwnedClothing = pet.currentProfile()?.clothing?.ownedIds.orEmpty()
-        val currentUnlockedGame = game.ownedZoneIds.any { it in setOf("fishing", "drawing", "music") }
         val plan = planningMediator.getApi().getPlanProgress(week.weekNumber)
         val balance = economyMediator.getApi().getState().availableRub
         val wantsRemaining = plan?.category(PlanCategory.WANTS)?.let {
@@ -236,7 +236,6 @@ internal class ShopMediator(
                 .putLong("day", week.absoluteDay)
                 .putInt("happiness", game.pet.happiness)
                 .putString("owned_clothing_ids", currentOwnedClothing.sorted().joinToString(","))
-                .putBoolean("unlocked_game", currentUnlockedGame)
                 .putLong("safe_optional_rub", safeOptionalRub)
                 .commit()
         }
@@ -246,7 +245,6 @@ internal class ShopMediator(
             clothing = pet.clothingItems(),
             ownedClothingIds = wishPreferences.getString("owned_clothing_ids", null)
                 ?.split(',')?.filter(String::isNotBlank)?.toSet() ?: currentOwnedClothing,
-            hasUnlockedGame = wishPreferences.getBoolean("unlocked_game", currentUnlockedGame),
             safeOptionalRub = wishPreferences.getLong("safe_optional_rub", safeOptionalRub),
         )
     }

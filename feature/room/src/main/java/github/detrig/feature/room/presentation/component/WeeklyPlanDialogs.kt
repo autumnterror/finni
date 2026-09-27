@@ -238,7 +238,12 @@ internal fun WeeklyPlanEditorDialog(
         if (newWeekPromptVisible) {
             FinPetDialogueDialog(
                 speakerName = petName,
-                cards = listOf(stringResource(R.string.onboarding_new_week_plan_guidance)),
+                cards = buildList {
+                    add(stringResource(R.string.onboarding_new_week_plan_guidance))
+                    if (knownMandatoryExpenseRub > 0) {
+                        add(stringResource(R.string.plan_known_expense_notice, knownMandatoryExpenseRub))
+                    }
+                },
                 portrait = petPortrait,
                 dismissOnBackPress = false,
                 topInset = dialogueTopInset,
@@ -847,6 +852,8 @@ private fun WeekResultFeedback(assessment: WeekPlanAssessment) {
         Text(
             text = when (assessment.feedbackReason) {
                 WeekPlanFeedbackReason.WEAK_PLAN -> stringResource(R.string.plan_result_weak_plan)
+                WeekPlanFeedbackReason.MANDATORY_PLAN_TOO_LOW ->
+                    stringResource(R.string.plan_result_mandatory_plan_too_low)
                 WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_COVERED ->
                     stringResource(R.string.plan_result_unexpected_covered)
                 WeekPlanFeedbackReason.UNEXPECTED_EXPENSE_BEYOND_RESERVE ->

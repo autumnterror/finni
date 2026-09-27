@@ -220,6 +220,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val dayTransitionNotice: DayTransitionNoticeState? = null,
         val impulseWish: RoomImpulseWish? = null,
         val moneyEvent: RoomMoneyEvent? = null,
+        val sleepBlockedByKnownExpense: Boolean = false,
         val moneyEventError: MoneyEventResolution? = null,
         val resolvingMoneyEvent: Boolean = false,
         val rulesRecapVisible: Boolean = false,
