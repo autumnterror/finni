@@ -15,16 +15,21 @@ internal class LearningTestsMediator(
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
     private val gameStateMediator: GameStateMediator,
+    private val petMediator: PetMediator,
 ) : Mediator<LearningTestsApi> {
     @MainThread
     fun init() {
         LearningTestsFeature.dependenciesProvider = ModuleDependenciesProvider {
             object : LearningTestsDependencies {
                 override fun learningTestsDao() = databaseModule.learningTestsDao
+                override fun tutorialPreferences() = coreComponent.context.getSharedPreferences(
+                    "finpet_learning_tests", android.content.Context.MODE_PRIVATE,
+                )
                 override fun transactionRunner() = databaseModule.transactionRunner
                 override fun economyApi() = economyMediator.getApi()
                 override fun progressionApi() = gameStateMediator.getProgressionApi()
                 override fun weekApi() = weekMediator.getApi()
+                override fun petApi() = petMediator.getApi()
                 override fun globalNavigator() = coreComponent.globalNavigator
             }
         }

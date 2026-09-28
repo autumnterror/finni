@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":feature:economy"))
     implementation(project(":feature:game-state"))
     implementation(project(":feature:week"))
+    implementation(project(":feature:pet"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.ui)

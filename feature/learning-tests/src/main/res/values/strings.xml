@@ -2,6 +2,9 @@
     <string name="learning_tests_close">Закрыть тесты</string>
     <string name="learning_tests_daily_title">Тесты на сегодня</string>
     <string name="learning_tests_daily_count">День %1$d · выбери один из тестов</string>
+    <string name="learning_tests_intro_1">Тесты — короткие задания про деньги.</string>
+    <string name="learning_tests_intro_2">Они помогут потренироваться планировать, копить и выбирать покупки.</string>
+    <string name="learning_tests_intro_3">Новые тесты появляются каждый игровой день. Выбирай любой!</string>
     <string name="learning_tests_loading">Загружаем тесты…</string>
     <string name="learning_tests_load_error">Не получилось загрузить тесты. Попробуй ещё раз.</string>
     <string name="learning_tests_retry">Повторить</string>

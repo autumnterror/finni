@@ -65,7 +65,14 @@ internal class AppModuleImpl(
         LearningMediator(databaseModule, gameStateMediator)
     }
     private val learningTestsMediator: LearningTestsMediator by lazy {
-        LearningTestsMediator(coreComponent, databaseModule, economyMediator, weekMediator, gameStateMediator)
+        LearningTestsMediator(
+            coreComponent = coreComponent,
+            databaseModule = databaseModule,
+            economyMediator = economyMediator,
+            weekMediator = weekMediator,
+            gameStateMediator = gameStateMediator,
+            petMediator = petMediator,
+        )
     }
     private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
     private val savingsMediator: SavingsMediator by lazy {

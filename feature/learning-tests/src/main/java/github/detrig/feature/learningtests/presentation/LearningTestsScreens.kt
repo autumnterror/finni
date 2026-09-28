@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
+import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetIconButton
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
@@ -86,12 +87,18 @@ internal fun LearningTestsHomeScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    LearningTestsHomeContent(
-        state = state,
-        onClose = { vm.perform(LearningTestsHomeViewEvent.Close) },
-        onRetry = { vm.perform(LearningTestsHomeViewEvent.Load) },
-        onOpenTest = { vm.perform(LearningTestsHomeViewEvent.OpenTest(it)) },
-    )
+    val petApi = LearningTestsFeature.component().petApi
+    petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _, _ ->
+        LearningTestsHomeContent(
+            state = state,
+            petName = petProfile.name,
+            petPortrait = { modifier -> petApi.Portrait(profile = petProfile, modifier = modifier) },
+            onClose = { vm.perform(LearningTestsHomeViewEvent.Close) },
+            onRetry = { vm.perform(LearningTestsHomeViewEvent.Load) },
+            onDismissTutorial = { vm.perform(LearningTestsHomeViewEvent.DismissDailyTestsIntroduction) },
+            onOpenTest = { vm.perform(LearningTestsHomeViewEvent.OpenTest(it)) },
+        )
+    }
 }
 
 @Composable
@@ -117,8 +124,11 @@ internal fun LearningTestQuizScreen(
 @Composable
 private fun LearningTestsHomeContent(
     state: LearningTestsHomeViewState,
+    petName: String,
+    petPortrait: @Composable (Modifier) -> Unit,
     onClose: () -> Unit,
     onRetry: () -> Unit,
+    onDismissTutorial: () -> Unit,
     onOpenTest: (String) -> Unit,
 ) {
     NotebookPage(onClose = onClose) {
@@ -171,8 +181,12 @@ private fun LearningTestsHomeContent(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(AppTheme.spacing.xs))
-                        availableTests.offers.forEach { offer ->
-                            DailyTestCard(offer = offer, onClick = { onOpenTest(offer.test.id) })
+                        availableTests.offers.forEachIndexed { index, offer ->
+                            DailyTestCard(
+                                offer = offer,
+                                onClick = { onOpenTest(offer.test.id) },
+                                highlighted = state.showDailyTestsIntroduction && index == 0,
+                            )
                         }
                         Text(
                             text = stringResource(R.string.learning_tests_try_again_later),
@@ -186,12 +200,26 @@ private fun LearningTestsHomeContent(
             }
         }
     }
+
+    if (state.showDailyTestsIntroduction) {
+        FinPetDialogueDialog(
+            speakerName = petName,
+            cards = listOf(
+                stringResource(R.string.learning_tests_intro_1),
+                stringResource(R.string.learning_tests_intro_2),
+                stringResource(R.string.learning_tests_intro_3),
+            ),
+            portrait = petPortrait,
+            onFinished = onDismissTutorial,
+        )
+    }
 }
 
 @Composable
 private fun DailyTestCard(
     offer: LearningTestOffer,
     onClick: () -> Unit,
+    highlighted: Boolean = false,
 ) {
     val isFinished = offer.status == LearningTestOfferStatus.COMPLETED_WITH_MISTAKES
     val enabled = !isFinished
@@ -204,9 +232,10 @@ private fun DailyTestCard(
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         containerColor = if (isInProgress) AppTheme.colors.storefront.selectedSurface
         else AppTheme.colors.storefront.surface,
-        borderColor = if (isInProgress) AppTheme.colors.statusPositive.accent
+        borderColor = if (highlighted) AppTheme.colors.statusInfo.accent
+        else if (isInProgress) AppTheme.colors.statusPositive.accent
         else AppTheme.colors.storefront.outline,
-        borderWidth = AppTheme.sizes.borderStrong,
+        borderWidth = AppTheme.sizes.borderStrong * if (highlighted) 1.5f else 1f,
         elevation = AppTheme.elevation.low,
         shape = AppTheme.shapes.storefrontControl,
     ) {
@@ -742,6 +771,7 @@ private fun LearningTestsHomePreview() {
         LearningTestsHomeContent(
             state = LearningTestsHomeViewState(
                 isLoading = false,
+                showDailyTestsIntroduction = true,
                 dailyTests = DailyLearningTests(
                     gameDay = 2,
                     offers = listOf(
@@ -754,8 +784,20 @@ private fun LearningTestsHomePreview() {
                     ),
                 ),
             ),
+            petName = "Финни",
+            petPortrait = { modifier ->
+                Box(
+                    modifier = modifier
+                        .clip(CircleShape)
+                        .background(AppTheme.colors.currencyContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("🐹", style = AppTheme.typography.brand)
+                }
+            },
             onClose = {},
             onRetry = {},
+            onDismissTutorial = {},
             onOpenTest = {},
         )
     }

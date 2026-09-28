@@ -7,4 +7,5 @@ internal data class LearningTestsHomeViewState(
     val isLoading: Boolean = true,
     val dailyTests: DailyLearningTests? = null,
     val hasError: Boolean = false,
+    val showDailyTestsIntroduction: Boolean = false,
 ) : CoreViewState
