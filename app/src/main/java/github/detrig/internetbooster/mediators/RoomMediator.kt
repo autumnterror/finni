@@ -15,6 +15,7 @@ import github.detrig.internetbooster.navigation.RoomGameLauncherImpl
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.room.domain.model.RoomImpulseWish
 import github.detrig.feature.room.domain.model.RoomImpulseWishSource
+import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
 
 internal class RoomMediator(
     private val coreComponent: CoreComponent,
@@ -53,24 +54,36 @@ internal class RoomMediator(
                     learningTestsMediator.getApi().open()
                 }
                 override fun impulseWishSource() = object : RoomImpulseWishSource {
-                    override suspend fun claimCurrentWish(): RoomImpulseWish? {
+                    override suspend fun currentWish(): RoomImpulseWish? {
                         val scheduled = shopMediator.currentPetWish() ?: return null
-                        return RoomImpulseWish(
-                            eventId = scheduled.eventId,
-                            productTitle = scheduled.title,
-                            phraseVariant = Math.floorMod(scheduled.eventId.hashCode(),
-                                RoomImpulseWish.PHRASE_VARIANT_COUNT),
-                            showIntroduction = false,
-                            kind = if (scheduled.kind == PetWishSchedule.Kind.CLOTHING) {
-                                RoomImpulseWish.Kind.CLOTHING
-                            } else RoomImpulseWish.Kind.GROCERY,
-                            priceRub = scheduled.priceRub,
-                            productId = scheduled.productId,
-                        )
+                        return scheduled.toRoomImpulseWish()
                     }
+
+                    override suspend fun currentWishes(
+                        absoluteDay: Long,
+                        roomObjects: List<RoomWishObjectCandidate>,
+                        activeGoalId: String?,
+                    ): List<RoomImpulseWish> = shopMediator.currentPetWishBoardWishes(
+                        absoluteDay = absoluteDay,
+                        roomObjects = roomObjects,
+                        activeGoalId = activeGoalId,
+                    ).map { it.toRoomImpulseWish() }
+
+                    override suspend fun claimDialogueWish(wish: RoomImpulseWish): RoomImpulseWish? =
+                        shopMediator.claimRoomWishDialogue(wish)
 
                     override suspend fun recordDeclined(wish: RoomImpulseWish) {
                         shopMediator.recordRoomWishDeclined(wish)
+                    }
+
+                    override suspend fun recordFulfilled(wish: RoomImpulseWish) {
+                        shopMediator.recordRoomWishFulfilled(wish)
+                    }
+
+                    override suspend fun currentFulfillments() = shopMediator.currentWishFulfillments()
+
+                    override suspend fun acknowledgeFulfillment(id: String) {
+                        shopMediator.acknowledgeWishFulfillment(id)
                     }
                 }
                 override fun wishArtwork() = GameRoomWishArtwork(
@@ -90,4 +103,22 @@ internal class RoomMediator(
     }
 
     override fun getApi(): RoomApi = RoomFeature.getApi()
+
+    private fun PetWishSchedule.Wish.toRoomImpulseWish() = RoomImpulseWish(
+        eventId = eventId,
+        productTitle = title,
+        phraseVariant = Math.floorMod(eventId.hashCode(), RoomImpulseWish.PHRASE_VARIANT_COUNT),
+        showIntroduction = false,
+        kind = when (kind) {
+            PetWishSchedule.Kind.GROCERY -> RoomImpulseWish.Kind.GROCERY
+            PetWishSchedule.Kind.CLOTHING -> RoomImpulseWish.Kind.CLOTHING
+            PetWishSchedule.Kind.MINI_GAME -> RoomImpulseWish.Kind.MINI_GAME
+            PetWishSchedule.Kind.TOY -> RoomImpulseWish.Kind.TOY
+            PetWishSchedule.Kind.SAVINGS_TOP_UP -> RoomImpulseWish.Kind.SAVINGS_TOP_UP
+        },
+        priceRub = priceRub,
+        productId = productId,
+        createdOnAbsoluteDay = createdAbsoluteDay,
+        expiresOnAbsoluteDayExclusive = expiresOnAbsoluteDayExclusive,
+    )
 }

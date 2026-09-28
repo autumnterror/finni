@@ -50,6 +50,7 @@ internal class ShopCartViewModel(
             is ShopCartViewEvent.Increase -> add(viewEvent.productId)
             is ShopCartViewEvent.Decrease -> removeOne(viewEvent.productId)
             ShopCartViewEvent.PayClicked -> checkout()
+            ShopCartViewEvent.OpenSavings -> openSavings()
             ShopCartViewEvent.ConsequenceWarningDismissed -> dismissConsequenceWarning()
             ShopCartViewEvent.CheckoutRejectionDismissed -> {
                 updateState { copy(checkoutRejection = null) }
@@ -80,12 +81,13 @@ internal class ShopCartViewModel(
             host.preparePlayer()
             combine(
                 host.observeBalanceRub(),
+                host.observeSavingsRub(),
                 host.observePetName(),
                 cartStore.observe(storeId),
                 decisionEventStore.observe(storeId),
-            ) { balance, petName, cart, decisionEvent ->
-                CartObservation(balance, petName, cart, decisionEvent)
-            }.collect { (balance, petName, cart, decisionEvent) ->
+            ) { balance, savings, petName, cart, decisionEvent ->
+                CartObservation(balance, savings, petName, cart, decisionEvent)
+            }.collect { (balance, savings, petName, cart, decisionEvent) ->
                     val warningStillApplies = pendingCheckout?.let {
                         it.lines == cart.lines && it.decisionEvent == decisionEvent
                     } != false
@@ -95,6 +97,7 @@ internal class ShopCartViewModel(
                             storefront = resolvedCatalog.storefront,
                             cart = cart,
                             balanceRub = balance,
+                            savingsRub = savings,
                             decisionEvent = decisionEvent,
                             petName = petName,
                             purchaseConfirmation = purchaseConfirmation.takeIf { warningStillApplies },
@@ -142,6 +145,13 @@ internal class ShopCartViewModel(
         )
         pendingCheckout = request
         completeCheckout(request)
+    }
+
+    private fun openSavings() {
+        val currentState = stateData
+        if (currentState.canPay || currentState.savingsRub <= 0 || currentState.cart.isEmpty) return
+        updateState { copy(checkoutRejection = null) }
+        host.openSavings()
     }
 
     private fun dismissConsequenceWarning() {
@@ -269,6 +279,7 @@ internal class ShopCartViewModel(
 
 private data class CartObservation(
     val balanceRub: Long,
+    val savingsRub: Long,
     val petName: String,
     val cart: StoreCart,
     val decisionEvent: github.detrig.feature.shop.domain.ShopDecisionEvent?,

@@ -117,8 +117,10 @@ internal fun ShopCartContent(
                     canPay = state.canPay,
                     isPaymentInProgress = state.paymentInProgress,
                     shortfallRub = state.shortfallRub,
+                    savingsRub = state.savingsRub,
                     checkoutRejection = state.checkoutRejection,
                     onPay = { onEvent(ShopCartViewEvent.PayClicked) },
+                    onOpenSavings = { onEvent(ShopCartViewEvent.OpenSavings) },
                 )
             }
         } else {
@@ -336,8 +338,10 @@ private fun ShopCartFooter(
     canPay: Boolean,
     isPaymentInProgress: Boolean,
     shortfallRub: Long,
+    savingsRub: Long,
     checkoutRejection: github.detrig.feature.shop.api.ShopCheckoutRejection?,
     onPay: () -> Unit,
+    onOpenSavings: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -372,6 +376,20 @@ private fun ShopCartFooter(
                 style = AppTheme.typography.bodyStrong,
                 color = AppTheme.colors.statusCritical.accent,
             )
+            if (savingsRub > 0) {
+                Text(
+                    text = stringResource(R.string.shop_savings_available, savingsRub),
+                    style = AppTheme.typography.body,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                FinPetOutlinedButton(
+                    text = stringResource(R.string.shop_open_savings),
+                    onClick = onOpenSavings,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isPaymentInProgress,
+                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
+                )
+            }
         } else if (checkoutRejection != null) {
             Text(
                 text = checkoutRejection.message(),
@@ -443,7 +461,7 @@ private fun github.detrig.feature.shop.api.ShopCheckoutRejection.message(): Stri
 
 private val cartPreviewDetails = ShopItemDetailsResolver { github.detrig.feature.shop.api.foodEffectDetails(it) }
 
-@Preview(name = "Cart content", widthDp = 432, heightDp = 920, showBackground = true)
+@Preview(name = "Cart recovery from savings", widthDp = 432, heightDp = 920, showBackground = true)
 @Composable
 private fun ShopCartContentPreview() {
     val catalog = GroceryCatalog().storefront
@@ -456,7 +474,8 @@ private fun ShopCartContentPreview() {
             state = ShopCartViewState(
                 storefront = catalog,
                 cart = cart,
-                balanceRub = 480,
+                balanceRub = 10,
+                savingsRub = 500,
                 loading = false,
             ),
             artworkResolver = ShopArtworkResolver.Empty,

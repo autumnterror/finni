@@ -339,7 +339,7 @@ The bed must **not**:
 
 If an unresolved mandatory event requires a decision, it must be resolved before ending the day.
 
-If hunger is zero, the player cannot end the day until the pet is fed. The existing
+If hunger is below the configured daily decrease, the player cannot end the day until the pet is fed. The existing
 unrecoverable-crisis flow remains the exception: when no food or recovery path is
 available, parent help may end the week early and provide the required care.
 
@@ -362,6 +362,7 @@ Suggested domain range:
 Rules:
 - feeding raises hunger/satiety;
 - confirming **End day** lowers it by 50 points once as part of the saved day transition, including Sunday to Monday;
+- the bed allows **End day** only when current hunger is at least that daily decrease;
 - real elapsed time does not lower hunger; game days advance only through **End day**;
 - repeated operation IDs and repeated end-day requests do not lower it twice;
 - the value never drops below zero;
@@ -401,19 +402,44 @@ eligibility. The reward is saved idempotently with the pet state. Only games
 with an implemented launch path can currently trigger the bonus.
 
 Confirming **End day** lowers happiness by 10 points once in the same saved day
-transition as hunger. Real elapsed time does not lower happiness. Happiness stays
-within 0..100; hunger does not reduce it. Free play and normal care remain
+transition as hunger. While a savings contribution's protection is active, the
+sleep loss is 5 instead. Real elapsed time does not lower happiness. Happiness
+stays within 0..100; hunger does not reduce it. Free play and normal care remain
 available to restore it. Low happiness does not reduce XP or educational progress.
 
 Refusing an optional purchase must not automatically reduce happiness.
 
-Pet wishes are suggestions, never required purchases. A day has at most one
-scheduled wish. Its chance is based on happiness at first observation that day:
-15% at 70–100, 35% at 40–69, 65% at 20–39, and 85% at 0–19. The selected
-wish remains stable for the game day. Random wishes include only optional
-purchases: food with no satiety effect and unowned clothing. The room shows the
-item artwork in a bubble beside the pet until the next game day. A costly wish
-may appear despite a tight budget. Ignoring a wish never removes happiness.
+Pet wishes are suggestions, never required purchases. At most one new random
+wish is scheduled per game day. Its chance is based on happiness at first
+observation that day: 15% at 70–100, 35% at 40–69, 65% at 20–39, and 85% at
+0–19. The selected wish is persisted and remains stable across app restarts. The
+temporary `DEBUG_FORCE_DAILY_WISH` setting may force a new wish each day while
+the board is being tuned; restore the normal mood-based chances before release.
+The room has a wish board on the wall left of the fridge. It lists every active
+wish and the active savings goal; do not show a wish bubble beside the pet. The
+list shows each wish's name, remaining lifetime, and concrete bonus. It has no
+buttons or links to the shop, games, wardrobe, or savings. Complete wishes through
+the usual room actions. A fulfilled wish produces one short joyful pet dialogue
+when the player is back in the room; persist its acknowledgement so restoration
+does not replay the celebration. Savings milestones and a saved-for game purchase
+also receive their own short celebrations.
+The pet's short wish dialogue remains, is shown once for a new wish, and dismissing
+it does not remove the board item. Lifetimes are: specific food and playing an
+unlocked mini-game — one game day; clothing and a purchasable room object — two
+or three game days; a piggy-bank contribution — two game days; saving for a new
+game — while that goal is active; a reached game goal — until the game is bought
+or the goal changes. The mini-game wishlist includes only games with a working
+launch path. Refusing a wish never reduces happiness.
+
+Completing the currently displayed optional item wish grants a stable one-time
+`+5..10` happiness reward, including when its payment is replayed after process
+restoration. A clothing wish's reward is added to that clothing item's separate
+purchase reward. A savings contribution grants no immediate happiness; it
+reduces sleep happiness loss from 10 to 5 for the next three game-day sleep
+transitions. Crossing 50% of an active goal grants `+5` happiness once for that
+goal and shows a short joyful pet dialogue. Reaching its full target grants
+`+10` once. Buying a saved-for mini-game grants `+18` once, and the unlocked
+mini-game remains a free source of play happiness.
 
 ### 7.3. Dirt and washing
 
@@ -937,10 +963,12 @@ After a successful payment, the receipt must be shown immediately, without
 requiring the player to leave an already emptied cart. Any purchase feedback is
 shown after the receipt is dismissed.
 
-Impulse wishes may appear in both the room and the shop. The room displays the
-item in a visual bubble beside the pet for one game day; shop wishes remain
-informational prompts. The player responds through ordinary shopping behavior
-or by leaving the item unpurchased.
+Impulse wishes may appear in both the room and the shop. The room's wish board
+lists all unexpired item and activity wishes, the current savings contribution
+wish, and the active game savings goal. The pet also introduces each newly
+scheduled wish in a short dialogue. The wish stays on the board for its
+configured lifetime, even when its dialogue is dismissed. Ignoring a wish never
+reduces happiness.
 
 #### Financial security
 

@@ -1,5 +1,6 @@
 package github.detrig.feature.room.presentation
 
+import android.content.res.Resources
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.core.audio.GameAudio
@@ -20,6 +21,7 @@ import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
+import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
 import github.detrig.feature.room.domain.interactor.RoomMoneyEventInteractor
 import github.detrig.feature.room.domain.model.MoneyAllocation
 import github.detrig.feature.room.domain.model.MoneyEventResolution
@@ -93,6 +95,7 @@ internal class RoomViewModel(
     private val onboardingRepository: FirstRunOnboardingRepository,
     private val firstRunGuide: FirstRunGuideApi,
     private val inventoryApi: InventoryApi,
+    private val resources: Resources,
     private val gameAudio: GameAudio = SilentGameAudio,
     private val gameStateApi: GameStateApi,
     private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
@@ -110,6 +113,7 @@ internal class RoomViewModel(
     private var firstWeekNeedHintJob: Job? = null
     private var firstWeekGoalHintJob: Job? = null
     private var impulseWishJob: Job? = null
+    private var wishBoardRefreshJob: Job? = null
     private var moneyEventJob: Job? = null
     private var rulesRecapJob: Job? = null
     private var progressResetJob: Job? = null
@@ -120,7 +124,7 @@ internal class RoomViewModel(
     private var rulesRecapChecked = false
     private val checkedMoneyEventDays = mutableSetOf<Long>()
     private val checkedImpulseWishDays = mutableSetOf<Long>()
-    private val promptedSavingsRecoveryWeeks = mutableSetOf<Long>()
+    private val acknowledgedWishFulfillments = mutableSetOf<String>()
     private val hintedHungerDays = mutableSetOf<Long>()
     private val greetedPlanWeeks = mutableSetOf<Long>()
     private val groceryCatalog = GroceryCatalog()
@@ -185,6 +189,13 @@ internal class RoomViewModel(
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openPiggyBank()
+            RoomViewEvent.WishBoardClicked -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(isWishBoardVisible = true))
+            }
+            RoomViewEvent.CloseWishBoard -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(isWishBoardVisible = false))
+            }
+            is RoomViewEvent.CloseWishFulfillment -> closeWishFulfillment(viewEvent.id)
             RoomViewEvent.FoodClicked,
             RoomViewEvent.FeedingClicked -> router.showEntryComingSoon()
             RoomViewEvent.TestsClicked -> router.openTests()
@@ -193,11 +204,12 @@ internal class RoomViewModel(
                 nullableState<RoomViewState.Content>()?.let {
                     updateState(it.copy(savingsRecoveryPrompt = null))
                 }
-                openPiggyBank()
+                // Recovery is allowed during onboarding too. The regular piggy-bank entry point
+                // intentionally blocks unrelated room actions while the guide is active.
+                openSavings()
             }
             RoomViewEvent.DismissSavingsRecoveryPrompt -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(savingsRecoveryPrompt = null))
-                handleLowBalance(it.progress)
             }
             is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
             RoomViewEvent.ClaimParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
@@ -238,9 +250,7 @@ internal class RoomViewModel(
             RoomViewEvent.CloseImpulseWish -> nullableState<RoomViewState.Content>()?.let {
                 val wish = it.impulseWish
                 updateState(it.copy(impulseWish = null))
-                if (wish != null && wish.kind !=
-                    github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.FREE
-                ) launchCoroutine(handleAction = ExceptionConsumer { true }) {
+                if (wish?.isPurchasable == true) launchCoroutine(handleAction = ExceptionConsumer { true }) {
                     loadRoomImpulseWish.recordDeclined(wish)
                 }
             }
@@ -276,6 +286,7 @@ internal class RoomViewModel(
                 refreshFirstRunOnboarding()
                 nullableState<RoomViewState.Content>()?.let { content ->
                     handleLowBalance(content.progress)
+                    refreshWishBoardForDay(content.progress.absoluteDay)
                 }
             }
             RoomViewEvent.Paused -> Unit
@@ -628,6 +639,13 @@ internal class RoomViewModel(
                             impulseWish = current?.impulseWish?.takeIf {
                                 current.progress.absoluteDay == roomData.progress.absoluteDay
                             },
+                            petWishBoardWishes = current?.petWishBoardWishes
+                                ?.filter { wish -> wish.expiresOnAbsoluteDayExclusive
+                                    ?.let { it > roomData.progress.absoluteDay } != false }
+                                .orEmpty(),
+                            wishFulfillments = current?.wishFulfillments.orEmpty(),
+                            isWishBoardVisible = current?.isWishBoardVisible == true &&
+                                current.progress.absoluteDay == roomData.progress.absoluteDay,
                             moneyEvent = current?.moneyEvent?.takeIf {
                                 it.weekNumber == roomData.progress.weekNumber
                             },
@@ -668,15 +686,85 @@ internal class RoomViewModel(
                 true
             },
         ) {
-            val wish = loadRoomImpulseWish()
             nullableState<RoomViewState.Content>()?.let { content ->
                 if (content.progress.absoluteDay == absoluteDay && content.onboarding == null) {
-                    updateState(content.copy(impulseWish = wish))
+                    val wishes = loadRoomImpulseWish.currentWishes(
+                        absoluteDay = absoluteDay,
+                        roomObjects = roomObjectWishCandidates(content),
+                        activeGoalId = content.activeSavingsGoal?.goal?.id,
+                    )
+                    val dailyWish = wishes.firstOrNull { it.createdOnAbsoluteDay == absoluteDay &&
+                        it.kind != github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.SAVINGS_TOP_UP }
+                    val dialogueWish = dailyWish?.let { loadRoomImpulseWish.claimDialogue(it) }
+                    val fulfillments = loadRoomImpulseWish.currentFulfillments()
+                    nullableState<RoomViewState.Content>()?.takeIf {
+                        it.progress.absoluteDay == absoluteDay
+                    }?.let { latest ->
+                        updateState(latest.copy(
+                            impulseWish = dialogueWish,
+                            petWishBoardWishes = wishes,
+                            wishFulfillments = fulfillments.filterNot { it.id in acknowledgedWishFulfillments },
+                        ))
+                    }
                 }
             }
             impulseWishJob = null
         }
     }
+
+    private fun refreshWishBoardForDay(absoluteDay: Long) {
+        if (wishBoardRefreshJob?.isActive == true) return
+        wishBoardRefreshJob = launchCoroutine(
+            handleAction = ExceptionConsumer { true },
+        ) {
+            nullableState<RoomViewState.Content>()?.let { content ->
+                if (content.progress.absoluteDay == absoluteDay) {
+                    val wishes = loadRoomImpulseWish.currentWishes(
+                        absoluteDay = absoluteDay,
+                        roomObjects = roomObjectWishCandidates(content),
+                        activeGoalId = content.activeSavingsGoal?.goal?.id,
+                    )
+                    val fulfillments = loadRoomImpulseWish.currentFulfillments()
+                    nullableState<RoomViewState.Content>()?.takeIf {
+                        it.progress.absoluteDay == absoluteDay
+                    }?.let { latest ->
+                        updateState(latest.copy(
+                            petWishBoardWishes = wishes,
+                            impulseWish = latest.impulseWish?.takeIf { wish ->
+                                wishes.any { it.eventId == wish.eventId }
+                            },
+                            wishFulfillments = fulfillments.filterNot { it.id in acknowledgedWishFulfillments },
+                        ))
+                    }
+                }
+            }
+            wishBoardRefreshJob = null
+        }
+    }
+
+    private fun closeWishFulfillment(id: String) {
+        if (nullableState<RoomViewState.Content>()?.wishFulfillments?.firstOrNull()?.id != id) return
+        launchCoroutine(handleAction = ExceptionConsumer { true }) {
+            loadRoomImpulseWish.acknowledgeFulfillment(id)
+            acknowledgedWishFulfillments += id
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(wishFulfillments = latest.wishFulfillments.filterNot { it.id == id }))
+            }
+        }
+    }
+
+    private fun roomObjectWishCandidates(content: RoomViewState.Content): List<RoomWishObjectCandidate> =
+        content.zones.mapNotNull { zone ->
+            val access = zone.access as? RoomZoneAccess.Buyable ?: return@mapNotNull null
+            val titleId = resources.getIdentifier(
+                "zone_${zone.id}", "string", "github.detrig.feature.room",
+            )
+            RoomWishObjectCandidate(
+                id = zone.id,
+                title = if (titleId != 0) resources.getString(titleId) else zone.id,
+                priceRub = access.priceRub.toLong(),
+            )
+        }
 
     private fun loadMoneyEventForDay(absoluteDay: Long) {
         if (absoluteDay in checkedMoneyEventDays || moneyEventJob?.isActive == true) return
@@ -826,6 +914,7 @@ internal class RoomViewModel(
         firstWeekNeedHintJob?.cancel()
         firstWeekGoalHintJob?.cancel()
         impulseWishJob?.cancel()
+        wishBoardRefreshJob?.cancel()
         buyJob = null
         sleepJob = null
         savePlanJob = null
@@ -835,8 +924,8 @@ internal class RoomViewModel(
         firstWeekNeedHintJob = null
         firstWeekGoalHintJob = null
         impulseWishJob = null
+        wishBoardRefreshJob = null
         checkedImpulseWishDays.clear()
-        promptedSavingsRecoveryWeeks.clear()
         hintedHungerDays.clear()
         reconciledPlanWeeks.clear()
         reconcilingPlanWeek = null
@@ -1154,6 +1243,11 @@ internal class RoomViewModel(
                     ZoneBuyResult.Bought -> {
                         commands.onNext(RoomCommand.CloseBuyConfirmation(zoneId))
                         router.showBought()
+                        content.petWishBoardWishes.firstOrNull { wish ->
+                            wish.kind == github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.TOY &&
+                                wish.productId == zoneId
+                        }?.let { loadRoomImpulseWish.recordFulfilled(it) }
+                        refreshWishBoardForDay(content.progress.absoluteDay)
                         if (zoneId in FIRST_SAVINGS_GOAL_ZONE_IDS &&
                             !onboardingRepository.isFirstGamePurchaseExplained()
                         ) {
@@ -1711,11 +1805,9 @@ internal class RoomViewModel(
                     if (current?.savingsRecoveryPrompt != null) {
                         return@launchCoroutine
                     }
-                    if (progress.weekNumber !in promptedSavingsRecoveryWeeks &&
-                        current != null &&
+                    if (current != null &&
                         current.earlyWeekParentHelpNotice == null
                     ) {
-                        promptedSavingsRecoveryWeeks += progress.weekNumber
                         updateState(current.copy(
                             savingsRecoveryPrompt = SavingsRecoveryPromptState,
                         ))

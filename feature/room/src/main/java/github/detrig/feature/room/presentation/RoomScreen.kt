@@ -57,6 +57,9 @@ import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialo
 import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.BathroomScreen
 import github.detrig.feature.room.presentation.component.RoomMoneyEventDialog
+import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
+import github.detrig.feature.room.presentation.component.RoomWishBoardDialog
+import github.detrig.feature.room.presentation.component.RoomWishFulfilledDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
 import github.detrig.feature.room.presentation.component.SleepConfirmationDialog
 import github.detrig.feature.gamestate.domain.model.PetSatietyRules
@@ -255,7 +258,6 @@ internal fun RoomScreen(
             modifier = Modifier.fillMaxSize(),
             petContent = petContent,
             onPetTap = { viewModel.perform(RoomViewEvent.PetTapped) },
-            wishArtwork = wishArtwork,
             petLookingAround = petLookingAround,
             onMirrorClick = onMirrorClick,
             onPhoneClick = if (onboarding?.step == FirstRunOnboardingStep.WAITING_FOR_PHONE) {
@@ -274,6 +276,8 @@ internal fun RoomScreen(
             tableFoodContent = tableFoodContent,
             active = externalActive && canShowDialogs && resumed &&
                 (focused || hasAllowedOnboardingObjects) && dialogZoneId == null &&
+                content?.isWishBoardVisible != true &&
+                content?.wishFulfillments.isNullOrEmpty() &&
                 content?.planEditor == null &&
                 content?.isPlanSummaryVisible != true && content?.menuDestination == RoomMenuDestination.NONE &&
                 content?.weekResult == null &&
@@ -432,16 +436,32 @@ internal fun RoomScreen(
             }
         }
         content?.savingsRecoveryPrompt != null && canShowDialogs -> {
+            val recoveryIsPartOfOnboarding = onboarding != null
             FinPetDialogueDialog(
                 speakerName = petName,
-                cards = listOf(stringResource(R.string.savings_recovery_prompt)),
+                cards = listOf(stringResource(
+                    if (recoveryIsPartOfOnboarding) {
+                        R.string.onboarding_savings_recovery_prompt
+                    } else {
+                        R.string.savings_recovery_prompt
+                    },
+                )),
                 portrait = petPortrait,
                 topInset = 0.dp,
+                dismissOnBackPress = !recoveryIsPartOfOnboarding,
                 advanceOnTap = false,
-                actions = listOf(
-                    FinPetDialogueAction(id = "open", label = stringResource(R.string.savings_recovery_open)),
-                    FinPetDialogueAction(id = "later", label = stringResource(R.string.savings_recovery_later)),
-                ),
+                actions = buildList {
+                    add(FinPetDialogueAction(
+                        id = "open",
+                        label = stringResource(R.string.savings_recovery_open),
+                    ))
+                    if (!recoveryIsPartOfOnboarding) {
+                        add(FinPetDialogueAction(
+                            id = "later",
+                            label = stringResource(R.string.savings_recovery_later),
+                        ))
+                    }
+                },
                 onActionSelected = { action ->
                     viewModel.perform(
                         if (action.id == "open") {
@@ -451,7 +471,11 @@ internal fun RoomScreen(
                         },
                     )
                 },
-                onFinished = { viewModel.perform(RoomViewEvent.DismissSavingsRecoveryPrompt) },
+                onFinished = {
+                    if (!recoveryIsPartOfOnboarding) {
+                        viewModel.perform(RoomViewEvent.DismissSavingsRecoveryPrompt)
+                    }
+                },
             )
         }
         content?.parentHelpPhonePrompt != null && canShowDialogs -> {
@@ -679,12 +703,49 @@ internal fun RoomScreen(
                 onFinished = onPhonePromptDismiss,
             )
         }
+        content?.wishFulfillments?.isNotEmpty() == true && canShowDialogs && externalActive && resumed &&
+            onboarding == null && content.weekResult == null && content.planEditor == null &&
+            content.planDialogue == null && content.moneyEvent == null &&
+            content.menuDestination == RoomMenuDestination.NONE && content.dayTransitionNotice == null -> {
+            val fulfillment = content.wishFulfillments.first()
+            androidx.compose.runtime.key(fulfillment.id) {
+                RoomWishFulfilledDialog(
+                    fulfillment = fulfillment,
+                    petName = petName,
+                    petPortrait = petPortrait,
+                    onFinished = { viewModel.perform(RoomViewEvent.CloseWishFulfillment(fulfillment.id)) },
+                )
+            }
+        }
+        content?.isWishBoardVisible == true && canShowDialogs && externalActive && resumed &&
+            onboarding == null && content.weekResult == null && content.planEditor == null &&
+            content.planDialogue == null && content.moneyEvent == null &&
+            content.menuDestination == RoomMenuDestination.NONE && content.dayTransitionNotice == null -> {
+            RoomWishBoardDialog(
+                wishes = content.petWishBoardWishes,
+                absoluteDay = content.progress.absoluteDay,
+                savingsGoal = content.activeSavingsGoal,
+                wishArtwork = wishArtwork,
+                onDismiss = { viewModel.perform(RoomViewEvent.CloseWishBoard) },
+            )
+        }
+        content?.impulseWish != null && canShowDialogs && externalActive && resumed &&
+            onboarding == null && content.weekResult == null && content.planEditor == null &&
+            content.planDialogue == null && content.moneyEvent == null &&
+            content.menuDestination == RoomMenuDestination.NONE && content.dayTransitionNotice == null &&
+            !showPhoneNotificationPrompt -> {
+            RoomImpulseWishDialog(
+                wish = content.impulseWish,
+                petName = petName,
+                petPortrait = petPortrait,
+                onFinished = { viewModel.perform(RoomViewEvent.CloseImpulseWish) },
+            )
+        }
     }
     if (content?.weekResult != null && canShowDialogs) {
         WeeklyPlanProgressDialog(
             progress = content.weekResult,
             isWeekResult = true,
-            remainingRub = content.progress.balanceRub.toLong(),
             tutorialStep = content.weekSummaryTutorialStep,
             onTutorialNext = { viewModel.perform(RoomViewEvent.WeekSummaryTutorialNext) },
             onDismiss = { viewModel.perform(RoomViewEvent.CloseWeekResult) },

@@ -10,6 +10,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -45,28 +46,38 @@ fun FinPetBackButton(
         enabled = enabled,
         style = style,
     ) {
-        FinPetBackArrow(buttonSize = size)
+        FinPetBackIcon(
+            iconSize = size * (
+                AppTheme.sizes.iconLarge.value / AppTheme.sizes.preferredTouchTarget.value
+            ),
+        )
     }
 }
 
 @Composable
-private fun FinPetBackArrow(buttonSize: Dp) {
-    val color = LocalContentColor.current
+fun FinPetBackIcon(
+    modifier: Modifier = Modifier,
+    iconSize: Dp = AppTheme.sizes.iconLarge,
+    color: Color = LocalContentColor.current,
+    showShaft: Boolean = true,
+) {
     val strokeWidth = AppTheme.sizes.borderStrong * 2
 
-    Canvas(modifier = Modifier.size(buttonSize * (AppTheme.sizes.iconLarge.value / AppTheme.sizes.preferredTouchTarget.value))) {
+    Canvas(modifier = modifier.size(iconSize)) {
         val tail = Offset(x = size.width * 0.8f, y = size.height * 0.5f)
         val tip = Offset(x = size.width * 0.2f, y = size.height * 0.5f)
         val upperArm = Offset(x = size.width * 0.45f, y = size.height * 0.24f)
         val lowerArm = Offset(x = size.width * 0.45f, y = size.height * 0.76f)
 
-        drawLine(
-            color = color,
-            start = tail,
-            end = tip,
-            strokeWidth = strokeWidth.toPx(),
-            cap = StrokeCap.Round,
-        )
+        if (showShaft) {
+            drawLine(
+                color = color,
+                start = tail,
+                end = tip,
+                strokeWidth = strokeWidth.toPx(),
+                cap = StrokeCap.Round,
+            )
+        }
         drawLine(
             color = color,
             start = tip,

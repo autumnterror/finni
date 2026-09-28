@@ -103,6 +103,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         router, positions, onboarding,
         firstRunGuide,
         dependencies.inventoryApi(),
+        dependencies.resources(),
         dependencies.gameAudio(),
         dependencies.gameStateApi(),
         dependencies::resetDemoProgress,

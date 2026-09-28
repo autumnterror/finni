@@ -35,6 +35,7 @@ internal class TransferToSavingsInteractor(
 ) {
     suspend operator fun invoke(operationId: String, goalId: String?, amountRub: Long): FinancialOperationResult {
         val currentWeek = learning.currentWeek()
+        val currentDay = learning.currentAbsoluteDay()
         val target = goalId?.let { id -> economy.getGoals().firstOrNull { it.id == id }?.targetRub }
         val previous = economy.getSavingsHistory().firstOrNull { it.id == operationId }
         val reasonId = goalId ?: UNASSIGNED_SAVINGS_ID
@@ -47,7 +48,7 @@ internal class TransferToSavingsInteractor(
             amountRub = amountRub,
             context = originalContext ?: OperationContext(
                 reasonId = reasonId,
-                metadata = "source=${if (goalId == null) "savings" else "savings-goal"};week=$currentWeek;target=${target ?: 0}",
+                metadata = "source=${if (goalId == null) "savings" else "savings-goal"};week=$currentWeek;day=$currentDay;target=${target ?: 0}",
             ),
         )
         if (result is FinancialOperationResult.Applied || result is FinancialOperationResult.AlreadyApplied) {
@@ -60,12 +61,10 @@ internal class TransferToSavingsInteractor(
                     ),
                 )
             }
-            if (goalId != null) {
-                learning.recordTransfer(when (result) {
-                    is FinancialOperationResult.Applied -> result.operation
-                    is FinancialOperationResult.AlreadyApplied -> result.operation
-                })
-            }
+            learning.recordTransfer(when (result) {
+                is FinancialOperationResult.Applied -> result.operation
+                is FinancialOperationResult.AlreadyApplied -> result.operation
+            })
         }
         return result
     }

@@ -64,6 +64,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -127,12 +129,14 @@ fun FinPetDialogueDialog(
         if (pageIndex < lastIndex) R.string.dialogue_tap_next else R.string.dialogue_tap_finish,
     )
     val overlayTopInset = LocalFinPetDialogueTopInset.current
-    var dialogueVisible by remember { mutableStateOf(false) }
-    var finishRequested by remember { mutableStateOf(false) }
+    // The same composable can show the next onboarding card after this one closes.
+    // Its animation state must belong to the current cards, not the call site.
+    var dialogueVisible by remember(cards) { mutableStateOf(false) }
+    var finishRequested by remember(cards) { mutableStateOf(false) }
     val currentOnFinished by rememberUpdatedState(onFinished)
     val exitDurationMillis = AppTheme.motion.durationFastMillis
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(cards) {
         dialogueVisible = true
     }
     LaunchedEffect(finishRequested) {
@@ -146,6 +150,13 @@ fun FinPetDialogueDialog(
         if (!finishRequested) {
             finishRequested = true
             dialogueVisible = false
+        }
+    }
+    val showPreviousPage = {
+        if (pageIndex > 0) {
+            val previousIndex = pageIndex - 1
+            pageIndex = previousIndex
+            onPageChanged(previousIndex)
         }
     }
     val enterTransition = fadeIn(
@@ -237,6 +248,7 @@ fun FinPetDialogueDialog(
                             showTapHint = canAdvanceOnTap,
                             actions = actions,
                             onActionSelected = onActionSelected,
+                            onPreviousPage = showPreviousPage,
                             scrollState = scrollState,
                             maxHeight = maxCardHeight,
                             additionalContent = additionalContent,
@@ -274,6 +286,7 @@ fun FinPetDialogueDialog(
                         showTapHint = canAdvanceOnTap,
                         actions = actions,
                         onActionSelected = onActionSelected,
+                        onPreviousPage = showPreviousPage,
                         scrollState = scrollState,
                         maxHeight = maxCardHeight,
                         additionalContent = additionalContent,
@@ -296,11 +309,20 @@ private fun DialogueBubble(
     showTapHint: Boolean,
     actions: List<FinPetDialogueAction>,
     onActionSelected: (FinPetDialogueAction) -> Unit,
+    onPreviousPage: () -> Unit,
     scrollState: ScrollState,
     maxHeight: androidx.compose.ui.unit.Dp,
     additionalContent: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = AppTheme.colors.dialogue
+    val hasPreviousPageControl = showTapHint && pageCount > 1 && pageIndex > 0
+    val footerHeightCompensation = if (hasPreviousPageControl) {
+        AppTheme.sizes.minimumTouchTarget - DIALOGUE_FOOTER_BASE_HEIGHT
+    } else {
+        0.dp
+    }
+    val contentBottomPadding =
+        (AppTheme.spacing.lg - footerHeightCompensation).coerceAtLeast(AppTheme.spacing.none)
     FinPetCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -332,7 +354,7 @@ private fun DialogueBubble(
                         start = AppTheme.spacing.lg,
                         top = AppTheme.spacing.lg,
                         end = AppTheme.spacing.lg,
-                        bottom = AppTheme.spacing.lg,
+                        bottom = contentBottomPadding,
                     ),
                 verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
             ) {
@@ -416,6 +438,7 @@ private fun DialogueBubble(
                         tapHint = tapHint,
                         pageIndex = pageIndex,
                         pageCount = pageCount,
+                        onPreviousPage = onPreviousPage,
                     )
                 }
             }
@@ -508,11 +531,27 @@ private fun DialogueFooter(
     tapHint: String,
     pageIndex: Int,
     pageCount: Int,
+    onPreviousPage: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (pageCount > 1 && pageIndex > 0) {
+            val previousPageLabel = stringResource(R.string.dialogue_previous)
+            FinPetIconButton(
+                onClick = onPreviousPage,
+                modifier = Modifier
+                    .semantics { contentDescription = previousPageLabel }
+                    .testTag("finpet_dialogue_previous"),
+            ) {
+                FinPetBackIcon(
+                    iconSize = AppTheme.sizes.iconMedium,
+                    color = AppTheme.colors.dialogue.outline,
+                    showShaft = false,
+                )
+            }
+        }
         Text(
             text = tapHint,
             style = AppTheme.typography.caption,
@@ -526,7 +565,7 @@ private fun DialogueFooter(
                 color = AppTheme.colors.textSecondary,
             )
         }
-        DialoguePaw(modifier = Modifier.size(34.dp))
+        DialoguePaw(modifier = Modifier.size(DIALOGUE_FOOTER_BASE_HEIGHT))
     }
 }
 
@@ -586,6 +625,7 @@ private val MIN_PORTRAIT_SIZE = 72.dp
 private val MAX_PORTRAIT_SIZE = 112.dp
 private val DIALOGUE_HEART_TEXT_INSET = 28.dp
 private val DIALOGUE_HEART_SIZE = 24.dp
+private val DIALOGUE_FOOTER_BASE_HEIGHT = 34.dp
 private const val DIALOGUE_ACTION_WIDTH_FRACTION = 0.62f
 private const val DIALOGUE_ACTION_DECORATION_FRACTION = 0.15f
 
@@ -630,6 +670,19 @@ private fun FinPetDialogueDialogPreview(
             actions = state.actions,
             onActionSelected = {},
             onFinished = {},
+        )
+    }
+}
+
+@Preview(name = "Навигация диалога", widthDp = 360, showBackground = true)
+@Composable
+private fun DialogueFooterPreview() {
+    FinPetTheme {
+        DialogueFooter(
+            tapHint = stringResource(R.string.dialogue_tap_next),
+            pageIndex = 1,
+            pageCount = 3,
+            onPreviousPage = {},
         )
     }
 }

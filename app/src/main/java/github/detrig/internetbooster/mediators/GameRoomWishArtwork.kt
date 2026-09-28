@@ -57,6 +57,9 @@ internal class GameRoomWishArtwork(
                     contentScale = ContentScale.Fit,
                 )
             }
+            RoomImpulseWish.Kind.MINI_GAME,
+            RoomImpulseWish.Kind.TOY,
+            RoomImpulseWish.Kind.SAVINGS_TOP_UP,
             RoomImpulseWish.Kind.FREE -> Unit
         }
     }

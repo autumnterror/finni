@@ -98,6 +98,7 @@ internal fun RoomObjectLayers(
         "calendar" to stringResource(R.string.house_calendar),
         "piggy_bank" to stringResource(R.string.house_piggy_bank),
         "task_board" to stringResource(R.string.house_parent_help_board),
+        "decor_notice_board" to stringResource(R.string.house_wish_board),
         "wardrobe" to stringResource(R.string.house_wardrobe),
         "decor_mirror" to stringResource(R.string.house_mirror),
         "fridge" to stringResource(R.string.house_food),

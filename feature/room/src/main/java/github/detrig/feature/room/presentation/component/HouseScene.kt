@@ -36,8 +36,6 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.api.RoomPetInteraction
-import github.detrig.feature.room.api.RoomWishArtwork
-import github.detrig.feature.room.domain.model.RoomImpulseWish
 import github.detrig.feature.room.api.RoomPetPose
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
@@ -72,6 +70,7 @@ internal fun HouseScene(
     onBathtubClick: () -> Unit = {},
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
+    onWishBoardClick: () -> Unit = {},
     onTestsClick: () -> Unit,
     onWardrobeClick: () -> Unit,
     onMirrorClick: () -> Unit,
@@ -91,8 +90,6 @@ internal fun HouseScene(
     isFeedingScene: Boolean = focusObjectId == "dining_table",
     modifier: Modifier = Modifier,
     petContent: @Composable (Modifier, RoomPetInteraction) -> Unit = { _, _ -> },
-    wish: RoomImpulseWish? = null,
-    wishArtwork: RoomWishArtwork? = null,
     tableFoodContent: @Composable (Modifier) -> Unit = {},
     petLookingAround: Boolean = false,
     phoneUnreadCount: Int = 0,
@@ -416,6 +413,7 @@ internal fun HouseScene(
                                     "bed" -> onBedClick()
                                     "calendar" -> onCalendarClick()
                                     "piggy_bank" -> onPiggyBankClick()
+                                    "decor_notice_board" -> onWishBoardClick()
                                     "task_board" -> onTestsClick()
                                     "wardrobe" -> onWardrobeClick()
                                     "sink" -> onDishesClick()
@@ -524,30 +522,6 @@ internal fun HouseScene(
                                 },
                             ),
                         )
-                        if (wish != null && wishArtwork != null && focusObjectId == null) {
-                            val bubbleSize = minOf(72.dp, unitDp * 0.24f)
-                            val bubbleSizePx = with(density) { bubbleSize.toPx() }
-                            RoomWishBubble(
-                                wish = wish,
-                                artwork = wishArtwork,
-                                modifier = Modifier
-                                    .offset {
-                                        val petX = flight.takeIf { petPose != RoomPetPose.IDLE }?.x
-                                            ?: motion.petX
-                                        val lift = flight.takeIf { petPose != RoomPetPose.IDLE }?.lift
-                                            ?: 0f
-                                        IntOffset(
-                                            ((petX + HouseLayout.PET_WIDTH * 0.16f) * unitPx)
-                                                .roundToInt(),
-                                            (HouseLayout.PET_FLOOR_BASELINE * heightPx -
-                                                HouseLayout.PET_WIDTH * unitPx - lift * unitPx -
-                                                bubbleSizePx * 0.25f).roundToInt(),
-                                        )
-                                    }
-                                    .size(bubbleSize)
-                                    .zIndex(petZIndex + 1f),
-                            )
-                        }
                         // The groceries rest on the tabletop behind a pet walking
                         // in front of it; the focused feeding view keeps its own layers.
                         tableFoodContent(tableFoodModifier)

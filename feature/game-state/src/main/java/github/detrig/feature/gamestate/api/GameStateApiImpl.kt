@@ -42,6 +42,16 @@ internal class GameStateApiImpl(
     override suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int =
         repository.rewardClothingPurchase(purchaseOperationId, happinessPoints)
 
+    override suspend fun rewardPetWishHappiness(wishRewardId: String, happinessPoints: Int): Int =
+        repository.rewardPetWishHappiness(wishRewardId, happinessPoints)
+
+    override suspend fun petWishActivities() = repository.petWishActivities()
+
+    override suspend fun activateSavingsHappinessProtection(
+        contributionOperationId: String,
+        throughAbsoluteDay: Long,
+    ) = repository.activateSavingsHappinessProtection(contributionOperationId, throughAbsoluteDay)
+
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         repository.feedPet(completion)
 

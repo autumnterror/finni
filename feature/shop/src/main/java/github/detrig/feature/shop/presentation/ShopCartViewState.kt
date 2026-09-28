@@ -31,6 +31,7 @@ internal data class ShopCartViewState(
     val storefront: StorefrontDefinition<SellableItem>? = null,
     val cart: StoreCart = StoreCart.Empty,
     val balanceRub: Long? = null,
+    val savingsRub: Long = 0,
     val loading: Boolean = true,
     val error: ShopCartError? = null,
     val paymentInProgress: Boolean = false,

@@ -22,6 +22,8 @@
     <string name="shop_decrease_quantity">Уменьшить количество: %1$s</string>
     <string name="shop_increase_quantity">Увеличить количество: %1$s</string>
     <string name="shop_not_enough_money">Не хватает %1$d монет</string>
+    <string name="shop_savings_available">В копилке есть %1$d ₽ — можно снять нужную сумму.</string>
+    <string name="shop_open_savings">Снять из копилки</string>
     <string name="shop_total_accessibility">Итого: %1$d монет</string>
     <string name="shop_cart_discount">Скидка: %1$d ₽</string>
     <string name="shop_cart_free_items">Бесплатно: %1$d шт.</string>

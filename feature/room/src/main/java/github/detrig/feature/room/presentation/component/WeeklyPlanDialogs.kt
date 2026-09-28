@@ -70,6 +70,7 @@ import github.detrig.designsystem.component.FinPetDialogueAction
 import github.detrig.designsystem.component.FinPetDialogueDialog
 import github.detrig.designsystem.component.FinPetHelpButton
 import github.detrig.designsystem.component.FinPetHelpDialog
+import github.detrig.designsystem.component.FinPetMoneyAmount
 import github.detrig.designsystem.component.FinPetModalSectionTone
 import github.detrig.designsystem.component.FinPetModalVisibilityEffect
 import github.detrig.designsystem.component.FinPetProgressIndicator
@@ -80,6 +81,7 @@ import github.detrig.feature.planning.domain.CategoryPlanProgress
 import github.detrig.feature.planning.domain.PlanCategory
 import github.detrig.feature.planning.domain.PlanProgressTone
 import github.detrig.feature.planning.domain.PlanPercentages
+import github.detrig.feature.planning.domain.PlanWeekContext
 import github.detrig.feature.planning.domain.WeeklyPlan
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.room.R
@@ -178,12 +180,7 @@ internal fun WeeklyPlanEditorDialog(
         },
     ) {
         if (knownMandatoryExpenseRub > 0) {
-            Text(
-                text = stringResource(R.string.plan_known_expense_notice, knownMandatoryExpenseRub),
-                style = AppTheme.typography.bodyStrong,
-                color = AppTheme.colors.textPrimary,
-                modifier = Modifier.padding(bottom = AppTheme.spacing.sm),
-            )
+            KnownMandatoryExpenseCard(knownMandatoryExpenseRub)
         }
         MoneySlider(
             category = PlanCategory.MANDATORY,
@@ -650,7 +647,6 @@ private fun MoneySlider(
 internal fun WeeklyPlanProgressDialog(
     progress: WeeklyPlanProgress,
     isWeekResult: Boolean = false,
-    remainingRub: Long? = null,
     tutorialStep: WeekSummaryTutorialStep? = null,
     onTutorialNext: () -> Unit = {},
     onDismiss: () -> Unit,
@@ -695,8 +691,8 @@ internal fun WeeklyPlanProgressDialog(
                 )
             }
         }
-        if (isWeekResult && remainingRub != null) {
-            WeekMoneyOverview(progress, remainingRub)
+        if (!isWeekResult && progress.plan.context.knownMandatoryExpenseRub > 0) {
+            KnownMandatoryExpenseCard(progress.plan.context.knownMandatoryExpenseRub)
         }
         if (assessment != null) {
             WeekResultFeedback(assessment)
@@ -756,64 +752,24 @@ internal fun WeeklyPlanProgressDialog(
 }
 
 @Composable
-private fun WeekMoneyOverview(progress: WeeklyPlanProgress, remainingRub: Long) {
-    val mandatory = progress.category(PlanCategory.MANDATORY).actualRub
-    val wants = progress.category(PlanCategory.WANTS).actualRub
-    val savings = progress.category(PlanCategory.SAVINGS).actualRub
-    NotebookSection(modifier = Modifier.fillMaxWidth(), tone = FinPetModalSectionTone.Highlighted) {
-        Column(
+private fun KnownMandatoryExpenseCard(amountRub: Long) {
+    NotebookSection(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("weekly_plan_known_expense"),
+    ) {
+        Row(
             modifier = Modifier.padding(AppTheme.spacing.md),
-            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.week_summary_income_title), style = AppTheme.typography.bodyStrong)
-            SummaryMoneyRow(stringResource(R.string.week_summary_allowance), progress.plan.availableRub)
-            SummaryMoneyRow(stringResource(R.string.week_summary_jobs), 0)
-            SummaryMoneyRow(stringResource(R.string.week_summary_other_income), progress.extraIncomeRub)
-            if (progress.extraWantsRub > 0) SummaryMoneyRow(
-                stringResource(R.string.week_summary_extra_wants), progress.extraWantsRub)
-            if (progress.extraSavingsRub > 0) SummaryMoneyRow(
-                stringResource(R.string.week_summary_extra_savings), progress.extraSavingsRub)
-            if (progress.extraReserveRub > 0) SummaryMoneyRow(
-                stringResource(R.string.week_summary_extra_reserve), progress.extraReserveRub)
-            Text(stringResource(R.string.week_summary_expenses_title), style = AppTheme.typography.bodyStrong)
-            SummaryMoneyRow(stringResource(R.string.week_summary_food), mandatory)
-            SummaryMoneyRow(stringResource(R.string.week_summary_wants_and_games), wants)
-            if (progress.unexpectedMandatoryRub > 0) {
-                SummaryMoneyRow(
-                    stringResource(R.string.week_summary_unexpected_expenses),
-                    progress.unexpectedMandatoryRub,
-                )
-            }
-            Text(stringResource(R.string.week_summary_result_title), style = AppTheme.typography.bodyStrong)
-            SummaryMoneyRow(stringResource(R.string.week_summary_remaining), remainingRub)
-            SummaryMoneyRow(stringResource(R.string.week_summary_savings), savings)
             Text(
-                text = when {
-                    progress.unexpectedMandatoryRub > 0 ->
-                        stringResource(R.string.week_summary_comment_unexpected_expense)
-                    remainingRub <= progress.plan.availableRub / 10 ->
-                        stringResource(R.string.week_summary_comment_almost_all_spent)
-                    savings > 0 -> stringResource(R.string.week_summary_comment_saved, savings)
-                    mandatory >= wants -> stringResource(R.string.week_summary_comment_food)
-                    else -> stringResource(R.string.week_summary_comment_wants)
-                },
-                style = AppTheme.typography.body,
+                text = stringResource(R.string.plan_known_expense_card_title),
+                modifier = Modifier.weight(1f),
+                style = AppTheme.typography.bodyStrong,
             )
-            if (remainingRub <= progress.plan.availableRub / 10 && progress.unexpectedMandatoryRub == 0L) {
-                Text(
-                    stringResource(R.string.week_summary_comment_leave_reserve),
-                    style = AppTheme.typography.body,
-                )
-            }
+            FinPetMoneyAmount(amountRub.toString())
         }
-    }
-}
-
-@Composable
-private fun SummaryMoneyRow(label: String, amountRub: Long) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = AppTheme.typography.body)
-        Text(stringResource(R.string.plan_money, amountRub), style = AppTheme.typography.bodyStrong)
     }
 }
 
@@ -974,6 +930,7 @@ private fun WeeklyPlanDialogPreview() {
             editor = PlanEditorState(mandatory = 50, wants = 30, savings = 20),
             weekNumber = 2,
             availableRub = 500,
+            knownMandatoryExpenseRub = 80,
             isSaving = false,
             petName = "Барсик",
             petPortrait = { modifier ->
@@ -988,6 +945,29 @@ private fun WeeklyPlanDialogPreview() {
             onPercentChanged = { _, _ -> },
             onReserveChanged = {},
             onSave = {},
+        )
+    }
+}
+
+@Preview(name = "План из календаря", widthDp = 360, heightDp = 760, showBackground = true)
+@Composable
+private fun WeeklyPlanSummaryPreview() {
+    FinPetTheme {
+        WeeklyPlanProgressDialog(
+            progress = WeeklyPlanProgress(
+                plan = WeeklyPlan(
+                    weekNumber = 2,
+                    availableRub = 500,
+                    percentages = PlanPercentages(mandatory = 40, wants = 25, savings = 20),
+                    context = PlanWeekContext(knownMandatoryExpenseRub = 80),
+                ),
+                categories = listOf(
+                    CategoryPlanProgress(PlanCategory.MANDATORY, 200, 120, PlanProgressTone.ON_TRACK),
+                    CategoryPlanProgress(PlanCategory.WANTS, 125, 60, PlanProgressTone.ON_TRACK),
+                    CategoryPlanProgress(PlanCategory.SAVINGS, 100, 50, PlanProgressTone.ON_TRACK),
+                ),
+            ),
+            onDismiss = {},
         )
     }
 }

@@ -35,6 +35,9 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object CloseEarlyWeekParentHelpNotice : RoomViewEvent
     data object CloseDayTransitionNotice : RoomViewEvent
     data object CloseImpulseWish : RoomViewEvent
+    data object WishBoardClicked : RoomViewEvent
+    data object CloseWishBoard : RoomViewEvent
+    data class CloseWishFulfillment(val id: String) : RoomViewEvent
     data object CloseMoneyEvent : RoomViewEvent
     data class ResolveMoneyEvent(val allocation: MoneyAllocation? = null) : RoomViewEvent
     data object OpenSavingsForMoneyEvent : RoomViewEvent

@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.Flow
 interface ShopHost {
     suspend fun preparePlayer()
     fun observeBalanceRub(): Flow<Long>
+    fun observeSavingsRub(): Flow<Long>
     fun observePetName(): Flow<String>
+    fun openSavings()
     suspend fun currentDecisionEvent(storeId: StoreId): ShopDecisionEvent?
     suspend fun claimPromotionIntroduction(): Boolean
     suspend fun recordEventDeclined(event: ShopDecisionEvent)

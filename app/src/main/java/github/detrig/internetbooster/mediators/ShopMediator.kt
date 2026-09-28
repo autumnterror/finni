@@ -30,6 +30,11 @@ import github.detrig.feature.planning.domain.PlanCategory
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.ProductQuantity
+import github.detrig.feature.gamestate.domain.model.PetWishHappinessRewards
+import github.detrig.feature.gamestate.domain.model.MiniGameAccess
+import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
+import github.detrig.feature.room.domain.model.RoomWishFulfillment
+import kotlinx.coroutines.CancellationException
 import github.detrig.feature.inventory.api.InventoryApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -48,6 +53,7 @@ internal class ShopMediator(
     private val learningMediator: LearningMediator,
     private val petMediator: PetMediator,
     private val gameStateMediator: GameStateMediator,
+    private val savingsMediator: SavingsMediator,
 ) : Mediator<ShopApi> {
     private val groceryCatalog = GroceryCatalog()
     private val wishMutex = Mutex()
@@ -127,9 +133,16 @@ internal class ShopMediator(
             .map { it.availableRub }
             .distinctUntilChanged()
 
+        override fun observeSavingsRub() = economyMediator.getApi()
+            .observeState()
+            .map { it.savingsRub }
+            .distinctUntilChanged()
+
         override fun observePetName() = petMediator.getApi().observeProfile()
             .map { it?.name ?: DEFAULT_PET_NAME }
             .distinctUntilChanged()
+
+        override fun openSavings() = savingsMediator.getApi().open()
 
         override suspend fun currentDecisionEvent(storeId: github.detrig.products.StoreId) =
             generateCurrentEvent(storeId)
@@ -165,10 +178,20 @@ internal class ShopMediator(
                     savingsPlanReductionRub = prepared.assessment.savingsPlanReductionRub,
                 )
             }
+            val wishForPurchase = currentPetWishBoardWishes(
+                absoluteDay = weekMediator.getApi().initialize().absoluteDay,
+                roomObjects = emptyList(),
+                activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
+            ).firstOrNull { wish ->
+                wish.kind == PetWishSchedule.Kind.GROCERY &&
+                    request.storeId == GroceryStoreIds.Store &&
+                    request.lines.any { it.itemId.value == wish.productId }
+            }
             val result = checkoutGateway.checkout(
                 request = request,
                 lineTotalOverrides = prepared.lineTotalOverrides,
                 additionalMetadata = prepared.learningMetadata,
+                petWishEventId = wishForPurchase?.eventId,
             )
             if (result is github.detrig.feature.shop.api.ShopCheckoutResult.Completed) {
                 if (!result.alreadyApplied) gameAudio.play(AppAudioCues.Purchase)
@@ -178,6 +201,11 @@ internal class ShopMediator(
                 // turn an already paid purchase into a UI error; the next preparePlayer reconciles it.
                 runCatching {
                     learningCoordinator.recordCompletedPurchase(operation?.context?.metadata)
+                }
+                wishForPurchase?.let { wish ->
+                    wishMutex.withLock {
+                        recordCompletedPetWish(wish.eventId)
+                    }
                 }
             }
             return if (result is github.detrig.feature.shop.api.ShopCheckoutResult.Completed) {
@@ -193,30 +221,39 @@ internal class ShopMediator(
         }
     }
 
-    suspend fun claimRoomImpulseWish(): PendingImpulseWish? {
-        val event = currentPetWish()
-            ?.takeIf { it.kind == PetWishSchedule.Kind.GROCERY }
-            ?: return null
+    suspend fun claimRoomWishDialogue(
+        wish: github.detrig.feature.room.domain.model.RoomImpulseWish,
+    ): github.detrig.feature.room.domain.model.RoomImpulseWish? {
         val learning = learningMediator.getApi()
         val firstPresentation = learning.claimFirstExplanation(
             CURRENT_PROFILE_ID,
-            "$ROOM_IMPULSE_PRESENTATION_PREFIX${event.eventId}",
+            "$ROOM_IMPULSE_PRESENTATION_PREFIX${wish.eventId}",
         )
         if (!firstPresentation) return null
         val showIntroduction = learning.claimFirstExplanation(
             CURRENT_PROFILE_ID,
             IMPULSE_INTRODUCTION_ID,
         )
-        return PendingImpulseWish(
-            eventId = event.eventId,
-            productTitle = event.title,
-            phraseVariant = Math.floorMod(event.eventId.hashCode(), IMPULSE_PHRASE_COUNT),
-            showIntroduction = showIntroduction,
-        )
+        return wish.copy(showIntroduction = showIntroduction)
     }
 
-    suspend fun currentPetWish(): PetWishSchedule.Wish? = wishMutex.withLock {
+    suspend fun currentPetWish(): PetWishSchedule.Wish? {
         val week = weekMediator.getApi().initialize()
+        return currentPetWishBoardWishes(
+            absoluteDay = week.absoluteDay,
+            roomObjects = emptyList(),
+            activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
+        ).filter { it.kind != PetWishSchedule.Kind.SAVINGS_TOP_UP }
+            .maxByOrNull { it.createdAbsoluteDay }
+    }
+
+    suspend fun currentPetWishBoardWishes(
+        absoluteDay: Long,
+        roomObjects: List<RoomWishObjectCandidate>,
+        activeGoalId: String?,
+    ): List<PetWishSchedule.Wish> = wishMutex.withLock {
+        val week = weekMediator.getApi().initialize()
+        if (absoluteDay != week.absoluteDay) return@withLock emptyList()
         val game = gameStateMediator.getApi().initialize()
         val pet = petMediator.getApi()
         val storedDay = wishPreferences.getLong("day", -1L)
@@ -231,22 +268,231 @@ internal class ShopMediator(
         } ?: 0L
         val safeOptionalRub = minOf(wantsRemaining,
             (balance - mandatoryRemaining - (plan?.plan?.reserveRub ?: 0L)).coerceAtLeast(0L))
-        if (storedDay != week.absoluteDay) {
-            wishPreferences.edit()
-                .putLong("day", week.absoluteDay)
-                .putInt("happiness", game.pet.happiness)
-                .putString("owned_clothing_ids", currentOwnedClothing.sorted().joinToString(","))
-                .putLong("safe_optional_rub", safeOptionalRub)
-                .commit()
-        }
-        PetWishSchedule.current(
-            absoluteDay = week.absoluteDay,
-            happiness = wishPreferences.getInt("happiness", game.pet.happiness),
-            clothing = pet.clothingItems(),
-            ownedClothingIds = wishPreferences.getString("owned_clothing_ids", null)
-                ?.split(',')?.filter(String::isNotBlank)?.toSet() ?: currentOwnedClothing,
-            safeOptionalRub = wishPreferences.getLong("safe_optional_rub", safeOptionalRub),
+        var wishes = readStoredPetWishes()
+        val alreadyCompleted = wishPreferences.getStringSet("completed_wishes", emptySet()).orEmpty().toSet()
+        wishes = wishes.filterNot { it.eventId in alreadyCompleted }
+
+        val purchasedWishIds = economyMediator.getApi().getExpenseHistory().mapNotNull { operation ->
+            operation.context.metadata?.split(';')?.firstOrNull { it.startsWith("pet_wish=") }
+                ?.substringAfter('=')
+        }.toSet()
+        val fulfilledRoomItems = wishes.filter { wish ->
+            wish.kind == PetWishSchedule.Kind.TOY && wish.productId?.let { it in game.ownedZoneIds } == true
+        }.map { it.eventId }
+        val fulfilledIds = (purchasedWishIds + fulfilledRoomItems)
+            .intersect(wishes.map { it.eventId }.toSet())
+            .filter { recordCompletedPetWish(it) }
+            .toSet()
+        wishes = wishes.filterNot { it.eventId in fulfilledIds }
+
+        val activities = gameStateMediator.getApi().petWishActivities()
+        val contributions = economyMediator.getApi().getSavingsHistory(
+            github.detrig.feature.economy.domain.HistoryFilter(
+                types = setOf(github.detrig.feature.economy.domain.FinancialOperationType.TRANSFER_TO_SAVINGS),
+            ),
         )
+        val fulfilledActivities = wishes.filter { wish ->
+            when (wish.kind) {
+                PetWishSchedule.Kind.MINI_GAME -> activities.any { activity ->
+                    activity.appliedAtMillis >= wish.createdAtMillis &&
+                        (activity.source == "pet-wish-play:${wish.productId}" ||
+                            (activity.source == "mini-game-launch:${wish.productId}" &&
+                                activity.sourceOperationId.toLongOrNull()?.let {
+                                    it >= wish.createdAbsoluteDay && it < wish.expiresOnAbsoluteDayExclusive
+                                } == true))
+                }
+                PetWishSchedule.Kind.SAVINGS_TOP_UP -> contributions.any { operation ->
+                    val day = operation.context.metadata?.split(';')
+                        ?.firstOrNull { it.startsWith("day=") }?.substringAfter('=')?.toLongOrNull()
+                    operation.context.reasonId == wish.productId &&
+                        operation.timestampMillis >= wish.createdAtMillis &&
+                        day != null && day >= wish.createdAbsoluteDay && day < wish.expiresOnAbsoluteDayExclusive
+                }
+                else -> false
+            }
+        }.filter { persistCompletedWish(it) }.map { it.eventId }.toSet()
+        wishes = wishes.filterNot { it.eventId in fulfilledActivities }
+            .filter { it.expiresOnAbsoluteDayExclusive > week.absoluteDay }
+            .filterNot { it.kind == PetWishSchedule.Kind.SAVINGS_TOP_UP && it.productId != activeGoalId }
+
+        val newDay = storedDay != week.absoluteDay
+        val storedHappiness = if (newDay) game.pet.happiness else
+            wishPreferences.getInt("happiness", game.pet.happiness)
+        val storedOwnedClothing = if (newDay) currentOwnedClothing else
+            wishPreferences.getString("owned_clothing_ids", null)
+                ?.split(',')?.filter(String::isNotBlank)?.toSet() ?: currentOwnedClothing
+        val storedSafeOptionalRub = if (newDay) safeOptionalRub else
+            wishPreferences.getLong("safe_optional_rub", safeOptionalRub)
+
+        if (newDay) {
+            val activeProductIds = wishes.mapNotNull { it.productId }.toSet()
+            val playableMiniGames = listOf("fishing" to "Рыбалка", "flight" to "Полёт")
+                .filter { (gameId, _) -> MiniGameAccess.isOpen(gameId, game.ownedZoneIds) }
+            PetWishSchedule.next(
+                absoluteDay = week.absoluteDay,
+                happiness = storedHappiness,
+                clothing = pet.clothingItems(),
+                ownedClothingIds = storedOwnedClothing,
+                safeOptionalRub = storedSafeOptionalRub,
+                playableMiniGames = playableMiniGames,
+                roomObjects = roomObjects.filterNot { activeGoalId == "room-zone:${it.id}" },
+                activeWishProductIds = activeProductIds,
+            )?.let { wishes = wishes + it.copy(createdAtMillis = System.currentTimeMillis()) }
+        }
+
+        val lastTopUpGoalId = wishPreferences.getString("top_up_goal_id", null)
+        if (activeGoalId != null && lastTopUpGoalId != activeGoalId && wishes.none {
+                it.kind == PetWishSchedule.Kind.SAVINGS_TOP_UP && it.productId == activeGoalId
+            }
+        ) {
+            val goal = savingsMediator.getApi().getActiveGoalProgress()?.goal
+            if (goal?.id == activeGoalId) {
+                val created = week.absoluteDay
+                wishes = wishes + PetWishSchedule.Wish(
+                    eventId = "savings-top-up:$activeGoalId:$created",
+                    kind = PetWishSchedule.Kind.SAVINGS_TOP_UP,
+                    title = "Пополнить копилку",
+                    productId = activeGoalId,
+                    createdAbsoluteDay = created,
+                    expiresOnAbsoluteDayExclusive = created + 2L,
+                    createdAtMillis = System.currentTimeMillis(),
+                )
+                wishPreferences.edit().putString("top_up_goal_id", activeGoalId).commit()
+            }
+        }
+
+        val editor = wishPreferences.edit()
+            .putLong("day", week.absoluteDay)
+            .putInt("happiness", storedHappiness)
+            .putString("owned_clothing_ids", storedOwnedClothing.sorted().joinToString(","))
+            .putLong("safe_optional_rub", storedSafeOptionalRub)
+        writeStoredPetWishes(editor, wishes)
+        check(editor.commit()) { "Failed to persist pet wish board" }
+        wishes.sortedWith(compareByDescending<PetWishSchedule.Wish> { it.createdAbsoluteDay }
+            .thenBy { it.eventId })
+    }
+
+    suspend fun currentClothingWishId(itemId: String): String? = currentPetWishBoardWishes(
+        absoluteDay = weekMediator.getApi().initialize().absoluteDay,
+        roomObjects = emptyList(),
+        activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
+    ).firstOrNull { it.kind == PetWishSchedule.Kind.CLOTHING && it.productId == itemId }
+        ?.eventId
+
+    suspend fun recordRoomWishFulfilled(
+        wish: github.detrig.feature.room.domain.model.RoomImpulseWish,
+    ) {
+        wishMutex.withLock {
+            if (wish.kind == github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.TOY) {
+                recordCompletedPetWish(wish.eventId)
+                return@withLock
+            }
+        }
+    }
+
+    private suspend fun recordCompletedPetWish(eventId: String): Boolean {
+        try {
+            gameStateMediator.getApi().rewardPetWishHappiness(
+                wishRewardId = eventId,
+                happinessPoints = PetWishHappinessRewards.optionalPurchase(eventId),
+            )
+            readStoredPetWishes().firstOrNull { it.eventId == eventId }?.let {
+                if (!persistCompletedWish(it)) return false
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // The purchase state is durable; the next wish-board refresh retries the reward.
+            return false
+        }
+        return true
+    }
+
+    private fun persistCompletedWish(wish: PetWishSchedule.Wish): Boolean {
+        val completed = wishPreferences.getStringSet("completed_wishes", emptySet()).orEmpty().toSet()
+        val editor = wishPreferences.edit()
+            .putStringSet("completed_wishes", completed + wish.eventId)
+            .putString("completed_title:${wish.eventId}", wish.title)
+            .putString("completed_kind:${wish.eventId}", wish.kind.name)
+            .putLong("completed_at:${wish.eventId}", System.currentTimeMillis())
+        writeStoredPetWishes(editor, readStoredPetWishes().filterNot { it.eventId == wish.eventId })
+        return editor.commit()
+    }
+
+    suspend fun currentWishFulfillments(): List<RoomWishFulfillment> = wishMutex.withLock {
+        val acknowledged = wishPreferences.getStringSet("celebrated_wishes", emptySet()).orEmpty()
+        val rewards = gameStateMediator.getApi().petWishActivities().mapNotNull { activity ->
+            val kind = when {
+                activity.source == "pet-wish-game-unlocked" -> RoomWishFulfillment.Kind.GAME_UNLOCKED
+                activity.source != "pet-wish-happiness" -> return@mapNotNull null
+                activity.sourceOperationId.startsWith("savings-halfway:") -> RoomWishFulfillment.Kind.SAVINGS_HALF_WAY
+                activity.sourceOperationId.startsWith("savings-goal-reached:") -> RoomWishFulfillment.Kind.SAVINGS_REACHED
+                else -> RoomWishFulfillment.Kind.ITEM
+            }
+            activity.appliedAtMillis to RoomWishFulfillment(
+                id = activity.id,
+                kind = kind,
+                title = wishPreferences.getString("completed_title:${activity.sourceOperationId}", "").orEmpty(),
+            )
+        }
+        val otherWishes = wishPreferences.getStringSet("completed_wishes", emptySet()).orEmpty()
+            .mapNotNull { id ->
+                val kind = when (wishPreferences.getString("completed_kind:$id", null)) {
+                    PetWishSchedule.Kind.MINI_GAME.name -> RoomWishFulfillment.Kind.MINI_GAME
+                    PetWishSchedule.Kind.SAVINGS_TOP_UP.name -> RoomWishFulfillment.Kind.SAVINGS_TOP_UP
+                    else -> return@mapNotNull null
+                }
+                wishPreferences.getLong("completed_at:$id", 0L) to RoomWishFulfillment(
+                    id = "pet-wish-completed:$id",
+                    kind = kind,
+                    title = wishPreferences.getString("completed_title:$id", "").orEmpty(),
+                )
+            }
+        (rewards + otherWishes).sortedWith(compareBy({ it.first }, { it.second.id }))
+            .map { it.second }.filterNot { it.id in acknowledged }
+    }
+
+    suspend fun acknowledgeWishFulfillment(id: String) = wishMutex.withLock {
+        val acknowledged = wishPreferences.getStringSet("celebrated_wishes", emptySet()).orEmpty().toSet()
+        check(wishPreferences.edit().putStringSet("celebrated_wishes", acknowledged + id).commit()) {
+            "Failed to acknowledge pet wish celebration"
+        }
+    }
+
+    private fun readStoredPetWishes(): List<PetWishSchedule.Wish> = runCatching {
+        val array = org.json.JSONArray(wishPreferences.getString("wish_board", "[]") ?: "[]")
+        List(array.length()) { index ->
+            val item = array.getJSONObject(index)
+            PetWishSchedule.Wish(
+                eventId = item.getString("id"),
+                kind = PetWishSchedule.Kind.valueOf(item.getString("kind")),
+                title = item.getString("title"),
+                priceRub = item.optLong("price"),
+                productId = item.optString("product").takeIf(String::isNotBlank),
+                createdAbsoluteDay = item.getLong("created"),
+                expiresOnAbsoluteDayExclusive = item.getLong("expires"),
+                createdAtMillis = item.optLong("created_at"),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    private fun writeStoredPetWishes(
+        editor: android.content.SharedPreferences.Editor,
+        wishes: List<PetWishSchedule.Wish>,
+    ) {
+        val array = org.json.JSONArray()
+        wishes.distinctBy { it.eventId }.forEach { wish ->
+            array.put(org.json.JSONObject()
+                .put("id", wish.eventId)
+                .put("kind", wish.kind.name)
+                .put("title", wish.title)
+                .put("price", wish.priceRub)
+                .put("product", wish.productId)
+                .put("created", wish.createdAbsoluteDay)
+                .put("expires", wish.expiresOnAbsoluteDayExclusive)
+                .put("created_at", wish.createdAtMillis))
+        }
+        editor.putString("wish_board", array.toString())
     }
 
     suspend fun recordRoomWishDeclined(wish: github.detrig.feature.room.domain.model.RoomImpulseWish) {
@@ -270,6 +516,9 @@ internal class ShopMediator(
             }
             github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.CLOTHING ->
                 learningCoordinator.recordDeclinedClothingWish(wish.eventId, wish.priceRub)
+            github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.MINI_GAME,
+            github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.TOY,
+            github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.SAVINGS_TOP_UP,
             github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.FREE -> Unit
         }
     }
@@ -296,8 +545,11 @@ internal class ShopMediator(
             eventPeriod = week.absoluteDay,
         )
         if (promotion != null) return promotion
-        val wish = currentPetWish()?.takeIf { it.kind == PetWishSchedule.Kind.GROCERY }
-            ?: return null
+        val wish = currentPetWishBoardWishes(
+            absoluteDay = week.absoluteDay,
+            roomObjects = emptyList(),
+            activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
+        ).firstOrNull { it.kind == PetWishSchedule.Kind.GROCERY } ?: return null
         val item = storefront.items.firstOrNull { it.id.value == wish.productId } ?: return null
         return ShopDecisionEvent(
             eventId = wish.eventId,
@@ -352,16 +604,8 @@ internal class ShopMediator(
         const val PROMOTION_INTRODUCTION_ID = "purchase.promotion.introduction"
         const val IMPULSE_INTRODUCTION_ID = "purchase.impulse.introduction"
         const val ROOM_IMPULSE_PRESENTATION_PREFIX = "purchase.impulse.room:"
-        const val IMPULSE_PHRASE_COUNT = 4
     }
 }
-
-internal data class PendingImpulseWish(
-    val eventId: String,
-    val productTitle: String,
-    val phraseVariant: Int,
-    val showIntroduction: Boolean,
-)
 
 private fun PurchaseProblem?.toShopFeedback(): ShopPurchaseFeedback? = when (this) {
     PurchaseProblem.REQUIRED_FOOD_MISSING -> ShopPurchaseFeedback.REQUIRED_FOOD_MISSING

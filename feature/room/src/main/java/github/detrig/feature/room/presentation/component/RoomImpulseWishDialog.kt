@@ -19,15 +19,21 @@ internal fun RoomImpulseWishDialog(
     onFinished: () -> Unit,
 ) {
     FinPetModalVisibilityEffect()
-    val wishText = if (wish.kind == RoomImpulseWish.Kind.FREE) {
-        stringResource(R.string.impulse_wish_free, wish.productTitle)
-    } else when (wish.phraseVariant) {
-        0 -> stringResource(R.string.impulse_wish_variant_enough_money, wish.productTitle)
-        1 -> stringResource(R.string.impulse_wish_variant_afford, wish.productTitle)
-        2 -> stringResource(R.string.impulse_wish_variant_check_plan, wish.productTitle)
-        else -> stringResource(R.string.impulse_wish_variant_money_after, wish.productTitle)
+    val wishText = when (wish.kind) {
+        RoomImpulseWish.Kind.FREE -> stringResource(R.string.impulse_wish_free, wish.productTitle)
+        RoomImpulseWish.Kind.MINI_GAME -> stringResource(R.string.impulse_wish_play_game, wish.productTitle)
+        RoomImpulseWish.Kind.SAVINGS_TOP_UP -> stringResource(R.string.impulse_wish_top_up_savings)
+        else -> when (wish.phraseVariant) {
+            0 -> stringResource(R.string.impulse_wish_variant_enough_money, wish.productTitle)
+            1 -> stringResource(R.string.impulse_wish_variant_afford, wish.productTitle)
+            2 -> stringResource(R.string.impulse_wish_variant_check_plan, wish.productTitle)
+            else -> stringResource(R.string.impulse_wish_variant_money_after, wish.productTitle)
+        }
     }
-    val cards = if (wish.kind == RoomImpulseWish.Kind.FREE) {
+    val cards = if (wish.kind == RoomImpulseWish.Kind.FREE ||
+        wish.kind == RoomImpulseWish.Kind.MINI_GAME ||
+        wish.kind == RoomImpulseWish.Kind.SAVINGS_TOP_UP
+    ) {
         listOf(wishText)
     } else if (wish.showIntroduction) {
         listOf(

@@ -22,6 +22,9 @@ internal interface GameStateRepository {
 
     suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int
     suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int
+    suspend fun rewardPetWishHappiness(wishRewardId: String, happinessPoints: Int): Int
+    suspend fun petWishActivities(): List<github.detrig.feature.gamestate.domain.model.PetWishActivity>
+    suspend fun activateSavingsHappinessProtection(contributionOperationId: String, throughAbsoluteDay: Long)
 
     suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult
     suspend fun applyDayNeeds()
