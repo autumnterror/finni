@@ -36,7 +36,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -98,6 +97,7 @@ internal fun RoomObjectLayers(
         "calendar" to stringResource(R.string.house_calendar),
         "piggy_bank" to stringResource(R.string.house_piggy_bank),
         "task_board" to stringResource(R.string.house_parent_help_board),
+        "decor_notice_board" to stringResource(R.string.house_wish_board),
         "wardrobe" to stringResource(R.string.house_wardrobe),
         "decor_mirror" to stringResource(R.string.house_mirror),
         "fridge" to stringResource(R.string.house_food),
@@ -376,27 +376,34 @@ internal fun RoomObjectLayers(
             )
         }
         if (highlightedBounds != null) {
-            Box(
-                Modifier
-                    .offset {
-                        IntOffset(
-                            highlightedBounds.left.roundToInt(),
-                            highlightedBounds.top.roundToInt(),
+            key(highlightedObjectIds) {
+                Box(
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                highlightedBounds.left.roundToInt(),
+                                highlightedBounds.top.roundToInt(),
+                            )
+                        }
+                        .size(
+                            with(density) { highlightedBounds.width.toDp() },
+                            with(density) { highlightedBounds.height.toDp() },
                         )
-                    }
-                    .size(
-                        with(density) { highlightedBounds.width.toDp() },
-                        with(density) { highlightedBounds.height.toDp() },
-                    )
-                    .onGloballyPositioned { coordinates ->
-                        highlightedBoundsChanged(coordinates.boundsInWindow())
-                    },
-            )
+                        .onGloballyPositioned { coordinates ->
+                            highlightedBoundsChanged(Rect(
+                                topLeft = coordinates.localToWindow(Offset.Zero),
+                                bottomRight = coordinates.localToWindow(Offset(
+                                    coordinates.size.width.toFloat(),
+                                    coordinates.size.height.toFloat(),
+                                )),
+                            ))
+                        },
+                )
+            }
         }
 
-        DisposableEffect(highlightedObjectIds) {
+        LaunchedEffect(highlightedObjectIds) {
             if (highlightedObjectIds.isEmpty()) highlightedBoundsChanged(null)
-            onDispose { highlightedBoundsChanged(null) }
         }
     }
 }

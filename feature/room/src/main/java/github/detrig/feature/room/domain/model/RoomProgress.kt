@@ -16,6 +16,7 @@ internal data class RoomProgress(
     val requiresPlan: Boolean = false,
     val petHunger: Int = 0,
     val petHappiness: Int = 0,
+    val petDirtStage: Int = 0,
     val debtRub: Long = 0,
     val totalXp: Int = 0,
     val currentLevelXp: Int = 0,

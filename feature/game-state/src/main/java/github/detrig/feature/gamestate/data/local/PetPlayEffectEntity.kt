@@ -20,6 +20,13 @@ data class PetPlayEffectEntity(
 interface PetPlayEffectDao {
     @Query("SELECT * FROM pet_play_effects WHERE operationId = :operationId")
     suspend fun find(operationId: String): PetPlayEffectEntity?
+
+    @Query("SELECT sessionId FROM pet_play_effects WHERE gameId = :gameId ORDER BY CAST(sessionId AS INTEGER) DESC LIMIT 1")
+    suspend fun latestSessionForGame(gameId: String): String?
+
+    @Query("SELECT * FROM pet_play_effects WHERE gameId IN ('pet-wish-happiness', 'pet-wish-game-unlocked') OR gameId LIKE 'pet-wish-play:%' OR gameId LIKE 'mini-game-launch:%' ORDER BY appliedAtMillis, operationId")
+    suspend fun wishActivities(): List<PetPlayEffectEntity>
+
     @Insert
     suspend fun insert(effect: PetPlayEffectEntity)
 

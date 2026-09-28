@@ -4,6 +4,7 @@ import github.detrig.feature.phone.api.PhoneApi
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.room.api.RoomApi
 import github.detrig.feature.shop.api.ShopApi
+import github.detrig.feature.wardrobe.api.WardrobeApi
 import github.detrig.feature.phone.navigation.PhoneRouter
 import github.detrig.feature.phone.presentation.DebugMenuViewModel
 import github.detrig.feature.phone.presentation.MessagesViewModel
@@ -17,6 +18,7 @@ internal interface PhoneComponent {
     val roomApi: RoomApi
     val petApi: PetApi
     val shopApi: ShopApi
+    val wardrobeApi: WardrobeApi
     val globalMessageController: GlobalMessageController
     fun debugMenuViewModel(): DebugMenuViewModel
     fun messagesViewModel(): MessagesViewModel

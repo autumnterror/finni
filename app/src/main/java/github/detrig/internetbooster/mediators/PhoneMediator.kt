@@ -18,6 +18,7 @@ internal class PhoneMediator(
     private val roomMediator: RoomMediator,
     private val petMediator: PetMediator,
     private val shopMediator: ShopMediator,
+    private val wardrobeMediator: WardrobeMediator,
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
     private val learningMediator: LearningMediator,
@@ -25,6 +26,7 @@ internal class PhoneMediator(
     private val inventoryMediator: InventoryMediator,
     private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
     private val experienceModeStorage: AppExperienceModeStorage,
+    private val dailyRoomEvents: DailyRoomEventSchedule,
 ) : Mediator<PhoneApi> {
 
     @MainThread
@@ -36,6 +38,7 @@ internal class PhoneMediator(
                 override fun roomApi() = roomMediator.getApi()
                 override fun petApi() = petMediator.getApi()
                 override fun shopApi() = shopMediator.getApi()
+                override fun wardrobeApi() = wardrobeMediator.getApi()
                 override fun economyApi() = economyMediator.getApi()
                 override fun weekApi() = weekMediator.getApi()
                 override fun learningApi() = learningMediator.getApi()
@@ -51,10 +54,14 @@ internal class PhoneMediator(
                         Context.MODE_PRIVATE,
                     ),
                 )
-                override fun dailySecurityEventProbability() = SECURITY_EVENT_DAILY_PROBABILITY
-                override fun minimumDaysBetweenSecurityEvents() = SECURITY_EVENT_MINIMUM_INTERVAL_DAYS
+                override fun isSecurityEventScheduled(absoluteDay: Long) =
+                    dailyRoomEvents.eventForDay(absoluteDay) == DailyRoomEventSchedule.Kind.SECURITY
+                override fun minimumDaysBetweenSecurityEvents() =
+                    DailyRoomEventSchedule.MINIMUM_SECURITY_INTERVAL_DAYS
                 override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
                 override fun globalMessageController() = coreComponent.globalMessageController
+                override suspend fun createRandomWishForDebug() =
+                    shopMediator.createRandomWishForDebug()
             }
         }
         PhoneFeature.getApi().initialize()
@@ -66,8 +73,6 @@ internal class PhoneMediator(
     private companion object {
         const val MESSAGES_PREFERENCES = "phone_messages"
 
-        const val SECURITY_EVENT_DAILY_PROBABILITY = 0.20
-        const val SECURITY_EVENT_MINIMUM_INTERVAL_DAYS = 3
     }
 
     private class DurablePhoneMessagesStorage(

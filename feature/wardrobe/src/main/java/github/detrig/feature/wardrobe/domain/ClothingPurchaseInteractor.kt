@@ -5,6 +5,7 @@ import github.detrig.feature.economy.domain.FinancialOperationResult
 import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.economy.domain.RejectionReason
 import github.detrig.feature.gamestate.api.GameStateApi
+import github.detrig.feature.gamestate.domain.model.PetWishHappinessRewards
 import github.detrig.feature.pet.api.ClothingItem
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.planning.api.PlanningApi
@@ -29,6 +30,7 @@ internal class ClothingPurchaseInteractor(
     private val planning: PlanningApi,
     private val week: WeekApi,
     private val gameState: GameStateApi,
+    private val wishIdForClothing: suspend (String) -> String? = { null },
 ) {
     private val mutex = Mutex()
 
@@ -40,10 +42,17 @@ internal class ClothingPurchaseInteractor(
             return@withLock ClothingPurchaseResult.AlreadyOwned
         }
         val weekNumber = week.initialize().weekNumber
+        val wishId = wishIdForClothing(item.id)
         val result = economy.debit(
             operationId = operationId(item.id),
             amountRub = item.priceRub,
-            context = OperationContext(reasonId = reasonId(item.id), metadata = weekNumber.toString()),
+            context = OperationContext(
+                reasonId = reasonId(item.id),
+                metadata = buildString {
+                    append("week=").append(weekNumber)
+                    wishId?.let { append(";pet_wish=").append(it) }
+                },
+            ),
         )
         when (result) {
             is FinancialOperationResult.Applied,
@@ -51,6 +60,7 @@ internal class ClothingPurchaseInteractor(
                 pet.recordClothingPurchase(item.id)
                 pet.equipClothing(item.slot, item.id)
                 val happinessGained = tryRewardHappiness(item)
+                wishId?.let { tryRewardPetWish(it) }
                 tryRecordPlanActual(operationId(item.id), weekNumber, item.priceRub)
                 ClothingPurchaseResult.Purchased(happinessGained)
             }
@@ -75,9 +85,10 @@ internal class ClothingPurchaseInteractor(
                 pet.equipClothing(slot, id)
             }
             tryRewardHappiness(itemsById.getValue(id))
-            operation.context.metadata?.toLongOrNull()?.takeIf { it > 0 }?.let { weekNumber ->
+            operation.context.metadata.weekNumber()?.takeIf { it > 0 }?.let { weekNumber ->
                 tryRecordPlanActual(operation.id, weekNumber, operation.amountRub)
             }
+            operation.context.metadata.wishId()?.let { wishId -> tryRewardPetWish(wishId) }
         }
     }
 
@@ -88,6 +99,19 @@ internal class ClothingPurchaseInteractor(
     } catch (_: Exception) {
         // The committed economy operation is replayed by reconcile after restoration.
         0
+    }
+
+    private suspend fun tryRewardPetWish(wishId: String) {
+        try {
+            gameState.rewardPetWishHappiness(
+                wishRewardId = wishId,
+                happinessPoints = PetWishHappinessRewards.optionalPurchase(wishId),
+            )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // The committed clothing operation is replayed from economy history.
+        }
     }
 
     private suspend fun tryRecordPlanActual(operationId: String, weekNumber: Long, amountRub: Long) {
@@ -111,6 +135,14 @@ internal class ClothingPurchaseInteractor(
 
     private fun operationId(itemId: String) = "clothing_purchase:$itemId"
     private fun reasonId(itemId: String) = "$REASON_PREFIX$itemId"
+
+    private fun String?.weekNumber(): Long? = this?.let { metadata ->
+        metadata.toLongOrNull() ?: metadata.split(';')
+            .firstOrNull { it.startsWith("week=") }?.substringAfter('=')?.toLongOrNull()
+    }
+
+    private fun String?.wishId(): String? = this?.split(';')
+        ?.firstOrNull { it.startsWith("pet_wish=") }?.substringAfter('=')
 
     private companion object { const val REASON_PREFIX = "clothing:" }
 }

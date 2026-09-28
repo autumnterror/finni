@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":feature:room"))
     implementation(project(":feature:pet"))
     implementation(project(":feature:shop"))
+    implementation(project(":feature:wardrobe"))
     implementation(project(":feature:economy"))
     implementation(project(":feature:week"))
     implementation(project(":feature:learning"))

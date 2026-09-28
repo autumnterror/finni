@@ -80,6 +80,7 @@ internal data class FirstRunOnboardingState(
         FirstRunOnboardingStep.FRIDGE_GUIDANCE,
         FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
         -> "fridge"
+        FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> "decor_notice_board"
         FirstRunOnboardingStep.TABLE_PROMPT,
         FirstRunOnboardingStep.TABLE_GUIDANCE,
         -> "dining_table"
@@ -106,6 +107,7 @@ internal data class FirstRunOnboardingState(
         FirstRunOnboardingStep.FRIDGE_GUIDANCE,
         FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
         -> setOf("fridge")
+        FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> setOf("decor_notice_board")
         FirstRunOnboardingStep.TABLE_PROMPT,
         FirstRunOnboardingStep.TABLE_GUIDANCE,
         -> setOf("dining_table")
@@ -144,6 +146,15 @@ internal enum class RoomMenuDestination { NONE, MENU, SETTINGS, ALL_ACHIEVEMENTS
 internal enum class BathroomView { HOUSE, WASHING }
 
 internal enum class BathStep { SOAP, RINSE, DRY, CLEAN }
+
+internal const val BATH_TUTORIAL_OBJECT_ID = "room_bathtub"
+
+internal enum class PetWashGuideStep {
+    DIRTY_NOTICE,
+    BATH_GUIDANCE;
+
+    fun nextOrNull(): PetWashGuideStep? = entries.getOrNull(ordinal + 1)
+}
 
 internal data class ParentGateState(
     val firstNumber: Int,
@@ -204,6 +215,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val parentRows: List<ParentProgressRow> = emptyList(),
         val menuDestination: RoomMenuDestination = RoomMenuDestination.NONE,
         val showInteractiveObjectOutlines: Boolean = false,
+        val petWashGuideStep: PetWashGuideStep? = null,
         val isSoundEnabled: Boolean = true,
         val areMenuAchievementsExpanded: Boolean = false,
         val parentGate: ParentGateState? = null,
@@ -218,12 +230,18 @@ internal sealed interface RoomViewState : CoreViewState {
         val allowanceNotice: AllowanceNoticeState? = null,
         val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
         val dayTransitionNotice: DayTransitionNoticeState? = null,
-        val impulseWish: RoomImpulseWish? = null,
+        val impulseWishes: List<RoomImpulseWish> = emptyList(),
+        val petWishBoardWishes: List<RoomImpulseWish> = emptyList(),
+        val wishFulfillments: List<github.detrig.feature.room.domain.model.RoomWishFulfillment> = emptyList(),
+        val isWishBoardVisible: Boolean = false,
         val moneyEvent: RoomMoneyEvent? = null,
+        val sleepBlockedByKnownExpense: Boolean = false,
         val moneyEventError: MoneyEventResolution? = null,
         val resolvingMoneyEvent: Boolean = false,
         val rulesRecapVisible: Boolean = false,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
-    ) : RoomViewState
+    ) : RoomViewState {
+        val impulseWish: RoomImpulseWish? get() = impulseWishes.firstOrNull()
+    }
 }

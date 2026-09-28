@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,7 +21,6 @@ import github.detrig.designsystem.component.LocalFinPetModalVisibilityReporter
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.learning.LearningFeature
-import kotlinx.coroutines.delay
 
 private data class AchievementNotice(val id: String, val title: String)
 
@@ -60,13 +60,6 @@ internal fun AchievementNotificationHost(content: @Composable () -> Unit) {
     }
 
     val current = notices.firstOrNull().takeIf { activeModalCount == 0 }
-    LaunchedEffect(current?.id) {
-        if (current != null) {
-            delay(ACHIEVEMENT_NOTICE_DURATION_MS)
-            notices = notices.filterNot { it.id == current.id }
-        }
-    }
-
     val dialogueTopInset = if (current == null) {
         0.dp
     } else {
@@ -79,16 +72,17 @@ internal fun AchievementNotificationHost(content: @Composable () -> Unit) {
         content()
     }
     current?.let { notice ->
-        FinPetAchievementBanner(
-            title = notice.title,
-            onDismiss = { notices = notices.filterNot { it.id == notice.id } },
-            onHeightChanged = { bannerHeight = it },
-        )
+        key(notice.id) {
+            FinPetAchievementBanner(
+                title = notice.title,
+                onDismiss = { notices = notices.filterNot { it.id == notice.id } },
+                onHeightChanged = { bannerHeight = it },
+            )
+        }
     }
 }
 
 private const val CURRENT_PROFILE_ID = "current"
-private const val ACHIEVEMENT_NOTICE_DURATION_MS = 5_000L
 private val MINIMUM_BANNER_HEIGHT = 112.dp
 
 @Preview(name = "Диалог под достижением", widthDp = 360, heightDp = 640)

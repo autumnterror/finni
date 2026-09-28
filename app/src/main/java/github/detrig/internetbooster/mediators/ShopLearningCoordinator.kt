@@ -9,6 +9,7 @@ import github.detrig.feature.learning.domain.PurchaseAssessment
 import github.detrig.feature.learning.domain.PurchaseDecision
 import github.detrig.feature.learning.domain.PurchaseDecisionContext
 import github.detrig.feature.learning.domain.PurchaseLearning
+import github.detrig.feature.learning.domain.PurchaseOutcome
 import github.detrig.feature.learning.domain.PurchaseProblem
 import github.detrig.feature.learning.domain.PurchaseScenario
 import github.detrig.feature.learning.domain.RecordLearningResult
@@ -16,6 +17,8 @@ import github.detrig.feature.planning.api.PlanningApi
 import github.detrig.feature.planning.domain.PaymentClassification
 import github.detrig.feature.planning.domain.PlanActualOperation
 import github.detrig.feature.planning.domain.PlanCategory
+import github.detrig.feature.planning.domain.PlanAdjustmentReason
+import github.detrig.feature.planning.domain.PlanAssessment
 import github.detrig.feature.planning.domain.RecordActualResult
 import github.detrig.feature.shop.api.ShopCheckoutRequest
 import github.detrig.feature.shop.domain.ShopCatalogRegistry
@@ -49,6 +52,7 @@ internal data class PreparedShopCheckout(
     val learningMetadata: String,
     val assessment: PurchaseAssessment,
     val totalRub: Long,
+    val suppressPlanWarning: Boolean,
 )
 
 /** Coordinates source-of-truth game facts with the central Learning rules. */
@@ -73,11 +77,20 @@ internal class ShopLearningCoordinator(
             declinedWithoutCheckout = false,
             lineTotalOverrides = overrides,
         )
+        val assessment = payload.standardPurchase.assess(config.assessment)
+        val purchase = payload.standardPurchase
+        val planAssessment = planningApi.getPlanProgress(payload.gamePeriod)?.planAssessment
+        val mandatoryPlanTooLow = (planAssessment as? PlanAssessment.NeedsChanges)
+            ?.reason == PlanAdjustmentReason.MANDATORY_TOO_LOW
         return PreparedShopCheckout(
             lineTotalOverrides = overrides,
             learningMetadata = ShopPurchaseLearningPayloadCodec.encode(payload),
-            assessment = payload.standardPurchase.assess(config.assessment),
+            assessment = assessment,
             totalRub = payload.standardPurchase.purchaseTotalRub,
+            suppressPlanWarning = mandatoryPlanTooLow &&
+                assessment.outcome == PurchaseOutcome.PLAN_ADJUSTMENT &&
+                purchase.mandatoryPurchaseRub > purchase.mandatoryCategoryRemainingRub &&
+                purchase.optionalPurchaseRub <= purchase.optionalCategoryRemainingRub,
         )
     }
 

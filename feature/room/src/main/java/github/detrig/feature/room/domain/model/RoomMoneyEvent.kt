@@ -33,7 +33,7 @@ internal object RoomMoneyEventSchedule {
         "Большой подарок" to 150L,
     )
     private val negative = listOf(
-        "Нужно заменить сломанную миску" to 50L,
+        "Нужно заменить сломанную лампу" to 50L,
         "Закончилась нужная вещь" to 60L,
         "Сломался предмет комнаты" to 80L,
         "Неожиданная обязательная покупка" to 100L,
@@ -43,23 +43,23 @@ internal object RoomMoneyEventSchedule {
     )
 
     fun knownExpenseRub(weekNumber: Long): Long =
-        if (weekNumber == 1L || weekNumber % 4L == 0L) 80L else 0L
+        if (weekNumber == 2L) 80L else 0L
 
     fun events(weekNumber: Long, random: Random): List<RoomMoneyEvent> {
         require(weekNumber >= 1L)
         val known = if (knownExpenseRub(weekNumber) > 0) listOf(
             RoomMoneyEvent(
-                id = "money-event:$weekNumber:known-bowl",
+                id = "money-event:$weekNumber:known-mom-birthday",
                 weekNumber = weekNumber,
-                dayOfWeek = 4,
-                title = "Пора купить новую миску",
+                dayOfWeek = 3,
+                title = "Подарок маме на день рождения",
                 amountRub = 80L,
                 kind = RoomMoneyEvent.Kind.KNOWN_EXPENSE,
             ),
         ) else emptyList()
         val ordinary = when (weekNumber) {
             1L -> emptyList()
-            2L -> listOf(expense(weekNumber, 3, 3))
+            2L -> emptyList()
             3L -> listOf(income(weekNumber, 3, 1))
             else -> {
                 val count = if (known.isNotEmpty() || random.nextBoolean()) 1 else 2

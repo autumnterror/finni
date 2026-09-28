@@ -2,6 +2,7 @@ package github.detrig.feature.room.presentation
 
 import github.detrig.feature.planning.domain.PlanCategory
 import github.detrig.feature.planning.domain.PlanAssessment
+import github.detrig.feature.planning.domain.PlanAdjustmentReason
 import github.detrig.feature.planning.domain.WeeklyPlanProgress
 import github.detrig.feature.planning.domain.isGoodWeeklyResult
 
@@ -20,6 +21,7 @@ internal enum class WeekPlanOutcome {
 
 internal enum class WeekPlanFeedbackReason {
     WEAK_PLAN,
+    MANDATORY_PLAN_TOO_LOW,
     UNEXPECTED_EXPENSE_COVERED,
     UNEXPECTED_EXPENSE_BEYOND_RESERVE,
     ADAPTED_TO_MANDATORY_COST,
@@ -72,6 +74,9 @@ internal fun WeeklyPlanProgress.assessWeek(): WeekPlanAssessment {
         }
     }
     val feedbackReason = when {
+        mandatoryIncreased && (planAssessment as? PlanAssessment.NeedsChanges)
+            ?.reason == PlanAdjustmentReason.MANDATORY_TOO_LOW ->
+            WeekPlanFeedbackReason.MANDATORY_PLAN_TOO_LOW
         planAssessment != PlanAssessment.Adequate -> WeekPlanFeedbackReason.WEAK_PLAN
         extraIncomeRub > 0 && isGoodWeeklyResult() && unexpectedMandatoryRub == 0L ->
             WeekPlanFeedbackReason.EXTRA_INCOME_ALLOCATED

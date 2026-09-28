@@ -35,6 +35,7 @@ import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
+import github.detrig.feature.room.domain.model.PetWashGuidePromptRepository
 import github.detrig.feature.room.domain.model.shouldCloseAutomaticParentHelpDialog
 import github.detrig.feature.room.domain.model.shouldOfferAutomaticParentHelp
 import github.detrig.feature.room.domain.model.shouldRetainParentHelpDialog
@@ -85,6 +86,7 @@ internal class RoomViewModel(
     private val requestParentHelpInteractor: RequestParentHelpInteractor,
     private val endWeekEarlyWithParentHelp: EndWeekEarlyWithParentHelpInteractor,
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
+    private val petWashGuidePromptRepository: PetWashGuidePromptRepository,
     private val minimumProductPriceRub: Long,
     private val loadRoomImpulseWish: LoadRoomImpulseWishInteractor,
     private val moneyEvents: RoomMoneyEventInteractor,
@@ -109,7 +111,7 @@ internal class RoomViewModel(
     private var onboardingRefreshJob: Job? = null
     private var firstWeekNeedHintJob: Job? = null
     private var firstWeekGoalHintJob: Job? = null
-    private var impulseWishJob: Job? = null
+    private var wishBoardRefreshJob: Job? = null
     private var moneyEventJob: Job? = null
     private var rulesRecapJob: Job? = null
     private var progressResetJob: Job? = null
@@ -119,8 +121,8 @@ internal class RoomViewModel(
     private var parentCabinetResetError = false
     private var rulesRecapChecked = false
     private val checkedMoneyEventDays = mutableSetOf<Long>()
-    private val checkedImpulseWishDays = mutableSetOf<Long>()
-    private val promptedSavingsRecoveryWeeks = mutableSetOf<Long>()
+    private val acknowledgedWishDialogues = mutableSetOf<String>()
+    private val acknowledgedWishFulfillments = mutableSetOf<String>()
     private val hintedHungerDays = mutableSetOf<Long>()
     private val greetedPlanWeeks = mutableSetOf<Long>()
     private val groceryCatalog = GroceryCatalog()
@@ -153,7 +155,8 @@ internal class RoomViewModel(
 
     override fun perform(viewEvent: RoomViewEvent) {
         when (viewEvent) {
-            RoomViewEvent.PetTapped -> showInteractiveObjectOutlines()
+            RoomViewEvent.PetTapped -> handlePetTapped()
+            RoomViewEvent.PetWashGuideContinue -> continuePetWashGuide()
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
             RoomViewEvent.WardrobeClicked -> launchOnce { router.openWardrobe() }
             RoomViewEvent.BedClicked -> showSleepConfirmation()
@@ -185,6 +188,13 @@ internal class RoomViewModel(
             RoomViewEvent.SleepPostponed -> hideSleepConfirmation()
             RoomViewEvent.CalendarClicked -> showPlanSummary()
             RoomViewEvent.PiggyBankClicked -> openPiggyBank()
+            RoomViewEvent.WishBoardClicked -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(isWishBoardVisible = true))
+            }
+            RoomViewEvent.CloseWishBoard -> nullableState<RoomViewState.Content>()?.let {
+                updateState(it.copy(isWishBoardVisible = false))
+            }
+            is RoomViewEvent.CloseWishFulfillment -> closeWishFulfillment(viewEvent.id)
             RoomViewEvent.FoodClicked,
             RoomViewEvent.FeedingClicked -> router.showEntryComingSoon()
             RoomViewEvent.TestsClicked -> router.openTests()
@@ -193,11 +203,12 @@ internal class RoomViewModel(
                 nullableState<RoomViewState.Content>()?.let {
                     updateState(it.copy(savingsRecoveryPrompt = null))
                 }
-                openPiggyBank()
+                // Recovery is allowed during onboarding too. The regular piggy-bank entry point
+                // intentionally blocks unrelated room actions while the guide is active.
+                openSavings()
             }
             RoomViewEvent.DismissSavingsRecoveryPrompt -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(savingsRecoveryPrompt = null))
-                handleLowBalance(it.progress)
             }
             is RoomViewEvent.ParentHelpOfferClicked -> requestParentHelp(viewEvent.offerId)
             RoomViewEvent.ClaimParentHelpDialog -> nullableState<RoomViewState.Content>()?.let {
@@ -235,17 +246,10 @@ internal class RoomViewModel(
             RoomViewEvent.CloseDayTransitionNotice -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(dayTransitionNotice = null))
             }
-            RoomViewEvent.CloseImpulseWish -> nullableState<RoomViewState.Content>()?.let {
-                val wish = it.impulseWish
-                updateState(it.copy(impulseWish = null))
-                if (wish != null && wish.kind !=
-                    github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.FREE
-                ) launchCoroutine(handleAction = ExceptionConsumer { true }) {
-                    loadRoomImpulseWish.recordDeclined(wish)
-                }
-            }
+            RoomViewEvent.CloseImpulseWish -> closeImpulseWish()
             RoomViewEvent.CloseMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(moneyEvent = null, moneyEventError = null))
+                updateState(it.copy(moneyEvent = null, moneyEventError = null,
+                    sleepBlockedByKnownExpense = false))
             }
             is RoomViewEvent.ResolveMoneyEvent -> resolveMoneyEvent(viewEvent.allocation)
             RoomViewEvent.OpenSavingsForMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
@@ -275,6 +279,7 @@ internal class RoomViewModel(
                 refreshFirstRunOnboarding()
                 nullableState<RoomViewState.Content>()?.let { content ->
                     handleLowBalance(content.progress)
+                    refreshWishBoardForDay(content.progress.absoluteDay)
                 }
             }
             RoomViewEvent.Paused -> Unit
@@ -406,6 +411,30 @@ internal class RoomViewModel(
             is RoomViewEvent.BuyConfirmed -> buy(viewEvent.zoneId, viewEvent.useSavings)
             is RoomViewEvent.SaveZoneAsGoal -> saveZoneAsGoal(viewEvent.zoneId, viewEvent.title)
         }
+    }
+
+    private fun handlePetTapped() {
+        val current = nullableState<RoomViewState.Content>() ?: return
+        if (current.onboarding != null || current.bathroomView != BathroomView.HOUSE || current.sleeping) return
+        if (current.progress.petDirtStage > 0) {
+            interactiveOutlineJob?.cancel()
+            interactiveOutlinesVisible = false
+            updateState(current.copy(
+                showInteractiveObjectOutlines = false,
+                petWashGuideStep = PetWashGuideStep.DIRTY_NOTICE,
+            ))
+        } else {
+            showInteractiveObjectOutlines()
+        }
+    }
+
+    private fun continuePetWashGuide() {
+        val current = nullableState<RoomViewState.Content>() ?: return
+        val step = current.petWashGuideStep ?: return
+        if (step == PetWashGuideStep.DIRTY_NOTICE) {
+            petWashGuidePromptRepository.tryMarkShownForCurrentDirtEpisode()
+        }
+        updateState(current.copy(petWashGuideStep = step.nextOrNull()))
     }
 
     private fun showInteractiveObjectOutlines() {
@@ -559,6 +588,18 @@ internal class RoomViewModel(
                             ),
                         )
                     }
+                    val onboardingState = onboardingUiState()
+                    if (roomData.progress.petDirtStage == 0) {
+                        petWashGuidePromptRepository.resetForCleanPet()
+                    }
+                    val retainedPetWashGuide = current?.petWashGuideStep
+                        ?.takeIf { roomData.progress.petDirtStage > 0 }
+                    val petWashGuideStep = retainedPetWashGuide ?: PetWashGuideStep.DIRTY_NOTICE
+                        .takeIf {
+                            roomData.progress.petDirtStage > 0 &&
+                                onboardingState == null &&
+                                !petWashGuidePromptRepository.wasShownForCurrentDirtEpisode()
+                        }
                     updateState(
                         RoomViewState.Content(
                             zones = zones,
@@ -606,6 +647,7 @@ internal class RoomViewModel(
                                 RoomMenuDestination.PARENT_CABINET
                             } else current?.menuDestination ?: RoomMenuDestination.NONE,
                             showInteractiveObjectOutlines = interactiveOutlinesVisible,
+                            petWashGuideStep = petWashGuideStep,
                             isSoundEnabled = gameAudio.isSoundEnabled(),
                             areMenuAchievementsExpanded = current?.areMenuAchievementsExpanded ?: false,
                             parentGate = current?.parentGate,
@@ -624,14 +666,28 @@ internal class RoomViewModel(
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
                             dayTransitionNotice = current?.dayTransitionNotice ?: appEntryNotice,
-                            impulseWish = current?.impulseWish,
+                            impulseWishes = current?.impulseWishes?.takeIf {
+                                current.progress.absoluteDay == roomData.progress.absoluteDay
+                            }.orEmpty(),
+                            petWishBoardWishes = current?.petWishBoardWishes
+                                ?.filter { wish ->
+                                    if (wish.isCompleted) wish.completedOnAbsoluteDay == roomData.progress.absoluteDay
+                                    else wish.expiresOnAbsoluteDayExclusive
+                                        ?.let { it > roomData.progress.absoluteDay } != false
+                                }
+                                .orEmpty(),
+                            wishFulfillments = current?.wishFulfillments.orEmpty(),
+                            isWishBoardVisible = current?.isWishBoardVisible == true &&
+                                current.progress.absoluteDay == roomData.progress.absoluteDay,
                             moneyEvent = current?.moneyEvent?.takeIf {
                                 it.weekNumber == roomData.progress.weekNumber
                             },
+                            sleepBlockedByKnownExpense = current?.sleepBlockedByKnownExpense == true &&
+                                current.progress.absoluteDay == roomData.progress.absoluteDay,
                             moneyEventError = current?.moneyEventError,
                             resolvingMoneyEvent = current?.resolvingMoneyEvent ?: false,
                             rulesRecapVisible = current?.rulesRecapVisible ?: false,
-                            onboarding = onboardingUiState(),
+                            onboarding = onboardingState,
                         ),
                     )
                     appEntryNoticePending = false
@@ -639,8 +695,8 @@ internal class RoomViewModel(
                     showFirstWeekNeedHintIfNeeded(roomData.progress)
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 handleLowBalance(roomData.progress)
-                if (onboardingStep == FirstRunOnboardingStep.COMPLETED) {
-                    loadImpulseWishForDay(roomData.progress.absoluteDay)
+                if (canIntroducePetWishes()) {
+                    refreshWishBoardForDay(roomData.progress.absoluteDay)
                 }
                 if (roomData.progress.planProgress != null &&
                     onboardingStep in setOf(FirstRunOnboardingStep.COMPLETED,
@@ -653,23 +709,81 @@ internal class RoomViewModel(
         }
     }
 
-    private fun loadImpulseWishForDay(absoluteDay: Long) {
-        if (absoluteDay in checkedImpulseWishDays || impulseWishJob?.isActive == true) return
-        checkedImpulseWishDays += absoluteDay
-        impulseWishJob = launchCoroutine(
+    private fun canIntroducePetWishes(): Boolean = onboardingStep in setOf(
+        FirstRunOnboardingStep.COMPLETED,
+        FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
+        FirstRunOnboardingStep.SECOND_DAY_MORNING,
+        FirstRunOnboardingStep.SECOND_DAY_WISHES,
+        FirstRunOnboardingStep.WISH_BOARD_GUIDANCE,
+    )
+
+    private fun refreshWishBoardForDay(absoluteDay: Long) {
+        if (wishBoardRefreshJob?.isActive == true) return
+        wishBoardRefreshJob = launchCoroutine(
             handleAction = ExceptionConsumer {
-                checkedImpulseWishDays -= absoluteDay
-                impulseWishJob = null
+                wishBoardRefreshJob = null
                 true
             },
         ) {
-            val wish = loadRoomImpulseWish()
             nullableState<RoomViewState.Content>()?.let { content ->
-                if (content.progress.absoluteDay == absoluteDay && content.onboarding == null) {
-                    updateState(content.copy(impulseWish = wish))
+                if (content.progress.absoluteDay == absoluteDay) {
+                    val wishes = loadRoomImpulseWish.currentWishes(
+                        absoluteDay = absoluteDay,
+                        activeGoalId = content.activeSavingsGoal?.goal?.id,
+                    )
+                    val dialogueWishes = if (canIntroducePetWishes()) wishes.mapNotNull {
+                        loadRoomImpulseWish.claimDialogue(it)
+                    } else emptyList()
+                    val fulfillments = loadRoomImpulseWish.currentFulfillments()
+                    nullableState<RoomViewState.Content>()?.takeIf {
+                        it.progress.absoluteDay == absoluteDay
+                    }?.let { latest ->
+                        updateState(latest.copy(
+                            petWishBoardWishes = wishes,
+                            impulseWishes = (latest.impulseWishes + dialogueWishes)
+                                .distinctBy { it.eventId }
+                                .filter { wish -> wish.eventId !in acknowledgedWishDialogues &&
+                                    wishes.any { !it.isCompleted && it.eventId == wish.eventId } },
+                            wishFulfillments = fulfillments.filterNot { it.id in acknowledgedWishFulfillments },
+                        ))
+                    }
                 }
             }
-            impulseWishJob = null
+            wishBoardRefreshJob = null
+            continueAfterWishIntroduction()
+        }
+    }
+
+    private fun closeImpulseWish() {
+        val wish = nullableState<RoomViewState.Content>()?.impulseWish ?: return
+        launchCoroutine(handleAction = ExceptionConsumer { true }) {
+            loadRoomImpulseWish.acknowledgeDialogue(wish.eventId)
+            acknowledgedWishDialogues += wish.eventId
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    impulseWishes = latest.impulseWishes.filterNot { it.eventId == wish.eventId },
+                ))
+            }
+            continueAfterWishIntroduction()
+            if (wish.isPurchasable) loadRoomImpulseWish.recordDeclined(wish)
+        }
+    }
+
+    private fun continueAfterWishIntroduction() {
+        if (onboardingStep == FirstRunOnboardingStep.SECOND_DAY_WISHES &&
+            wishBoardRefreshJob?.isActive != true &&
+            nullableState<RoomViewState.Content>()?.impulseWishes?.isEmpty() == true
+        ) transitionOnboarding(FirstRunOnboardingStep.WISH_BOARD_GUIDANCE)
+    }
+
+    private fun closeWishFulfillment(id: String) {
+        if (nullableState<RoomViewState.Content>()?.wishFulfillments?.firstOrNull()?.id != id) return
+        launchCoroutine(handleAction = ExceptionConsumer { true }) {
+            loadRoomImpulseWish.acknowledgeFulfillment(id)
+            acknowledgedWishFulfillments += id
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(wishFulfillments = latest.wishFulfillments.filterNot { it.id == id }))
+            }
         }
     }
 
@@ -712,6 +826,8 @@ internal class RoomViewModel(
             nullableState<RoomViewState.Content>()?.let { latest ->
                 updateState(latest.copy(
                     moneyEvent = if (result == MoneyEventResolution.Completed) null else event,
+                    sleepBlockedByKnownExpense = result != MoneyEventResolution.Completed &&
+                        latest.sleepBlockedByKnownExpense,
                     moneyEventError = result.takeUnless { it == MoneyEventResolution.Completed },
                     resolvingMoneyEvent = false,
                 ))
@@ -818,7 +934,7 @@ internal class RoomViewModel(
         onboardingRefreshJob?.cancel()
         firstWeekNeedHintJob?.cancel()
         firstWeekGoalHintJob?.cancel()
-        impulseWishJob?.cancel()
+        wishBoardRefreshJob?.cancel()
         buyJob = null
         sleepJob = null
         savePlanJob = null
@@ -827,9 +943,8 @@ internal class RoomViewModel(
         onboardingRefreshJob = null
         firstWeekNeedHintJob = null
         firstWeekGoalHintJob = null
-        impulseWishJob = null
-        checkedImpulseWishDays.clear()
-        promptedSavingsRecoveryWeeks.clear()
+        wishBoardRefreshJob = null
+        acknowledgedWishDialogues.clear()
         hintedHungerDays.clear()
         reconciledPlanWeeks.clear()
         reconcilingPlanWeek = null
@@ -845,12 +960,16 @@ internal class RoomViewModel(
         nullableState<RoomViewState.Content>()?.let { content ->
             updateState(content.copy(onboarding = onboardingUiState()))
             if (step == FirstRunOnboardingStep.COMPLETED) {
-                loadImpulseWishForDay(content.progress.absoluteDay)
+                refreshWishBoardForDay(content.progress.absoluteDay)
                 handleLowBalance(content.progress)
             }
             if (step == FirstRunOnboardingStep.WAITING_FOR_WEEK_END) {
+                refreshWishBoardForDay(content.progress.absoluteDay)
                 showFirstWeekNeedHintIfNeeded(content.progress)
                 loadFirstWeekGoalHintIfNeeded()
+            }
+            if (step == FirstRunOnboardingStep.SECOND_DAY_WISHES) {
+                refreshWishBoardForDay(content.progress.absoluteDay)
             }
         }
     }
@@ -905,7 +1024,9 @@ internal class RoomViewModel(
                 transitionOnboarding(FirstRunOnboardingStep.BEDTIME_GUIDANCE)
             FirstRunOnboardingStep.BEDTIME_GUIDANCE ->
                 transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_BED)
-            FirstRunOnboardingStep.SECOND_DAY_MORNING -> {
+            FirstRunOnboardingStep.SECOND_DAY_MORNING ->
+                transitionOnboarding(FirstRunOnboardingStep.SECOND_DAY_WISHES)
+            FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> {
                 completeOnboardingChapter(FirstRunOnboardingChapter.SECOND_DAY_MORNING)
                 transitionOnboarding(onboardingProgress.firstStep)
             }
@@ -935,6 +1056,7 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.FEEDING,
             FirstRunOnboardingStep.FEEDING_DONE,
             FirstRunOnboardingStep.WAITING_FOR_BED,
+            FirstRunOnboardingStep.SECOND_DAY_WISHES,
             FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
             FirstRunOnboardingStep.WEEK_END_INTRO,
             FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
@@ -1147,6 +1269,11 @@ internal class RoomViewModel(
                     ZoneBuyResult.Bought -> {
                         commands.onNext(RoomCommand.CloseBuyConfirmation(zoneId))
                         router.showBought()
+                        content.petWishBoardWishes.firstOrNull { wish ->
+                            !wish.isCompleted && wish.kind == github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.TOY &&
+                                wish.productId == zoneId
+                        }?.let { loadRoomImpulseWish.recordFulfilled(it) }
+                        refreshWishBoardForDay(content.progress.absoluteDay)
                         if (zoneId in FIRST_SAVINGS_GOAL_ZONE_IDS &&
                             !onboardingRepository.isFirstGamePurchaseExplained()
                         ) {
@@ -1205,6 +1332,35 @@ internal class RoomViewModel(
             onboardingStep != FirstRunOnboardingStep.WAITING_FOR_BED &&
             onboardingStep != FirstRunOnboardingStep.WAITING_FOR_WEEK_END
         ) return
+        if (content.progress.knownMandatoryExpenseRub > 0 &&
+            content.progress.dayOfWeek == 3 && content.progress.planProgress != null
+        ) {
+            val expectedDay = content.progress.absoluteDay
+            launchCoroutine(handleAction = ExceptionConsumer {
+                nullableState<RoomViewState.Content>()?.let {
+                    updateState(it.copy(sleepConfirmationVisible = true))
+                }
+                true
+            }) {
+                val pending = moneyEvents.pending()
+                nullableState<RoomViewState.Content>()?.takeIf {
+                    it.progress.absoluteDay == expectedDay
+                }?.let { latest ->
+                    if (pending?.kind ==
+                        github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.KNOWN_EXPENSE
+                    ) {
+                        updateState(latest.copy(
+                            moneyEvent = pending,
+                            sleepBlockedByKnownExpense = true,
+                            sleepConfirmationVisible = false,
+                        ))
+                    } else {
+                        updateState(latest.copy(sleepConfirmationVisible = true))
+                    }
+                }
+            }
+            return
+        }
         updateState(content.copy(sleepConfirmationVisible = true))
     }
 
@@ -1286,7 +1442,12 @@ internal class RoomViewModel(
                     github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.EXTRA_INCOME ||
                     content.progress.dayOfWeek == 7)) {
                     nullableState<RoomViewState.Content>()?.let { latest ->
-                        updateState(latest.copy(moneyEvent = pending, sleeping = false))
+                        updateState(latest.copy(
+                            moneyEvent = pending,
+                            sleepBlockedByKnownExpense = pending.kind ==
+                                github.detrig.feature.room.domain.model.RoomMoneyEvent.Kind.KNOWN_EXPENSE,
+                            sleeping = false,
+                        ))
                     }
                     return@launchCoroutine
                 }
@@ -1670,11 +1831,9 @@ internal class RoomViewModel(
                     if (current?.savingsRecoveryPrompt != null) {
                         return@launchCoroutine
                     }
-                    if (progress.weekNumber !in promptedSavingsRecoveryWeeks &&
-                        current != null &&
+                    if (current != null &&
                         current.earlyWeekParentHelpNotice == null
                     ) {
-                        promptedSavingsRecoveryWeeks += progress.weekNumber
                         updateState(current.copy(
                             savingsRecoveryPrompt = SavingsRecoveryPromptState,
                         ))

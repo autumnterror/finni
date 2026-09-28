@@ -24,7 +24,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -67,6 +69,8 @@ class DebugMenuViewModelTest {
                 override fun back() = Unit
                 override fun close() = Unit
             },
+            createSecuritySituation = { true },
+            createWishSituation = { true },
         )
 
         viewModel.perform(DebugMenuViewEvent.EndWeek)
@@ -80,6 +84,74 @@ class DebugMenuViewModelTest {
             "Воскресенье. Вернитесь в комнату и нажмите на кровать, чтобы увидеть итоги недели.",
             viewModel.state().value?.statusMessage,
         )
+    }
+
+    @Test
+    fun randomSituationOpensWishInRoom() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val router = RecordingRouter()
+        var wishCreated = false
+        val viewModel = debugViewModel(
+            router = router,
+            createSecuritySituation = { error("Security was not selected") },
+            createWishSituation = { wishCreated = true; true },
+            randomBoolean = { false },
+        )
+
+        viewModel.perform(DebugMenuViewEvent.TriggerRandomSituation)
+        advanceUntilIdle()
+
+        assertTrue(wishCreated)
+        assertEquals(1, router.closeCalls)
+        assertNull(router.openedAppId)
+        assertFalse(viewModel.state().value!!.isTriggeringSituation)
+    }
+
+    @Test
+    fun randomSituationFallsBackToSecurityWhenWishIsUnavailable() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val router = RecordingRouter()
+        var securityCreated = false
+        val viewModel = debugViewModel(
+            router = router,
+            createSecuritySituation = { securityCreated = true; true },
+            createWishSituation = { false },
+            randomBoolean = { false },
+        )
+
+        viewModel.perform(DebugMenuViewEvent.TriggerRandomSituation)
+        advanceUntilIdle()
+
+        assertTrue(securityCreated)
+        assertEquals("messages", router.openedAppId)
+        assertEquals(0, router.closeCalls)
+    }
+
+    private fun debugViewModel(
+        router: PhoneRouter,
+        createSecuritySituation: suspend () -> Boolean,
+        createWishSituation: suspend () -> Boolean,
+        randomBoolean: () -> Boolean,
+    ) = DebugMenuViewModel(
+        economyApi = unusedApi(),
+        weekApi = unusedApi(),
+        gameStateApi = unusedApi(),
+        resetDemoProgress = {},
+        petApi = unusedApi(),
+        router = router,
+        createSecuritySituation = createSecuritySituation,
+        createWishSituation = createWishSituation,
+        randomBoolean = randomBoolean,
+    )
+
+    private class RecordingRouter : PhoneRouter {
+        var openedAppId: String? = null
+        var closeCalls: Int = 0
+
+        override fun open() = Unit
+        override fun openApp(appId: String) { openedAppId = appId }
+        override fun back() = Unit
+        override fun close() { closeCalls++ }
     }
 
     private inline fun <reified T> unusedApi(): T = Proxy.newProxyInstance(

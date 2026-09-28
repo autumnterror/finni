@@ -60,4 +60,7 @@ private class GameStateDependenciesImpl(
 
     override suspend fun currentWeekNumber(): Long = databaseModule.weekDao.getState()
         ?.let { WeekState(it.absoluteDay).weekNumber } ?: 1L
+
+    override suspend fun currentAbsoluteDay(): Long = databaseModule.weekDao.getState()
+        ?.absoluteDay ?: 1L
 }

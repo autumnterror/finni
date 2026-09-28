@@ -23,6 +23,7 @@ import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteracto
 import github.detrig.feature.room.domain.interactor.RoomMoneyEventInteractor
 import github.detrig.feature.room.domain.interactor.PurchaseSavingsGoalInteractor
 import github.detrig.feature.room.data.local.RoomMoneyEventStorage
+import github.detrig.feature.room.data.local.PetWashGuidePromptStorage
 import github.detrig.feature.room.navigation.RoomRouterImpl
 import github.detrig.feature.room.presentation.RoomViewModel
 import github.detrig.feature.room.domain.furniture.FurnitureCatalog
@@ -36,6 +37,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         FurnitureStore(
             dependencies.housePreferences(), furnitureCatalog, surfaceCatalog, dependencies.economyApi(),
             dependencies.planningApi(), dependencies.weekApi(),
+            dependencies.impulseWishSource(),
         )
     }
     private val minimumProductPriceRub = dependencies.minimumProductPriceRub()
@@ -68,6 +70,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
             surfaceCatalog = surfaceCatalog,
             furnitureStore = furnitureStore,
             economyApi = dependencies.economyApi(),
+            wishArtwork = dependencies.wishArtwork(),
         )
     }
     private val router by lazy {
@@ -91,6 +94,9 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     private val parentHelpPrompt by lazy {
         github.detrig.feature.room.data.local.ParentHelpPromptStorage(dependencies.housePreferences())
     }
+    private val petWashGuidePrompt by lazy {
+        PetWashGuidePromptStorage(dependencies.housePreferences())
+    }
     private val endWeekEarlyWithParentHelp by lazy { EndWeekEarlyWithParentHelpInteractor(repository) }
     private val loadImpulseWish by lazy { LoadRoomImpulseWishInteractor(dependencies.impulseWishSource()) }
     private val moneyEvents by lazy { RoomMoneyEventInteractor(repository) }
@@ -98,7 +104,8 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
     override fun getRoomViewModel() = RoomViewModel(
         observeZones, buyZone, endDay, assessWeeklyPlan, saveWeeklyPlan, weeklyPlanLearning, openSavings, saveZoneAsGoal,
         loadActiveSavingsGoal, reconcileSavingsLearning, loadParentHelp, requestParentHelp,
-        endWeekEarlyWithParentHelp, parentHelpPrompt, minimumProductPriceRub, loadImpulseWish, moneyEvents,
+        endWeekEarlyWithParentHelp, parentHelpPrompt, petWashGuidePrompt, minimumProductPriceRub,
+        loadImpulseWish, moneyEvents,
         router, positions, onboarding,
         firstRunGuide,
         dependencies.inventoryApi(),

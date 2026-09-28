@@ -38,6 +38,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
@@ -195,7 +196,7 @@ private fun ModalCloseButton(
     }
 }
 
-enum class FinPetModalSectionTone { Neutral, Highlighted, Warning }
+enum class FinPetModalSectionTone { Neutral, Highlighted, Warning, Positive }
 
 /** Округлая storefront-карточка для смысловых блоков внутри модалки. */
 @Composable
@@ -208,6 +209,11 @@ fun FinPetModalSection(
         FinPetModalSectionTone.Neutral -> AppTheme.colors.storefront.surface
         FinPetModalSectionTone.Highlighted -> AppTheme.colors.storefront.selectedSurface
         FinPetModalSectionTone.Warning -> AppTheme.colors.currencyContainer
+        FinPetModalSectionTone.Positive -> lerp(
+            AppTheme.colors.statusPositive.container,
+            AppTheme.colors.statusPositive.accent,
+            0.18f,
+        )
     }
     FinPetStorefrontCard(
         modifier = modifier,
@@ -451,6 +457,13 @@ private fun FinPetModalPreview() {
                     )
                 }
                 FinPetMoneyAmount("480")
+                FinPetModalSection(Modifier.fillMaxWidth(), FinPetModalSectionTone.Positive) {
+                    Text(
+                        text = "Пополнить копилку ✓",
+                        modifier = Modifier.padding(AppTheme.spacing.md),
+                        style = AppTheme.typography.body,
+                    )
+                }
             }
         }
     }

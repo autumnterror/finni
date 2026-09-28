@@ -35,6 +35,16 @@ internal class GameStateRepositoryImpl(
     override suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int =
         localDataSource.rewardClothingPurchase(purchaseOperationId, happinessPoints)
 
+    override suspend fun rewardPetWishHappiness(wishRewardId: String, happinessPoints: Int): Int =
+        localDataSource.rewardPetWishHappiness(wishRewardId, happinessPoints)
+
+    override suspend fun petWishActivities() = localDataSource.petWishActivities()
+
+    override suspend fun activateSavingsHappinessProtection(
+        contributionOperationId: String,
+        throughAbsoluteDay: Long,
+    ) = localDataSource.activateSavingsHappinessProtection(contributionOperationId, throughAbsoluteDay)
+
     override suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult =
         localDataSource.feedPet(completion)
 

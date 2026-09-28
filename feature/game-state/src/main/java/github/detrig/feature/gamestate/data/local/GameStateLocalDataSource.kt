@@ -11,6 +11,7 @@ import github.detrig.feature.gamestate.domain.model.PetFeedingCompletion
 import github.detrig.feature.gamestate.domain.model.PetFeedingResult
 import github.detrig.feature.gamestate.domain.model.PetSatietyRules
 import github.detrig.feature.gamestate.domain.model.PetHappinessRules
+import github.detrig.feature.gamestate.domain.model.PetWishHappinessRewards
 import github.detrig.feature.gamestate.domain.model.HungerAlertState
 import github.detrig.feature.gamestate.domain.model.PetDirtAnchor
 import github.detrig.feature.gamestate.domain.model.PetDirtRules
@@ -43,6 +44,7 @@ internal class GameStateLocalDataSource(
     private val currentTimeMillis: () -> Long,
     private val dirtStorage: PetDirtStorage,
     private val currentWeekNumber: suspend () -> Long,
+    private val currentAbsoluteDay: suspend () -> Long,
 ) {
     suspend fun initialize(): GameState = transactionRunner.runInTransaction {
         val stored = dao.getCurrentStateWithZones()
@@ -149,9 +151,28 @@ internal class GameStateLocalDataSource(
             check(dao.increaseHappiness(delta) == 1)
             petPlayEffectDao.insert(PetPlayEffectEntity(operationId, completion.profileId, completion.sessionId,
                 completion.gameId, delta, currentTimeMillis()))
+            if (github.detrig.feature.gamestate.domain.model.PetPlayReward.delta(0, completion) > 0) {
+                petPlayEffectDao.insert(PetPlayEffectEntity(
+                    operationId = "pet-wish-play:$operationId",
+                    profileId = completion.profileId,
+                    sessionId = completion.sessionId,
+                    gameId = "pet-wish-play:${completion.gameId}",
+                    happinessDelta = 0,
+                    appliedAtMillis = currentTimeMillis(),
+                ))
+            }
             grantMiniGameXp(completion)
             delta
         }
+
+    suspend fun petWishActivities() = petPlayEffectDao.wishActivities().map { effect ->
+        github.detrig.feature.gamestate.domain.model.PetWishActivity(
+            id = effect.operationId,
+            source = effect.gameId,
+            sourceOperationId = effect.sessionId,
+            appliedAtMillis = effect.appliedAtMillis,
+        )
+    }
 
     suspend fun rewardMiniGameLaunch(gameId: String, absoluteDay: Long): Int =
         transactionRunner.runInTransaction {
@@ -183,6 +204,43 @@ internal class GameStateLocalDataSource(
             )
         }
 
+    suspend fun rewardPetWishHappiness(wishRewardId: String, happinessPoints: Int): Int =
+        transactionRunner.runInTransaction {
+            require(wishRewardId.isNotBlank())
+            require(happinessPoints in 5..20)
+            applyHappinessRewardOnce(
+                current = initialize(),
+                operationId = "pet-wish-happiness:$wishRewardId",
+                sourceId = "pet-wish-happiness",
+                sourceOperationId = wishRewardId,
+                points = happinessPoints,
+            )
+        }
+
+    suspend fun activateSavingsHappinessProtection(
+        contributionOperationId: String,
+        throughAbsoluteDay: Long,
+    ) = transactionRunner.runInTransaction {
+        require(contributionOperationId.isNotBlank())
+        require(throughAbsoluteDay >= 1L)
+        val operationId = "savings-happiness-protection:$contributionOperationId"
+        petPlayEffectDao.find(operationId)?.let { existing ->
+            require(existing.gameId == SAVINGS_PROTECTION_GAME_ID && existing.sessionId.toLongOrNull() != null) {
+                "Savings protection operation ID conflict"
+            }
+            return@runInTransaction
+        }
+        initialize()
+        petPlayEffectDao.insert(PetPlayEffectEntity(
+            operationId = operationId,
+            profileId = GameStateEntity.CURRENT_STATE_ID,
+            sessionId = throughAbsoluteDay.toString(),
+            gameId = SAVINGS_PROTECTION_GAME_ID,
+            happinessDelta = 0,
+            appliedAtMillis = currentTimeMillis(),
+        ))
+    }
+
     private suspend fun applyHappinessRewardOnce(
         current: GameState,
         operationId: String,
@@ -212,9 +270,17 @@ internal class GameStateLocalDataSource(
     suspend fun applyDayNeeds(): Unit = transactionRunner.runInTransaction {
         val current = initialize()
         check(PetSatietyRules.canSleep(current.pet.hunger)) {
-            "Pet needs more than ${PetSatietyRules.MINIMUM_TO_SLEEP} satiety to end the day"
+            "Pet needs at least ${PetSatietyRules.SLEEP_COST} satiety to end the day"
         }
-        check(dao.decreaseNeedsForDay(PetSatietyRules.SLEEP_COST, PetHappinessRules.SLEEP_COST) == 1)
+        val absoluteDay = currentAbsoluteDay()
+        val protectionThrough = petPlayEffectDao.latestSessionForGame(SAVINGS_PROTECTION_GAME_ID)
+            ?.toLongOrNull() ?: 0L
+        val happinessCost = if (absoluteDay <= protectionThrough) {
+            PetHappinessRules.SAVINGS_PROTECTED_SLEEP_COST
+        } else {
+            PetHappinessRules.SLEEP_COST
+        }
+        check(dao.decreaseNeedsForDay(PetSatietyRules.SLEEP_COST, happinessCost) == 1)
     }
 
     /**
@@ -292,6 +358,17 @@ internal class GameStateLocalDataSource(
             is FinancialOperationResult.Applied,
             is FinancialOperationResult.AlreadyApplied -> {
                 zoneDao.insert(RoomZoneEntity(sessionId, offer.zoneId, now))
+                if (offer.zoneId in SAVINGS_GAME_ZONE_IDS &&
+                    economyApi.getActiveGoal()?.id == "room-zone:${offer.zoneId}"
+                ) {
+                    applyHappinessRewardOnce(
+                        current = current,
+                        operationId = "pet-wish-game-unlocked:${offer.zoneId}",
+                        sourceId = "pet-wish-game-unlocked",
+                        sourceOperationId = offer.zoneId,
+                        points = PetWishHappinessRewards.UNLOCKED_GAME,
+                    )
+                }
                 ZoneBuyResult.Bought
             }
             is FinancialOperationResult.Rejected -> when (debit.reason) {
@@ -385,5 +462,7 @@ internal class GameStateLocalDataSource(
 
     private companion object {
         const val FEEDING_EFFECT_GAME_ID = "feeding"
+        const val SAVINGS_PROTECTION_GAME_ID = "savings-happiness-protection"
+        val SAVINGS_GAME_ZONE_IDS = setOf("fishing", "drawing", "music")
     }
 }

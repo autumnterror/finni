@@ -14,4 +14,5 @@ interface WardrobeDependencies {
     fun economyApi(): EconomyApi
     fun planningApi(): PlanningApi
     fun weekApi(): WeekApi
+    suspend fun wishIdForClothing(itemId: String): String? = null
 }

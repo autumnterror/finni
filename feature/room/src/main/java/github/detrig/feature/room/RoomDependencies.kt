@@ -13,6 +13,7 @@ import github.detrig.feature.learning.api.LearningApi
 import github.detrig.feature.savings.api.SavingsApi
 import github.detrig.feature.inventory.api.InventoryApi
 import github.detrig.feature.room.api.RoomGameLauncher
+import github.detrig.feature.room.api.RoomWishArtwork
 import github.detrig.feature.room.api.RoomWardrobeLauncher
 import github.detrig.feature.room.api.RoomTestsLauncher
 import github.detrig.feature.room.domain.model.RoomImpulseWishSource
@@ -31,6 +32,7 @@ interface RoomDependencies {
     fun wardrobeLauncher(): RoomWardrobeLauncher
     fun testsLauncher(): RoomTestsLauncher
     fun impulseWishSource(): RoomImpulseWishSource
+    fun wishArtwork(): RoomWishArtwork
     fun globalMessageController(): GlobalMessageController
     fun resources(): Resources
     fun gameAudio(): GameAudio

@@ -126,6 +126,20 @@ class ShopCartViewModelTest {
     }
 
     @Test
+    fun insufficientFundsCanOpenSavingsAndKeepTheCart() {
+        val apple = catalog.storefront.items.first()
+        host.balance.value = 10L
+        host.savings.value = 100L
+        cartStore.add(GroceryStoreIds.Store, apple.id)
+        start()
+
+        viewModel.perform(ShopCartViewEvent.OpenSavings)
+
+        assertEquals(1, host.openSavingsCalls)
+        assertEquals(1, state().cart.quantityOf(apple.id))
+    }
+
+    @Test
     fun promotionRemainsAvailableAfterSuccessfulCheckout() {
         val apple = catalog.storefront.items.first()
         val promotion = ShopDecisionEvent(
@@ -191,14 +205,22 @@ class ShopCartViewModelTest {
 
     private class FakeHost : ShopHost {
         val balance = MutableStateFlow(480L)
+        val savings = MutableStateFlow(0L)
         var checkoutCalls = 0
+        var openSavingsCalls = 0
         var lastRequest: ShopCheckoutRequest? = null
 
         override suspend fun preparePlayer() = Unit
 
         override fun observeBalanceRub(): Flow<Long> = balance
 
+        override fun observeSavingsRub(): Flow<Long> = savings
+
         override fun observePetName(): Flow<String> = MutableStateFlow("Пончик")
+
+        override fun openSavings() {
+            openSavingsCalls++
+        }
 
         override suspend fun currentDecisionEvent(storeId: StoreId) = null
 
