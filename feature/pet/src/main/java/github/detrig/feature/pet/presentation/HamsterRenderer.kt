@@ -292,7 +292,7 @@ internal suspend fun loadHamsterAssets(
         )
     }
 
-    val thumbnails = loadHamsterThumbnails(assetManager, root)
+    val thumbnails = loadHamsterThumbnails(assetManager, root, json.optJSONObject("thumbnailAliases"))
     HamsterAssets(
         canvasSize = canvas.getInt("width"),
         layers = layers,
@@ -306,6 +306,7 @@ internal suspend fun loadHamsterAssets(
 private fun loadHamsterThumbnails(
     assetManager: AssetManager,
     root: String,
+    aliases: JSONObject?,
 ): Map<String, ImageBitmap> {
     val result = mutableMapOf<String, ImageBitmap>()
     assetManager.list("$root/assets/thumbnails")?.forEach { filename ->
@@ -314,6 +315,9 @@ private fun loadHamsterThumbnails(
             requireNotNull(BitmapFactory.decodeStream(stream))
         }
         result[key] = bitmap.asImageBitmap()
+    }
+    aliases?.keys()?.forEach { key ->
+        result[key] = result.getValue(aliases.getString(key))
     }
     return result
 }

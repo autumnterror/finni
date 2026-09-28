@@ -32,11 +32,11 @@ internal object DirtArtwork {
         clothingSources: List<String>,
     ): DirtLayers? = synchronized(cache) {
         DirtLayers(
-            head = cache.get("pet/head_${appearance.fur}.webp") ?: return null,
-            body = cache.get("pet/body_${appearance.fur}.webp") ?: return null,
-            ears = cache.get("pet/ears_${appearance.ears}.webp") ?: return null,
+            head = cache.get(dirtAssetPath("pet/head_${appearance.fur}.webp")) ?: return null,
+            body = cache.get(dirtAssetPath("pet/body_${appearance.fur}.webp")) ?: return null,
+            ears = cache.get(dirtAssetPath("pet/ears_${appearance.ears}.webp")) ?: return null,
             clothing = clothingSources.distinct().associateWith { source ->
-                cache.get("clothing/$source.webp") ?: return null
+                cache.get(dirtAssetPath("clothing/$source.webp")) ?: return null
             },
         )
     }
@@ -57,12 +57,13 @@ internal object DirtArtwork {
     }
 
     private fun image(assets: AssetManager, path: String): ImageBitmap {
-        synchronized(cache) { cache.get(path)?.let { return it } }
-        val bitmap = assets.open(ROOT + path).use { stream ->
+        val assetPath = dirtAssetPath(path)
+        synchronized(cache) { cache.get(assetPath)?.let { return it } }
+        val bitmap = assets.open(ROOT + assetPath).use { stream ->
             requireNotNull(BitmapFactory.decodeStream(stream, null,
                 BitmapFactory.Options().apply { inScaled = false; inSampleSize = 2 }))
         }.asImageBitmap()
-        synchronized(cache) { cache.put(path, bitmap) }
+        synchronized(cache) { cache.put(assetPath, bitmap) }
         return bitmap
     }
 }

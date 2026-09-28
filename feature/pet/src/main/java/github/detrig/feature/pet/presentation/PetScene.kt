@@ -1,12 +1,5 @@
 package github.detrig.feature.pet.presentation
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas as AndroidCanvas
-import android.graphics.ColorMatrix as AndroidColorMatrix
-import android.graphics.ColorMatrixColorFilter as AndroidColorMatrixColorFilter
-import android.graphics.Paint as AndroidPaint
-import android.graphics.Rect
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -18,7 +11,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -36,27 +28,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.PointerInputModifierNode
 import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -66,7 +51,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.graphics.createBitmap
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.R
@@ -105,8 +89,8 @@ fun PetScene(
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
     val description = stringResource(R.string.pet_content_description, profile.name, speciesName)
-    val hamsterAssets = if (profile.species == PetSpecies.Hamster) rememberHamsterAssets() else null
-    val hamsterBlink = if (profile.species == PetSpecies.Hamster) rememberHamsterBlink() else false
+    val hamsterAssets = rememberHamsterAssets()
+    val hamsterBlink = rememberHamsterBlink()
     val visibleBlink = !freezeAnimation && hamsterBlink
     val reaction = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -183,7 +167,7 @@ fun PetScene(
         }
     }
     val clickModifier = when {
-        profile.species == PetSpecies.Hamster && hamsterAssets != null -> modifier.hamsterClickable(
+        hamsterAssets != null -> modifier.hamsterClickable(
             assets = hamsterAssets,
             appearance = profile.hamsterAppearance,
             blink = visibleBlink,
@@ -226,7 +210,7 @@ fun PetScene(
                         translationX = flightWobble * size.width * 0.008f
                     },
             ) {
-                if (profile.species == PetSpecies.Hamster && hamsterAssets != null) {
+                if (hamsterAssets != null) {
                     HamsterPreview(
                         assets = hamsterAssets,
                         appearance = profile.hamsterAppearance,
@@ -242,22 +226,6 @@ fun PetScene(
                             profile.hamsterAppearance,
                         ),
                         dirtStage = dirtStage,
-                    )
-                } else if (profile.species != PetSpecies.Hamster) {
-                    Image(
-                        bitmap = ImageBitmap.imageResource(profile.species.artwork().baseRes),
-                        contentDescription = description,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                        filterQuality = FilterQuality.None,
-                    )
-                    Image(
-                        bitmap = ImageBitmap.imageResource(profile.species.artwork().colorMaskRes),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
-                        colorFilter = profile.color.colorFilter(),
-                        filterQuality = FilterQuality.None,
                     )
                 }
             }
@@ -516,85 +484,30 @@ internal fun rememberPetAppearanceBitmap(
     growthStage: GrowthStage = GrowthStage.BABY,
 ): ImageBitmap? {
     require(maxSidePx > 0)
-    if (profile.species == PetSpecies.Hamster) {
-        val assets = rememberHamsterAssets()
-        val blink = rememberHamsterBlink()
-        val assetManager = LocalResources.current.assets
-        val bitmap by produceState<ImageBitmap?>(
-            initialValue = null,
-            assets,
-            profile.hamsterAppearance,
-            growthStage,
-            profile.clothing.equippedBySlot,
-            blink,
-            maxSidePx,
-        ) {
-            value = assets?.let {
-                val clothes = ClothingArtwork.layers(
-                    assetManager,
-                    profile.clothing.equippedBySlot,
-                    profile.hamsterAppearance,
-                )
-                withContext(Dispatchers.Default) {
-                    it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes, growthStage).asImageBitmap()
-                }
-            }
-        }
-        return bitmap
-    }
-    val resources = LocalResources.current
-    val tint = profile.color.tint()
-    val tintArgb = tint.toArgb()
+    val assets = rememberHamsterAssets()
+    val blink = rememberHamsterBlink()
+    val assetManager = LocalResources.current.assets
     val bitmap by produceState<ImageBitmap?>(
         initialValue = null,
-        resources,
-        profile.species,
-        tintArgb,
+        assets,
+        profile.hamsterAppearance,
+        growthStage,
+        profile.clothing.equippedBySlot,
+        blink,
         maxSidePx,
     ) {
-        value = withContext(Dispatchers.Default) {
-            val artwork = profile.species.artwork()
-            val base = decodeSampledBitmap(resources, artwork.baseRes, maxSidePx)
-            val mask = decodeSampledBitmap(resources, artwork.colorMaskRes, maxSidePx)
-            try {
-                createBitmap(maxSidePx, maxSidePx).also { output ->
-                    val target = Rect(0, 0, maxSidePx, maxSidePx)
-                    val canvas = AndroidCanvas(output)
-                    val paint = AndroidPaint().apply { isFilterBitmap = false }
-                    canvas.drawBitmap(base, null, target, paint)
-                    paint.colorFilter = AndroidColorMatrixColorFilter(AndroidColorMatrix(tintMatrix(tint)))
-                    canvas.drawBitmap(mask, null, target, paint)
-                }.asImageBitmap()
-            } finally {
-                base.recycle()
-                mask.recycle()
+        value = assets?.let {
+            val clothes = ClothingArtwork.layers(
+                assetManager,
+                profile.clothing.equippedBySlot,
+                profile.hamsterAppearance,
+            )
+            withContext(Dispatchers.Default) {
+                it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes, growthStage).asImageBitmap()
             }
         }
     }
     return bitmap
-}
-
-private fun decodeSampledBitmap(
-    resources: android.content.res.Resources,
-    drawableRes: Int,
-    targetSidePx: Int,
-): Bitmap {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeResource(resources, drawableRes, bounds)
-    var sampleSize = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / (sampleSize * 2) >= targetSidePx) {
-        sampleSize *= 2
-    }
-    return requireNotNull(
-        BitmapFactory.decodeResource(
-            resources,
-            drawableRes,
-            BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inScaled = false
-            },
-        ),
-    )
 }
 
 @Composable
@@ -606,39 +519,6 @@ internal fun PetSpecies.title(): String = stringResource(
         PetSpecies.Rat -> R.string.pet_species_rat
         PetSpecies.Rooster -> R.string.pet_species_rooster
     },
-)
-
-@Composable
-internal fun PetColor.title(): String = stringResource(
-    when (this) {
-        PetColor.Sunny -> R.string.pet_color_sunny
-        PetColor.Mint -> R.string.pet_color_mint
-        PetColor.Coral -> R.string.pet_color_coral
-        PetColor.Sky -> R.string.pet_color_sky
-    },
-)
-
-@Composable
-internal fun PetColor.tint(): Color = when (this) {
-    PetColor.Sunny -> AppTheme.colors.petColorSunny
-    PetColor.Mint -> AppTheme.colors.petColorMint
-    PetColor.Coral -> AppTheme.colors.petColorCoral
-    PetColor.Sky -> AppTheme.colors.petColorSky
-}
-
-@Composable
-internal fun PetColor.colorFilter(): ColorFilter {
-    val color = tint()
-    return ColorFilter.colorMatrix(
-        ColorMatrix(tintMatrix(color)),
-    )
-}
-
-private fun tintMatrix(color: Color) = floatArrayOf(
-    color.red, 0f, 0f, 0f, 0f,
-    0f, color.green, 0f, 0f, 0f,
-    0f, 0f, color.blue, 0f, 0f,
-    0f, 0f, 0f, 1f, 0f,
 )
 
 @Composable

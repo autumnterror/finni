@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="feeding_close" type="drawable">@drawable/fridge_close</item>
+    <item name="feeding_quantity_badge" type="drawable">@drawable/fridge_quantity_badge</item>
+</resources>

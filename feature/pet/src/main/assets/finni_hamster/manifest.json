@@ -1821,5 +1821,8 @@
     "physicalLayers": 110,
     "compressedBytes": 2522822,
     "decodedRGBABytes": 97305404
+  },
+  "thumbnailAliases": {
+    "palette_caramel": "mark_none"
   }
 }
