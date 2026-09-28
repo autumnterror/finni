@@ -10,4 +10,5 @@ internal sealed interface FeedingViewEvent : CoreViewEvent {
     data object NextPage : FeedingViewEvent
     data class FoodDroppedIntoMouth(val productId: ProductId) : FeedingViewEvent
     data object FirstRunThanksDismissed : FeedingViewEvent
+    data object SpoilageNoticeDismissed : FeedingViewEvent
 }

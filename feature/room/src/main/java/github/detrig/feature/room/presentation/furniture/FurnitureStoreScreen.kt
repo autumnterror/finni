@@ -49,7 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import github.detrig.designsystem.component.FinPetBackButton
+import github.detrig.designsystem.component.FinPetStorefrontHeader
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCoinText
@@ -57,7 +57,6 @@ import github.detrig.designsystem.component.FinPetFilterChip
 import github.detrig.designsystem.component.FinPetFilterChipDefaults
 import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetOutlinedButton
-import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
@@ -145,7 +144,6 @@ private fun FurnitureStoreContent(
     val selectedOriginal = if (kind == null) state.originalSelected else state.surfaceOriginalSelected
     val selectedId = if (kind == null) selected?.id else selectedSurface?.id
     val selectedPrice = if (kind == null) selected?.priceRub else selectedSurface?.priceRub
-    val selectedName = if (kind == null) selected?.name else selectedSurface?.name
     val isOwned = selectedId?.let { if (kind == null) state.ownership.owns(it) else state.ownership.ownsSurface(it) } == true
     val canAct = (selectedId != null || selectedOriginal) && !state.busy
     val actionText = when {
@@ -165,21 +163,13 @@ private fun FurnitureStoreContent(
         gridState.scrollToItem(0)
     }
     Column(modifier.fillMaxSize().background(AppTheme.colors.storefront.background).testTag("interior_store")) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-        ) {
-            FinPetBackButton(onClick = onBack, contentDescription = "Назад к телефону")
-            Text(
-                "Интерьер", Modifier.weight(1f),
-                style = AppTheme.typography.screenTitle,
-                color = AppTheme.colors.storefront.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-            )
-            FinPetStorefrontBalanceBadge(state.balanceRub.takeUnless { state.loading }, Modifier.width(100.dp))
-        }
+        FinPetStorefrontHeader(
+            title = "Интерьер",
+            balanceRub = state.balanceRub.takeUnless { state.loading },
+            onBack = onBack,
+            backContentDescription = "Назад к телефону",
+            modifier = Modifier.padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
+        )
         Row(
             Modifier.fillMaxWidth().padding(horizontal = AppTheme.spacing.md),
             horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
@@ -293,10 +283,18 @@ private fun FurnitureStoreContent(
                     }
                 }
             }
-        Box(
+        Column(
             Modifier.fillMaxWidth().background(AppTheme.colors.currencyContainer)
                 .padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
         ) {
+            if (selectedPrice != null && !isOwned && state.balanceRub >= selectedPrice) {
+                Text(
+                    "После покупки: ${state.balanceRub - selectedPrice} ₽",
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+            }
             FinPetButton(
                 text = actionText,
                 onClick = { onEvent(FurnitureStoreViewEvent.ActionPressed) },
@@ -304,49 +302,6 @@ private fun FurnitureStoreContent(
                 modifier = Modifier.fillMaxWidth(),
                 style = FinPetButtonDefaults.storefrontPrimaryStyle(),
             )
-        }
-    }
-    if (state.confirmationVisible && selectedName != null && selectedPrice != null) {
-        FinPetModalDialog(
-            title = if (kind == null) "Купить мебель?" else "Купить ${if (kind == SurfaceKind.WALL) "обои" else "пол"}?",
-            onDismissRequest = { onEvent(FurnitureStoreViewEvent.PurchaseDismissed) },
-            actions = {
-                FinPetButton(
-                    text = "Купить и установить · $selectedPrice ₽",
-                    onClick = { onEvent(FurnitureStoreViewEvent.PurchaseConfirmed) },
-                    enabled = state.balanceRub >= selectedPrice,
-                    modifier = Modifier.fillMaxWidth(),
-                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                )
-                FinPetOutlinedButton(
-                    text = "Пока нет", onClick = { onEvent(FurnitureStoreViewEvent.PurchaseDismissed) },
-                    modifier = Modifier.fillMaxWidth(),
-                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                )
-            },
-        ) {
-            Text("${if (kind == null) slot?.label else kind.label}: $selectedName", style = AppTheme.typography.bodyStrong)
-            Text("Украшение комнаты · $selectedPrice монет", style = AppTheme.typography.body)
-            Text("Сейчас: ${state.balanceRub} · После покупки: ${state.balanceRub - selectedPrice}",
-                style = AppTheme.typography.body)
-            if (state.balanceRub < selectedPrice) {
-                Text("Не хватает ${selectedPrice - state.balanceRub} монет", style = AppTheme.typography.body)
-            }
-        }
-    }
-    state.receipt?.let { receipt ->
-        FinPetModalDialog(
-            title = "Чек",
-            onDismissRequest = { onEvent(FurnitureStoreViewEvent.ReceiptDismissed) },
-            actions = {
-                FinPetButton("Готово", { onEvent(FurnitureStoreViewEvent.ReceiptDismissed) },
-                    modifier = Modifier.fillMaxWidth(), style = FinPetButtonDefaults.storefrontPrimaryStyle())
-            },
-        ) {
-            Text(receipt.itemName, style = AppTheme.typography.bodyStrong)
-            Text("${receipt.categoryLabel} для комнаты · ${receipt.priceRub} монет", style = AppTheme.typography.body)
-            Text("Установлено в комнате", style = AppTheme.typography.body)
-            Text("Осталось: ${receipt.balanceRub} монет", style = AppTheme.typography.body)
         }
     }
     state.message?.let { message ->

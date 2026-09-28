@@ -85,6 +85,7 @@ fun PetScene(
     gestureCallbacks: PetGestureCallbacks? = null,
     showShadow: Boolean = true,
     dirtStage: Int = 0,
+    dirtOpacity: Float = 1f,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
@@ -226,6 +227,7 @@ fun PetScene(
                             profile.hamsterAppearance,
                         ),
                         dirtStage = dirtStage,
+                        dirtOpacity = dirtOpacity,
                     )
                 }
             }
@@ -482,6 +484,7 @@ internal fun rememberPetAppearanceBitmap(
     profile: PetProfile,
     maxSidePx: Int,
     growthStage: GrowthStage = GrowthStage.BABY,
+    dirtStage: Int = 0,
 ): ImageBitmap? {
     require(maxSidePx > 0)
     val assets = rememberHamsterAssets()
@@ -492,6 +495,7 @@ internal fun rememberPetAppearanceBitmap(
         assets,
         profile.hamsterAppearance,
         growthStage,
+        dirtStage,
         profile.clothing.equippedBySlot,
         blink,
         maxSidePx,
@@ -502,8 +506,11 @@ internal fun rememberPetAppearanceBitmap(
                 profile.clothing.equippedBySlot,
                 profile.hamsterAppearance,
             )
+            val dirt = if (dirtStage > 0) DirtArtwork.layers(assetManager,
+                profile.hamsterAppearance, clothes.map { layer -> layer.sourceKey }) else null
             withContext(Dispatchers.Default) {
-                it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes, growthStage).asImageBitmap()
+                it.renderBitmap(profile.hamsterAppearance, maxSidePx, blink, clothes,
+                    growthStage, dirtStage, dirt).asImageBitmap()
             }
         }
     }

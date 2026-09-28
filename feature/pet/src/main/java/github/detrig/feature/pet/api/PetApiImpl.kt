@@ -15,6 +15,7 @@ import github.detrig.feature.pet.presentation.PetHostScreen
 import github.detrig.feature.pet.presentation.PetScene
 import github.detrig.feature.pet.presentation.PetPortrait
 import github.detrig.feature.pet.presentation.ClothingArtwork
+import github.detrig.feature.pet.presentation.DirtArtwork
 import github.detrig.feature.pet.presentation.ClothingThumbnail as PetClothingThumbnail
 import github.detrig.feature.pet.presentation.HamsterPreview
 import github.detrig.feature.pet.presentation.rememberHamsterAssets
@@ -35,7 +36,16 @@ internal class PetApiImpl(
     private val growthStages: Flow<GrowthStage>,
     private val preferences: SharedPreferences,
     private val allowDebugGrowthOverride: Boolean,
+    dirtStages: Flow<Int>,
 ) : PetApi {
+    @Volatile private var dirtSnapshot = 0
+    private val dirtStateFlow = dirtStages.distinctUntilChanged().onEach { dirtSnapshot = it }
+
+    @Composable
+    private fun currentDirtStage(): Int {
+        val stage by dirtStateFlow.collectAsState(initial = dirtSnapshot)
+        return stage
+    }
     private val debugOverride = MutableStateFlow(
         if (allowDebugGrowthOverride) {
             GrowthStage.fromAssetId(preferences.getString(DEBUG_GROWTH_STAGE_KEY, null))
@@ -81,8 +91,14 @@ internal class PetApiImpl(
 
     override suspend fun preloadAssets() {
         growthStateFlow.first()
+        dirtStateFlow.first()
         HamsterAssetsCache.awaitPreloaded(assets)
         ClothingArtwork.preload(assets, repository.currentProfile())
+        repository.currentProfile()?.let { profile ->
+            val clothes = ClothingArtwork.layers(assets, profile.clothing.equippedBySlot,
+                profile.hamsterAppearance)
+            DirtArtwork.layers(assets, profile.hamsterAppearance, clothes.map { it.sourceKey })
+        }
     }
 
     override fun observeProfile() = repository.observeProfile()
@@ -93,6 +109,7 @@ internal class PetApiImpl(
         repository.resetProfile()
         debugOverride.value = null
         growthSnapshot = PetGrowthState(GrowthStage.BABY, GrowthStage.BABY, false)
+        dirtSnapshot = 0
         ClothingArtwork.clearEquipped()
     }
 
@@ -124,6 +141,7 @@ internal class PetApiImpl(
                 stage = growthStage(),
                 modifier = modifier,
                 clothingLayers = rememberClothingLayers(equippedBySlot, profile.hamsterAppearance),
+                dirtStage = currentDirtStage(),
             )
         }
     }
@@ -148,7 +166,8 @@ internal class PetApiImpl(
         pose: PetPose,
         gestureCallbacks: PetGestureCallbacks?,
         showShadow: Boolean,
-        dirtStage: Int,
+        dirtStage: Int?,
+        dirtOpacity: Float,
     ) {
         PetScene(
             profile = profile,
@@ -162,20 +181,23 @@ internal class PetApiImpl(
             pose = pose,
             gestureCallbacks = gestureCallbacks,
             showShadow = showShadow,
-            dirtStage = dirtStage,
+            dirtStage = dirtStage ?: currentDirtStage(),
+            dirtOpacity = dirtOpacity,
         )
     }
 
     @Composable
-    override fun Portrait(profile: PetProfile, modifier: Modifier, dirtStage: Int) {
-        PetPortrait(profile, modifier, growthStage = growthStage(), dirtStage = dirtStage)
+    override fun Portrait(profile: PetProfile, modifier: Modifier, dirtStage: Int?) {
+        PetPortrait(profile, modifier, growthStage = growthStage(),
+            dirtStage = dirtStage ?: currentDirtStage())
     }
 
     @Composable
     override fun rememberCurrentAppearanceBitmap(maxSidePx: Int): ImageBitmap? {
         val profile by repository.observeProfile().collectAsState(initial = null)
         val stage = growthStage()
-        return profile?.let { rememberPetAppearanceBitmap(it, maxSidePx, stage) }
+        val dirt = currentDirtStage()
+        return profile?.let { rememberPetAppearanceBitmap(it, maxSidePx, stage, dirt) }
     }
 
     private companion object {

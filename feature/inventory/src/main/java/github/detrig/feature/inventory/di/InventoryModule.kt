@@ -8,7 +8,7 @@ import github.detrig.feature.inventory.data.InventoryRepositoryImpl
 internal class InventoryModule(
     dependencies: InventoryDependencies,
 ) : InventoryComponent {
-    private val repository = InventoryRepositoryImpl(dependencies.storage())
+    private val repository = InventoryRepositoryImpl(dependencies.storage(), dependencies::currentTimeMillis)
 
     override val api: InventoryApi = InventoryApiImpl(repository)
 }

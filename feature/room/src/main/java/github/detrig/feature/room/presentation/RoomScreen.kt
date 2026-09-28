@@ -194,7 +194,11 @@ internal fun RoomScreen(
             petLookingAround = false
         }
     }
-    val activeFocusObjectId = onboarding?.focusObjectId ?: focusObjectId ?: requestedZoneId
+    // An inactive room is a backdrop, so it keeps the saved camera instead of
+    // following tutorial or navigation requests belonging to the playable room.
+    val activeFocusObjectId = if (externalActive) {
+        onboarding?.focusObjectId ?: focusObjectId ?: requestedZoneId
+    } else focusObjectId
     var focusedObjectId by remember { mutableStateOf<String?>(null) }
     var spotlightBoundsInWindow by remember { mutableStateOf<Rect?>(null) }
     var roomOriginInWindow by remember { mutableStateOf(Offset.Zero) }
@@ -249,7 +253,10 @@ internal fun RoomScreen(
             bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
             surfaces = surfaceTextures,
             state = state,
-            onEvent = viewModel::perform,
+            loadingPosition = viewModel.initialPosition,
+            onEvent = { event ->
+                if (externalActive || event !is RoomViewEvent.SavePosition) viewModel.perform(event)
+            },
             modifier = Modifier.fillMaxSize(),
             petContent = petContent,
             onPetTap = { viewModel.perform(RoomViewEvent.PetTapped) },
@@ -288,7 +295,7 @@ internal fun RoomScreen(
                 content?.rulesRecapVisible != true &&
                 !showPhoneNotificationPrompt &&
                 (onboarding == null || hasAllowedOnboardingObjects),
-            previewZoneId = requestedZoneId,
+            previewZoneId = requestedZoneId.takeIf { externalActive },
             focusObjectId = activeFocusObjectId,
             isFeedingScene = focusObjectId == "dining_table",
             petAnchorObjectId = petAnchorObjectId,
@@ -299,7 +306,7 @@ internal fun RoomScreen(
             onHighlightedObjectBoundsChanged = { spotlightBoundsInWindow = it },
             onPreviewReady = { id ->
                 if (activeFocusObjectId == id) focusedObjectId = id
-                if (requestedZoneId == id) {
+                if (externalActive && requestedZoneId == id) {
                     previewRequests.consume(id)
                     viewModel.perform(RoomViewEvent.ZonePreviewed(id))
                 }

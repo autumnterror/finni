@@ -5,19 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
@@ -46,21 +46,30 @@ private fun AppStartupLoadingContent(progress: Float) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppTheme.colors.storefront.background),
+            .background(AppTheme.colors.storefront.background)
+            .clipToBounds(),
     ) {
+        val artwork = painterResource(R.drawable.finni_loading_splash)
+        val aspectRatio = artwork.intrinsicSize.width / artwork.intrinsicSize.height
+        val artworkWidth = maxOf(maxWidth, maxHeight * aspectRatio)
+        val artworkHeight = artworkWidth / aspectRatio
+        val artworkLeft = (maxWidth - artworkWidth) / 2
+        val artworkTop = (maxHeight - artworkHeight) / 2
         Image(
-            painter = painterResource(R.drawable.finni_loading_splash),
+            painter = artwork,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds,
+            contentScale = ContentScale.Crop,
         )
         FinPetStorefrontProgressIndicator(
             progress = progress,
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = maxHeight * 0.814f)
-                .fillMaxWidth(0.742f),
-            height = maxHeight * 0.052f,
+                .offset(
+                    x = artworkLeft + artworkWidth * 0.129f,
+                    y = artworkTop + artworkHeight * 0.820f,
+                )
+                .width(artworkWidth * 0.742f),
+            height = artworkHeight * 0.052f,
         )
     }
 }
@@ -83,6 +92,7 @@ private fun AppStartupErrorContent(onRetry: () -> Unit) {
 }
 
 @Preview(name = "Загрузка приложения", widthDp = 360, heightDp = 640)
+@Preview(name = "Загрузка на высоком экране", widthDp = 360, heightDp = 800)
 @Composable
 private fun AppStartupLoadingPreview() {
     FinPetTheme {

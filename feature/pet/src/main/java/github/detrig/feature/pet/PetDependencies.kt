@@ -9,5 +9,6 @@ interface PetDependencies {
     fun profilePreferences(): SharedPreferences
     fun assets(): AssetManager
     fun observeGrowthStage(): Flow<GrowthStage>
+    fun observeDirtStage(): Flow<Int>
     fun allowDebugGrowthOverride(): Boolean
 }

@@ -24,6 +24,12 @@ internal class InventoryApiImpl(
     override suspend fun stageForTable(productId: ProductId): InventoryStageResult =
         repository.stageForTable(productId)
 
-    override suspend fun consumeTableItem(itemId: String): TableFoodConsumptionResult =
-        repository.consumeTableItem(itemId)
+    override suspend fun reconcileTableExpiry(): Boolean = repository.reconcileTableExpiry()
+
+    override suspend fun acknowledgeSpoiledTableFood() = repository.acknowledgeSpoiledTableFood()
+
+    override suspend fun consumeTableItem(
+        itemId: String,
+        onConsume: suspend (StagedFoodItem) -> Unit,
+    ): TableFoodConsumptionResult = repository.consumeTableItem(itemId, onConsume)
 }

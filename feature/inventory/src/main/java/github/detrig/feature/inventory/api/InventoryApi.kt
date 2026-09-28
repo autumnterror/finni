@@ -19,8 +19,16 @@ interface InventoryApi {
 
     suspend fun stageForTable(productId: ProductId): InventoryStageResult
 
-    /** Removes exactly one staged food portion after its idempotent pet effect is committed. */
-    suspend fun consumeTableItem(itemId: String): TableFoodConsumptionResult
+    /** Removes expired portions and returns whether their notice is still unread. */
+    suspend fun reconcileTableExpiry(): Boolean
+
+    suspend fun acknowledgeSpoiledTableFood()
+
+    /** Commits an idempotent effect only for a fresh portion, then removes it. */
+    suspend fun consumeTableItem(
+        itemId: String,
+        onConsume: suspend (StagedFoodItem) -> Unit = {},
+    ): TableFoodConsumptionResult
 }
 
 sealed interface DeliveryResult {

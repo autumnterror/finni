@@ -10,7 +10,5 @@ internal sealed interface WardrobeViewEvent : CoreViewEvent {
     data class ItemSelected(val itemId: String) : WardrobeViewEvent
     data object ClearTrial : WardrobeViewEvent
     data object PrimaryAction : WardrobeViewEvent
-    data object ConfirmPurchase : WardrobeViewEvent
-    data object CancelPurchase : WardrobeViewEvent
     data object DismissMessage : WardrobeViewEvent
 }

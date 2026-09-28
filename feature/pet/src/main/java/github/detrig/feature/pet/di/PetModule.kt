@@ -22,6 +22,7 @@ internal class PetModule(
             dependencies.observeGrowthStage(),
             dependencies.profilePreferences(),
             dependencies.allowDebugGrowthOverride(),
+            dependencies.observeDirtStage(),
         )
     }
 

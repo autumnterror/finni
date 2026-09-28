@@ -16,5 +16,12 @@ interface InventoryRepository {
 
     suspend fun stageForTable(productId: ProductId): InventoryStageResult
 
-    suspend fun consumeTableItem(itemId: String): TableFoodConsumptionResult
+    suspend fun reconcileTableExpiry(): Boolean
+
+    suspend fun acknowledgeSpoiledTableFood()
+
+    suspend fun consumeTableItem(
+        itemId: String,
+        onConsume: suspend (StagedFoodItem) -> Unit = {},
+    ): TableFoodConsumptionResult
 }

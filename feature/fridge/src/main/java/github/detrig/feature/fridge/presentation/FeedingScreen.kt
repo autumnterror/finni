@@ -121,7 +121,14 @@ internal fun FeedingScreen() {
     )
     val profile = petProfile
     if (profile != null) {
-        when (firstRunStep) {
+        if (state.spoiledFoodNoticeVisible) {
+            FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(stringResource(R.string.feeding_food_spoiled)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                onFinished = { viewModel.perform(FeedingViewEvent.SpoilageNoticeDismissed) },
+            )
+        } else when (firstRunStep) {
             FirstRunOnboardingStep.FEEDING -> FinPetDialogueDialog(
                 speakerName = profile.name,
                 cards = listOf(stringResource(R.string.first_run_feeding_drag)),

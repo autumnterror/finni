@@ -131,14 +131,35 @@ internal class HamsterAssets(
         blink: Boolean,
         clothingLayers: List<ClothingDrawLayer> = emptyList(),
         stage: GrowthStage = GrowthStage.BABY,
+        dirtStage: Int = 0,
+        dirtLayers: DirtLayers? = null,
     ): Bitmap {
         val output = Bitmap.createBitmap(targetSidePx, targetSidePx, Bitmap.Config.ARGB_8888)
         val canvas = AndroidCanvas(output)
         val scale = targetSidePx.toFloat() / canvasSize
         val clothingTarget = Rect(0, 0, targetSidePx, targetSidePx)
         val clothingPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        fun drawDirt(image: ImageBitmap?) {
+            if (image == null || dirtStage <= 0) return
+            val save = canvas.save()
+            if (dirtStage in 1..2) {
+                val mask = android.graphics.Path()
+                dirtSpots.take(if (dirtStage == 1) 2 else 7).forEach { (x, y, radius) ->
+                    mask.addCircle(x * scale, y * scale, radius * scale,
+                        android.graphics.Path.Direction.CW)
+                }
+                canvas.clipPath(mask)
+            }
+            canvas.drawBitmap(image.asAndroidBitmap(), null, clothingTarget, clothingPaint)
+            if (dirtStage == 3) {
+                val extraPaint = Paint(clothingPaint).apply { alpha = 115 }
+                canvas.drawBitmap(image.asAndroidBitmap(), null, clothingTarget, extraPaint)
+            }
+            canvas.restoreToCount(save)
+        }
         clothingLayers.filter { it.z < 0 }.forEach {
             canvas.drawBitmap(it.image.asAndroidBitmap(), null, clothingTarget, clothingPaint)
+            drawDirt(dirtLayers?.clothing?.get(it.sourceKey))
         }
         resolve(appearance, blink, stage).forEach { layer ->
             val bitmap = layer.sprite.image.asAndroidBitmap()
@@ -155,8 +176,12 @@ internal class HamsterAssets(
             }
             canvas.drawBitmap(bitmap, null, destination, paint)
         }
+        drawDirt(dirtLayers?.head)
+        drawDirt(dirtLayers?.body)
+        drawDirt(dirtLayers?.ears)
         clothingLayers.filter { it.z >= 0 }.forEach {
             canvas.drawBitmap(it.image.asAndroidBitmap(), null, clothingTarget, clothingPaint)
+            drawDirt(dirtLayers?.clothing?.get(it.sourceKey))
         }
         return output
     }
@@ -356,6 +381,7 @@ internal fun HamsterPreview(
     clothingLayers: List<ClothingDrawLayer> = emptyList(),
     stage: GrowthStage = GrowthStage.BABY,
     dirtStage: Int = 0,
+    dirtOpacity: Float = 1f,
 ) {
     val drawLayers = remember(assets, appearance, blink, stage) {
         assets.resolve(appearance, blink, stage)
@@ -374,16 +400,7 @@ internal fun HamsterPreview(
         val dx = (size.width - assets.canvasSize * factor) / 2f
         val dy = (size.height - assets.canvasSize * factor) / 2f
         val dirtMask = if (dirtStage in 1..2) Path().apply {
-            val spots = listOf(
-                Triple(258f, 499f, 80f),
-                Triple(553f, 717f, 88f),
-                Triple(741f, 519f, 81f),
-                Triple(278f, 692f, 101f),
-                Triple(751f, 717f, 90f),
-                Triple(368f, 880f, 76f),
-                Triple(754f, 183f, 62f),
-            )
-            spots.take(if (dirtStage == 1) 2 else 7).forEach { (x, y, radius) ->
+            dirtSpots.take(if (dirtStage == 1) 2 else 7).forEach { (x, y, radius) ->
                 val cx = dx + x * factor
                 val cy = dy + y * factor
                 val r = radius * factor
@@ -391,17 +408,17 @@ internal fun HamsterPreview(
             }
         } else null
         fun drawDirt(image: ImageBitmap?) {
-            if (image == null || dirtStage == 0) return
+            if (image == null || dirtStage == 0 || dirtOpacity <= 0f) return
             val drawLayer = {
                 drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                     dstSize = IntSize((assets.canvasSize * factor).toInt(),
                         (assets.canvasSize * factor).toInt()),
-                    filterQuality = FilterQuality.High)
+                    alpha = dirtOpacity.coerceIn(0f, 1f), filterQuality = FilterQuality.High)
                 if (dirtStage == 3) {
                     drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                         dstSize = IntSize((assets.canvasSize * factor).toInt(),
                             (assets.canvasSize * factor).toInt()),
-                        alpha = 0.45f, filterQuality = FilterQuality.High)
+                        alpha = 0.45f * dirtOpacity.coerceIn(0f, 1f), filterQuality = FilterQuality.High)
                 }
             }
             if (dirtMask == null) drawLayer() else clipPath(dirtMask) { drawLayer() }

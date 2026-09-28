@@ -24,4 +24,5 @@ dependencies {
     api(project(":core:products"))
     implementation(project(":core"))
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit)
 }

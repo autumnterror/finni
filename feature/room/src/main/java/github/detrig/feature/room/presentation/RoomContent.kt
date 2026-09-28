@@ -6,7 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.tooling.preview.Preview
 import github.detrig.designsystem.theme.AppTheme
+import github.detrig.designsystem.theme.FinPetTheme
+import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.presentation.component.HouseScene
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.component.RoomErrorState
@@ -18,6 +21,7 @@ import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
 internal fun RoomContent(
     state: RoomViewState,
     onEvent: (RoomViewEvent) -> Unit,
+    loadingPosition: HousePosition = HouseLayout.initialPosition(),
     furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
     bathroomFurnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
     surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
@@ -47,7 +51,7 @@ internal fun RoomContent(
         when (state) {
             RoomViewState.Loading -> HouseScene(
                 zones = emptyList(),
-                initialPosition = HouseLayout.initialPosition(),
+                initialPosition = loadingPosition,
                 active = false,
                 buyingZoneId = null,
                 onZoneClick = {},
@@ -140,3 +144,15 @@ private val bedtimeSteps = setOf(
     github.detrig.feature.room.api.FirstRunOnboardingStep.BEDTIME_GUIDANCE,
     github.detrig.feature.room.api.FirstRunOnboardingStep.WAITING_FOR_BED,
 )
+
+@Preview(name = "Room backdrop", widthDp = 360, heightDp = 760)
+@Composable
+private fun RoomContentPreview() {
+    FinPetTheme {
+        RoomContent(
+            state = github.detrig.feature.room.presentation.preview.RoomPreviewData.state,
+            onEvent = {},
+            loadingPosition = HouseLayout.initialPosition(),
+        )
+    }
+}

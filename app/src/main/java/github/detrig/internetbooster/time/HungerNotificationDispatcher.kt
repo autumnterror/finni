@@ -11,18 +11,30 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.internetbooster.MainActivity
 import github.detrig.internetbooster.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 internal class HungerNotificationDispatcher(
     private val context: Context,
     private val gameStateApi: GameStateApi,
 ) {
-    suspend fun dispatch() {
+    private val mutex = Mutex()
+
+    suspend fun dispatch() = mutex.withLock {
+        withContext(Dispatchers.Main.immediate) { dispatchInBackground() }
+    }
+
+    private suspend fun dispatchInBackground() {
         val state = gameStateApi.hungerAlertState()
         val notifications = NotificationManagerCompat.from(context)
-        if (state == null || state.hunger > 0) {
+        if (isForeground() || state == null || state.hunger > 0) {
             notifications.cancel(NOTIFICATION_ID)
             return
         }
@@ -51,6 +63,9 @@ internal class HungerNotificationDispatcher(
         }
         gameStateApi.markHungerAlertDelivered(episode)
     }
+
+    private fun isForeground(): Boolean =
+        ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 
     private fun canNotify(notifications: NotificationManagerCompat): Boolean =
         (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(

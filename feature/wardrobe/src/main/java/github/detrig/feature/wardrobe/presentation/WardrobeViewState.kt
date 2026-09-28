@@ -11,19 +11,22 @@ internal data class WardrobeViewState(
     val profile: PetProfile? = null,
     val items: List<ClothingItem> = emptyList(),
     val balanceRub: Long = 0,
-    val tab: WardrobeTab = WardrobeTab.SHOP,
+    val tab: WardrobeTab = WardrobeTab.OWNED,
     val category: String? = null,
     val selectedId: String? = null,
-    val confirmingPurchase: Boolean = false,
     val purchasing: Boolean = false,
     val message: String? = null,
 ) : CoreViewState {
     val selectedItem: ClothingItem? get() = items.firstOrNull { it.id == selectedId }
 
     val visibleItems: List<ClothingItem>
-        get() = items.filter { item ->
-            (tab == WardrobeTab.SHOP || item.id in profile?.clothing?.ownedIds.orEmpty()) &&
-                (category == null || category == item.slot)
+        get() {
+            val ownedIds = profile?.clothing?.ownedIds.orEmpty()
+            val categoryItems = items.filter { category == null || category == it.slot }
+            return when (tab) {
+                WardrobeTab.OWNED -> categoryItems.filter { it.id in ownedIds }
+                WardrobeTab.SHOP -> categoryItems.sortedBy { it.id in ownedIds }
+            }
         }
 
     val previewOutfit: Map<String, String>

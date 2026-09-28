@@ -9,7 +9,7 @@
     <string name="messages_mom_help_hint">Здесь ты можешь попросить деньги на важную покупку. Нажми на сообщение от мамы, чтобы посмотреть условия.</string>
     <string name="phone_help_button">Подсказка о телефоне</string>
     <string name="phone_help_title">Что есть в телефоне?</string>
-    <string name="phone_help_message">Здесь есть магазины еды, одежды и вещей для комнаты. Мошенники могут писать в сообщениях: не сообщай коды и не открывай незнакомые ссылки — покажи их взрослому.</string>
+    <string name="phone_help_message">Здесь есть магазины еды и вещей для комнаты. Гардероб и магазин одежды открываются через шкаф в квартире. Мошенники могут писать в сообщениях: не сообщай коды и не открывай незнакомые ссылки — покажи их взрослому.</string>
     <string name="phone_help_dismiss">Понятно</string>
     <string name="messages_empty_preview">Сообщений пока нет</string>
     <string name="messages_day">День %1$d</string>

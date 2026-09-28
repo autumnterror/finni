@@ -16,13 +16,17 @@ internal class FridgeViewModel(
     private val firstRunGuide: FirstRunGuideApi,
 ) : CoreViewModel<FridgeViewState, FridgeViewEvent>(FridgeViewState()) {
     private var observationJob: Job? = null
+    private var nextFlightId = 0L
+    private var visitId = 0L
 
     override fun perform(viewEvent: FridgeViewEvent) {
         when (viewEvent) {
             FridgeViewEvent.Load -> load()
             FridgeViewEvent.Back -> close()
-            is FridgeViewEvent.ProductClicked -> startFlight(viewEvent.productId)
-            is FridgeViewEvent.FlightAnimationFinished -> finishFlight(viewEvent.productId)
+            is FridgeViewEvent.ProductClicked -> takeProduct(viewEvent.productId)
+            is FridgeViewEvent.FlightAnimationFinished -> updateState {
+                copy(flights = flights.filterNot { it.id == viewEvent.flightId })
+            }
         }
     }
 
@@ -63,43 +67,38 @@ internal class FridgeViewModel(
         }
         observationJob?.cancel()
         observationJob = null
+        visitId++
         updateState {
             copy(
                 sessionSlots = emptyList(),
+                flights = emptyList(),
                 sessionInitialized = false,
-                animatingProductIds = emptySet(),
                 loading = true,
             )
         }
         router.back()
     }
 
-    private fun startFlight(productId: ProductId) {
-        if (stateData.loading || productId in stateData.animatingProductIds) return
+    private fun takeProduct(productId: ProductId) {
+        if (stateData.loading) return
         if (stateData.stock.none { it.productId == productId && it.quantity > 0 }) return
-        updateState {
-            copy(
-                animatingProductIds = animatingProductIds + productId,
-                message = null,
-            )
-        }
-    }
-
-    private fun finishFlight(productId: ProductId) {
-        if (productId !in stateData.animatingProductIds) return
+        // Keep the origin even when staging the last portion empties its cell.
+        val slotIndex = stateData.sessionSlots.indexOf(productId)
+        if (slotIndex < 0) return
+        val currentVisitId = visitId
+        updateState { copy(message = null) }
         launchCoroutine(
             handleAction = ExceptionConsumer {
-                updateState {
-                    copy(
-                        animatingProductIds = animatingProductIds - productId,
-                        message = "Не получилось взять продукт",
-                    )
-                }
+                updateState { copy(message = "Не получилось взять продукт") }
                 true
             },
         ) {
             when (inventoryApi.stageForTable(productId)) {
                 InventoryStageResult.Staged -> {
+                    if (currentVisitId == visitId) {
+                        val flight = FridgeFoodFlight(nextFlightId++, productId, slotIndex)
+                        updateState { copy(flights = flights + flight) }
+                    }
                     if (firstRunGuide.step.value == FirstRunOnboardingStep.FRIDGE_PICK_FOOD) {
                         firstRunGuide.moveTo(FirstRunOnboardingStep.WAITING_FOR_FRIDGE_CLOSE)
                     }
@@ -108,7 +107,6 @@ internal class FridgeViewModel(
                     updateState { copy(message = "Этот продукт уже закончился") }
                 }
             }
-            updateState { copy(animatingProductIds = animatingProductIds - productId) }
         }
     }
 

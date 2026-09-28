@@ -122,6 +122,10 @@ internal class AppModuleImpl(
     }
 
     override suspend fun reconcileTimedEvents() {
+        // Recalculate elapsed dirt time immediately on foreground return, even
+        // when the database itself has not changed while the process slept.
+        if (hasPetProfile()) gameStateMediator.getApi().initialize()
+        inventoryMediator.getApi().reconcileTableExpiry()
         learningMediator.getApi().deliverPendingXpRewards("current")
         hungerNotifications.dispatch()
     }

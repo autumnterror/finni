@@ -92,9 +92,9 @@ private val compactOverview = listOf(
     BathFrame("room_showerhead", 144f, 243f, 39f, 61f),
     BathFrame("room_bath_mirror", 415f, 140f, 86f, 119f),
     BathFrame("room_bath_shelf", 225f, 280f, 100f, 27f),
-    BathFrame("room_shampoo", 235f, 248f, 28f, 47f),
+    BathFrame("room_shampoo", 235f, 252f, 28f, 47f),
     BathFrame("room_soap_dish", 280f, 279f, 42f, 19f),
-    BathFrame("room_soap", 286f, 266f, 33f, 20f),
+    BathFrame("room_soap", 286f, 271f, 33f, 20f),
     BathFrame("room_bath_vanity", 395f, 420f, 113f, 108f),
     BathFrame("room_bath_sink", 411f, 389f, 81f, 56f),
     BathFrame("room_bath_mat", 349f, 531f, 146f, 47f),
@@ -163,6 +163,7 @@ internal fun BathroomScene(
     var contactDistance by remember(washStep) { mutableFloatStateOf(0f) }
     val foamSpots = remember { mutableStateListOf<FoamSpot>() }
     var foamPeakCount by remember { mutableIntStateOf(0) }
+    var remainingDirt by remember { mutableFloatStateOf(1f) }
     var waterPhase by remember { mutableFloatStateOf(0f) }
     var dryProgress by remember(washStep) { mutableFloatStateOf(0f) }
     var dryerOverPet by remember(washStep) { mutableStateOf(false) }
@@ -270,8 +271,12 @@ internal fun BathroomScene(
                             }
                         foamPeakCount = maxOf(foamPeakCount, foamSpots.size)
                     }
-                    "room_showerhead" -> foamSpots.removeAll {
-                        (it.position - contact).getDistance() < 125f + it.radius * 0.25f
+                    "room_showerhead" -> {
+                        foamSpots.removeAll {
+                            (it.position - contact).getDistance() < 125f + it.radius * 0.25f
+                        }
+                        remainingDirt = github.detrig.feature.room.domain.model.remainingDirtAfterRinse(
+                            remainingDirt, foamSpots.size, foamPeakCount)
                     }
                 }
             }
@@ -424,8 +429,8 @@ internal fun BathroomScene(
                 } else Modifier)
         petContent(petModifier,
             RoomPetInteraction(showShadow = false, isBathing = closeUp,
-                dirtStageOverride = if (closeUp &&
-                    (washStep == BathStep.DRY || washStep == BathStep.CLEAN)) 0 else null))
+                dirtOpacity = if (!closeUp) 1f else if (washStep == BathStep.DRY ||
+                    washStep == BathStep.CLEAN) 0f else remainingDirt))
         if (closeUp) {
             Canvas(Modifier.fillMaxSize()) {
                 wetPatches.forEach { patch ->
