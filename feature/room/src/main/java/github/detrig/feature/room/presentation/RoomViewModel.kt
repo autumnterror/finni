@@ -1370,12 +1370,10 @@ internal class RoomViewModel(
         ) {
             nullableState<RoomViewState.Content>()?.let { latest ->
                 updateState(latest.copy(
-                    dayTransitionNotice = if (result.state.dayOfWeek == 1) null else {
-                        DayTransitionNoticeState(
-                            dayOfWeek = result.state.dayOfWeek,
-                            weekNumber = result.state.weekNumber,
-                        )
-                    },
+                    dayTransitionNotice = DayTransitionNoticeState(
+                        dayOfWeek = result.state.dayOfWeek,
+                        weekNumber = result.state.weekNumber,
+                    ),
                     allowanceNotice = if (result.allowanceGrossRub > 0) {
                         AllowanceNoticeState(
                             grossRub = result.allowanceGrossRub,
