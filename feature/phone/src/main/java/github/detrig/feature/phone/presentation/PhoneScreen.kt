@@ -109,7 +109,7 @@ private const val PHONE_STRETCH_TOP = 160f
 private const val PHONE_STRETCH_BOTTOM = 1320f
 
 private const val GROCERY_APP = "grocery"
-private const val CLOTHING_APP = "clothing"
+private const val RETIRED_CLOTHING_APP = "clothing"
 private const val INTERIOR_APP = "interior"
 private const val DEBUG_APP = "debug"
 private const val HOME_CLOSE_BUTTON_SIZE = 74f
@@ -123,11 +123,13 @@ internal fun PhoneScreen(route: PhoneRoute) {
     val messagesState by messagesViewModel.state().observeAsState(MessagesViewState())
     val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
     var activeAppId by rememberSaveable(route) {
-        mutableStateOf((route as? PhoneRoute.App)?.appId)
+        mutableStateOf((route as? PhoneRoute.App)?.appId?.takeUnless { it == RETIRED_CLOTHING_APP })
     }
     LaunchedEffect(messagesViewModel) { messagesViewModel.perform(MessagesViewEvent.Load) }
     LaunchedEffect(activeAppId) {
-        if (activeAppId == MESSAGES_APP_ID) {
+        if (activeAppId == RETIRED_CLOTHING_APP) {
+            activeAppId = null
+        } else if (activeAppId == MESSAGES_APP_ID) {
             messagesViewModel.perform(MessagesViewEvent.AppOpened)
         }
     }
@@ -307,7 +309,7 @@ private fun PhoneDevice(
             PhoneCanvasLayer(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                val openAppId = activeAppId
+                val openAppId = activeAppId?.takeUnless { it == RETIRED_CLOTHING_APP }
                 if (openAppId == null || (openAppId == DEBUG_APP && !showDebugApp)) {
                     PhoneHomeContent(
                         scale = scale,
@@ -453,10 +455,9 @@ private fun PhoneHomeContent(
     )
     val apps = buildList {
         add(PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 129f, 620f, MESSAGES_APP_ID))
-        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 382f, 620f, DEBUG_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 382f, 310f, INTERIOR_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 635f, 310f, MESSAGES_APP_ID))
+        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 129f, 620f, DEBUG_APP))
     }
     apps.forEach { app ->
         Box(
@@ -636,12 +637,6 @@ private fun PhoneAppContent(
                 firstRunStep = firstRunStep,
                 onFirstRunProductSelected = onFirstRunProductSelected,
                 onFirstRunCheckout = onFirstRunCheckout,
-            )
-            CLOTHING_APP -> PhonePlaceholderApp(
-                title = "Одежда",
-                iconRes = R.drawable.phone_icon_clothing_hd,
-                scale = scale,
-                onBack = onBack,
             )
             INTERIOR_APP -> roomApi.InteriorStore(onBack = onBack)
             MESSAGES_APP_ID -> MessagesApp(
