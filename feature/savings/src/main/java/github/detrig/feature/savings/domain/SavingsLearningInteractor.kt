@@ -11,9 +11,13 @@ import github.detrig.feature.learning.domain.SavingsLearning
 import github.detrig.feature.week.api.WeekApi
 import kotlinx.coroutines.flow.first
 import github.detrig.feature.gamestate.api.ProgressionApi
+import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.gamestate.domain.progression.GrantXpResult
 import github.detrig.feature.gamestate.domain.progression.XpRewards
 import github.detrig.feature.gamestate.domain.progression.XpSources
+import github.detrig.feature.gamestate.domain.model.PetHappinessRules
+import github.detrig.feature.gamestate.domain.model.PetWishHappinessRewards
+import kotlinx.coroutines.CancellationException
 
 /** Replays committed source facts after process death; Learning deduplicates by stable IDs. */
 internal class SavingsLearningInteractor(
@@ -21,6 +25,7 @@ internal class SavingsLearningInteractor(
     private val week: WeekApi,
     private val learning: LearningApi,
     private val progression: ProgressionApi,
+    private val gameState: GameStateApi? = null,
 ) {
     suspend fun currentWeek(): Long {
         week.initialize()
@@ -34,12 +39,29 @@ internal class SavingsLearningInteractor(
 
     suspend fun recordTransfer(operation: FinancialOperation) {
         if (operation.type != FinancialOperationType.TRANSFER_TO_SAVINGS) return
+        operation.context.metadata.day()?.let { contributionDay ->
+            safely {
+                gameState?.activateSavingsHappinessProtection(
+                    contributionOperationId = operation.id,
+                    throughAbsoluteDay = contributionDay + PetHappinessRules.SAVINGS_PROTECTION_SLEEP_COUNT - 1L,
+                )
+            }
+        }
         val goalId = operation.context.reasonId
             ?.takeUnless { it == UNASSIGNED_SAVINGS_ID }
             ?: return
         val period = operation.context.metadata.period() ?: return
         record(SavingsLearning.contribution(PROFILE_ID, operation.id, goalId, operation.amountRub, period))
         val target = operation.context.metadata.field("target")?.toLongOrNull() ?: return
+        val halfway = (target + 1L) / 2L
+        if (target > 0L && operation.before.savingsRub < halfway && operation.after.savingsRub >= halfway) {
+            safely {
+                gameState?.rewardPetWishHappiness(
+                    wishRewardId = "savings-halfway:$goalId:$target",
+                    happinessPoints = PetWishHappinessRewards.SAVINGS_HALF_WAY,
+                )
+            }
+        }
         if (operation.before.savingsRub < target && operation.after.savingsRub >= target) {
             val earlierReach = economy.getSavingsHistory(
                 HistoryFilter(types = setOf(FinancialOperationType.TRANSFER_TO_SAVINGS)),
@@ -53,6 +75,12 @@ internal class SavingsLearningInteractor(
             }
             if (!earlierReach) {
                 record(SavingsLearning.goalReached(PROFILE_ID, goalId, period))
+                safely {
+                    gameState?.rewardPetWishHappiness(
+                        wishRewardId = "savings-goal-reached:$goalId:$target",
+                        happinessPoints = PetWishHappinessRewards.SAVINGS_GOAL_REACHED,
+                    )
+                }
                 when (progression.grantXp(
                     grantId = "savings-goal-reached:$goalId",
                     profileId = PROFILE_ID,
@@ -75,6 +103,21 @@ internal class SavingsLearningInteractor(
             .forEach { recordTransfer(it) }
     }
 
+    suspend fun currentAbsoluteDay(): Long {
+        week.initialize()
+        return week.observeState().first().absoluteDay
+    }
+
+    private suspend fun safely(action: suspend () -> Unit) {
+        try {
+            action()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Savings history is durable; the next reconciliation retries pet effects.
+        }
+    }
+
     private suspend fun record(action: github.detrig.feature.learning.domain.LearningAction) {
         when (val result = learning.record(action)) {
             is RecordLearningResult.Processed,
@@ -85,6 +128,7 @@ internal class SavingsLearningInteractor(
     }
 
     private fun String?.period(): Long? = field("week")?.toLongOrNull()?.takeIf { it >= 0 }
+    private fun String?.day(): Long? = field("day")?.toLongOrNull()?.takeIf { it >= 1 }
     private fun String?.field(key: String): String? = this?.split(';')
         ?.firstOrNull { it.startsWith("$key=") }
         ?.substringAfter('=')

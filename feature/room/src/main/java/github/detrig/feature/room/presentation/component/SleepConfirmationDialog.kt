@@ -11,6 +11,7 @@ import github.detrig.designsystem.component.FinPetModalDialog
 import github.detrig.designsystem.component.FinPetOutlinedButton
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.R
+import github.detrig.feature.gamestate.domain.model.PetSatietyRules
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import github.detrig.designsystem.theme.AppTheme
@@ -43,7 +44,7 @@ internal fun SleepConfirmationDialog(
         content = {
             if (!canSleep) {
                 Text(
-                    text = stringResource(R.string.room_sleep_hungry_message),
+                    text = stringResource(R.string.room_sleep_hungry_message, PetSatietyRules.SLEEP_COST),
                     modifier = Modifier.padding(horizontal = AppTheme.spacing.sm),
                     style = AppTheme.typography.body,
                 )

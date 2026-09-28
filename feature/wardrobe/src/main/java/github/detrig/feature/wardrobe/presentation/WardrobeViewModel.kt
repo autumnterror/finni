@@ -11,22 +11,20 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 
 internal class WardrobeViewModel(
+    mode: WardrobeMode,
     private val pet: PetApi,
     private val economy: EconomyApi,
     private val purchase: ClothingPurchaseInteractor,
     private val router: WardrobeRouter,
-) : CoreViewModel<WardrobeViewState, WardrobeViewEvent>(initialState(pet)) {
+) : CoreViewModel<WardrobeViewState, WardrobeViewEvent>(initialState(pet, mode)) {
     private var observation: Job? = null
 
     override fun perform(viewEvent: WardrobeViewEvent) {
         when (viewEvent) {
             WardrobeViewEvent.Load -> load()
             WardrobeViewEvent.Back -> router.back()
-            is WardrobeViewEvent.TabSelected -> updateState {
-                copy(tab = viewEvent.tab, selectedId = null, category = null)
-            }
             is WardrobeViewEvent.CategorySelected -> updateState {
-                copy(category = viewEvent.slot)
+                copy(category = viewEvent.slot, selectedId = null)
             }
             is WardrobeViewEvent.ItemSelected -> updateState {
                 copy(selectedId = viewEvent.itemId, message = null)
@@ -61,9 +59,14 @@ internal class WardrobeViewModel(
         val item = stateData.selectedItem ?: return
         val profile = stateData.profile ?: return
         if (stateData.purchasing) return
-        when {
-            item.id !in profile.clothing.ownedIds ->
+        if (stateData.mode == WardrobeMode.SHOP) {
+            if (item.id !in profile.clothing.ownedIds) {
                 buySelectedItem()
+            }
+            return
+        }
+        when {
+            item.id !in profile.clothing.ownedIds -> return
             profile.clothing.equippedBySlot[item.slot] == item.id -> {
                 pet.equipClothing(item.slot, null)
                 updateState { copy(selectedId = null) }
@@ -77,7 +80,7 @@ internal class WardrobeViewModel(
 
     private fun buySelectedItem() {
         val item = stateData.selectedItem ?: return
-        if (stateData.purchasing || stateData.loading) return
+        if (stateData.mode != WardrobeMode.SHOP || stateData.purchasing || stateData.loading) return
         updateState { copy(purchasing = true, message = null) }
         launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -111,11 +114,12 @@ internal class WardrobeViewModel(
     }
 }
 
-private fun initialState(pet: PetApi): WardrobeViewState {
+private fun initialState(pet: PetApi, mode: WardrobeMode): WardrobeViewState {
     val items = pet.cachedClothingItems()
     return WardrobeViewState(
         loading = items.isEmpty(),
         profile = pet.currentProfile(),
         items = items,
+        mode = mode,
     )
 }

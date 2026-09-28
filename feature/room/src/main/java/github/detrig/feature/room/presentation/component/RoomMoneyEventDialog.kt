@@ -17,6 +17,7 @@ import github.detrig.feature.room.domain.model.RoomMoneyEvent
 @Composable
 internal fun RoomMoneyEventDialog(
     event: RoomMoneyEvent,
+    sleepBlockedByKnownExpense: Boolean = false,
     availableRub: Long,
     savingsRub: Long,
     canAskParents: Boolean,
@@ -32,7 +33,8 @@ internal fun RoomMoneyEventDialog(
     onParentCoverage: () -> Unit,
 ) {
     FinPetModalVisibilityEffect()
-    val cards = buildList {
+    val cards = listOf(buildList {
+        if (sleepBlockedByKnownExpense) add(stringResource(R.string.money_event_sleep_blocked))
         add(stringResource(
             if (event.kind == RoomMoneyEvent.Kind.EXTRA_INCOME) R.string.money_event_income
             else R.string.money_event_expense,
@@ -51,7 +53,7 @@ internal fun RoomMoneyEventDialog(
             MoneyEventResolution.NoActiveGoal -> add(stringResource(R.string.money_event_no_goal))
             else -> Unit
         }
-    }
+    }.joinToString("\n"))
     val actions = if (event.kind == RoomMoneyEvent.Kind.EXTRA_INCOME) {
         if (event.savedAllocation == MoneyAllocation.GOAL) {
             listOf(
@@ -67,7 +69,10 @@ internal fun RoomMoneyEventDialog(
         }
     } else buildList {
         if (availableRub >= event.amountRub) {
-            add(FinPetDialogueAction("pay", stringResource(R.string.money_event_pay)))
+            add(FinPetDialogueAction("pay", stringResource(
+                if (event.kind == RoomMoneyEvent.Kind.KNOWN_EXPENSE) R.string.money_event_buy_gift
+                else R.string.money_event_pay,
+            )))
         }
         if (availableRub < event.amountRub && savingsRub > 0) {
             add(FinPetDialogueAction("savings", stringResource(R.string.money_event_open_savings)))

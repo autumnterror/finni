@@ -26,9 +26,7 @@ internal class PetViewModel(
             PetViewEvent.CustomizeClicked -> customize()
             PetViewEvent.CancelCustomization -> cancelCustomization()
             PetViewEvent.CreateClicked -> create()
-            PetViewEvent.PetClicked -> if (stateData is PetViewState.Ready) {
-                commands.onNext(PetCommand.ShowGreeting)
-            }
+            PetViewEvent.PetClicked -> Unit
         }
     }
 

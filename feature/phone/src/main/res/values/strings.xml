@@ -18,7 +18,13 @@
     <string name="messages_unknown_1">Неизвестный номер 1</string>
     <string name="messages_unknown_2">Неизвестный номер 2</string>
     <string name="messages_bank_code">Никому не сообщайте этот код. Код: %1$s</string>
-    <string name="messages_code_request">сообщи код</string>
+    <string-array name="messages_code_requests">
+        <item>Здравствуйте! Это поддержка банка. Чтобы отменить подозрительный перевод, пришлите код из сообщения банка.</item>
+        <item>На вашей карте заметили необычную покупку. Отправьте код подтверждения, и мы её остановим.</item>
+        <item>Ваш счёт нужно проверить. Напишите код, который только что прислал банк.</item>
+        <item>Платёж ожидает подтверждения. Пришлите код из сообщения, чтобы деньги не пропали.</item>
+        <item>Доступ к счёту могут заблокировать. Ответьте кодом из сообщения банка, чтобы сохранить доступ.</item>
+    </string-array>
     <string name="messages_unknown_link">Вам подарок! Откройте ссылку: %1$s</string>
     <string name="messages_parent_help_offer">Мама рядом. Здесь можно посмотреть условия помощи для важной покупки.</string>
     <string name="messages_parent_help_repayment">Помощь получена. Осталось выплат: %1$d. Осталось выплатить: %2$d ₽ с доплатой. Нажми, чтобы посмотреть варианты.</string>

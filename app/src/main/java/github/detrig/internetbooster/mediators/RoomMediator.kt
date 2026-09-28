@@ -25,6 +25,7 @@ internal class RoomMediator(
     private val learningMediator: LearningMediator,
     private val savingsMediator: SavingsMediator,
     private val shopMediator: ShopMediator,
+    private val petMediator: PetMediator,
     private val wardrobeMediator: WardrobeMediator,
     private val inventoryMediator: InventoryMediator,
     private val gameAudio: GameAudio,
@@ -52,47 +53,49 @@ internal class RoomMediator(
                     learningTestsMediator.getApi().open()
                 }
                 override fun impulseWishSource() = object : RoomImpulseWishSource {
-                    override suspend fun claimCurrentWish(): RoomImpulseWish? {
+                    override suspend fun currentWish(): RoomImpulseWish? {
                         val scheduled = shopMediator.currentPetWish() ?: return null
-                        return if (scheduled.kind == PetWishSchedule.Kind.GROCERY) {
-                            shopMediator.claimRoomImpulseWish()?.let { wish ->
-                                RoomImpulseWish(
-                                    eventId = wish.eventId,
-                                    productTitle = wish.productTitle,
-                                    phraseVariant = wish.phraseVariant,
-                                    showIntroduction = wish.showIntroduction,
-                                    kind = RoomImpulseWish.Kind.GROCERY,
-                                    priceRub = scheduled.priceRub,
-                                    productId = scheduled.productId,
-                                )
-                            }
-                        } else {
-                            val learning = learningMediator.getApi()
-                            val fresh = learning.claimFirstExplanation(
-                                "current", "purchase.impulse.room:${scheduled.eventId}",
-                            )
-                            if (!fresh) return null
-                            RoomImpulseWish(
-                                eventId = scheduled.eventId,
-                                productTitle = scheduled.title,
-                                phraseVariant = Math.floorMod(
-                                    scheduled.eventId.hashCode(), RoomImpulseWish.PHRASE_VARIANT_COUNT,
-                                ),
-                                showIntroduction = scheduled.kind != PetWishSchedule.Kind.FREE &&
-                                    learning.claimFirstExplanation("current", "purchase.impulse.introduction"),
-                                kind = if (scheduled.kind == PetWishSchedule.Kind.CLOTHING) {
-                                    RoomImpulseWish.Kind.CLOTHING
-                                } else RoomImpulseWish.Kind.FREE,
-                                priceRub = scheduled.priceRub,
-                                productId = scheduled.productId,
-                            )
-                        }
+                        return scheduled.toRoomImpulseWish()
+                    }
+
+                    override suspend fun currentWishes(
+                        absoluteDay: Long,
+                        activeGoalId: String?,
+                    ): List<RoomImpulseWish> = shopMediator.currentPetWishBoardWishes(
+                        absoluteDay = absoluteDay,
+                        activeGoalId = activeGoalId,
+                    ).map { it.toRoomImpulseWish() }
+
+                    override suspend fun claimDialogueWish(wish: RoomImpulseWish): RoomImpulseWish? =
+                        shopMediator.claimRoomWishDialogue(wish)
+
+                    override suspend fun acknowledgeDialogue(eventId: String) {
+                        shopMediator.acknowledgeRoomWishDialogue(eventId)
                     }
 
                     override suspend fun recordDeclined(wish: RoomImpulseWish) {
                         shopMediator.recordRoomWishDeclined(wish)
                     }
+
+                    override suspend fun recordFulfilled(wish: RoomImpulseWish) {
+                        shopMediator.recordRoomWishFulfilled(wish)
+                    }
+
+                    override suspend fun purchaseWishId(productId: String) =
+                        shopMediator.currentInteriorPurchaseWishId(productId)
+
+                    override suspend fun recordPurchaseFulfilled(wishId: String) {
+                        shopMediator.recordInteriorPurchaseWishFulfilled(wishId)
+                    }
+
+                    override suspend fun currentFulfillments() = shopMediator.currentWishFulfillments()
+
+                    override suspend fun acknowledgeFulfillment(id: String) {
+                        shopMediator.acknowledgeWishFulfillment(id)
+                    }
                 }
+                override fun wishArtwork() = GameRoomWishArtwork(
+                    shopMediator.artworkResolver(), petMediator.getApi())
                 override fun globalMessageController(): GlobalMessageController = coreComponent.globalMessageController
                 override fun resources(): Resources = coreComponent.resources
                 override fun gameAudio() = gameAudio
@@ -108,4 +111,25 @@ internal class RoomMediator(
     }
 
     override fun getApi(): RoomApi = RoomFeature.getApi()
+
+    private fun PetWishSchedule.Wish.toRoomImpulseWish() = RoomImpulseWish(
+        eventId = eventId,
+        productTitle = title,
+        phraseVariant = Math.floorMod(eventId.hashCode(), RoomImpulseWish.PHRASE_VARIANT_COUNT),
+        showIntroduction = false,
+        kind = when (kind) {
+            PetWishSchedule.Kind.GROCERY -> RoomImpulseWish.Kind.GROCERY
+            PetWishSchedule.Kind.CLOTHING -> RoomImpulseWish.Kind.CLOTHING
+            PetWishSchedule.Kind.MINI_GAME -> RoomImpulseWish.Kind.MINI_GAME
+            PetWishSchedule.Kind.TOY -> RoomImpulseWish.Kind.TOY
+            PetWishSchedule.Kind.SAVINGS_TOP_UP -> RoomImpulseWish.Kind.SAVINGS_TOP_UP
+            PetWishSchedule.Kind.SAVINGS_GOAL -> RoomImpulseWish.Kind.SAVINGS_GOAL
+            PetWishSchedule.Kind.SAVED_GAME -> RoomImpulseWish.Kind.SAVED_GAME
+        },
+        priceRub = priceRub,
+        productId = productId,
+        createdOnAbsoluteDay = createdAbsoluteDay,
+        expiresOnAbsoluteDayExclusive = expiresOnAbsoluteDayExclusive,
+        completedOnAbsoluteDay = completedOnAbsoluteDay,
+    )
 }

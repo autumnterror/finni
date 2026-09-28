@@ -20,6 +20,7 @@ internal class PhoneModule(
     override val roomApi = dependencies.roomApi()
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()
+    override val wardrobeApi = dependencies.wardrobeApi()
     private val weekApi = dependencies.weekApi()
     override val globalMessageController = dependencies.globalMessageController()
     private val economyApi = dependencies.economyApi()
@@ -38,7 +39,9 @@ internal class PhoneModule(
             economyApi = dependencies.economyApi(),
             minimumHelpBalanceRub = dependencies.minimumHelpBalanceRub(),
             eventConfig = SecurityEventConfig(
-                dailyProbability = dependencies.dailySecurityEventProbability(),
+                // The app owns the shared draw; the phone must not roll another event independently.
+                dailyProbability = 1.0,
+                isScheduledForDay = dependencies::isSecurityEventScheduled,
                 randomSeed = kotlin.random.Random.nextInt(),
                 minimumDaysBetweenEvents = dependencies.minimumDaysBetweenSecurityEvents(),
             ),
@@ -67,6 +70,8 @@ internal class PhoneModule(
         resetDemoProgress = dependencies::resetDemoProgress,
         petApi = petApi,
         router = router,
+        createSecuritySituation = messagesCoordinator::createSecurityEventForDebug,
+        createWishSituation = dependencies::createRandomWishForDebug,
     )
 
     override fun messagesViewModel() = MessagesViewModel(

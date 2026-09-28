@@ -19,6 +19,9 @@ interface RoomApi {
 
     suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult
 
+    /** Unowned paid furniture and surfaces eligible for optional pet wishes. */
+    fun interiorWishCandidates(): List<github.detrig.feature.room.domain.model.RoomWishObjectCandidate>
+
     @Composable
     fun InteriorStore(onBack: () -> Unit, modifier: Modifier = Modifier)
     /** Resets in-room onboarding and initializes the fresh demo game state. */

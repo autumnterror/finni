@@ -21,12 +21,12 @@ class WardrobeViewStateTest {
 
     @Test fun wardrobeOpensOnOwnedClothingOnly() {
         val state = WardrobeViewState(items = items, profile = profile)
-        assertEquals(WardrobeTab.OWNED, state.tab)
+        assertEquals(WardrobeMode.OWNED, state.mode)
         assertEquals(listOf("owned-body", "owned-head"), state.visibleItems.map { it.id })
     }
 
     @Test fun shopKeepsOwnedItemsAfterAvailableItemsInCatalogOrder() {
-        val state = WardrobeViewState(items = items, profile = profile, tab = WardrobeTab.SHOP)
+        val state = WardrobeViewState(items = items, profile = profile, mode = WardrobeMode.SHOP)
         assertEquals(
             listOf("available-head", "available-body", "available-body-2", "owned-body", "owned-head"),
             state.visibleItems.map { it.id },
@@ -34,19 +34,19 @@ class WardrobeViewStateTest {
     }
 
     @Test fun purchaseMovesItemToOwnedGroupWithinItsCategory() {
-        val state = WardrobeViewState(items = items, profile = profile, tab = WardrobeTab.SHOP, category = "body")
+        val state = WardrobeViewState(items = items, profile = profile, mode = WardrobeMode.SHOP, category = "body")
         assertEquals(listOf("available-body", "available-body-2", "owned-body"), state.visibleItems.map { it.id })
         val afterPurchase = state.copy(profile = profile.copy(clothing = profile.clothing.withPurchase("available-body")))
         assertEquals(listOf("available-body-2", "owned-body", "available-body"), afterPurchase.visibleItems.map { it.id })
         assertEquals(
             listOf("owned-body", "available-body"),
-            afterPurchase.copy(tab = WardrobeTab.OWNED).visibleItems.map { it.id },
+            afterPurchase.copy(mode = WardrobeMode.OWNED).visibleItems.map { it.id },
         )
     }
 
     @Test fun emptyWardrobeStillAllowsBrowsingEntireShop() {
         val state = WardrobeViewState(items = items, profile = profile.copy(clothing = ClothingState()))
         assertEquals(emptyList<ClothingItem>(), state.visibleItems)
-        assertEquals(items, state.copy(tab = WardrobeTab.SHOP).visibleItems)
+        assertEquals(items, state.copy(mode = WardrobeMode.SHOP).visibleItems)
     }
 }

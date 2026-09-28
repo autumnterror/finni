@@ -16,6 +16,7 @@ import github.detrig.internetbooster.mediators.WeekMediator
 import github.detrig.internetbooster.mediators.SavingsMediator
 import github.detrig.internetbooster.mediators.ShopMediator
 import github.detrig.internetbooster.mediators.PhoneMediator
+import github.detrig.internetbooster.mediators.DailyRoomEventSchedule
 import github.detrig.internetbooster.mediators.InventoryMediator
 import github.detrig.internetbooster.mediators.FridgeMediator
 import github.detrig.internetbooster.mediators.WardrobeMediator
@@ -48,6 +49,12 @@ internal class AppModuleImpl(
 ) : AppModule {
 
     override val gameAudio: GameAudio by lazy { AndroidGameAudio(coreComponent.context) }
+
+    private val dailyRoomEvents by lazy {
+        DailyRoomEventSchedule(coreComponent.context.getSharedPreferences(
+            DailyRoomEventSchedule.PREFERENCES_NAME, android.content.Context.MODE_PRIVATE,
+        ))
+    }
 
     private val databaseModule: AppDatabaseModule by lazy {
         AppDatabaseModule(coreComponent.context)
@@ -109,7 +116,10 @@ internal class AppModuleImpl(
             learningMediator = learningMediator,
             petMediator = petMediator,
             gameStateMediator = gameStateMediator,
+            savingsMediator = savingsMediator,
             gameAudio = gameAudio,
+            interiorWishCandidates = { roomMediator.getApi().interiorWishCandidates() },
+            dailyRoomEvents = dailyRoomEvents,
         )
     }
 
@@ -134,6 +144,7 @@ internal class AppModuleImpl(
 
     override suspend fun resetDemoProgress(skipOnboarding: Boolean) {
         phoneMediator.getApi().resetProgress {
+            dailyRoomEvents.resetProgress()
             withContext(Dispatchers.IO) {
                 databaseModule.database.clearAllTables()
                 flightMediator.resetProgress()
@@ -151,6 +162,7 @@ internal class AppModuleImpl(
             roomMediator = roomMediator,
             petMediator = petMediator,
             shopMediator = shopMediator,
+            wardrobeMediator = wardrobeMediator,
             economyMediator = economyMediator,
             weekMediator = weekMediator,
             learningMediator = learningMediator,
@@ -158,6 +170,7 @@ internal class AppModuleImpl(
             inventoryMediator = inventoryMediator,
             resetDemoProgress = ::resetDemoProgress,
             experienceModeStorage = experienceModeStorage,
+            dailyRoomEvents = dailyRoomEvents,
         )
     }
 
@@ -177,7 +190,7 @@ internal class AppModuleImpl(
         PetMediator(coreComponent, gameStateMediator)
     }
     private val wardrobeMediator: WardrobeMediator by lazy {
-        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator, gameStateMediator)
+        WardrobeMediator(coreComponent, petMediator, economyMediator, planningMediator, weekMediator, gameStateMediator, shopMediator)
     }
 
     private val gameSessionMediator: GameSessionMediator by lazy {
@@ -202,6 +215,7 @@ internal class AppModuleImpl(
             learningMediator,
             savingsMediator,
             shopMediator,
+            petMediator,
             wardrobeMediator,
             inventoryMediator,
             gameAudio,

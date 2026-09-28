@@ -37,6 +37,7 @@ import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.room.api.RoomPetPose
+import github.detrig.feature.room.presentation.BATH_TUTORIAL_OBJECT_ID
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
 import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
@@ -70,6 +71,7 @@ internal fun HouseScene(
     onBathtubClick: () -> Unit = {},
     onCalendarClick: () -> Unit,
     onPiggyBankClick: () -> Unit,
+    onWishBoardClick: () -> Unit = {},
     onTestsClick: () -> Unit,
     onWardrobeClick: () -> Unit,
     onMirrorClick: () -> Unit,
@@ -108,6 +110,11 @@ internal fun HouseScene(
     }
     val focusedPlacement = remember(focusObjectId) {
         focusObjectId?.let { id -> HouseLayout.objects.firstOrNull { it.id == id } }
+    }
+    val bathroomFocusCenterX = remember {
+        val bathroom = HouseSurfaceLayout.Room.BATHROOM
+        (bathroom.left + bathroom.width / 2f) / HouseSurfaceLayout.SCENE_WIDTH *
+            HouseLayout.WORLD_WIDTH
     }
     val feedingScene = isFeedingScene
     val sceneZoom = if (feedingScene) FEEDING_SCENE_ZOOM else 1f
@@ -223,7 +230,7 @@ internal fun HouseScene(
             }
         }
         // Первая отрисовка уже в сохранённой точке, без кадра с левой границей дома.
-        val scroll = remember(unitPx, focusObjectId, sceneZoom) {
+        val scroll = remember(unitPx, sceneZoom) {
             ScrollState((initialCameraLeftX * unitPx).roundToInt())
         }
         LaunchedEffect(ready, feedingScene, unitPx) {
@@ -250,8 +257,10 @@ internal fun HouseScene(
             }
         }
 
-        LaunchedEffect(unitPx, focusObjectId, sceneZoom) {
+        LaunchedEffect(scroll) {
             ready = false
+            // The viewport must be measured before scrollTo can reach a room object.
+            snapshotFlow { scroll.maxValue }.first { it != Int.MAX_VALUE }
             scroll.scrollTo((initialCameraLeftX * unitPx).roundToInt())
             ready = true
             snapshotFlow { scroll.value }.collect {
@@ -290,30 +299,33 @@ internal fun HouseScene(
                 .debounce(HouseLayout.SAVE_DELAY_MILLIS).filter { it }.collect { save() }
         }
         DisposableEffect(motion, unitPx, focusObjectId) { onDispose { save() } }
-        LaunchedEffect(previewZoneId, focusObjectId, ready) {
+        LaunchedEffect(previewZoneId, focusObjectId, ready, scroll) {
             val id = focusObjectId ?: previewZoneId ?: return@LaunchedEffect
             if (!ready) return@LaunchedEffect
-            val placement = HouseLayout.objects.find { it.id == id || it.zoneId == id }
-            if (placement != null) {
-                val target = (HouseLayout.clampCamera(placement.centerX - 0.5f) * unitPx).roundToInt()
-                scroll.stopScroll()
-                if (focusObjectId != null) {
-                    scroll.animateScrollTo(
-                        value = target,
-                        animationSpec = tween(
-                            durationMillis = appMotion.durationSlowMillis,
-                            easing = appMotion.standardEasing,
-                        ),
-                    )
-                } else {
-                    scroll.scrollTo(target)
-                }
-                if (!feedingScene) {
-                    motion.cameraLeftX = scroll.value / unitPx
-                    motion.hintSeen = true
-                    save()
-                }
+            val focusCenterX = HouseLayout.objects.find { it.id == id || it.zoneId == id }?.centerX
+                ?: bathroomFocusCenterX.takeIf { id == BATH_TUTORIAL_OBJECT_ID }
+                ?: return@LaunchedEffect
+            val target = (HouseLayout.clampCamera(focusCenterX - 0.5f) * unitPx)
+                .roundToInt().coerceIn(0, scroll.maxValue)
+            scroll.stopScroll()
+            if (focusObjectId != null) {
+                scroll.animateScrollTo(
+                    value = target,
+                    animationSpec = tween(
+                        durationMillis = appMotion.durationSlowMillis,
+                        easing = appMotion.standardEasing,
+                    ),
+                )
+            } else {
+                scroll.scrollTo(target)
             }
+            if (!feedingScene) {
+                motion.cameraLeftX = scroll.value / unitPx
+                motion.hintSeen = true
+                save()
+            }
+            // Let the highlighted object's window bounds follow the final scroll position.
+            withFrameNanos { }
             previewReady(id)
         }
 
@@ -412,6 +424,7 @@ internal fun HouseScene(
                                     "bed" -> onBedClick()
                                     "calendar" -> onCalendarClick()
                                     "piggy_bank" -> onPiggyBankClick()
+                                    "decor_notice_board" -> onWishBoardClick()
                                     "task_board" -> onTestsClick()
                                     "wardrobe" -> onWardrobeClick()
                                     "sink" -> onDishesClick()
@@ -427,7 +440,15 @@ internal fun HouseScene(
                             closeUp = false,
                             compactRoom = true,
                             equipped = bathroomFurnitureByPlacement,
-                            showBathtubOutline = highlightInteractiveObjects,
+                            showBathtubOutline = highlightInteractiveObjects ||
+                                BATH_TUTORIAL_OBJECT_ID in highlightedObjectIds,
+                            onBathtubBoundsChanged = if (
+                                BATH_TUTORIAL_OBJECT_ID in highlightedObjectIds
+                            ) {
+                                onHighlightedObjectBoundsChanged
+                            } else {
+                                null
+                            },
                             onBathtubClick = onBathtubClick.takeIf { active && ready },
                             modifier = Modifier
                                 .offset(x = unitDp * bathroom.left * HouseLayout.WORLD_WIDTH /

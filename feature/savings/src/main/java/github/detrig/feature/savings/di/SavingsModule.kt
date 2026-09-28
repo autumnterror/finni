@@ -19,6 +19,7 @@ internal class SavingsModule(private val dependencies: SavingsDependencies) : Sa
             dependencies.weekApi(),
             dependencies.learningApi(),
             dependencies.progressionApi(),
+            dependencies.gameStateApi(),
         )
     }
     private val createGoal by lazy { CreateSavingsGoalInteractor(dependencies.economyApi(), learning) }

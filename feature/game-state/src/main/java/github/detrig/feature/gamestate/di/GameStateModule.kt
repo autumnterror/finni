@@ -25,6 +25,7 @@ internal class GameStateModule(
             currentTimeMillis = dependencies::currentTimeMillis,
             dirtStorage = PetDirtStorage(dependencies.petDirtPreferences()),
             currentWeekNumber = dependencies::currentWeekNumber,
+            currentAbsoluteDay = dependencies::currentAbsoluteDay,
         )
     }
 

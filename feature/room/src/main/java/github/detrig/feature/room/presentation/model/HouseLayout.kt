@@ -144,7 +144,7 @@ internal object HouseLayout {
         asset("decor_cabinet", HouseObjectArt.CABINET, 421f, 273f, 1235f, 403f, 1385f, 507f, layer = 0f),
         asset("decor_shelf_phone", HouseObjectArt.PHONE, 459f, 124f, 1153f, 259f, 1337f, 308f, layer = 0f),
         asset("decor_plant", HouseObjectArt.PHONE, 244f, 320f, 1281f, 200f, 1325f, 266f, layer = 2f),
-        asset("decor_notice_board", HouseObjectArt.TASK_BOARD, 365f, 332f, 1425f, 202f, 1530f, 324f, layer = 0f),
+        asset("decor_notice_board", HouseObjectArt.TASK_BOARD, 365f, 332f, 1425f, 202f, 1530f, 324f, interactive = true, layer = 0f),
         asset("decor_range_hood", HouseObjectArt.STOVE, 268f, 291f, 1890f, 100f, 2035f, 278f, layer = 0f),
         asset("decor_stove", HouseObjectArt.STOVE, 280f, 393f, 1890f, 301f, 2035f, 505f, layer = 0f),
 

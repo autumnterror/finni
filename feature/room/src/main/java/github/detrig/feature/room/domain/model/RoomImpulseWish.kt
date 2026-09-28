@@ -8,8 +8,12 @@ data class RoomImpulseWish(
     val kind: Kind = Kind.GROCERY,
     val priceRub: Long = 0,
     val productId: String? = null,
+    val createdOnAbsoluteDay: Long? = null,
+    /** Exclusive game day when this wish expires. Null means it is tied to a persistent goal. */
+    val expiresOnAbsoluteDayExclusive: Long? = null,
+    val completedOnAbsoluteDay: Long? = null,
 ) {
-    enum class Kind { GROCERY, CLOTHING, FREE }
+    enum class Kind { GROCERY, CLOTHING, MINI_GAME, TOY, SAVINGS_TOP_UP, SAVINGS_GOAL, SAVED_GAME, FREE }
     init {
         require(eventId.isNotBlank())
         require(productTitle.isNotBlank())
@@ -19,9 +23,50 @@ data class RoomImpulseWish(
     companion object {
         const val PHRASE_VARIANT_COUNT = 4
     }
+
+    fun daysRemaining(absoluteDay: Long): Int? = expiresOnAbsoluteDayExclusive
+        ?.let { (it - absoluteDay).coerceAtLeast(1L).toInt() }
+
+    val isPurchasable: Boolean
+        get() = kind == Kind.GROCERY || kind == Kind.CLOTHING || kind == Kind.TOY
+
+    val isCompleted: Boolean get() = completedOnAbsoluteDay != null
+
+    val happinessBonus: Int
+        get() = when {
+            isPurchasable -> github.detrig.feature.gamestate.domain.model.PetWishHappinessRewards.optionalPurchase(eventId)
+            kind == Kind.MINI_GAME -> github.detrig.feature.gamestate.domain.model.MiniGameHappinessRewards
+                .firstLaunchPoints(productId.orEmpty()).takeIf { it > 0 }
+                ?: github.detrig.feature.gamestate.domain.model.PetPlayReward.HAPPINESS_PER_ROUND
+            else -> 0
+        }
+}
+
+data class RoomWishObjectCandidate(
+    val id: String,
+    val title: String,
+    val priceRub: Long,
+) {
+    companion object {
+        fun interiorId(itemId: String): String = "interior:$itemId"
+    }
 }
 
 fun interface RoomImpulseWishSource {
-    suspend fun claimCurrentWish(): RoomImpulseWish?
+    suspend fun currentWish(): RoomImpulseWish?
+    suspend fun currentWishes(): List<RoomImpulseWish> = listOfNotNull(currentWish())
+    suspend fun currentWishes(
+        absoluteDay: Long,
+        activeGoalId: String?,
+    ): List<RoomImpulseWish> = currentWishes()
+    suspend fun claimCurrentWish(): RoomImpulseWish? = currentWish()
+    suspend fun claimDialogueWish(wish: RoomImpulseWish): RoomImpulseWish? = wish
+    suspend fun acknowledgeDialogue(eventId: String) = Unit
     suspend fun recordDeclined(wish: RoomImpulseWish) = Unit
+    suspend fun recordFulfilled(wish: RoomImpulseWish) = Unit
+    /** Captured before payment and persisted with the purchase, so retries retain the same wish. */
+    suspend fun purchaseWishId(productId: String): String? = null
+    suspend fun recordPurchaseFulfilled(wishId: String) = Unit
+    suspend fun currentFulfillments(): List<RoomWishFulfillment> = emptyList()
+    suspend fun acknowledgeFulfillment(id: String) = Unit
 }

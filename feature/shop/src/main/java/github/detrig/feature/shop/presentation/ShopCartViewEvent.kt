@@ -10,6 +10,7 @@ internal sealed interface ShopCartViewEvent : CoreViewEvent {
     data class Increase(val productId: ProductId) : ShopCartViewEvent
     data class Decrease(val productId: ProductId) : ShopCartViewEvent
     data object PayClicked : ShopCartViewEvent
+    data object OpenSavings : ShopCartViewEvent
     data object ConsequenceWarningDismissed : ShopCartViewEvent
     data object CheckoutRejectionDismissed : ShopCartViewEvent
 }

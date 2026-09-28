@@ -10,11 +10,13 @@ import github.detrig.feature.economy.domain.OperationContext
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.pet.api.PetApi
 import github.detrig.feature.pet.domain.model.GrowthStage
+import github.detrig.feature.phone.api.MESSAGES_APP_ID
 import github.detrig.feature.week.api.WeekApi
 import github.detrig.feature.phone.navigation.PhoneRouter
 import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
+import kotlin.random.Random
 
 internal data class DebugMenuViewState(
     val balanceRub: Long = 0,
@@ -26,6 +28,7 @@ internal data class DebugMenuViewState(
     val isChanging: Boolean = false,
     val isChangingDirtStage: Boolean = false,
     val isEndingWeek: Boolean = false,
+    val isTriggeringSituation: Boolean = false,
     val isResettingProgress: Boolean = false,
     val pendingReset: Boolean = false,
     val errorMessage: String? = null,
@@ -40,6 +43,7 @@ internal sealed interface DebugMenuViewEvent : CoreViewEvent {
     data object UseLevelGrowthStage : DebugMenuViewEvent
     data class ChangeDirtStage(val delta: Int) : DebugMenuViewEvent
     data object EndWeek : DebugMenuViewEvent
+    data object TriggerRandomSituation : DebugMenuViewEvent
     data object RequestProgressReset : DebugMenuViewEvent
     data object CancelProgressReset : DebugMenuViewEvent
     data object ConfirmProgressReset : DebugMenuViewEvent
@@ -52,6 +56,9 @@ internal class DebugMenuViewModel(
     private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
     private val petApi: PetApi,
     private val router: PhoneRouter,
+    private val createSecuritySituation: suspend () -> Boolean,
+    private val createWishSituation: suspend () -> Boolean,
+    private val randomBoolean: () -> Boolean = { Random.nextBoolean() },
 ) : CoreViewModel<DebugMenuViewState, DebugMenuViewEvent>(DebugMenuViewState()) {
     private var observationJob: Job? = null
     private var dirtObservationJob: Job? = null
@@ -60,6 +67,7 @@ internal class DebugMenuViewModel(
     private var growthChangeJob: Job? = null
     private var dirtChangeJob: Job? = null
     private var endWeekJob: Job? = null
+    private var situationJob: Job? = null
     private var resetProgressJob: Job? = null
 
     override fun perform(viewEvent: DebugMenuViewEvent) {
@@ -78,6 +86,7 @@ internal class DebugMenuViewModel(
                 if (balance > 0) changeBalance(-balance)
             }
             DebugMenuViewEvent.EndWeek -> endWeek()
+            DebugMenuViewEvent.TriggerRandomSituation -> triggerRandomSituation()
             DebugMenuViewEvent.RequestProgressReset ->
                 updateState { copy(pendingReset = true, errorMessage = null) }
             DebugMenuViewEvent.CancelProgressReset ->
@@ -139,7 +148,8 @@ internal class DebugMenuViewModel(
     }
 
     private fun changeGrowthStage(delta: Int) {
-        if (delta !in listOf(-1, 1) || growthChangeJob?.isActive == true || stateData.isResettingProgress) return
+        if (delta !in listOf(-1, 1) || growthChangeJob?.isActive == true ||
+            stateData.isResettingProgress || stateData.isTriggeringSituation) return
         updateState { copy(isChangingGrowthStage = true, errorMessage = null) }
         growthChangeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -161,7 +171,8 @@ internal class DebugMenuViewModel(
     }
 
     private fun useLevelGrowthStage() {
-        if (growthChangeJob?.isActive == true || stateData.isResettingProgress) return
+        if (growthChangeJob?.isActive == true || stateData.isResettingProgress ||
+            stateData.isTriggeringSituation) return
         updateState { copy(isChangingGrowthStage = true, errorMessage = null) }
         growthChangeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -184,7 +195,8 @@ internal class DebugMenuViewModel(
     }
 
     private fun changeDirtStage(delta: Int) {
-        if (delta !in listOf(-1, 1) || dirtChangeJob?.isActive == true || stateData.isResettingProgress) return
+        if (delta !in listOf(-1, 1) || dirtChangeJob?.isActive == true ||
+            stateData.isResettingProgress || stateData.isTriggeringSituation) return
         updateState { copy(isChangingDirtStage = true, errorMessage = null) }
         dirtChangeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -200,7 +212,8 @@ internal class DebugMenuViewModel(
     }
 
     private fun changeBalance(deltaRub: Long) {
-        if (deltaRub == 0L || changeJob?.isActive == true || stateData.isResettingProgress) return
+        if (deltaRub == 0L || changeJob?.isActive == true || stateData.isResettingProgress ||
+            stateData.isTriggeringSituation) return
         updateState { copy(isChanging = true, errorMessage = null) }
         changeJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -232,7 +245,8 @@ internal class DebugMenuViewModel(
     }
 
     private fun endWeek() {
-        if (endWeekJob?.isActive == true || stateData.isResettingProgress) return
+        if (endWeekJob?.isActive == true || stateData.isResettingProgress ||
+            stateData.isTriggeringSituation) return
         updateState { copy(isEndingWeek = true, errorMessage = null, statusMessage = null) }
         endWeekJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -258,10 +272,53 @@ internal class DebugMenuViewModel(
         }
     }
 
+    private fun triggerRandomSituation() {
+        if (situationJob?.isActive == true || changeJob?.isActive == true ||
+            endWeekJob?.isActive == true || growthChangeJob?.isActive == true ||
+            dirtChangeJob?.isActive == true || stateData.isResettingProgress) return
+        updateState {
+            copy(isTriggeringSituation = true, errorMessage = null, statusMessage = null)
+        }
+        situationJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                updateState {
+                    copy(
+                        isTriggeringSituation = false,
+                        errorMessage = "Не удалось создать случайную ситуацию",
+                    )
+                }
+                situationJob = null
+                true
+            },
+        ) {
+            val preferred = if (randomBoolean()) DebugSituation.SECURITY else DebugSituation.WISH
+            val fallback = if (preferred == DebugSituation.SECURITY) DebugSituation.WISH else DebugSituation.SECURITY
+            val created = preferred.takeIf { createSituation(it) }
+                ?: fallback.takeIf { createSituation(it) }
+            updateState {
+                copy(
+                    isTriggeringSituation = false,
+                    errorMessage = if (created == null) "Нет доступных ситуаций для запуска" else null,
+                )
+            }
+            situationJob = null
+            when (created) {
+                DebugSituation.SECURITY -> router.openApp(MESSAGES_APP_ID)
+                DebugSituation.WISH -> router.close()
+                null -> Unit
+            }
+        }
+    }
+
+    private suspend fun createSituation(situation: DebugSituation): Boolean = when (situation) {
+        DebugSituation.SECURITY -> createSecuritySituation()
+        DebugSituation.WISH -> createWishSituation()
+    }
+
     private fun resetProgress() {
         if (resetProgressJob?.isActive == true || changeJob?.isActive == true ||
             endWeekJob?.isActive == true || growthChangeJob?.isActive == true ||
-            dirtChangeJob?.isActive == true) return
+            dirtChangeJob?.isActive == true || situationJob?.isActive == true) return
         updateState {
             copy(isResettingProgress = true, pendingReset = false, errorMessage = null, statusMessage = null)
         }
@@ -284,3 +341,5 @@ internal class DebugMenuViewModel(
         }
     }
 }
+
+private enum class DebugSituation { SECURITY, WISH }

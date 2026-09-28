@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +35,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetBackButton
+import github.detrig.designsystem.component.FinPetButton
+import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
 import github.detrig.designsystem.component.FinPetFeedbackSurface
 import github.detrig.designsystem.component.FinPetFeedbackTone
@@ -270,6 +273,11 @@ private fun MessageThreadContent(
     onParentHelpOfferOpened: () -> Unit,
 ) {
     var isMomHelpHintVisible by rememberSaveable(thread.senderId) { mutableStateOf(false) }
+    val codeRequestEvent = thread.latestEvent?.takeIf { event ->
+        event.response == null && !isResponding && thread.messages.any { message ->
+            message.eventId == event.id && message.kind == MessageKind.REQUEST_CONFIRMATION_CODE
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -307,7 +315,7 @@ private fun MessageThreadContent(
                 }
                 val unsafeChoice = event?.let {
                     when (message.kind) {
-                        MessageKind.REQUEST_CONFIRMATION_CODE -> SecurityResponseChoice.SHARE_CODE
+                        MessageKind.REQUEST_CONFIRMATION_CODE -> null
                         MessageKind.UNKNOWN_LINK -> SecurityResponseChoice.OPEN_LINK
                         MessageKind.BANK_CONFIRMATION_CODE -> null
                         MessageKind.PARENT_HELP_OFFER,
@@ -337,6 +345,17 @@ private fun MessageThreadContent(
                 }
             }
         }
+        if (codeRequestEvent != null) {
+            Spacer(Modifier.height(AppTheme.spacing.sm))
+            FinPetButton(
+                text = stringResource(R.string.messages_share_code),
+                onClick = {
+                    onSuspiciousMessageOpened(codeRequestEvent.id, SecurityResponseChoice.SHARE_CODE)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+            )
+        }
     }
     if (isMomHelpHintVisible) {
         FinPetHelpDialog(
@@ -361,15 +380,9 @@ private fun IncomingMessageBubble(
                 .then(
                     if (onParentHelpOfferOpened != null) {
                         Modifier.clickable(onClick = onParentHelpOfferOpened)
-                    } else if (onSuspiciousInteraction != null) {
+                    } else if (onSuspiciousInteraction != null && message.kind == MessageKind.UNKNOWN_LINK) {
                         Modifier.clickable(
-                            onClickLabel = stringResource(
-                                if (message.kind == MessageKind.UNKNOWN_LINK) {
-                                    R.string.messages_open_link
-                                } else {
-                                    R.string.messages_share_code
-                                },
-                            ),
+                            onClickLabel = stringResource(R.string.messages_open_link),
                             onClick = onSuspiciousInteraction,
                         )
                     } else {
@@ -410,7 +423,10 @@ private fun MessageSenderId.displayName(): String = stringResource(
 @Composable
 private fun PhoneMessage.displayText(): String = when (kind) {
     MessageKind.BANK_CONFIRMATION_CODE -> stringResource(R.string.messages_bank_code, payload)
-    MessageKind.REQUEST_CONFIRMATION_CODE -> stringResource(R.string.messages_code_request)
+    MessageKind.REQUEST_CONFIRMATION_CODE -> {
+        val variants = stringArrayResource(R.array.messages_code_requests)
+        variants[Math.floorMod(id.hashCode(), variants.size)]
+    }
     MessageKind.UNKNOWN_LINK -> stringResource(R.string.messages_unknown_link, payload)
     MessageKind.PARENT_HELP_OFFER -> stringResource(R.string.messages_parent_help_offer)
     MessageKind.PARENT_HELP_REPAYMENT -> {
@@ -492,7 +508,7 @@ private fun MessagesAppPreview() {
         absoluteDay = 2,
         scenario = SecurityMessageScenario.CONFIRMATION_CODE,
         senderId = MessageSenderId.UNKNOWN_1,
-        guidanceVisible = true,
+        guidanceVisible = false,
     )
     val message = PhoneMessage(
         id = "security-event-2-request",

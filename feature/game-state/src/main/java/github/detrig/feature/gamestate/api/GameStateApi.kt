@@ -35,6 +35,18 @@ interface GameStateApi {
     /** Grants a new clothing item's bonus once for its committed purchase. */
     suspend fun rewardClothingPurchase(purchaseOperationId: String, happinessPoints: Int): Int
 
+    /** Grants a wishlist reward once, even when its committed source is replayed after restoration. */
+    suspend fun rewardPetWishHappiness(wishRewardId: String, happinessPoints: Int): Int = 0
+
+    /** Durable wish rewards and actual play facts; reading never grants a reward. */
+    suspend fun petWishActivities(): List<github.detrig.feature.gamestate.domain.model.PetWishActivity> = emptyList()
+
+    /** Protects happiness decay through an inclusive game day after a savings contribution. */
+    suspend fun activateSavingsHappinessProtection(
+        contributionOperationId: String,
+        throughAbsoluteDay: Long,
+    ) = Unit
+
     /** Applies a concrete food portion only once, even after process restoration. */
     suspend fun feedPet(completion: PetFeedingCompletion): PetFeedingResult
 

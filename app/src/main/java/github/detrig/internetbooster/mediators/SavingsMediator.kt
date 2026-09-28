@@ -39,6 +39,7 @@ internal class SavingsMediator(
                 }
                 override fun learningApi() = learning.getApi()
                 override fun progressionApi() = gameState.getProgressionApi()
+                override fun gameStateApi() = gameState.getApi()
                 override fun globalNavigator() = core.globalNavigator
                 override fun configuration() = SavingsConfiguration()
                 override fun gameAudio() = gameAudio

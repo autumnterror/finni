@@ -28,4 +28,7 @@ interface GameStateDependencies {
     /** Game-week number for the mini-game XP limit. */
     suspend fun currentWeekNumber(): Long
 
+    /** Absolute game day for time-bounded pet effects. */
+    suspend fun currentAbsoluteDay(): Long = (currentWeekNumber() - 1L) * 7L + 1L
+
 }

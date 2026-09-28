@@ -13,6 +13,7 @@ import github.detrig.core.presentation.message.GlobalMessageController
 import github.detrig.feature.gamestate.api.ProgressionApi
 import github.detrig.feature.gamestate.api.GameStateApi
 import github.detrig.feature.inventory.api.InventoryApi
+import github.detrig.feature.wardrobe.api.WardrobeApi
 
 interface PhoneDependencies {
     fun globalNavigator(): GlobalNavigator
@@ -20,6 +21,7 @@ interface PhoneDependencies {
     fun roomApi(): RoomApi
     fun petApi(): PetApi
     fun shopApi(): ShopApi
+    fun wardrobeApi(): WardrobeApi
     fun economyApi(): EconomyApi
     fun weekApi(): WeekApi
     fun learningApi(): LearningApi
@@ -27,10 +29,11 @@ interface PhoneDependencies {
     fun gameStateApi(): GameStateApi
     fun inventoryApi(): InventoryApi
     fun messagesStorage(): PhoneMessagesStorage
-    fun dailySecurityEventProbability(): Double
+    fun isSecurityEventScheduled(absoluteDay: Long): Boolean
     fun minimumDaysBetweenSecurityEvents(): Int
     fun minimumHelpBalanceRub(): Long
     fun globalMessageController(): GlobalMessageController
+    suspend fun createRandomWishForDebug(): Boolean
     suspend fun resetDemoProgress(skipOnboarding: Boolean)
     fun isDemoMode(): Boolean
 }

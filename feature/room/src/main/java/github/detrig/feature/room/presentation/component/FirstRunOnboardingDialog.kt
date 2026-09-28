@@ -55,7 +55,11 @@ internal fun FirstRunOnboardingDialog(
         dismissOnBackPress = false,
         focusable = !isTapTableInstruction,
         advanceOnTap = !isDepositChoice && destinationAction == null && !isTapTableInstruction,
-        alignment = Alignment.TopCenter.takeIf { isTapTableInstruction },
+        alignment = when {
+            state.step == FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> Alignment.BottomCenter
+            isTapTableInstruction -> Alignment.TopCenter
+            else -> null
+        },
         actions = when {
             isDepositChoice -> listOf(
                 FinPetDialogueAction(
@@ -150,6 +154,9 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.BEDTIME_GUIDANCE -> listOf(stringResource(R.string.onboarding_bedtime_guidance))
     FirstRunOnboardingStep.SECOND_DAY_MORNING -> listOf(
         stringResource(R.string.onboarding_second_day_morning),
+    )
+    FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> listOf(
+        stringResource(R.string.onboarding_wish_board_guidance),
         stringResource(R.string.onboarding_second_day_free),
     )
     FirstRunOnboardingStep.WEEK_END_INTRO -> listOf(
@@ -182,6 +189,7 @@ private fun FirstRunOnboardingState.cards(petName: String): List<String>? = when
     FirstRunOnboardingStep.FEEDING,
     FirstRunOnboardingStep.FEEDING_DONE,
     FirstRunOnboardingStep.WAITING_FOR_BED,
+    FirstRunOnboardingStep.SECOND_DAY_WISHES,
     FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
     FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
     FirstRunOnboardingStep.NEW_WEEK_INTRO,
@@ -218,12 +226,12 @@ private fun GoalProgressCard(state: FirstRunOnboardingState) {
     }
 }
 
-@Preview(name = "Знакомство с копилкой", widthDp = 360, heightDp = 740, showBackground = true)
+@Preview(name = "Знакомство с доской желаний", widthDp = 360, heightDp = 740, showBackground = true)
 @Composable
 private fun FirstRunOnboardingDialogPreview() {
     FinPetTheme {
         FirstRunOnboardingDialog(
-            state = FirstRunOnboardingState(FirstRunOnboardingStep.PIGGY_TAP),
+            state = FirstRunOnboardingState(FirstRunOnboardingStep.WISH_BOARD_GUIDANCE),
             petName = "Финни",
             petPortrait = { modifier ->
                 Box(modifier.background(AppTheme.colors.actionSecondary), contentAlignment = Alignment.Center) {

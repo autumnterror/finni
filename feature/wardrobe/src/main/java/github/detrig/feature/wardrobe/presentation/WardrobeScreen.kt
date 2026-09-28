@@ -41,9 +41,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import github.detrig.designsystem.component.FinPetBackButton
 import github.detrig.designsystem.component.FinPetStorefrontHeader
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
@@ -56,6 +59,7 @@ import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.api.ClothingItem
+import github.detrig.feature.pet.domain.model.ClothingState
 import github.detrig.feature.pet.domain.model.PetColor
 import github.detrig.feature.pet.domain.model.PetProfile
 import github.detrig.feature.pet.presentation.PetScene
@@ -72,16 +76,24 @@ private val categories = listOf(
 )
 
 @Composable
-internal fun WardrobeScreen() {
+internal fun WardrobeScreen(
+    mode: WardrobeMode,
+    onBack: (() -> Unit)? = null,
+) {
     val component = WardrobeFeature.component()
-    val viewModel: WardrobeViewModel = viewModel { component.viewModel() }
+    val viewModel: WardrobeViewModel = viewModel(key = "wardrobe-${mode.name}") {
+        component.viewModel(mode)
+    }
     val state by viewModel.state().observeAsState(viewModel.state().value ?: WardrobeViewState())
     val pet = component.petApi
     LaunchedEffect(viewModel) { viewModel.perform(WardrobeViewEvent.Load) }
-    BackHandler { viewModel.perform(WardrobeViewEvent.Back) }
+    val navigateBack = { onBack?.invoke() ?: viewModel.perform(WardrobeViewEvent.Back) }
+    BackHandler(onBack = navigateBack)
     WardrobeContent(
         state = state,
         onEvent = viewModel::perform,
+        onBack = navigateBack,
+        useSafeInsets = mode == WardrobeMode.OWNED,
         thumbnail = { id, modifier -> pet.ClothingThumbnail(id, modifier) },
         petPreview = { profile, outfit, modifier -> pet.OutfitPreview(profile, outfit, modifier) },
     )
@@ -91,41 +103,35 @@ internal fun WardrobeScreen() {
 internal fun WardrobeContent(
     state: WardrobeViewState,
     onEvent: (WardrobeViewEvent) -> Unit,
+    onBack: () -> Unit,
+    useSafeInsets: Boolean = true,
     thumbnail: @Composable (String, Modifier) -> Unit,
     petPreview: @Composable (PetProfile, Map<String, String>, Modifier) -> Unit,
 ) {
     val colors = AppTheme.colors.storefront
-    val gridState = key(state.tab, state.category, state.profile?.clothing?.ownedIds.orEmpty()) {
+    val gridState = key(state.mode, state.category, state.profile?.clothing?.ownedIds.orEmpty()) {
         // Start each list at its beginning instead of following an owned item
-        // when switching tabs or moving a new purchase to the bottom.
+        // when switching categories or moving a new purchase to the bottom.
         rememberLazyGridState()
     }
     BoxWithConstraints(
-        Modifier.fillMaxSize().background(colors.background)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical)),
+        Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .then(
+                if (useSafeInsets) {
+                    Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical))
+                } else {
+                    Modifier
+                },
+            ),
     ) {
             val stageHeight = (maxHeight * 0.29f).coerceIn(175.dp, 250.dp)
             Column(
                 Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                WardrobeHeader(state, onBack = { onEvent(WardrobeViewEvent.Back) })
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FinPetButton(
-                        text = "Гардероб",
-                        onClick = { onEvent(WardrobeViewEvent.TabSelected(WardrobeTab.OWNED)) },
-                        modifier = Modifier.weight(1f),
-                        style = if (state.tab == WardrobeTab.OWNED) FinPetButtonDefaults.storefrontPrimaryStyle()
-                            else FinPetButtonDefaults.storefrontOutlinedStyle(),
-                    )
-                    FinPetButton(
-                        text = "Магазин",
-                        onClick = { onEvent(WardrobeViewEvent.TabSelected(WardrobeTab.SHOP)) },
-                        modifier = Modifier.weight(1f),
-                        style = if (state.tab == WardrobeTab.SHOP) FinPetButtonDefaults.storefrontPrimaryStyle()
-                            else FinPetButtonDefaults.storefrontOutlinedStyle(),
-                    )
-                }
+                WardrobeHeader(state = state, onBack = onBack)
                 FittingRoom(
                     profile = state.profile,
                     outfit = state.previewOutfit,
@@ -150,7 +156,11 @@ internal fun WardrobeContent(
                 } else if (state.visibleItems.isEmpty()) {
                     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (state.tab == WardrobeTab.OWNED) "Пока здесь нет одежды" else "Нет вещей в этой категории",
+                            text = if (state.mode == WardrobeMode.OWNED) {
+                                "Пока здесь нет купленных вещей"
+                            } else {
+                                "Нет вещей в этой категории"
+                            },
                             style = AppTheme.typography.body,
                             color = colors.onSurface,
                             textAlign = TextAlign.Center,
@@ -184,13 +194,29 @@ internal fun WardrobeContent(
 
 @Composable
 private fun WardrobeHeader(state: WardrobeViewState, onBack: () -> Unit) {
-    FinPetStorefrontHeader(
-        title = if (state.tab == WardrobeTab.OWNED) "Гардероб" else "Магазин одежды",
-        balanceRub = state.balanceRub,
-        onBack = onBack,
-        backContentDescription = "Вернуться в комнату",
-    )
+    if (state.mode == WardrobeMode.SHOP) {
+        FinPetStorefrontHeader(
+            title = "Одежда",
+            balanceRub = state.balanceRub,
+            onBack = onBack,
+            backContentDescription = "Вернуться к приложениям",
+        )
+    } else {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            FinPetBackButton(onClick = onBack, contentDescription = "Вернуться в комнату")
+            Text(
+                "Гардероб",
+                modifier = Modifier.weight(1f),
+                style = AppTheme.typography.screenTitle,
+                color = AppTheme.colors.storefront.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+            Spacer(Modifier.size(AppTheme.sizes.preferredTouchTarget))
+        }
+    }
 }
+
 @Composable
 private fun FittingRoom(
     profile: PetProfile?,
@@ -346,10 +372,14 @@ private fun WardrobeActionBar(state: WardrobeViewState, onEvent: (WardrobeViewEv
     val item = state.selectedItem
     val owned = item?.id in state.profile?.clothing?.ownedIds.orEmpty()
     val equipped = item != null && state.profile?.clothing?.equippedBySlot?.get(item.slot) == item.id
-    val enabled = item != null && !state.purchasing && (owned || state.balanceRub >= item.priceRub)
+    val enabled = when (state.mode) {
+        WardrobeMode.OWNED -> item != null && owned && !state.purchasing
+        WardrobeMode.SHOP -> item != null && !owned && !state.purchasing && state.balanceRub >= item.priceRub
+    }
     val action = when {
         item == null -> "Выберите вещь"
         state.purchasing -> "Покупаем…"
+        state.mode == WardrobeMode.SHOP && owned -> "Уже куплено"
         equipped -> "Снять"
         owned -> "Надеть"
         state.balanceRub < item.priceRub -> "Не хватает монет · ${item.priceRub} ₽"
@@ -376,7 +406,7 @@ private fun WardrobeActionBar(state: WardrobeViewState, onEvent: (WardrobeViewEv
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (item != null && !owned) {
+            if (state.mode == WardrobeMode.SHOP && item != null && !owned) {
                 Text(
                     "Примерка бесплатна",
                     style = AppTheme.typography.caption,
@@ -401,28 +431,16 @@ private fun WardrobeActionBar(state: WardrobeViewState, onEvent: (WardrobeViewEv
     }
 }
 
-@Preview(name = "Гардероб", widthDp = 390, heightDp = 844, showBackground = true)
+@Preview(name = "Одежда", widthDp = 390, heightDp = 844, showBackground = true)
 @Composable
-private fun WardrobePreview() {
-    val profile = PetProfile(name = "Финни", color = PetColor.Sunny,
-        clothing = github.detrig.feature.pet.domain.model.ClothingState(
-            ownedIds = setOf("31_round_glasses", "06_denim_vest"),
-        ),
-    )
+private fun WardrobePreview(
+    @PreviewParameter(WardrobePreviewProvider::class) state: WardrobeViewState,
+) {
     FinPetTheme {
         WardrobeContent(
-            state = WardrobeViewState(
-                loading = false,
-                profile = profile,
-                balanceRub = 60,
-                items = listOf(
-                    ClothingItem("31_round_glasses", "Круглые очки", "face", 70),
-                    ClothingItem("32_teal_square_glasses", "Бирюзовая оправа", "face", 75),
-                    ClothingItem("06_denim_vest", "Джинсовый жилет", "body", 85),
-                ),
-                selectedId = "06_denim_vest",
-            ),
+            state = state,
             onEvent = {},
+            onBack = {},
             thumbnail = { _, modifier -> Spacer(modifier) },
             petPreview = { pet, outfit, modifier ->
                 PetScene(
@@ -434,4 +452,37 @@ private fun WardrobePreview() {
             },
         )
     }
+}
+
+private class WardrobePreviewProvider : PreviewParameterProvider<WardrobeViewState> {
+    private val items = listOf(
+        ClothingItem("31_round_glasses", "Круглые очки", "face", 70),
+        ClothingItem("32_teal_square_glasses", "Бирюзовая оправа", "face", 75),
+        ClothingItem("06_denim_vest", "Джинсовый жилет", "body", 85),
+    )
+    private val profile = PetProfile(
+        name = "Финни",
+        color = PetColor.Sunny,
+        clothing = ClothingState(
+            ownedIds = setOf("31_round_glasses"),
+        ),
+    )
+
+    override val values = sequenceOf(
+        WardrobeViewState(
+            loading = false,
+            profile = profile,
+            balanceRub = 160,
+            items = items,
+            mode = WardrobeMode.SHOP,
+            selectedId = "06_denim_vest",
+        ),
+        WardrobeViewState(
+            loading = false,
+            profile = profile,
+            items = items,
+            mode = WardrobeMode.OWNED,
+            selectedId = "31_round_glasses",
+        ),
+    )
 }

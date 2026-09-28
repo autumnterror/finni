@@ -28,6 +28,7 @@ internal class RoomApiImpl(
     private val furnitureStore: FurnitureStore,
     private val economyApi: EconomyApi,
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
+    private val wishArtwork: RoomWishArtwork,
 ) : RoomApi {
     init {
         RoomSpriteCache.preload(resources)
@@ -53,6 +54,7 @@ internal class RoomApiImpl(
     }
     override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
         purchaseSavingsGoal(goal)
+    override fun interiorWishCandidates() = furnitureStore.wishCandidates()
     @Composable
     override fun InteriorStore(onBack: () -> Unit, modifier: Modifier) {
         FurnitureStoreScreen(furnitureCatalog, surfaceCatalog, furnitureStore, economyApi, onBack, modifier)
@@ -85,6 +87,7 @@ internal class RoomApiImpl(
             petName = petName,
             canShowDialogs = canShowDialogs,
             petContent = petContent,
+            wishArtwork = wishArtwork,
             petPortrait = petPortrait,
             onMirrorClick = onMirrorClick,
             onPhoneClick = onPhoneClick,

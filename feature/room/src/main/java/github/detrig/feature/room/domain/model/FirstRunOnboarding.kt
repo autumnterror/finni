@@ -138,6 +138,8 @@ internal fun FirstRunOnboardingStep.completedChaptersForMigration(): Set<FirstRu
     }.toSet()
 
     FirstRunOnboardingStep.SECOND_DAY_MORNING,
+    FirstRunOnboardingStep.SECOND_DAY_WISHES,
+    FirstRunOnboardingStep.WISH_BOARD_GUIDANCE,
     -> FirstRunOnboardingChapter.entries.takeWhile {
         it != FirstRunOnboardingChapter.SECOND_DAY_MORNING
     }.toSet()

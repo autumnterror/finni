@@ -10,6 +10,8 @@ import github.detrig.feature.planning.domain.PlanActualOperation
 import github.detrig.feature.room.domain.surface.SurfaceCatalog
 import github.detrig.feature.room.domain.surface.SurfaceKind
 import github.detrig.feature.room.domain.surface.surfaceSlotId
+import github.detrig.feature.room.domain.model.RoomImpulseWishSource
+import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
 import github.detrig.feature.week.api.WeekApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,17 +46,28 @@ internal class FurnitureStore(
     private val economy: EconomyApi,
     private val planning: PlanningApi,
     private val week: WeekApi,
+    private val wishes: RoomImpulseWishSource,
 ) {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(readOwnership())
     val state: StateFlow<FurnitureOwnership> = mutableState
 
+    fun wishCandidates(): List<RoomWishObjectCandidate> {
+        val ownership = mutableState.value
+        val pendingId = readPending()?.itemId
+        val furniture = catalog.variants.filter { it.priceRub > 0L && it.id != pendingId && !ownership.owns(it.id) }
+            .map { RoomWishObjectCandidate(RoomWishObjectCandidate.interiorId(it.id), it.name, it.priceRub) }
+        val surfaces = surfaceCatalog.variants.filter { it.priceRub > 0L && it.id != pendingId && !ownership.ownsSurface(it.id) }
+            .map { RoomWishObjectCandidate(RoomWishObjectCandidate.interiorId(it.id), it.name, it.priceRub) }
+        return furniture + surfaces
+    }
+
     suspend fun reconcilePending() = mutex.withLock { reconcilePendingLocked() }
 
     private suspend fun reconcilePendingLocked() {
         val pending = readPending() ?: return
-        val item = itemFor(pending.first)
-        if (item == null) clearPending() else applyPurchase(item, pending.second)
+        val item = itemFor(pending.itemId)
+        if (item == null) clearPending() else applyPurchase(item, pending)
     }
 
     suspend fun purchase(id: String): FurniturePurchaseResult = purchaseItem(id, surface = false)
@@ -69,8 +82,13 @@ internal class FurnitureStore(
             return@withLock FurniturePurchaseResult.AlreadyOwned
         }
         val weekNumber = week.initialize().weekNumber
-        writePending(id, weekNumber)
-        applyPurchase(item, weekNumber)
+        val pending = PendingPurchase(
+            itemId = id,
+            weekNumber = weekNumber,
+            wishId = wishes.purchaseWishId(RoomWishObjectCandidate.interiorId(id)),
+        )
+        writePending(pending)
+        applyPurchase(item, pending)
     }
 
     suspend fun equip(slotId: String, id: String?): Boolean = mutex.withLock {
@@ -101,12 +119,17 @@ internal class FurnitureStore(
         PurchaseItem(it.id, it.priceRub, it.slotId, false)
     } ?: surfaceCatalog.byId[id]?.let { PurchaseItem(it.id, it.priceRub, it.slotId, true) }
 
-    private suspend fun applyPurchase(item: PurchaseItem, weekNumber: Long): FurniturePurchaseResult {
+    private data class PendingPurchase(val itemId: String, val weekNumber: Long, val wishId: String?)
+
+    private suspend fun applyPurchase(item: PurchaseItem, pending: PendingPurchase): FurniturePurchaseResult {
         val operationId = "interior:${item.id}:purchase"
         val result = economy.debit(
             operationId = operationId,
             amountRub = item.priceRub,
-            context = OperationContext(reasonId = "shop:interior:purchase", metadata = item.id),
+            context = OperationContext(
+                reasonId = "shop:interior:purchase",
+                metadata = item.id + pending.wishId?.let { ";pet_wish=$it" }.orEmpty(),
+            ),
         )
         if (result is FinancialOperationResult.Rejected) {
             clearPending()
@@ -127,16 +150,17 @@ internal class FurnitureStore(
             ))
         }
         try {
-            if (planning.getPlanProgress(weekNumber) != null) {
+            if (planning.getPlanProgress(pending.weekNumber) != null) {
                 planning.recordActual(
                     PlanActualOperation.Payment(
                         operationId = operationId,
-                        weekNumber = weekNumber,
+                        weekNumber = pending.weekNumber,
                         amountRub = item.priceRub,
                         classification = PaymentClassification.OPTIONAL,
                     ),
                 )
             }
+            pending.wishId?.let { wishes.recordPurchaseFulfilled(it) }
             clearPending()
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -188,22 +212,31 @@ internal class FurnitureStore(
         mutableState.value = value
     }
 
-    private fun readPending(): Pair<String, Long>? {
+    private fun readPending(): PendingPurchase? {
         val id = preferences.getString(PENDING_ID_KEY, null) ?: return null
-        return id to preferences.getLong(PENDING_WEEK_KEY, 1L)
+        return PendingPurchase(
+            itemId = id,
+            weekNumber = preferences.getLong(PENDING_WEEK_KEY, 1L),
+            wishId = preferences.getString(PENDING_WISH_KEY, null),
+        )
     }
 
-    private fun writePending(id: String, weekNumber: Long) {
-        check(preferences.edit().putString(PENDING_ID_KEY, id).putLong(PENDING_WEEK_KEY, weekNumber).commit())
+    private fun writePending(pending: PendingPurchase) {
+        check(preferences.edit()
+            .putString(PENDING_ID_KEY, pending.itemId)
+            .putLong(PENDING_WEEK_KEY, pending.weekNumber)
+            .putString(PENDING_WISH_KEY, pending.wishId)
+            .commit())
     }
 
     private fun clearPending() {
-        check(preferences.edit().remove(PENDING_ID_KEY).remove(PENDING_WEEK_KEY).commit())
+        check(preferences.edit().remove(PENDING_ID_KEY).remove(PENDING_WEEK_KEY).remove(PENDING_WISH_KEY).commit())
     }
 
     private companion object {
         const val STATE_KEY = "interior_ownership_v1"
         const val PENDING_ID_KEY = "interior_pending_id_v1"
         const val PENDING_WEEK_KEY = "interior_pending_week_v1"
+        const val PENDING_WISH_KEY = "interior_pending_wish_v1"
     }
 }

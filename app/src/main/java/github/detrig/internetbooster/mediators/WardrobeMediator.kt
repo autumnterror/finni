@@ -14,6 +14,7 @@ internal class WardrobeMediator(
     private val planning: PlanningMediator,
     private val week: WeekMediator,
     private val gameState: GameStateMediator,
+    private val shop: ShopMediator,
 ) : Mediator<WardrobeApi> {
     fun init() {
         WardrobeFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -24,6 +25,7 @@ internal class WardrobeMediator(
                 override fun economyApi() = economy.getApi()
                 override fun planningApi() = planning.getApi()
                 override fun weekApi() = week.getApi()
+                override suspend fun wishIdForClothing(itemId: String) = shop.currentClothingWishId(itemId)
             }
         }
     }

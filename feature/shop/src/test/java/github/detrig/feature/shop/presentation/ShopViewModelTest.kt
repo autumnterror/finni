@@ -342,7 +342,11 @@ class ShopViewModelTest {
 
         override fun observeBalanceRub(): Flow<Long> = balance
 
+        override fun observeSavingsRub(): Flow<Long> = MutableStateFlow(0L)
+
         override fun observePetName(): Flow<String> = MutableStateFlow("Пончик")
+
+        override fun openSavings() = Unit
 
         override suspend fun currentDecisionEvent(storeId: StoreId) = event
 

@@ -40,14 +40,16 @@ internal class ShopCheckoutGateway(
         request: ShopCheckoutRequest,
         lineTotalOverrides: Map<ProductId, Long> = emptyMap(),
         additionalMetadata: String? = null,
+        petWishEventId: String? = null,
     ): ShopCheckoutResult = checkoutMutex.withLock {
-        checkoutLocked(request, lineTotalOverrides, additionalMetadata)
+        checkoutLocked(request, lineTotalOverrides, additionalMetadata, petWishEventId)
     }
 
     private suspend fun checkoutLocked(
         request: ShopCheckoutRequest,
         lineTotalOverrides: Map<ProductId, Long>,
         additionalMetadata: String?,
+        petWishEventId: String?,
     ): ShopCheckoutResult {
         val catalog = catalogRegistry.catalog(request.storeId)
             ?: return rejected(ShopCheckoutRejection.INVALID_CART)
@@ -87,7 +89,8 @@ internal class ShopCheckoutGateway(
             metadata = RECEIPT_METADATA_PREFIX + receiptNumber + ";" + quote.lines
                 .sortedBy { it.item.id.value }
                 .joinToString(separator = ";") { "${it.item.id.value}=${it.quantity}" } +
-                additionalMetadata?.let { ";$LEARNING_METADATA_PREFIX$it" }.orEmpty(),
+                additionalMetadata?.let { ";$LEARNING_METADATA_PREFIX$it" }.orEmpty() +
+                petWishEventId?.let { ";$PET_WISH_METADATA_PREFIX$it" }.orEmpty(),
         )
         return when (val result = debit(request.operationId, totalRub, context)) {
             is FinancialOperationResult.Applied -> {
@@ -155,6 +158,7 @@ internal class ShopCheckoutGateway(
         const val PURCHASE_REASON_SUFFIX = ":purchase"
         const val RECEIPT_METADATA_PREFIX = "receipt="
         const val LEARNING_METADATA_PREFIX = "learning="
+        const val PET_WISH_METADATA_PREFIX = "pet_wish="
         const val RECEIPT_NUMBER_LENGTH = 6
         const val MAX_RECEIPT_SEQUENCE = 9_999
     }

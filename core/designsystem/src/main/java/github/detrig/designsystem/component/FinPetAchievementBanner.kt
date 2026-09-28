@@ -1,5 +1,11 @@
 package github.detrig.designsystem.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +22,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +54,7 @@ import androidx.compose.ui.window.PopupProperties
 import github.detrig.designsystem.R
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -51,23 +64,72 @@ fun FinPetAchievementBanner(
     title: String,
     onDismiss: () -> Unit,
     onHeightChanged: (Dp) -> Unit = {},
+    displayDurationMillis: Long = ACHIEVEMENT_BANNER_DISPLAY_DURATION_MS,
 ) {
     val closeLabel = stringResource(R.string.achievement_banner_close)
     val density = LocalDensity.current
+    var visible by remember(title) { mutableStateOf(false) }
+    var dismissing by remember(title) { mutableStateOf(false) }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val exitDurationMillis = AppTheme.motion.durationFastMillis
+
+    LaunchedEffect(title) {
+        visible = true
+        delay(displayDurationMillis)
+        dismissing = true
+    }
+    LaunchedEffect(title, dismissing) {
+        if (dismissing) {
+            visible = false
+            delay(exitDurationMillis.toLong())
+            currentOnDismiss()
+        }
+    }
+    val dismiss = {
+        if (!dismissing) dismissing = true
+    }
+
     Popup(
         alignment = Alignment.TopCenter,
         properties = PopupProperties(focusable = false),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.xs)
-                .onSizeChanged { size ->
-                    onHeightChanged(with(density) { size.height.toDp() })
-                },
-            contentAlignment = Alignment.TopCenter,
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(
+                animationSpec = tween(
+                    durationMillis = AppTheme.motion.durationMediumMillis,
+                    easing = AppTheme.motion.standardEasing,
+                ),
+            ) + slideInVertically(
+                animationSpec = tween(
+                    durationMillis = AppTheme.motion.durationMediumMillis,
+                    easing = AppTheme.motion.standardEasing,
+                ),
+                initialOffsetY = { -it },
+            ),
+            exit = fadeOut(
+                animationSpec = tween(
+                    durationMillis = exitDurationMillis,
+                    easing = AppTheme.motion.standardEasing,
+                ),
+            ) + slideOutVertically(
+                animationSpec = tween(
+                    durationMillis = exitDurationMillis,
+                    easing = AppTheme.motion.standardEasing,
+                ),
+                targetOffsetY = { -it / 2 },
+            ),
         ) {
+          Box(
+              modifier = Modifier
+                  .fillMaxWidth()
+                  .windowInsetsPadding(WindowInsets.safeDrawing)
+                  .padding(horizontal = AppTheme.spacing.xl, vertical = AppTheme.spacing.xs)
+                  .onSizeChanged { size ->
+                      onHeightChanged(with(density) { size.height.toDp() })
+                  },
+              contentAlignment = Alignment.TopCenter,
+          ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -92,7 +154,7 @@ fun FinPetAchievementBanner(
                         .clickable(
                             onClickLabel = closeLabel,
                             role = Role.Button,
-                            onClick = onDismiss,
+                            onClick = dismiss,
                         ),
                     shape = AppTheme.shapes.storefrontControl,
                     containerColor = AppTheme.colors.surfaceElevated,
@@ -190,7 +252,7 @@ fun FinPetAchievementBanner(
                     )
                 }
                 FinPetIconButton(
-                    onClick = onDismiss,
+                    onClick = dismiss,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(top = ACHIEVEMENT_RIBBON_OVERLAP, end = ACHIEVEMENT_CARD_SIDE_INSET)
@@ -203,9 +265,12 @@ fun FinPetAchievementBanner(
                     )
                 }
             }
+          }
         }
     }
 }
+
+private const val ACHIEVEMENT_BANNER_DISPLAY_DURATION_MS = 2_800L
 
 @Composable
 private fun AchievementBurst(modifier: Modifier = Modifier) {

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -36,6 +37,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -146,6 +149,7 @@ internal fun BathroomScene(
     onDryerRunningChanged: (Boolean) -> Unit = {},
     onBathtubClick: (() -> Unit)? = null,
     showBathtubOutline: Boolean = false,
+    onBathtubBoundsChanged: ((Rect) -> Unit)? = null,
     onSlotClick: ((String) -> Unit)? = null,
 ) {
     val resources = LocalResources.current
@@ -482,10 +486,20 @@ internal fun BathroomScene(
         Image(
             painter = painterResource(frontId),
             contentDescription = null,
-            modifier = Modifier.bathFrame(tub, scale, originX, originY),
+            modifier = Modifier
+                .bathFrame(tub, scale, originX, originY)
+                .then(
+                    if (onBathtubBoundsChanged == null) {
+                        Modifier
+                    } else {
+                        Modifier.onGloballyPositioned { coordinates ->
+                            onBathtubBoundsChanged(coordinates.boundsInWindow())
+                        }
+                    },
+                ),
             contentScale = ContentScale.FillBounds,
         )
-        if (showBathtubOutline && !closeUp && onBathtubClick != null) {
+        if (showBathtubOutline && !closeUp) {
             Canvas(Modifier.fillMaxSize()) {
                 val padding = interactiveOutlinePadding
                 drawRoundRect(
