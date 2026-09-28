@@ -95,6 +95,7 @@ internal class RoomViewModel(
     private val inventoryApi: InventoryApi,
     private val gameAudio: GameAudio = SilentGameAudio,
     private val gameStateApi: GameStateApi,
+    private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
 ) : CoreViewModel<RoomViewState, RoomViewEvent>(RoomViewState.Loading) {
     private var observationJob: Job? = null
     private var buyJob: Job? = null
@@ -111,6 +112,11 @@ internal class RoomViewModel(
     private var impulseWishJob: Job? = null
     private var moneyEventJob: Job? = null
     private var rulesRecapJob: Job? = null
+    private var progressResetJob: Job? = null
+    private var interactiveOutlineJob: Job? = null
+    private var interactiveOutlinesVisible = false
+    private var parentCabinetResetConfirmationVisible = false
+    private var parentCabinetResetError = false
     private var rulesRecapChecked = false
     private val checkedMoneyEventDays = mutableSetOf<Long>()
     private val checkedImpulseWishDays = mutableSetOf<Long>()
@@ -142,10 +148,12 @@ internal class RoomViewModel(
         const val DEFAULT_SUGGESTED_GOAL_ZONE_ID = "fishing"
         const val ROOM_GOAL_ID_PREFIX = "room-zone:"
         const val FIRST_WEEK_HUNGER_HINT_THRESHOLD = 35
+        const val INTERACTIVE_OBJECT_OUTLINE_DURATION_MILLIS = 2_000L
     }
 
     override fun perform(viewEvent: RoomViewEvent) {
         when (viewEvent) {
+            RoomViewEvent.PetTapped -> showInteractiveObjectOutlines()
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
             RoomViewEvent.WardrobeClicked -> launchOnce { router.openWardrobe() }
             RoomViewEvent.BedClicked -> showSleepConfirmation()
@@ -315,6 +323,27 @@ internal class RoomViewModel(
                     parentGate = ParentGateState(Random.nextInt(7, 16), Random.nextInt(7, 16)),
                 ))
             }
+            RoomViewEvent.RequestParentCabinetProgressReset -> nullableState<RoomViewState.Content>()?.let {
+                if (!it.isResettingProgress) {
+                    parentCabinetResetConfirmationVisible = true
+                    parentCabinetResetError = false
+                    updateState(it.copy(
+                        isParentCabinetResetConfirmationVisible = true,
+                        hasProgressResetError = false,
+                    ))
+                }
+            }
+            RoomViewEvent.CancelParentCabinetProgressReset -> nullableState<RoomViewState.Content>()?.let {
+                if (!it.isResettingProgress) {
+                    parentCabinetResetConfirmationVisible = false
+                    parentCabinetResetError = false
+                    updateState(it.copy(
+                        isParentCabinetResetConfirmationVisible = false,
+                        hasProgressResetError = false,
+                    ))
+                }
+            }
+            RoomViewEvent.ConfirmParentCabinetProgressReset -> resetProgressToOnboarding()
             is RoomViewEvent.ParentAnswerChanged -> nullableState<RoomViewState.Content>()?.let { content ->
                 content.parentGate?.let { gate ->
                     updateState(content.copy(parentGate = gate.copy(
@@ -336,7 +365,15 @@ internal class RoomViewModel(
                 updateState(it.copy(menuDestination = RoomMenuDestination.MENU, parentGate = null))
             }
             RoomViewEvent.CloseParentCabinet -> nullableState<RoomViewState.Content>()?.let {
-                updateState(it.copy(menuDestination = RoomMenuDestination.MENU))
+                if (!it.isResettingProgress) {
+                    parentCabinetResetConfirmationVisible = false
+                    parentCabinetResetError = false
+                    updateState(it.copy(
+                        menuDestination = RoomMenuDestination.MENU,
+                        isParentCabinetResetConfirmationVisible = false,
+                        hasProgressResetError = false,
+                    ))
+                }
             }
             RoomViewEvent.ClosePlanSummary -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(isPlanSummaryVisible = false))
@@ -368,6 +405,61 @@ internal class RoomViewModel(
             is RoomViewEvent.ZoneClicked -> onZoneClicked(viewEvent.zoneId)
             is RoomViewEvent.BuyConfirmed -> buy(viewEvent.zoneId, viewEvent.useSavings)
             is RoomViewEvent.SaveZoneAsGoal -> saveZoneAsGoal(viewEvent.zoneId, viewEvent.title)
+        }
+    }
+
+    private fun showInteractiveObjectOutlines() {
+        val current = nullableState<RoomViewState.Content>() ?: return
+        if (current.onboarding != null || current.bathroomView != BathroomView.HOUSE || current.sleeping) return
+
+        interactiveOutlinesVisible = true
+        interactiveOutlineJob?.cancel()
+        updateState(current.copy(showInteractiveObjectOutlines = true))
+        interactiveOutlineJob = launchCoroutine {
+            delay(INTERACTIVE_OBJECT_OUTLINE_DURATION_MILLIS)
+            interactiveOutlinesVisible = false
+            nullableState<RoomViewState.Content>()?.let { content ->
+                updateState(content.copy(showInteractiveObjectOutlines = false))
+            }
+            interactiveOutlineJob = null
+        }
+    }
+
+    private fun resetProgressToOnboarding() {
+        val current = nullableState<RoomViewState.Content>() ?: return
+        if (!current.isParentCabinetResetConfirmationVisible || current.isResettingProgress ||
+            progressResetJob?.isActive == true
+        ) return
+
+        updateState(current.copy(isResettingProgress = true, hasProgressResetError = false))
+        progressResetJob = launchCoroutine(
+            handleAction = ExceptionConsumer {
+                parentCabinetResetConfirmationVisible = true
+                parentCabinetResetError = true
+                nullableState<RoomViewState.Content>()?.let { content ->
+                    updateState(content.copy(
+                        menuDestination = RoomMenuDestination.PARENT_CABINET,
+                        isParentCabinetResetConfirmationVisible = true,
+                        isResettingProgress = false,
+                        hasProgressResetError = true,
+                    ))
+                }
+                progressResetJob = null
+                true
+            },
+        ) {
+            resetDemoProgress(false)
+            parentCabinetResetConfirmationVisible = false
+            parentCabinetResetError = false
+            nullableState<RoomViewState.Content>()?.let { content ->
+                updateState(content.copy(
+                    menuDestination = RoomMenuDestination.NONE,
+                    isParentCabinetResetConfirmationVisible = false,
+                    isResettingProgress = false,
+                    hasProgressResetError = false,
+                ))
+            }
+            progressResetJob = null
         }
     }
 
@@ -510,10 +602,19 @@ internal class RoomViewModel(
                                 )
                             },
                             parentRows = parentRows,
-                            menuDestination = current?.menuDestination ?: RoomMenuDestination.NONE,
+                            menuDestination = if (parentCabinetResetConfirmationVisible) {
+                                RoomMenuDestination.PARENT_CABINET
+                            } else current?.menuDestination ?: RoomMenuDestination.NONE,
+                            showInteractiveObjectOutlines = interactiveOutlinesVisible,
                             isSoundEnabled = gameAudio.isSoundEnabled(),
                             areMenuAchievementsExpanded = current?.areMenuAchievementsExpanded ?: false,
                             parentGate = current?.parentGate,
+                            isParentCabinetResetConfirmationVisible =
+                                parentCabinetResetConfirmationVisible ||
+                                    current?.isParentCabinetResetConfirmationVisible == true,
+                            isResettingProgress = current?.isResettingProgress == true ||
+                                progressResetJob?.isActive == true,
+                            hasProgressResetError = parentCabinetResetError || current?.hasProgressResetError == true,
                             parentHelpDialog = retainedParentHelpDialog,
                             isParentHelpDialogClaimed = current?.isParentHelpDialogClaimed == true &&
                                 retainedParentHelpDialog != null,

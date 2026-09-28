@@ -95,6 +95,8 @@ internal fun HouseScene(
     furnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
     bathroomFurnitureByPlacement: Map<String, FurnitureVariant> = emptyMap(),
     surfaces: HouseSurfaceTextures = HouseSurfaceTextures.EMPTY,
+    showInteractiveObjectOutlines: Boolean = false,
+    onPetTap: () -> Unit = {},
 ) {
     val motion = rememberSaveable(saver = HouseMotionState.Saver) { HouseMotionState(initialPosition) }
     val appMotion = AppTheme.motion
@@ -172,6 +174,8 @@ internal fun HouseScene(
         var flightBounds by remember { mutableStateOf(HouseLayout.petFlightBounds(motion.petX)) }
         var flightCatchPending by remember { mutableStateOf(false) }
         var ready by remember { mutableStateOf(false) }
+        val highlightInteractiveObjects = showInteractiveObjectOutlines && active && ready &&
+            focusObjectId == null && !feedingScene
         val maxFlightLift = ((HouseLayout.PET_FLOOR_BASELINE * heightPx -
             HouseLayout.PET_WIDTH * unitPx - heightPx * 0.05f) / unitPx).coerceAtLeast(0.2f)
 
@@ -396,6 +400,7 @@ internal fun HouseScene(
                             highlightedObjectIds = highlightedObjectIds,
                             allowedObjectIds = allowedObjectIds,
                             onHighlightedObjectBoundsChanged = onHighlightedObjectBoundsChanged,
+                            showInteractiveOutlines = highlightInteractiveObjects,
                             onObjectClick = { id ->
                                 motion.pause()
                                 save()
@@ -422,6 +427,7 @@ internal fun HouseScene(
                             closeUp = false,
                             compactRoom = true,
                             equipped = bathroomFurnitureByPlacement,
+                            showBathtubOutline = highlightInteractiveObjects,
                             onBathtubClick = onBathtubClick.takeIf { active && ready },
                             modifier = Modifier
                                 .offset(x = unitDp * bathroom.left * HouseLayout.WORLD_WIDTH /
@@ -466,6 +472,9 @@ internal fun HouseScene(
                                     (petPose == RoomPetPose.IDLE || petPose == RoomPetPose.AIRBORNE),
                                 onTouchStart = {
                                     if (petPose == RoomPetPose.AIRBORNE) flightCatchPending = true
+                                },
+                                onTap = {
+                                    if (petPose == RoomPetPose.IDLE) onPetTap()
                                 },
                                 onGrab = {
                                     if (petPose == RoomPetPose.IDLE || petPose == RoomPetPose.AIRBORNE) {

@@ -64,6 +64,7 @@ internal fun GameSessionScreen() {
                                     interaction.onRelease,
                                     interaction.onCancel,
                                     interaction.onTouchStart,
+                                    interaction.onTap,
                                 )
                             } else null,
                             showShadow = interaction.showShadow && interaction.pose == RoomPetPose.IDLE,

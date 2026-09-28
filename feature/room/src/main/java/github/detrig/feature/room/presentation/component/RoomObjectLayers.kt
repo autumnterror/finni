@@ -18,11 +18,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -64,6 +68,7 @@ internal fun RoomObjectLayers(
     enabled: Boolean,
     buyingZoneId: String?,
     highlightedObjectIds: Set<String> = emptySet(),
+    showInteractiveOutlines: Boolean = false,
     allowedObjectIds: Set<String> = emptySet(),
     onHighlightedObjectBoundsChanged: (Rect?) -> Unit = {},
     onObjectClick: (String) -> Unit,
@@ -101,6 +106,12 @@ internal fun RoomObjectLayers(
     )
     val motion = AppTheme.motion
     val touchTarget = AppTheme.sizes.preferredTouchTarget
+    val interactiveOutlineColor = Color.White
+    val interactiveOutlineStroke = with(density) { AppTheme.sizes.borderStrong.toPx() * 2f }
+    val interactiveOutlineOuterStroke = interactiveOutlineStroke +
+        with(density) { AppTheme.sizes.borderThin.toPx() * 2f }
+    val interactiveOutlinePadding = with(density) { AppTheme.spacing.xs.toPx() }
+    val interactiveOutlineCornerRadius = with(density) { AppTheme.spacing.xs.toPx() }
     val lockSize = AppTheme.sizes.iconMedium
     val lockSizePx = with(density) { lockSize.toPx() }
     val pressScale = remember { Animatable(1f) }
@@ -250,6 +261,26 @@ internal fun RoomObjectLayers(
                             filterQuality = FilterQuality.High,
                         )
                     }
+                }
+            }
+            if (showInteractiveOutlines && canInteract) {
+                orderedPlacements.filter { it.interactive }.forEach { placement ->
+                    val bounds = visualDestination(placement.id)
+                    val padding = interactiveOutlinePadding
+                    drawRoundRect(
+                        color = Color.Black,
+                        topLeft = Offset(bounds.left - padding, bounds.top - padding),
+                        size = Size(bounds.width + padding * 2f, bounds.height + padding * 2f),
+                        cornerRadius = CornerRadius(interactiveOutlineCornerRadius),
+                        style = Stroke(width = interactiveOutlineOuterStroke),
+                    )
+                    drawRoundRect(
+                        color = interactiveOutlineColor,
+                        topLeft = Offset(bounds.left - padding, bounds.top - padding),
+                        size = Size(bounds.width + padding * 2f, bounds.height + padding * 2f),
+                        cornerRadius = CornerRadius(interactiveOutlineCornerRadius),
+                        style = Stroke(width = interactiveOutlineStroke),
+                    )
                 }
             }
         }
@@ -414,9 +445,10 @@ private fun RoomObjectLayersPreview() {
         ) {
             RoomObjectLayers(
                 zones = emptyList(),
-                enabled = false,
+                enabled = true,
                 buyingZoneId = null,
                 highlightedObjectIds = emptySet(),
+                showInteractiveOutlines = true,
                 allowedObjectIds = emptySet(),
                 onHighlightedObjectBoundsChanged = {},
                 onObjectClick = {},

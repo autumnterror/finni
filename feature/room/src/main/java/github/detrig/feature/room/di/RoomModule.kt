@@ -104,5 +104,6 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
         dependencies.inventoryApi(),
         dependencies.gameAudio(),
         dependencies.gameStateApi(),
+        dependencies::resetDemoProgress,
     )
 }

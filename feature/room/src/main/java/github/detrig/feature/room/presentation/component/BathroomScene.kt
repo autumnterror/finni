@@ -22,10 +22,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -143,6 +145,7 @@ internal fun BathroomScene(
     onToolSoundChanged: (BathStep, Boolean) -> Unit = { _, _ -> },
     onDryerRunningChanged: (Boolean) -> Unit = {},
     onBathtubClick: (() -> Unit)? = null,
+    showBathtubOutline: Boolean = false,
     onSlotClick: ((String) -> Unit)? = null,
 ) {
     val resources = LocalResources.current
@@ -465,12 +468,43 @@ internal fun BathroomScene(
             resources.getIdentifier(frontName, "drawable", resources.getResourcePackageName(R.drawable.bath_front_room_bathtub))
                 .takeIf { it != 0 } ?: R.drawable.bath_front_room_bathtub
         }
+        val interactiveOutlineColor = Color.White
+        val interactiveOutlineStroke = with(density) { AppTheme.sizes.borderStrong.toPx() * 2f }
+        val interactiveOutlineOuterStroke = interactiveOutlineStroke +
+            with(density) { AppTheme.sizes.borderThin.toPx() * 2f }
+        val interactiveOutlinePadding = with(density) { AppTheme.spacing.xs.toPx() }
+        val interactiveOutlineCornerRadius = with(density) { AppTheme.spacing.xs.toPx() }
         Image(
             painter = painterResource(frontId),
             contentDescription = null,
             modifier = Modifier.bathFrame(tub, scale, originX, originY),
             contentScale = ContentScale.FillBounds,
         )
+        if (showBathtubOutline && !closeUp && onBathtubClick != null) {
+            Canvas(Modifier.fillMaxSize()) {
+                val padding = interactiveOutlinePadding
+                drawRoundRect(
+                    color = Color.Black,
+                    topLeft = originPx + Offset(tub.x, tub.y) * unitPx - Offset(padding, padding),
+                    size = Size(
+                        tub.width * unitPx + padding * 2f,
+                        tub.height * unitPx + padding * 2f,
+                    ),
+                    cornerRadius = CornerRadius(interactiveOutlineCornerRadius),
+                    style = Stroke(width = interactiveOutlineOuterStroke),
+                )
+                drawRoundRect(
+                    color = interactiveOutlineColor,
+                    topLeft = originPx + Offset(tub.x, tub.y) * unitPx - Offset(padding, padding),
+                    size = Size(
+                        tub.width * unitPx + padding * 2f,
+                        tub.height * unitPx + padding * 2f,
+                    ),
+                    cornerRadius = CornerRadius(interactiveOutlineCornerRadius),
+                    style = Stroke(width = interactiveOutlineStroke),
+                )
+            }
+        }
         if (closeUp && draggedSlot == "room_showerhead" && dragPosition != null) {
             val center = requireNotNull(dragPosition)
             val showerFrame = closeup.first { it.slot == "room_showerhead" }
@@ -639,6 +673,8 @@ internal fun bathOriginalDrawable(slot: String): Int = when (slot) {
 private fun BathroomScenePreview() {
     FinPetTheme {
         BathroomScene(closeUp = false, compactRoom = true, equipped = emptyMap(),
+            showBathtubOutline = true,
+            onBathtubClick = {},
             modifier = Modifier.fillMaxSize())
     }
 }

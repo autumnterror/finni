@@ -444,6 +444,7 @@ private class HamsterClickableNode(
                     )
                 ) {
                     change.consume()
+                    callbacks?.onTap?.invoke()
                     onClick?.invoke()
                 }
             }

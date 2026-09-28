@@ -6,6 +6,7 @@ import github.detrig.feature.planning.domain.PlanCategory
 import github.detrig.feature.room.domain.model.MoneyAllocation
 
 internal sealed interface RoomViewEvent : CoreViewEvent {
+    data object PetTapped : RoomViewEvent
     data class SavePosition(val position: HousePosition) : RoomViewEvent
     data class ZonePreviewed(val zoneId: String) : RoomViewEvent
     data object MarketClicked : RoomViewEvent
@@ -64,6 +65,9 @@ internal sealed interface RoomViewEvent : CoreViewEvent {
     data object ShowAllAchievements : RoomViewEvent
     data object CloseAchievements : RoomViewEvent
     data object ParentCabinetClicked : RoomViewEvent
+    data object RequestParentCabinetProgressReset : RoomViewEvent
+    data object CancelParentCabinetProgressReset : RoomViewEvent
+    data object ConfirmParentCabinetProgressReset : RoomViewEvent
     data class ParentAnswerChanged(val answer: String) : RoomViewEvent
     data object ParentAnswerSubmitted : RoomViewEvent
     data object CloseParentGate : RoomViewEvent

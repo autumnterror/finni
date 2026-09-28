@@ -35,4 +35,5 @@ interface RoomDependencies {
     fun resources(): Resources
     fun gameAudio(): GameAudio
     fun minimumProductPriceRub(): Long
+    suspend fun resetDemoProgress(skipOnboarding: Boolean)
 }

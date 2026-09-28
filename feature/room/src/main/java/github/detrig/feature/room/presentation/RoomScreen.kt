@@ -252,6 +252,7 @@ internal fun RoomScreen(
             onEvent = viewModel::perform,
             modifier = Modifier.fillMaxSize(),
             petContent = petContent,
+            onPetTap = { viewModel.perform(RoomViewEvent.PetTapped) },
             petLookingAround = petLookingAround,
             onMirrorClick = onMirrorClick,
             onPhoneClick = if (onboarding?.step == FirstRunOnboardingStep.WAITING_FOR_PHONE) {
@@ -601,7 +602,19 @@ internal fun RoomScreen(
             ParentCabinetDialog(
                 achievements = content.achievements,
                 parentRows = content.parentRows,
+                isResetConfirmationVisible = content.isParentCabinetResetConfirmationVisible,
+                isResettingProgress = content.isResettingProgress,
+                hasProgressResetError = content.hasProgressResetError,
                 onDismiss = { viewModel.perform(RoomViewEvent.CloseParentCabinet) },
+                onRequestProgressReset = {
+                    viewModel.perform(RoomViewEvent.RequestParentCabinetProgressReset)
+                },
+                onCancelProgressReset = {
+                    viewModel.perform(RoomViewEvent.CancelParentCabinetProgressReset)
+                },
+                onConfirmProgressReset = {
+                    viewModel.perform(RoomViewEvent.ConfirmParentCabinetProgressReset)
+                },
             )
         }
         content?.planDialogue is PlanDialogueState.Saved && canShowDialogs -> {

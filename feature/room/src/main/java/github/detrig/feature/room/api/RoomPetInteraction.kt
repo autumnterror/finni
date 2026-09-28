@@ -16,4 +16,5 @@ data class RoomPetInteraction(
     val onRelease: (Offset) -> Unit = {},
     val onCancel: () -> Unit = {},
     val onTouchStart: () -> Unit = {},
+    val onTap: () -> Unit = {},
 )

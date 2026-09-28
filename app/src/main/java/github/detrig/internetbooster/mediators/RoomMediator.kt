@@ -29,6 +29,7 @@ internal class RoomMediator(
     private val inventoryMediator: InventoryMediator,
     private val gameAudio: GameAudio,
     private val learningTestsMediator: LearningTestsMediator,
+    private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
 ) : Mediator<RoomApi> {
     fun init() {
         RoomFeature.dependenciesProvider = ModuleDependenciesProvider {
@@ -96,6 +97,8 @@ internal class RoomMediator(
                 override fun resources(): Resources = coreComponent.resources
                 override fun gameAudio() = gameAudio
                 override fun minimumProductPriceRub(): Long = shopMediator.minimumGroceryPriceRub()
+                override suspend fun resetDemoProgress(skipOnboarding: Boolean) =
+                    this@RoomMediator.resetDemoProgress(skipOnboarding)
                 override fun gameLauncher(): RoomGameLauncher =
                     RoomGameLauncherImpl(coreComponent.globalMessageController, coreComponent.resources)
             }

@@ -126,6 +126,7 @@ internal class AppModuleImpl(
             inventoryMediator.getApi().resetProgress()
             roomMediator.getApi().resetProgress(skipOnboarding)
         }
+        petMediator.getApi().resetProfile()
     }
 
     private val phoneMediator: PhoneMediator by lazy {
@@ -188,6 +189,7 @@ internal class AppModuleImpl(
             inventoryMediator,
             gameAudio,
             learningTestsMediator,
+            ::resetDemoProgress,
         )
     }
 

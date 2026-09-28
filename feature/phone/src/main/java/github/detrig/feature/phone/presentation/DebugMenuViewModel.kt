@@ -27,7 +27,7 @@ internal data class DebugMenuViewState(
     val isChangingDirtStage: Boolean = false,
     val isEndingWeek: Boolean = false,
     val isResettingProgress: Boolean = false,
-    val pendingReset: DebugProgressResetMode? = null,
+    val pendingReset: Boolean = false,
     val errorMessage: String? = null,
     val statusMessage: String? = null,
 ) : CoreViewState
@@ -40,14 +40,9 @@ internal sealed interface DebugMenuViewEvent : CoreViewEvent {
     data object UseLevelGrowthStage : DebugMenuViewEvent
     data class ChangeDirtStage(val delta: Int) : DebugMenuViewEvent
     data object EndWeek : DebugMenuViewEvent
-    data class RequestProgressReset(val mode: DebugProgressResetMode) : DebugMenuViewEvent
+    data object RequestProgressReset : DebugMenuViewEvent
     data object CancelProgressReset : DebugMenuViewEvent
     data object ConfirmProgressReset : DebugMenuViewEvent
-}
-
-internal enum class DebugProgressResetMode(val skipOnboarding: Boolean) {
-    BEFORE_ONBOARDING(skipOnboarding = false),
-    AFTER_ONBOARDING(skipOnboarding = true),
 }
 
 internal class DebugMenuViewModel(
@@ -83,12 +78,12 @@ internal class DebugMenuViewModel(
                 if (balance > 0) changeBalance(-balance)
             }
             DebugMenuViewEvent.EndWeek -> endWeek()
-            is DebugMenuViewEvent.RequestProgressReset ->
-                updateState { copy(pendingReset = viewEvent.mode, errorMessage = null) }
+            DebugMenuViewEvent.RequestProgressReset ->
+                updateState { copy(pendingReset = true, errorMessage = null) }
             DebugMenuViewEvent.CancelProgressReset ->
-                if (!stateData.isResettingProgress) updateState { copy(pendingReset = null) }
+                if (!stateData.isResettingProgress) updateState { copy(pendingReset = false) }
             DebugMenuViewEvent.ConfirmProgressReset ->
-                stateData.pendingReset?.let(::resetProgress)
+                if (stateData.pendingReset) resetProgress()
         }
     }
 
@@ -263,12 +258,12 @@ internal class DebugMenuViewModel(
         }
     }
 
-    private fun resetProgress(mode: DebugProgressResetMode) {
+    private fun resetProgress() {
         if (resetProgressJob?.isActive == true || changeJob?.isActive == true ||
             endWeekJob?.isActive == true || growthChangeJob?.isActive == true ||
             dirtChangeJob?.isActive == true) return
         updateState {
-            copy(isResettingProgress = true, pendingReset = null, errorMessage = null, statusMessage = null)
+            copy(isResettingProgress = true, pendingReset = false, errorMessage = null, statusMessage = null)
         }
         resetProgressJob = launchCoroutine(
             handleAction = ExceptionConsumer {
@@ -282,9 +277,8 @@ internal class DebugMenuViewModel(
                 true
             },
         ) {
-            resetDemoProgress(mode.skipOnboarding)
+            resetDemoProgress(true)
             updateState { copy(isResettingProgress = false) }
-            petApi.resetProfile()
             router.close()
             resetProgressJob = null
         }

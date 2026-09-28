@@ -182,6 +182,15 @@
     <string name="room_settings_sound_turn_on">Включить звук</string>
     <string name="room_settings_back">Назад в меню</string>
     <string name="parent_cabinet_title">Родительский кабинет</string>
+    <string name="parent_cabinet_reset_section_title">Сбросить игровой прогресс</string>
+    <string name="parent_cabinet_reset_section_message">Игра начнётся заново с обучением. Питомец, деньги, покупки, достижения и история будут удалены.</string>
+    <string name="parent_cabinet_reset_button">Сбросить прогресс</string>
+    <string name="parent_cabinet_reset_confirm_title">Начать игру заново?</string>
+    <string name="parent_cabinet_reset_confirm_message">Питомец, деньги, покупки, достижения и история игры будут удалены. После сброса нужно будет создать питомца заново.</string>
+    <string name="parent_cabinet_reset_confirm">Удалить и начать заново</string>
+    <string name="parent_cabinet_reset_cancel">Отмена</string>
+    <string name="parent_cabinet_reset_running">Сбрасываем прогресс…</string>
+    <string name="parent_cabinet_reset_error">Не удалось удалить прогресс. Попробуйте ещё раз.</string>
     <string name="parent_gate_title">Проверка для взрослого</string>
     <string name="parent_gate_hint">Решите пример, чтобы открыть родительский кабинет.</string>
     <string name="parent_gate_expression">%1$d + %2$d = ?</string>

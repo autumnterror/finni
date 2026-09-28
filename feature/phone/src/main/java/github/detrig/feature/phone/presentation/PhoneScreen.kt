@@ -689,7 +689,7 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         onChangeDirtStage = { viewModel.perform(DebugMenuViewEvent.ChangeDirtStage(it)) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
         onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
-        onRequestProgressReset = { viewModel.perform(DebugMenuViewEvent.RequestProgressReset(it)) },
+        onRequestProgressReset = { viewModel.perform(DebugMenuViewEvent.RequestProgressReset) },
         onCancelProgressReset = { viewModel.perform(DebugMenuViewEvent.CancelProgressReset) },
         onConfirmProgressReset = { viewModel.perform(DebugMenuViewEvent.ConfirmProgressReset) },
     )
@@ -705,7 +705,7 @@ private fun DebugMenuContent(
     onChangeDirtStage: (Int) -> Unit,
     onResetBalance: () -> Unit,
     onEndWeek: () -> Unit,
-    onRequestProgressReset: (DebugProgressResetMode) -> Unit,
+    onRequestProgressReset: () -> Unit,
     onCancelProgressReset: () -> Unit,
     onConfirmProgressReset: () -> Unit,
 ) {
@@ -858,15 +858,8 @@ private fun DebugMenuContent(
                     color = AppTheme.colors.storefront.onSurface,
                 )
                 FinPetOutlinedButton(
-                    text = "До обучения",
-                    onClick = { onRequestProgressReset(DebugProgressResetMode.BEFORE_ONBOARDING) },
-                    enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
-                    modifier = Modifier.fillMaxWidth(),
-                    style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                )
-                FinPetOutlinedButton(
                     text = "После обучения",
-                    onClick = { onRequestProgressReset(DebugProgressResetMode.AFTER_ONBOARDING) },
+                    onClick = onRequestProgressReset,
                     enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
                     modifier = Modifier.fillMaxWidth(),
                     style = FinPetButtonDefaults.storefrontOutlinedStyle(),
@@ -889,7 +882,7 @@ private fun DebugMenuContent(
         }
     }
 
-    state.pendingReset?.let { mode ->
+    if (state.pendingReset) {
         FinPetModalDialog(
             title = "Сбросить прогресс?",
             onDismissRequest = onCancelProgressReset.takeUnless { state.isResettingProgress },
@@ -912,12 +905,7 @@ private fun DebugMenuContent(
             },
         ) {
             Text(
-                text = when (mode) {
-                    DebugProgressResetMode.BEFORE_ONBOARDING ->
-                        "Игра начнётся заново. После создания питомца снова появится обучение."
-                    DebugProgressResetMode.AFTER_ONBOARDING ->
-                        "Игра начнётся заново, а обучение после создания питомца будет пропущено."
-                },
+                text = "Игра начнётся заново, а обучение после создания питомца будет пропущено.",
                 style = AppTheme.typography.body,
                 color = AppTheme.colors.storefront.onSurface,
             )
