@@ -1,4 +1,10 @@
 <resources>
+    <string name="app_mode_title">Выбери режим</string>
+    <string name="app_mode_description">Режим можно выбрать снова после сброса прогресса.</string>
+    <string name="app_mode_game_title">Игровой режим</string>
+    <string name="app_mode_game_description">Обычное прохождение без дебаг меню в телефоне.</string>
+    <string name="app_mode_demo_title">Демонстрационный режим</string>
+    <string name="app_mode_demo_description">В телефоне появится дебаг меню для быстрого просмотра возможностей.</string>
     <string name="app_name">FinPet</string>
     <string name="pet_care_channel">Забота о питомце</string>
     <string name="pet_hungry_title">Питомец проголодался</string>

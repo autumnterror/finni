@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import github.detrig.core.view.Nav3Activity
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.internetbooster.navigation.appGraph
+import github.detrig.internetbooster.startup.AppExperienceModeGate
 import github.detrig.internetbooster.startup.AppStartupGate
 import github.detrig.internetbooster.time.NotificationPermissionStorage
 import kotlinx.coroutines.Job
@@ -65,9 +66,15 @@ class MainActivity : Nav3Activity(
 
     @Composable
     override fun ProvideAppContent(content: @Composable () -> Unit) {
+        val appComponent = (application as FinPetApplication).appComponent
         FinPetTheme {
             AppStartupGate {
-                AchievementNotificationHost(content)
+                AppExperienceModeGate(
+                    selectedMode = appComponent.selectedExperienceMode,
+                    onModeSelected = appComponent::selectExperienceMode,
+                ) {
+                    AchievementNotificationHost(content)
+                }
             }
         }
     }

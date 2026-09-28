@@ -33,7 +33,7 @@
     <string name="shop_payment_error">Не удалось оплатить товары. Попробуйте ещё раз.</string>
     <string name="shop_payment_insufficient_funds">Недостаточно монет для оплаты.</string>
     <string name="shop_product_image_placeholder">Изображение товара появится здесь</string>
-    <string name="shop_pet_name">Финни</string>
+    <string name="shop_pet_name">Питомец</string>
     <string name="shop_promotion_prompt">Смотри, на «%1$s» акция: было %2$d ₽, теперь %3$d ₽! Цена стала ниже, но всё равно важно проверить, нужна ли нам эта покупка.</string>
     <string name="shop_promotion_two_plus_one_prompt">Смотри, на «%1$s» акция 2+1: если взять три, заплатим только за два! Но сначала проверим, нужны ли нам три штуки.</string>
     <string name="shop_impulse_prompt">Мне очень хочется «%1$s» за %2$d ₽! Посмотрим, подходит ли это нашему бюджету?</string>

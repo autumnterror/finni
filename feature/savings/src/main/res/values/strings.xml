@@ -17,7 +17,7 @@
     <string name="savings_goal_choice_suggested">%1$s · %2$d ₽ · твой выбор</string>
     <string name="savings_goal_suggested_title">%1$s ★</string>
     <string name="savings_goal_price">%1$d ₽</string>
-    <string name="savings_pet_name">Финни</string>
+    <string name="savings_pet_name">Питомец</string>
     <string name="savings_onboarding_select_prompt">Вот игра, которую ты выбрал. Нажми на неё, чтобы продолжить.</string>
     <string name="savings_onboarding_confirm_goal">Копим на «%1$s»?</string>
     <string name="savings_onboarding_yes">Да</string>

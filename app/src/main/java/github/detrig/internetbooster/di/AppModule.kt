@@ -23,6 +23,9 @@ import github.detrig.internetbooster.mediators.LearningMediator
 import github.detrig.internetbooster.mediators.LearningTestsMediator
 import github.detrig.internetbooster.network.AppNetworkModule
 import github.detrig.internetbooster.time.HungerNotificationDispatcher
+import github.detrig.internetbooster.startup.AppExperienceMode
+import github.detrig.internetbooster.startup.AppExperienceModeStorage
+import kotlinx.coroutines.flow.StateFlow
 import github.detrig.internetbooster.audio.AppAudioCues
 import github.detrig.internetbooster.mediators.FlightMediator
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +35,9 @@ import kotlinx.coroutines.withContext
 internal interface AppModule {
 
     val gameAudio: GameAudio
+    val selectedExperienceMode: StateFlow<AppExperienceMode?>
     fun initFeatures()
+    fun selectExperienceMode(mode: AppExperienceMode)
     suspend fun reconcileTimedEvents()
     suspend fun hasPetProfile(): Boolean
     suspend fun resetDemoProgress(skipOnboarding: Boolean)
@@ -51,6 +56,12 @@ internal class AppModuleImpl(
     private val miniGamesCommonDatabaseModule: MiniGamesCommonDatabaseModule by lazy {
         MiniGamesCommonDatabaseModule(coreComponent.context)
     }
+    private val experienceModeStorage by lazy { AppExperienceModeStorage(coreComponent.context) }
+
+    override val selectedExperienceMode: StateFlow<AppExperienceMode?>
+        get() = experienceModeStorage.selectedMode
+
+    override fun selectExperienceMode(mode: AppExperienceMode) = experienceModeStorage.select(mode)
 
     private val networkModule: AppNetworkModule by lazy {
         AppNetworkModule()
@@ -127,6 +138,7 @@ internal class AppModuleImpl(
             roomMediator.getApi().resetProgress(skipOnboarding)
         }
         petMediator.getApi().resetProfile()
+        experienceModeStorage.clearSelection()
     }
 
     private val phoneMediator: PhoneMediator by lazy {
@@ -141,6 +153,7 @@ internal class AppModuleImpl(
             gameStateMediator = gameStateMediator,
             inventoryMediator = inventoryMediator,
             resetDemoProgress = ::resetDemoProgress,
+            experienceModeStorage = experienceModeStorage,
         )
     }
 

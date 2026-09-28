@@ -350,7 +350,7 @@ internal class ShopMediator(
         const val BUY_TWO_GET_ONE_PROMOTION_PROBABILITY = 0.25
         const val SHOP_EVENT_SEED_KEY = "shop_event_seed_v1"
         const val CURRENT_PROFILE_ID = "current"
-        const val DEFAULT_PET_NAME = "Финни"
+        const val DEFAULT_PET_NAME = "Питомец"
         const val PROMOTION_INTRODUCTION_ID = "purchase.promotion.introduction"
         const val IMPULSE_INTRODUCTION_ID = "purchase.impulse.introduction"
         const val ROOM_IMPULSE_PRESENTATION_PREFIX = "purchase.impulse.room:"

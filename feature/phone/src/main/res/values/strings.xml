@@ -29,7 +29,7 @@
     <string name="messages_parent_help_total">Всего вернуть: %1$d ₽ (доплата %2$d%%)</string>
     <string name="messages_parent_help_weekly">Удержание каждую неделю: %1$d ₽</string>
     <string name="messages_parent_help_accept">Получить %1$d ₽</string>
-    <string name="messages_pet_name">Финни</string>
+    <string name="messages_pet_name">Питомец</string>
     <string name="messages_guidance_code">Что-то здесь подозрительно. Банк никогда не просит показывать код другому человеку.</string>
     <string name="messages_guidance_link">Что-то здесь подозрительно. Неизвестная ссылка может вести на опасный сайт.</string>
     <string name="messages_share_code">Показать код</string>

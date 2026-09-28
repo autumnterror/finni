@@ -151,7 +151,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
             PhoneDevice(
                 route = route,
                 activeAppId = activeAppId,
-                showDebugApp = component.isDebugBuild,
+                showDebugApp = component.isDemoMode(),
                 shopApi = component.shopApi,
                 roomApi = component.roomApi,
                 messagesState = messagesState,
@@ -192,6 +192,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
             if (activeAppId == MESSAGES_APP_ID) {
                 MessagesPetDialogue(
                     state = messagesState,
+                    petName = petProfile.name,
                     portrait = { modifier ->
                         component.petApi.Portrait(profile = petProfile, modifier = modifier)
                     },

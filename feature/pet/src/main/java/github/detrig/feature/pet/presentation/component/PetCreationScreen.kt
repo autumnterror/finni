@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selectableGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import github.detrig.designsystem.component.FinPetBackButton
@@ -50,6 +53,7 @@ import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.pet.R
 import github.detrig.feature.pet.domain.model.HamsterAppearance
+import github.detrig.feature.pet.domain.model.PetNameValidationError
 import github.detrig.feature.pet.presentation.HamsterAssets
 import github.detrig.feature.pet.presentation.HamsterPreview
 import github.detrig.feature.pet.presentation.PetViewEvent
@@ -126,14 +130,17 @@ internal fun PetCreationScreen(
     val category = HamsterCategory.valueOf(categoryName)
     HamsterCustomizationContent(
         appearance = state.hamsterAppearance,
+        name = state.name,
+        nameError = state.nameError,
         assets = assets,
         category = category,
         blink = blink,
-        canFinish = assets != null,
+        canFinish = assets != null && state.canCreate,
         modifier = modifier,
         onBack = onBack,
         onCategorySelected = { categoryName = it.name },
         onAppearanceChanged = { onEvent(PetViewEvent.HamsterAppearanceChanged(it)) },
+        onNameChanged = { onEvent(PetViewEvent.NameChanged(it)) },
         onReset = { onEvent(PetViewEvent.HamsterAppearanceChanged(HamsterAppearance())) },
         onDone = { onEvent(PetViewEvent.CreateClicked) },
     )
@@ -142,6 +149,8 @@ internal fun PetCreationScreen(
 @Composable
 private fun HamsterCustomizationContent(
     appearance: HamsterAppearance,
+    name: String,
+    nameError: PetNameValidationError?,
     assets: HamsterAssets?,
     category: HamsterCategory,
     blink: Boolean,
@@ -150,6 +159,7 @@ private fun HamsterCustomizationContent(
     onBack: () -> Unit,
     onCategorySelected: (HamsterCategory) -> Unit,
     onAppearanceChanged: (HamsterAppearance) -> Unit,
+    onNameChanged: (String) -> Unit,
     onReset: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -169,6 +179,8 @@ private fun HamsterCustomizationContent(
     ) {
         Header(onBack = onBack, onReset = onReset)
         Spacer(Modifier.height(AppTheme.spacing.sm))
+        PetNameField(name = name, error = nameError, onNameChanged = onNameChanged)
+        Spacer(Modifier.height(AppTheme.spacing.md))
         HamsterStage(assets = assets, appearance = appearance, blink = blink)
         Spacer(Modifier.height(AppTheme.spacing.md))
         CategoryTabs(selected = category, onSelected = onCategorySelected)
@@ -198,6 +210,83 @@ private fun HamsterCustomizationContent(
         )
     }
 }
+
+@Composable
+private fun PetNameField(
+    name: String,
+    error: PetNameValidationError?,
+    onNameChanged: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = androidx.compose.ui.res.stringResource(R.string.pet_name_title),
+                style = AppTheme.typography.sectionTitle,
+                color = AppTheme.colors.storefront.onSurface,
+            )
+            Text(
+                text = androidx.compose.ui.res.stringResource(
+                    R.string.pet_name_counter,
+                    name.codePointCount(0, name.length),
+                ),
+                style = AppTheme.typography.label,
+                color = AppTheme.colors.textSecondary,
+            )
+        }
+        FinPetCard(
+            modifier = Modifier.fillMaxWidth().heightIn(min = AppTheme.sizes.preferredTouchTarget),
+            shape = AppTheme.shapes.storefrontControl,
+            containerColor = AppTheme.colors.storefront.surface,
+            contentColor = AppTheme.colors.storefront.onSurface,
+            borderColor = if (error == null) AppTheme.colors.storefront.outline
+            else AppTheme.colors.statusCritical.onContainer,
+            borderWidth = AppTheme.sizes.borderStrong,
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (name.isEmpty()) {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(R.string.pet_name_hint),
+                        style = AppTheme.typography.body,
+                        color = AppTheme.colors.textSecondary,
+                    )
+                }
+                BasicTextField(
+                    value = name,
+                    onValueChange = onNameChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = AppTheme.typography.bodyStrong.copy(color = AppTheme.colors.storefront.onSurface),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(AppTheme.colors.storefront.outline),
+                    singleLine = true,
+                )
+            }
+        }
+        if (error != null && name.isNotEmpty()) {
+            Text(
+                text = androidx.compose.ui.res.stringResource(error.stringResource),
+                style = AppTheme.typography.label,
+                color = AppTheme.colors.statusCritical.onContainer,
+            )
+        }
+    }
+}
+
+private val PetNameValidationError.stringResource: Int
+    get() = when (this) {
+        PetNameValidationError.Empty -> R.string.pet_name_error_empty
+        PetNameValidationError.TooLong -> R.string.pet_name_error_too_long
+        PetNameValidationError.InvalidCharacters -> R.string.pet_name_error_characters
+    }
 
 @Composable
 private fun Header(onBack: () -> Unit, onReset: () -> Unit) {
@@ -482,6 +571,8 @@ private fun HamsterCustomizationPreview() {
     FinPetTheme {
         HamsterCustomizationContent(
             appearance = HamsterAppearance(),
+            name = "",
+            nameError = null,
             assets = null,
             category = HamsterCategory.Palette,
             blink = false,
@@ -489,6 +580,7 @@ private fun HamsterCustomizationPreview() {
             onBack = {},
             onCategorySelected = {},
             onAppearanceChanged = {},
+            onNameChanged = {},
             onReset = {},
             onDone = {},
         )

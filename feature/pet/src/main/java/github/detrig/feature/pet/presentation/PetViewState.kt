@@ -11,7 +11,7 @@ internal sealed interface PetViewState : CoreViewState {
     data object Loading : PetViewState
 
     data class Creating(
-        val name: String = "Финни",
+        val name: String = "",
         val color: PetColor = PetColor.Sunny,
         val hamsterAppearance: HamsterAppearance = HamsterAppearance(),
         val nameError: PetNameValidationError? = null,

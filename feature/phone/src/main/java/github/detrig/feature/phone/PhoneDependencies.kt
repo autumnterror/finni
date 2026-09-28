@@ -32,5 +32,5 @@ interface PhoneDependencies {
     fun minimumHelpBalanceRub(): Long
     fun globalMessageController(): GlobalMessageController
     suspend fun resetDemoProgress(skipOnboarding: Boolean)
-    fun isDebugBuild(): Boolean
+    fun isDemoMode(): Boolean
 }
