@@ -5,7 +5,8 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class WeekStateTest {
-    @Test fun sevenDaysFormOneWeek() {
+    @Test
+    fun sevenDaysFormOneWeek() {
         assertEquals(1L, WeekState(1).weekNumber)
         assertEquals(1, WeekState(1).dayOfWeek)
         assertEquals(7, WeekState(1).daysUntilAllowance)
@@ -17,7 +18,16 @@ class WeekStateTest {
         assertEquals(3L, WeekState(15).weekNumber)
     }
 
-    @Test fun dayMustBePositive() {
+    @Test
+    fun dayMustBePositive() {
         assertThrows(IllegalArgumentException::class.java) { WeekState(0) }
+    }
+
+    @Test
+    fun lastDayAbsoluteDayIsSundayOfTheCurrentWeek() {
+        assertEquals(7L, WeekState(1).lastDayAbsoluteDay)
+        assertEquals(7L, WeekState(4).lastDayAbsoluteDay)
+        assertEquals(7L, WeekState(7).lastDayAbsoluteDay)
+        assertEquals(14L, WeekState(8).lastDayAbsoluteDay)
     }
 }

@@ -7,6 +7,7 @@ data class WeekState(val absoluteDay: Long) {
     val weekNumber: Long get() = (absoluteDay - 1) / DAYS_PER_WEEK + 1
     val dayOfWeek: Int get() = ((absoluteDay - 1) % DAYS_PER_WEEK + 1).toInt()
     val daysUntilAllowance: Int get() = (DAYS_PER_WEEK - dayOfWeek + 1).toInt()
+    val lastDayAbsoluteDay: Long get() = Math.multiplyExact(weekNumber, DAYS_PER_WEEK)
 
     companion object { const val DAYS_PER_WEEK = 7L }
 }

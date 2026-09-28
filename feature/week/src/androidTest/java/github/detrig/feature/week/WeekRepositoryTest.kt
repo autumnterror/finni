@@ -8,11 +8,19 @@ import androidx.test.platform.app.InstrumentationRegistry
 import github.detrig.core.database.RoomTransactionRunner
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.economy.domain.*
+import github.detrig.feature.gamestate.api.ProgressionApi
+import github.detrig.feature.gamestate.domain.progression.GrantXpResult
+import github.detrig.feature.gamestate.domain.progression.ProgressionRules
+import github.detrig.feature.learning.api.LearningApi
+import github.detrig.feature.learning.domain.*
+import github.detrig.feature.planning.api.PlanningApi
+import github.detrig.feature.planning.domain.*
 import github.detrig.feature.week.data.WeekRepository
 import github.detrig.feature.week.data.local.WeekDao
 import github.detrig.feature.week.data.local.WeekStateEntity
 import github.detrig.feature.week.domain.EndDayResult
 import github.detrig.feature.week.domain.EarlyWeekEndResult
+import github.detrig.feature.week.domain.PetDayEffects
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -31,7 +39,7 @@ class WeekRepositoryTest {
         val db = Room.inMemoryDatabaseBuilder(context, WeekTestDatabase::class.java).build()
         try {
             val economy = FakeEconomy()
-            val repository = WeekRepository(db.weekDao(), economy, RoomTransactionRunner(db))
+            val repository = repository(db, economy)
             assertEquals(1L, repository.initialize().absoluteDay)
             for (day in 1L..6L) {
                 val result = repository.endDay(day) as EndDayResult.Advanced
@@ -44,8 +52,36 @@ class WeekRepositoryTest {
             assertEquals(2L, rollover.state.weekNumber)
             assertTrue(repository.endDay(7) is EndDayResult.AlreadyAdvanced)
             assertEquals(1, economy.grants)
-            val restored = WeekRepository(db.weekDao(), economy, RoomTransactionRunner(db))
+            val restored = repository(db, economy)
             assertEquals(8L, restored.initialize().absoluteDay)
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test fun debugSkipMovesToSundayWithoutApplyingDayEffects() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val db = Room.inMemoryDatabaseBuilder(context, WeekTestDatabase::class.java).build()
+        try {
+            val economy = FakeEconomy()
+            var petDayEffects = 0
+            val repository = repository(db, economy, PetDayEffects { petDayEffects++ })
+
+            assertEquals(1L, repository.initialize().absoluteDay)
+            val sunday = repository.skipToSundayForDebug()
+
+            assertEquals(7L, sunday.absoluteDay)
+            assertEquals(7, sunday.dayOfWeek)
+            assertEquals(0, petDayEffects)
+            assertEquals(0, economy.grants)
+            assertEquals(sunday, repository.skipToSundayForDebug())
+            assertEquals(0, petDayEffects)
+            assertEquals(0, economy.grants)
+
+            val nextDay = repository.endDay(sunday.absoluteDay) as EndDayResult.Advanced
+            assertEquals(8L, nextDay.state.absoluteDay)
+            assertEquals(1, petDayEffects)
+            assertEquals(1, economy.grants)
         } finally {
             db.close()
         }
@@ -56,7 +92,7 @@ class WeekRepositoryTest {
         val db = Room.inMemoryDatabaseBuilder(context, WeekTestDatabase::class.java).build()
         try {
             val economy = FakeEconomy()
-            val repository = WeekRepository(db.weekDao(), economy, RoomTransactionRunner(db))
+            val repository = repository(db, economy)
             for (day in 1L..6L) repository.endDay(day)
             economy.fail = true
             assertTrue(runCatching { repository.endDay(7) }.isFailure)
@@ -80,7 +116,7 @@ class WeekRepositoryTest {
                     paymentsRemaining = 2,
                 )
             }
-            val repository = WeekRepository(db.weekDao(), economy, RoomTransactionRunner(db))
+            val repository = repository(db, economy)
 
             val result = repository.endWeekEarlyWithParentHelp(
                 expectedAbsoluteDay = 1,
@@ -99,6 +135,48 @@ class WeekRepositoryTest {
             db.close()
         }
     }
+
+    private fun repository(
+        db: WeekTestDatabase,
+        economy: FakeEconomy,
+        petDayEffects: PetDayEffects = PetDayEffects {},
+    ) = WeekRepository(
+        dao = db.weekDao(),
+        economyApi = economy,
+        transactionRunner = RoomTransactionRunner(db),
+        petDayEffects = petDayEffects,
+        progressionApi = object : ProgressionApi {
+            override suspend fun grantXp(
+                grantId: String,
+                profileId: String,
+                amount: Int,
+                source: String,
+            ) = GrantXpResult.Granted(ProgressionRules.progress(0), amount)
+
+            override fun observeProgress(profileId: String) = flowOf(ProgressionRules.progress(0))
+        },
+        planningApi = object : PlanningApi {
+            override fun assessPlan(plan: WeeklyPlan): PlanAssessment = error("Unused")
+            override suspend fun getPlanProgress(weekNumber: Long): WeeklyPlanProgress? = null
+            override fun observePlanProgress(weekNumber: Long) = flowOf(null)
+            override suspend fun savePlan(
+                weekNumber: Long,
+                availableRub: Long,
+                percentages: PlanPercentages,
+                context: PlanWeekContext,
+            ): SavePlanResult = error("Unused")
+            override suspend fun recordActual(operation: PlanActualOperation): RecordActualResult = error("Unused")
+        },
+        learningApi = object : LearningApi {
+            override suspend fun record(action: LearningAction): RecordLearningResult = error("Unused")
+            override fun observeAchievements(profileId: String) = flowOf(emptyList<AchievementProgress>())
+            override fun observeParentRows(profileId: String) = flowOf(emptyList<ParentProgressRow>())
+            override fun observePendingXpRewards(profileId: String) = flowOf(emptyList<PendingXpReward>())
+            override suspend fun claimFirstExplanation(profileId: String, explanationId: String) = false
+            override suspend fun deliverPendingXpRewards(profileId: String): XpDeliveryResult = error("Unused")
+            override suspend fun resetProfile(profileId: String) = Unit
+        },
+    )
 
     private class FakeEconomy(initialAvailableRub: Long = 500) : EconomyApi {
         var grants = 0

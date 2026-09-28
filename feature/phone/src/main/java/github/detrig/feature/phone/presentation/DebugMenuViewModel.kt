@@ -252,12 +252,7 @@ internal class DebugMenuViewModel(
                 true
             },
         ) {
-            val current = weekApi.initialize()
-            val targetSunday = current.weekNumber * 7
-            var day = current
-            while (day.absoluteDay < targetSunday) {
-                day = weekApi.endDay(day.absoluteDay).state
-            }
+            weekApi.skipToSundayForDebug()
             updateState {
                 copy(
                     isEndingWeek = false,

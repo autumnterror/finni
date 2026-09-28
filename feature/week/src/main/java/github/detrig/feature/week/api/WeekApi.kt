@@ -12,6 +12,9 @@ interface WeekApi {
     /** expectedAbsoluteDay защищает от повтора одного и того же нажатия/запроса. */
     suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult
 
+    /** Переводит текущую неделю на воскресенье для проверки недельного итога из дебаг-меню. */
+    suspend fun skipToSundayForDebug(): WeekState
+
     /** Досрочно завершает кризисную неделю и начисляет карманные деньги новой недели. */
     suspend fun endWeekEarlyWithParentHelp(
         expectedAbsoluteDay: Long,

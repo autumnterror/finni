@@ -343,6 +343,7 @@ class MessagesCoordinatorParentHelpTest {
             override suspend fun initialize() = weekState.value
             override fun observeState(): Flow<WeekState> = weekState
             override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = error("Unused")
+            override suspend fun skipToSundayForDebug(): WeekState = error("Unused")
             override suspend fun endWeekEarlyWithParentHelp(
                 expectedAbsoluteDay: Long,
                 minimumRequiredBalanceRub: Long,

@@ -58,6 +58,15 @@ internal class WeekRepository(
         )
     }
 
+    override suspend fun skipToSundayForDebug(): WeekState = transactionRunner.runInTransaction {
+        val current = ensureState()
+        val sunday = current.lastDayAbsoluteDay
+        if (current.absoluteDay < sunday) {
+            check(dao.advance(current.absoluteDay, sunday) == 1)
+        }
+        WeekState(sunday)
+    }
+
     override suspend fun endWeekEarlyWithParentHelp(
         expectedAbsoluteDay: Long,
         minimumRequiredBalanceRub: Long,

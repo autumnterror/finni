@@ -91,6 +91,7 @@ class TransferWithoutGoalTest {
             override suspend fun initialize() = week
             override fun observeState(): Flow<WeekState> = flowOf(week)
             override suspend fun endDay(expectedAbsoluteDay: Long): EndDayResult = error("Unused")
+            override suspend fun skipToSundayForDebug(): WeekState = error("Unused")
             override suspend fun endWeekEarlyWithParentHelp(
                 expectedAbsoluteDay: Long,
                 minimumRequiredBalanceRub: Long,
