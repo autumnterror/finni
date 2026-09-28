@@ -63,6 +63,7 @@ internal class PersistentMessagesRepository(
                 message.senderId == MessageSenderId.BANK || message.senderId == MessageSenderId.MOM
             },
         )
+        if (config.isScheduledForDay?.invoke(absoluteDay) == false) return@update processed
         if (current.events.lastOrNull()?.let { last ->
                 absoluteDay - last.absoluteDay < config.minimumDaysBetweenEvents
             } == true) {

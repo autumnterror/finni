@@ -145,6 +145,9 @@ Whenever possible:
 
 ### 4.2. The apartment is the main hub
 
+Tapping the pet briefly highlights interactive room objects; it must not open
+a greeting or other pet dialogue.
+
 MVP apartment objects:
 
 - **phone** — shop, messages, short transaction history;
@@ -409,32 +412,66 @@ available to restore it. Low happiness does not reduce XP or educational progres
 
 Refusing an optional purchase must not automatically reduce happiness.
 
-Pet wishes are suggestions, never required purchases. At most one new random
-wish is scheduled per game day. Its chance is based on happiness at first
-observation that day: 15% at 70–100, 35% at 40–69, 65% at 20–39, and 85% at
-0–19. The selected wish is persisted and remains stable across app restarts. The
-temporary `DEBUG_FORCE_DAILY_WISH` setting may force a new wish each day while
-the board is being tuned; restore the normal mood-based chances before release.
+Pet wishes are suggestions, never required purchases. Wishes, promotions, and
+suspicious messages share one daily event draw, with at most one new random
+event from these three categories per game day. After an event, the next day has
+a 65% event chance; after a quiet day, an event is guaranteed. Thus successive
+events are one or two game days apart. Day one is reserved for the guided start,
+day two introduces a wish, and day five introduces the first promotion.
+On other event days, the category weights are wish 60, promotion 25, and security
+15. Exclude promotions before day five and security messages within three game
+days of the previous one, then renormalize the available weights. The shared
+seed and daily draw are saved before use; opening another screen or restarting
+must not reroll the day. Remove the daily forced-wish debug mode. Savings goal
+wishes and known or weekly money events remain contextual actions outside this
+random room-event draw. The selected wish is persisted and remains stable
+across app restarts.
 The room has a wish board on the wall left of the fridge. It lists every active
 wish and the active savings goal; do not show a wish bubble beside the pet. The
-list shows each wish's name, remaining lifetime, and concrete bonus. It has no
+list shows the wish icon, name, and compact numeric bonus with its effect icon in
+one row; keep the remaining lifetime as a caption. Wishes completed on the current
+game day remain on the board with a green background and a check mark replacing
+the bonus, without a visible completion or lifetime caption. All wish rows share
+equal inner padding and a common minimum height; captions and goal details align
+with the name, while bonuses and check marks align at the right edge.
+Persist their completion day and remove them from
+the visible list on the next game day. Completed rows must not qualify for another
+wish reward, purchase match, or wish-introduction dialogue. This also applies to
+reaching a savings goal and buying its saved-for game. The list has no
 buttons or links to the shop, games, wardrobe, or savings. Complete wishes through
 the usual room actions. A fulfilled wish produces one short joyful pet dialogue
 when the player is back in the room; persist its acknowledgement so restoration
 does not replay the celebration. Savings milestones and a saved-for game purchase
 also receive their own short celebrations.
-The pet's short wish dialogue remains, is shown once for a new wish, and dismissing
-it does not remove the board item. Lifetimes are: specific food and playing an
-unlocked mini-game — one game day; clothing and a purchasable room object — two
+Use the existing wish dialogue to name the specific desired item or action for
+every new wish, including a piggy-bank contribution. Queue simultaneous wishes
+and acknowledge each completed dialogue durably; returning to the room or
+restarting must neither lose pending introductions nor repeat acknowledged ones.
+Dismissing the dialogue does not remove the board item. Lifetimes are: specific
+food and playing an unlocked mini-game — one game day; clothing and a purchasable room object — two
 or three game days; a piggy-bank contribution — two game days; saving for a new
 game — while that goal is active; a reached game goal — until the game is bought
 or the goal changes. The mini-game wishlist includes only games with a working
 launch path. Refusing a wish never reduces happiness.
 
+On the second game day's guided morning, greet the player, show the queued
+specific wish dialogues, and then introduce the wish board in a buttonless
+dialogue. Focus the camera on the board
+and highlight it with the same tutorial spotlight used for the piggy bank, phone,
+and fridge. Show this explanation only after the camera has scrolled to the board,
+and place the dialogue at the bottom so it does not cover the highlighted board.
+The player finishes by tapping the dialogue; opening the board is
+optional. Save completion with the second-morning chapter so it does not repeat
+after restart. Daily wish dialogues may also appear during the remainder of the
+first week once this morning guide is complete.
+
 Item wishes use the interior store's unowned paid furniture, wallpaper, and floor
 variants. The specific catalog variant is the wish target and lasts two or three
-game days. On ordinary days, choose the wish category before its item so the large interior
-catalog does not dominate daily wishes. A committed interior payment carries its
+game days. Choose the wish category before its item so the large interior catalog
+does not dominate daily wishes. Category weights are mini-game 60, food 20,
+clothing 10, and interior 10; renormalize across categories with eligible targets.
+Only unlocked games with working launch paths qualify. Do not force an expensive
+purchase wish on Sundays. A committed interior payment carries its
 wish ID, grants the same one-time `+5..10` happiness, removes that wish, and queues
 the joyful room dialogue. Reinstalling an owned variant grants no wish reward.
 Keep the wish ID in the pending purchase so recovery cannot change it or repeat
@@ -958,8 +995,9 @@ while incomplete sets keep the regular unit price. The catalog card, cart total,
 economy debit, and receipt must use the same promotion calculation. A selected
 promotion remains stable for the whole game day, including after leaving and
 reopening the shop or completing a purchase; the next game day recalculates the
-event. After the first guaranteed offer on game day five, promotions have a
-15% daily chance when the shop is opened. One quarter of promotions use `2+1`;
+event. After the first guaranteed offer on game day five, promotions use weight
+25 in the shared daily room-event draw. Opening the shop does not create a
+second independent draw. One quarter of promotions use `2+1`;
 the others use a percentage discount. Persist the random seed so the day's
 offer does not change when the shop is reopened or the app restarts. Buying
 substantially more promotion items than the quantity needed to
@@ -990,8 +1028,9 @@ On the first occurrence, the pet points out that something looks suspicious and
 explains the nature of the risk. The second occurrence checks an independent
 choice; the third reinforces it in a later or changed situation. Only the first
 and third steps unlock achievements.
-Security messages use a 20% daily chance in both debug and release builds, with
-at least two full game days between occurrences. The processed day is saved even
+Security messages use weight 15 in the shared daily room-event draw in both debug
+and release builds, with at least two full game days between occurrences. The
+phone does not independently reroll an event. The processed day is saved even
 when no message appears, so reopening the phone cannot reroll that day.
 
 ### 15.4. Required learning-module contracts

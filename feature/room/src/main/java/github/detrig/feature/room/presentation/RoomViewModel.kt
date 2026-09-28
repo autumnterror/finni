@@ -109,7 +109,6 @@ internal class RoomViewModel(
     private var onboardingRefreshJob: Job? = null
     private var firstWeekNeedHintJob: Job? = null
     private var firstWeekGoalHintJob: Job? = null
-    private var impulseWishJob: Job? = null
     private var wishBoardRefreshJob: Job? = null
     private var moneyEventJob: Job? = null
     private var rulesRecapJob: Job? = null
@@ -120,7 +119,7 @@ internal class RoomViewModel(
     private var parentCabinetResetError = false
     private var rulesRecapChecked = false
     private val checkedMoneyEventDays = mutableSetOf<Long>()
-    private val checkedImpulseWishDays = mutableSetOf<Long>()
+    private val acknowledgedWishDialogues = mutableSetOf<String>()
     private val acknowledgedWishFulfillments = mutableSetOf<String>()
     private val hintedHungerDays = mutableSetOf<Long>()
     private val greetedPlanWeeks = mutableSetOf<Long>()
@@ -244,13 +243,7 @@ internal class RoomViewModel(
             RoomViewEvent.CloseDayTransitionNotice -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(dayTransitionNotice = null))
             }
-            RoomViewEvent.CloseImpulseWish -> nullableState<RoomViewState.Content>()?.let {
-                val wish = it.impulseWish
-                updateState(it.copy(impulseWish = null))
-                if (wish?.isPurchasable == true) launchCoroutine(handleAction = ExceptionConsumer { true }) {
-                    loadRoomImpulseWish.recordDeclined(wish)
-                }
-            }
+            RoomViewEvent.CloseImpulseWish -> closeImpulseWish()
             RoomViewEvent.CloseMoneyEvent -> nullableState<RoomViewState.Content>()?.let {
                 updateState(it.copy(moneyEvent = null, moneyEventError = null,
                     sleepBlockedByKnownExpense = false))
@@ -633,12 +626,15 @@ internal class RoomViewModel(
                             allowanceNotice = current?.allowanceNotice,
                             earlyWeekParentHelpNotice = current?.earlyWeekParentHelpNotice,
                             dayTransitionNotice = current?.dayTransitionNotice ?: appEntryNotice,
-                            impulseWish = current?.impulseWish?.takeIf {
+                            impulseWishes = current?.impulseWishes?.takeIf {
                                 current.progress.absoluteDay == roomData.progress.absoluteDay
-                            },
+                            }.orEmpty(),
                             petWishBoardWishes = current?.petWishBoardWishes
-                                ?.filter { wish -> wish.expiresOnAbsoluteDayExclusive
-                                    ?.let { it > roomData.progress.absoluteDay } != false }
+                                ?.filter { wish ->
+                                    if (wish.isCompleted) wish.completedOnAbsoluteDay == roomData.progress.absoluteDay
+                                    else wish.expiresOnAbsoluteDayExclusive
+                                        ?.let { it > roomData.progress.absoluteDay } != false
+                                }
                                 .orEmpty(),
                             wishFulfillments = current?.wishFulfillments.orEmpty(),
                             isWishBoardVisible = current?.isWishBoardVisible == true &&
@@ -659,8 +655,8 @@ internal class RoomViewModel(
                     showFirstWeekNeedHintIfNeeded(roomData.progress)
                 roomData.progress.planProgress?.let(::reconcilePlanLearning)
                 handleLowBalance(roomData.progress)
-                if (onboardingStep == FirstRunOnboardingStep.COMPLETED) {
-                    loadImpulseWishForDay(roomData.progress.absoluteDay)
+                if (canIntroducePetWishes()) {
+                    refreshWishBoardForDay(roomData.progress.absoluteDay)
                 }
                 if (roomData.progress.planProgress != null &&
                     onboardingStep in setOf(FirstRunOnboardingStep.COMPLETED,
@@ -673,45 +669,21 @@ internal class RoomViewModel(
         }
     }
 
-    private fun loadImpulseWishForDay(absoluteDay: Long) {
-        if (absoluteDay in checkedImpulseWishDays || impulseWishJob?.isActive == true) return
-        checkedImpulseWishDays += absoluteDay
-        impulseWishJob = launchCoroutine(
-            handleAction = ExceptionConsumer {
-                checkedImpulseWishDays -= absoluteDay
-                impulseWishJob = null
-                true
-            },
-        ) {
-            nullableState<RoomViewState.Content>()?.let { content ->
-                if (content.progress.absoluteDay == absoluteDay && content.onboarding == null) {
-                    val wishes = loadRoomImpulseWish.currentWishes(
-                        absoluteDay = absoluteDay,
-                        activeGoalId = content.activeSavingsGoal?.goal?.id,
-                    )
-                    val dailyWish = wishes.firstOrNull { it.createdOnAbsoluteDay == absoluteDay &&
-                        it.kind != github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.SAVINGS_TOP_UP }
-                    val dialogueWish = dailyWish?.let { loadRoomImpulseWish.claimDialogue(it) }
-                    val fulfillments = loadRoomImpulseWish.currentFulfillments()
-                    nullableState<RoomViewState.Content>()?.takeIf {
-                        it.progress.absoluteDay == absoluteDay
-                    }?.let { latest ->
-                        updateState(latest.copy(
-                            impulseWish = dialogueWish,
-                            petWishBoardWishes = wishes,
-                            wishFulfillments = fulfillments.filterNot { it.id in acknowledgedWishFulfillments },
-                        ))
-                    }
-                }
-            }
-            impulseWishJob = null
-        }
-    }
+    private fun canIntroducePetWishes(): Boolean = onboardingStep in setOf(
+        FirstRunOnboardingStep.COMPLETED,
+        FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
+        FirstRunOnboardingStep.SECOND_DAY_MORNING,
+        FirstRunOnboardingStep.SECOND_DAY_WISHES,
+        FirstRunOnboardingStep.WISH_BOARD_GUIDANCE,
+    )
 
     private fun refreshWishBoardForDay(absoluteDay: Long) {
         if (wishBoardRefreshJob?.isActive == true) return
         wishBoardRefreshJob = launchCoroutine(
-            handleAction = ExceptionConsumer { true },
+            handleAction = ExceptionConsumer {
+                wishBoardRefreshJob = null
+                true
+            },
         ) {
             nullableState<RoomViewState.Content>()?.let { content ->
                 if (content.progress.absoluteDay == absoluteDay) {
@@ -719,22 +691,49 @@ internal class RoomViewModel(
                         absoluteDay = absoluteDay,
                         activeGoalId = content.activeSavingsGoal?.goal?.id,
                     )
+                    val dialogueWishes = if (canIntroducePetWishes()) wishes.mapNotNull {
+                        loadRoomImpulseWish.claimDialogue(it)
+                    } else emptyList()
                     val fulfillments = loadRoomImpulseWish.currentFulfillments()
                     nullableState<RoomViewState.Content>()?.takeIf {
                         it.progress.absoluteDay == absoluteDay
                     }?.let { latest ->
                         updateState(latest.copy(
                             petWishBoardWishes = wishes,
-                            impulseWish = latest.impulseWish?.takeIf { wish ->
-                                wishes.any { it.eventId == wish.eventId }
-                            },
+                            impulseWishes = (latest.impulseWishes + dialogueWishes)
+                                .distinctBy { it.eventId }
+                                .filter { wish -> wish.eventId !in acknowledgedWishDialogues &&
+                                    wishes.any { !it.isCompleted && it.eventId == wish.eventId } },
                             wishFulfillments = fulfillments.filterNot { it.id in acknowledgedWishFulfillments },
                         ))
                     }
                 }
             }
             wishBoardRefreshJob = null
+            continueAfterWishIntroduction()
         }
+    }
+
+    private fun closeImpulseWish() {
+        val wish = nullableState<RoomViewState.Content>()?.impulseWish ?: return
+        launchCoroutine(handleAction = ExceptionConsumer { true }) {
+            loadRoomImpulseWish.acknowledgeDialogue(wish.eventId)
+            acknowledgedWishDialogues += wish.eventId
+            nullableState<RoomViewState.Content>()?.let { latest ->
+                updateState(latest.copy(
+                    impulseWishes = latest.impulseWishes.filterNot { it.eventId == wish.eventId },
+                ))
+            }
+            continueAfterWishIntroduction()
+            if (wish.isPurchasable) loadRoomImpulseWish.recordDeclined(wish)
+        }
+    }
+
+    private fun continueAfterWishIntroduction() {
+        if (onboardingStep == FirstRunOnboardingStep.SECOND_DAY_WISHES &&
+            wishBoardRefreshJob?.isActive != true &&
+            nullableState<RoomViewState.Content>()?.impulseWishes?.isEmpty() == true
+        ) transitionOnboarding(FirstRunOnboardingStep.WISH_BOARD_GUIDANCE)
     }
 
     private fun closeWishFulfillment(id: String) {
@@ -895,7 +894,6 @@ internal class RoomViewModel(
         onboardingRefreshJob?.cancel()
         firstWeekNeedHintJob?.cancel()
         firstWeekGoalHintJob?.cancel()
-        impulseWishJob?.cancel()
         wishBoardRefreshJob?.cancel()
         buyJob = null
         sleepJob = null
@@ -905,9 +903,8 @@ internal class RoomViewModel(
         onboardingRefreshJob = null
         firstWeekNeedHintJob = null
         firstWeekGoalHintJob = null
-        impulseWishJob = null
         wishBoardRefreshJob = null
-        checkedImpulseWishDays.clear()
+        acknowledgedWishDialogues.clear()
         hintedHungerDays.clear()
         reconciledPlanWeeks.clear()
         reconcilingPlanWeek = null
@@ -923,12 +920,16 @@ internal class RoomViewModel(
         nullableState<RoomViewState.Content>()?.let { content ->
             updateState(content.copy(onboarding = onboardingUiState()))
             if (step == FirstRunOnboardingStep.COMPLETED) {
-                loadImpulseWishForDay(content.progress.absoluteDay)
+                refreshWishBoardForDay(content.progress.absoluteDay)
                 handleLowBalance(content.progress)
             }
             if (step == FirstRunOnboardingStep.WAITING_FOR_WEEK_END) {
+                refreshWishBoardForDay(content.progress.absoluteDay)
                 showFirstWeekNeedHintIfNeeded(content.progress)
                 loadFirstWeekGoalHintIfNeeded()
+            }
+            if (step == FirstRunOnboardingStep.SECOND_DAY_WISHES) {
+                refreshWishBoardForDay(content.progress.absoluteDay)
             }
         }
     }
@@ -983,7 +984,9 @@ internal class RoomViewModel(
                 transitionOnboarding(FirstRunOnboardingStep.BEDTIME_GUIDANCE)
             FirstRunOnboardingStep.BEDTIME_GUIDANCE ->
                 transitionOnboarding(FirstRunOnboardingStep.WAITING_FOR_BED)
-            FirstRunOnboardingStep.SECOND_DAY_MORNING -> {
+            FirstRunOnboardingStep.SECOND_DAY_MORNING ->
+                transitionOnboarding(FirstRunOnboardingStep.SECOND_DAY_WISHES)
+            FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> {
                 completeOnboardingChapter(FirstRunOnboardingChapter.SECOND_DAY_MORNING)
                 transitionOnboarding(onboardingProgress.firstStep)
             }
@@ -1013,6 +1016,7 @@ internal class RoomViewModel(
             FirstRunOnboardingStep.FEEDING,
             FirstRunOnboardingStep.FEEDING_DONE,
             FirstRunOnboardingStep.WAITING_FOR_BED,
+            FirstRunOnboardingStep.SECOND_DAY_WISHES,
             FirstRunOnboardingStep.WAITING_FOR_WEEK_END,
             FirstRunOnboardingStep.WEEK_END_INTRO,
             FirstRunOnboardingStep.WEEK_SUMMARY_VIEW,
@@ -1226,7 +1230,7 @@ internal class RoomViewModel(
                         commands.onNext(RoomCommand.CloseBuyConfirmation(zoneId))
                         router.showBought()
                         content.petWishBoardWishes.firstOrNull { wish ->
-                            wish.kind == github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.TOY &&
+                            !wish.isCompleted && wish.kind == github.detrig.feature.room.domain.model.RoomImpulseWish.Kind.TOY &&
                                 wish.productId == zoneId
                         }?.let { loadRoomImpulseWish.recordFulfilled(it) }
                         refreshWishBoardForDay(content.progress.absoluteDay)

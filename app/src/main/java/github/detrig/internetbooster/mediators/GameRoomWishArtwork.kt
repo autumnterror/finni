@@ -60,6 +60,8 @@ internal class GameRoomWishArtwork(
             RoomImpulseWish.Kind.MINI_GAME,
             RoomImpulseWish.Kind.TOY,
             RoomImpulseWish.Kind.SAVINGS_TOP_UP,
+            RoomImpulseWish.Kind.SAVINGS_GOAL,
+            RoomImpulseWish.Kind.SAVED_GAME,
             RoomImpulseWish.Kind.FREE -> Unit
         }
     }

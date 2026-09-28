@@ -57,7 +57,6 @@ import github.detrig.feature.room.presentation.component.FirstRunOnboardingDialo
 import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.BathroomScreen
 import github.detrig.feature.room.presentation.component.RoomMoneyEventDialog
-import github.detrig.feature.room.presentation.component.RoomImpulseWishDialog
 import github.detrig.feature.room.presentation.component.RoomWishBoardDialog
 import github.detrig.feature.room.presentation.component.RoomWishFulfilledDialog
 import github.detrig.feature.room.presentation.component.TutorialSpotlight
@@ -200,8 +199,10 @@ internal fun RoomScreen(
         }
     }
     val activeFocusObjectId = onboarding?.focusObjectId ?: focusObjectId ?: requestedZoneId
-    var focusedObjectId by remember { mutableStateOf<String?>(null) }
-    var spotlightBoundsInWindow by remember { mutableStateOf<Rect?>(null) }
+    var focusedObjectId by remember(activeFocusObjectId) { mutableStateOf<String?>(null) }
+    var spotlightBoundsInWindow by remember(activeFocusObjectId, onboarding?.highlightedObjectIds) {
+        mutableStateOf<Rect?>(null)
+    }
     var roomOriginInWindow by remember { mutableStateOf(Offset.Zero) }
     val spotlightBounds = spotlightBoundsInWindow?.let { bounds ->
         Rect(
@@ -211,16 +212,34 @@ internal fun RoomScreen(
             bottom = bounds.bottom - roomOriginInWindow.y,
         )
     }
-    LaunchedEffect(activeFocusObjectId) {
-        focusedObjectId = null
-        spotlightBoundsInWindow = null
-    }
     LaunchedEffect(resumed, externalActive) {
         viewModel.perform(if (resumed && externalActive) RoomViewEvent.Resumed else RoomViewEvent.Paused)
     }
     val hasAllowedOnboardingObjects = onboarding?.allowedObjectIds?.isNotEmpty() == true
     val showPhoneNotificationPrompt = phoneNotificationPrompt != null && onboarding == null &&
         content != null && content.bathroomView == BathroomView.HOUSE && !content.sleeping && canShowDialogs
+    val guidedObjectInteractionActive = externalActive && canShowDialogs && resumed &&
+        hasAllowedOnboardingObjects && dialogZoneId == null
+    val regularRoomInteractionActive = externalActive && canShowDialogs && resumed && focused &&
+        dialogZoneId == null && onboarding == null &&
+        content?.isWishBoardVisible != true &&
+        content?.wishFulfillments.isNullOrEmpty() &&
+        content?.planEditor == null &&
+        content?.isPlanSummaryVisible != true && content?.menuDestination == RoomMenuDestination.NONE &&
+        content?.weekResult == null &&
+        content?.weekSummaryTutorialStep == null &&
+        content?.showFirstGamePurchaseFeedback != true &&
+        content?.readyFirstGameZoneId == null &&
+        content?.firstWeekNeedHint == null &&
+        content?.firstWeekGoalHint == null &&
+        content?.parentHelpDialog == null && content?.allowanceNotice == null &&
+        content?.savingsRecoveryPrompt == null &&
+        content?.parentHelpPhonePrompt == null &&
+        content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
+        content?.sleepConfirmationVisible != true &&
+        content?.moneyEvent == null &&
+        content?.rulesRecapVisible != true &&
+        !showPhoneNotificationPrompt
     val openPhoneFromTutorial = {
         viewModel.perform(RoomViewEvent.FirstRunOpenPhone)
         onPhoneClick()
@@ -274,27 +293,9 @@ internal fun RoomScreen(
                 openTableFromTutorial
             } else onFeedingClick,
             tableFoodContent = tableFoodContent,
-            active = externalActive && canShowDialogs && resumed &&
-                (focused || hasAllowedOnboardingObjects) && dialogZoneId == null &&
-                content?.isWishBoardVisible != true &&
-                content?.wishFulfillments.isNullOrEmpty() &&
-                content?.planEditor == null &&
-                content?.isPlanSummaryVisible != true && content?.menuDestination == RoomMenuDestination.NONE &&
-                content?.weekResult == null &&
-                content?.weekSummaryTutorialStep == null &&
-                content?.showFirstGamePurchaseFeedback != true &&
-                content?.readyFirstGameZoneId == null &&
-                content?.firstWeekNeedHint == null &&
-                content?.firstWeekGoalHint == null &&
-                content?.parentHelpDialog == null && content?.allowanceNotice == null &&
-                content?.savingsRecoveryPrompt == null &&
-                content?.parentHelpPhonePrompt == null &&
-                content?.earlyWeekParentHelpNotice == null && content?.planDialogue == null &&
-                content?.sleepConfirmationVisible != true &&
-                content?.moneyEvent == null &&
-                content?.rulesRecapVisible != true &&
-                !showPhoneNotificationPrompt &&
-                (onboarding == null || hasAllowedOnboardingObjects),
+            // Guided steps already provide a strict object allowlist. Keep that one object active
+            // even if an unrelated retained state would block normal room interaction.
+            active = guidedObjectInteractionActive || regularRoomInteractionActive,
             previewZoneId = requestedZoneId,
             focusObjectId = activeFocusObjectId,
             isFeedingScene = focusObjectId == "dining_table",
@@ -667,7 +668,18 @@ internal fun RoomScreen(
             )
         }
         visibleOnboarding != null -> {
-            FirstRunOnboardingDialog(
+            val wish = content?.impulseWish
+            if (visibleOnboarding.step == FirstRunOnboardingStep.SECOND_DAY_WISHES && wish != null) {
+                key(wish.eventId) {
+                    RoomImpulseWishDialog(
+                        wish = wish,
+                        petName = petName,
+                        petPortrait = petPortrait,
+                        dismissOnBackPress = false,
+                        onFinished = { viewModel.perform(RoomViewEvent.CloseImpulseWish) },
+                    )
+                }
+            } else FirstRunOnboardingDialog(
                 state = visibleOnboarding,
                 petName = petName,
                 petPortrait = petPortrait,
@@ -734,12 +746,15 @@ internal fun RoomScreen(
             content.planDialogue == null && content.moneyEvent == null &&
             content.menuDestination == RoomMenuDestination.NONE && content.dayTransitionNotice == null &&
             !showPhoneNotificationPrompt -> {
-            RoomImpulseWishDialog(
-                wish = content.impulseWish,
-                petName = petName,
-                petPortrait = petPortrait,
-                onFinished = { viewModel.perform(RoomViewEvent.CloseImpulseWish) },
-            )
+            val wish = checkNotNull(content.impulseWish)
+            key(wish.eventId) {
+                RoomImpulseWishDialog(
+                    wish = wish,
+                    petName = petName,
+                    petPortrait = petPortrait,
+                    onFinished = { viewModel.perform(RoomViewEvent.CloseImpulseWish) },
+                )
+            }
         }
     }
     if (content?.weekResult != null && canShowDialogs) {
@@ -767,6 +782,7 @@ private val spotlightSteps = setOf(
     FirstRunOnboardingStep.WAITING_FOR_PHONE,
     FirstRunOnboardingStep.FRIDGE_GUIDANCE,
     FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
+    FirstRunOnboardingStep.WISH_BOARD_GUIDANCE,
     FirstRunOnboardingStep.TABLE_PROMPT,
     FirstRunOnboardingStep.TABLE_GUIDANCE,
     FirstRunOnboardingStep.BEDTIME_LATE,

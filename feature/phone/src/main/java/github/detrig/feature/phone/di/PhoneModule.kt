@@ -38,7 +38,9 @@ internal class PhoneModule(
             economyApi = dependencies.economyApi(),
             minimumHelpBalanceRub = dependencies.minimumHelpBalanceRub(),
             eventConfig = SecurityEventConfig(
-                dailyProbability = dependencies.dailySecurityEventProbability(),
+                // The app owns the shared draw; the phone must not roll another event independently.
+                dailyProbability = 1.0,
+                isScheduledForDay = dependencies::isSecurityEventScheduled,
                 randomSeed = kotlin.random.Random.nextInt(),
                 minimumDaysBetweenEvents = dependencies.minimumDaysBetweenSecurityEvents(),
             ),

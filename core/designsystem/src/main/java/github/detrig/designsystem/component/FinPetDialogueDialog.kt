@@ -230,7 +230,7 @@ fun FinPetDialogueDialog(
                             bottom = AppTheme.spacing.xl,
                         )
                         .testTag("finpet_dialogue"),
-                    contentAlignment = Alignment.TopCenter,
+                    contentAlignment = alignment ?: Alignment.TopCenter,
                 ) {
                     AnimatedVisibility(
                         visible = dialogueVisible,
@@ -632,6 +632,7 @@ private const val DIALOGUE_ACTION_DECORATION_FRACTION = 0.15f
 private data class DialoguePreviewState(
     val text: String,
     val actions: List<FinPetDialogueAction>,
+    val alignment: Alignment = Alignment.TopCenter,
 )
 
 private class DialoguePreviewProvider : PreviewParameterProvider<DialoguePreviewState> {
@@ -643,6 +644,11 @@ private class DialoguePreviewProvider : PreviewParameterProvider<DialoguePreview
         DialoguePreviewState(
             text = "Отлично! Теперь у нас есть еда. Давай меня покормим!",
             actions = listOf(FinPetDialogueAction("understood", "Понятно")),
+        ),
+        DialoguePreviewState(
+            text = "Вот моя доска желаний. Здесь видны срок и бонус за выполнение.",
+            actions = emptyList(),
+            alignment = Alignment.BottomCenter,
         ),
         DialoguePreviewState(
             text = "Как лучше поступить с оставшимися деньгами?",
@@ -668,6 +674,7 @@ private fun FinPetDialogueDialogPreview(
                 Box(modifier.background(AppTheme.colors.currencyContainer))
             },
             actions = state.actions,
+            alignment = state.alignment,
             onActionSelected = {},
             onFinished = {},
         )

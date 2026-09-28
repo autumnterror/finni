@@ -272,6 +272,7 @@
     <string name="onboarding_bedtime_late">Уже поздно.</string>
     <string name="onboarding_bedtime_guidance">Когда закончишь дела на сегодня, можно лечь спать. После сна начнётся новый день.</string>
     <string name="onboarding_second_day_morning">Доброе утро!</string>
+    <string name="onboarding_wish_board_guidance">Вот моя доска желаний. Здесь можно посмотреть, чего я хочу, срок желания и бонус за его выполнение.</string>
     <string name="onboarding_second_day_free">Сегодня решай сам, чем займёмся.</string>
     <string name="onboarding_week_end_finished">Кажется, наша первая неделя закончилась.</string>
     <string name="onboarding_week_end_guidance">Давай сравним наш план с тем, как прошла неделя.</string>
@@ -326,6 +327,7 @@
     <string name="impulse_wish_variant_money_after">Я увидел «%1$s» и сразу захотел! Хватит ли у нас денег после покупки?</string>
     <string name="wish_board_title">Доска желаний</string>
     <string name="wish_board_empty">Пока желаний нет</string>
+    <string name="wish_board_completed">Выполнено</string>
     <string name="wish_board_food_description">Питомец хочет эту еду. Желание действует один день.</string>
     <string name="wish_board_game_description">Питомец хочет поиграть. Желание действует один день.</string>
     <string name="wish_board_clothing_description">Питомец хочет эту одежду. Желание действует 2–3 дня.</string>

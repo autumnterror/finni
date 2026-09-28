@@ -11,8 +11,9 @@ data class RoomImpulseWish(
     val createdOnAbsoluteDay: Long? = null,
     /** Exclusive game day when this wish expires. Null means it is tied to a persistent goal. */
     val expiresOnAbsoluteDayExclusive: Long? = null,
+    val completedOnAbsoluteDay: Long? = null,
 ) {
-    enum class Kind { GROCERY, CLOTHING, MINI_GAME, TOY, SAVINGS_TOP_UP, FREE }
+    enum class Kind { GROCERY, CLOTHING, MINI_GAME, TOY, SAVINGS_TOP_UP, SAVINGS_GOAL, SAVED_GAME, FREE }
     init {
         require(eventId.isNotBlank())
         require(productTitle.isNotBlank())
@@ -28,6 +29,8 @@ data class RoomImpulseWish(
 
     val isPurchasable: Boolean
         get() = kind == Kind.GROCERY || kind == Kind.CLOTHING || kind == Kind.TOY
+
+    val isCompleted: Boolean get() = completedOnAbsoluteDay != null
 
     val happinessBonus: Int
         get() = when {
@@ -58,6 +61,7 @@ fun interface RoomImpulseWishSource {
     ): List<RoomImpulseWish> = currentWishes()
     suspend fun claimCurrentWish(): RoomImpulseWish? = currentWish()
     suspend fun claimDialogueWish(wish: RoomImpulseWish): RoomImpulseWish? = wish
+    suspend fun acknowledgeDialogue(eventId: String) = Unit
     suspend fun recordDeclined(wish: RoomImpulseWish) = Unit
     suspend fun recordFulfilled(wish: RoomImpulseWish) = Unit
     /** Captured before payment and persisted with the purchase, so retries retain the same wish. */

@@ -69,6 +69,10 @@ internal class RoomMediator(
                     override suspend fun claimDialogueWish(wish: RoomImpulseWish): RoomImpulseWish? =
                         shopMediator.claimRoomWishDialogue(wish)
 
+                    override suspend fun acknowledgeDialogue(eventId: String) {
+                        shopMediator.acknowledgeRoomWishDialogue(eventId)
+                    }
+
                     override suspend fun recordDeclined(wish: RoomImpulseWish) {
                         shopMediator.recordRoomWishDeclined(wish)
                     }
@@ -119,10 +123,13 @@ internal class RoomMediator(
             PetWishSchedule.Kind.MINI_GAME -> RoomImpulseWish.Kind.MINI_GAME
             PetWishSchedule.Kind.TOY -> RoomImpulseWish.Kind.TOY
             PetWishSchedule.Kind.SAVINGS_TOP_UP -> RoomImpulseWish.Kind.SAVINGS_TOP_UP
+            PetWishSchedule.Kind.SAVINGS_GOAL -> RoomImpulseWish.Kind.SAVINGS_GOAL
+            PetWishSchedule.Kind.SAVED_GAME -> RoomImpulseWish.Kind.SAVED_GAME
         },
         priceRub = priceRub,
         productId = productId,
         createdOnAbsoluteDay = createdAbsoluteDay,
         expiresOnAbsoluteDayExclusive = expiresOnAbsoluteDayExclusive,
+        completedOnAbsoluteDay = completedOnAbsoluteDay,
     )
 }

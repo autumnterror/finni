@@ -80,6 +80,7 @@ internal data class FirstRunOnboardingState(
         FirstRunOnboardingStep.FRIDGE_GUIDANCE,
         FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
         -> "fridge"
+        FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> "decor_notice_board"
         FirstRunOnboardingStep.TABLE_PROMPT,
         FirstRunOnboardingStep.TABLE_GUIDANCE,
         -> "dining_table"
@@ -106,6 +107,7 @@ internal data class FirstRunOnboardingState(
         FirstRunOnboardingStep.FRIDGE_GUIDANCE,
         FirstRunOnboardingStep.WAITING_FOR_FRIDGE,
         -> setOf("fridge")
+        FirstRunOnboardingStep.WISH_BOARD_GUIDANCE -> setOf("decor_notice_board")
         FirstRunOnboardingStep.TABLE_PROMPT,
         FirstRunOnboardingStep.TABLE_GUIDANCE,
         -> setOf("dining_table")
@@ -218,7 +220,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val allowanceNotice: AllowanceNoticeState? = null,
         val earlyWeekParentHelpNotice: EarlyWeekParentHelpNoticeState? = null,
         val dayTransitionNotice: DayTransitionNoticeState? = null,
-        val impulseWish: RoomImpulseWish? = null,
+        val impulseWishes: List<RoomImpulseWish> = emptyList(),
         val petWishBoardWishes: List<RoomImpulseWish> = emptyList(),
         val wishFulfillments: List<github.detrig.feature.room.domain.model.RoomWishFulfillment> = emptyList(),
         val isWishBoardVisible: Boolean = false,
@@ -229,5 +231,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val rulesRecapVisible: Boolean = false,
         val onboarding: FirstRunOnboardingState? = null,
         val initialPosition: HousePosition = HouseLayout.initialPosition(),
-    ) : RoomViewState
+    ) : RoomViewState {
+        val impulseWish: RoomImpulseWish? get() = impulseWishes.firstOrNull()
+    }
 }

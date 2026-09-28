@@ -498,6 +498,7 @@ private fun NotebookSection(
         FinPetModalSectionTone.Neutral -> AppTheme.colors.surfaceElevated.copy(alpha = 0.9f)
         FinPetModalSectionTone.Highlighted -> AppTheme.colors.currencyContainer.copy(alpha = 0.88f)
         FinPetModalSectionTone.Warning -> AppTheme.colors.statusWarning.container.copy(alpha = 0.9f)
+        FinPetModalSectionTone.Positive -> AppTheme.colors.statusPositive.container.copy(alpha = 0.9f)
     }
     Surface(
         modifier = modifier,

@@ -224,7 +224,7 @@ internal fun HouseScene(
             }
         }
         // Первая отрисовка уже в сохранённой точке, без кадра с левой границей дома.
-        val scroll = remember(unitPx, focusObjectId, sceneZoom) {
+        val scroll = remember(unitPx, sceneZoom) {
             ScrollState((initialCameraLeftX * unitPx).roundToInt())
         }
         LaunchedEffect(ready, feedingScene, unitPx) {
@@ -251,8 +251,10 @@ internal fun HouseScene(
             }
         }
 
-        LaunchedEffect(unitPx, focusObjectId, sceneZoom) {
+        LaunchedEffect(scroll) {
             ready = false
+            // The viewport must be measured before scrollTo can reach a room object.
+            snapshotFlow { scroll.maxValue }.first { it != Int.MAX_VALUE }
             scroll.scrollTo((initialCameraLeftX * unitPx).roundToInt())
             ready = true
             snapshotFlow { scroll.value }.collect {
@@ -291,30 +293,32 @@ internal fun HouseScene(
                 .debounce(HouseLayout.SAVE_DELAY_MILLIS).filter { it }.collect { save() }
         }
         DisposableEffect(motion, unitPx, focusObjectId) { onDispose { save() } }
-        LaunchedEffect(previewZoneId, focusObjectId, ready) {
+        LaunchedEffect(previewZoneId, focusObjectId, ready, scroll) {
             val id = focusObjectId ?: previewZoneId ?: return@LaunchedEffect
             if (!ready) return@LaunchedEffect
             val placement = HouseLayout.objects.find { it.id == id || it.zoneId == id }
-            if (placement != null) {
-                val target = (HouseLayout.clampCamera(placement.centerX - 0.5f) * unitPx).roundToInt()
-                scroll.stopScroll()
-                if (focusObjectId != null) {
-                    scroll.animateScrollTo(
-                        value = target,
-                        animationSpec = tween(
-                            durationMillis = appMotion.durationSlowMillis,
-                            easing = appMotion.standardEasing,
-                        ),
-                    )
-                } else {
-                    scroll.scrollTo(target)
-                }
-                if (!feedingScene) {
-                    motion.cameraLeftX = scroll.value / unitPx
-                    motion.hintSeen = true
-                    save()
-                }
+                ?: return@LaunchedEffect
+            val target = (HouseLayout.clampCamera(placement.centerX - 0.5f) * unitPx)
+                .roundToInt().coerceIn(0, scroll.maxValue)
+            scroll.stopScroll()
+            if (focusObjectId != null) {
+                scroll.animateScrollTo(
+                    value = target,
+                    animationSpec = tween(
+                        durationMillis = appMotion.durationSlowMillis,
+                        easing = appMotion.standardEasing,
+                    ),
+                )
+            } else {
+                scroll.scrollTo(target)
             }
+            if (!feedingScene) {
+                motion.cameraLeftX = scroll.value / unitPx
+                motion.hintSeen = true
+                save()
+            }
+            // Let the highlighted object's window bounds follow the final scroll position.
+            withFrameNanos { }
             previewReady(id)
         }
 

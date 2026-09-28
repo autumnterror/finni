@@ -13,6 +13,7 @@ internal class LoadRoomImpulseWishInteractor(
     ) = source.currentWishes(absoluteDay, activeGoalId)
     suspend fun claimDialogue(wish: github.detrig.feature.room.domain.model.RoomImpulseWish) =
         source.claimDialogueWish(wish)
+    suspend fun acknowledgeDialogue(eventId: String) = source.acknowledgeDialogue(eventId)
     suspend fun recordDeclined(wish: github.detrig.feature.room.domain.model.RoomImpulseWish) =
         source.recordDeclined(wish)
     suspend fun recordFulfilled(wish: github.detrig.feature.room.domain.model.RoomImpulseWish) =

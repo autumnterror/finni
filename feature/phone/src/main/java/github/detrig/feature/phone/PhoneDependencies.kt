@@ -27,7 +27,7 @@ interface PhoneDependencies {
     fun gameStateApi(): GameStateApi
     fun inventoryApi(): InventoryApi
     fun messagesStorage(): PhoneMessagesStorage
-    fun dailySecurityEventProbability(): Double
+    fun isSecurityEventScheduled(absoluteDay: Long): Boolean
     fun minimumDaysBetweenSecurityEvents(): Int
     fun minimumHelpBalanceRub(): Long
     fun globalMessageController(): GlobalMessageController
