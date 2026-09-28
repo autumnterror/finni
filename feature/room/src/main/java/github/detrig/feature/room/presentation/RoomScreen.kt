@@ -364,12 +364,19 @@ internal fun RoomScreen(
     }
     when {
         content?.weekResult != null -> Unit
+        content?.sleeping == true -> Unit
         content?.sleepConfirmationVisible == true && canShowDialogs -> {
             SleepConfirmationDialog(
                 canSleep = PetSatietyRules.canSleep(content.progress.petHunger),
                 onConfirm = { viewModel.perform(RoomViewEvent.SleepConfirmed) },
                 onPostpone = { viewModel.perform(RoomViewEvent.SleepPostponed) },
             )
+        }
+        // Its timer must run only while no other room dialog covers the date.
+        content?.dayTransitionNotice != null && canShowDialogs && externalActive && resumed -> {
+            DayTransitionDialog(content.dayTransitionNotice) {
+                viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
+            }
         }
         zone?.access is RoomZoneAccess.Buyable && canShowDialogs -> {
             val priceRub = (zone.access as RoomZoneAccess.Buyable).priceRub
@@ -534,7 +541,7 @@ internal fun RoomScreen(
         }
         content?.planEditor != null && canShowDialogs && !content.sleeping &&
             content.allowanceNotice == null && content.earlyWeekParentHelpNotice == null &&
-            content.weekResult == null -> {
+            content.weekResult == null && content.dayTransitionNotice == null -> {
             WeeklyPlanEditorDialog(
                 editor = content.planEditor,
                 weekNumber = content.progress.weekNumber,
@@ -675,14 +682,6 @@ internal fun RoomScreen(
                 },
                 onFinished = onPhonePromptDismiss,
             )
-        }
-    }
-    if (content?.dayTransitionNotice != null && content.weekResult == null &&
-        content.parentHelpDialog == null && content.allowanceNotice == null &&
-        externalActive && canShowDialogs
-    ) {
-        DayTransitionDialog(content.dayTransitionNotice) {
-            viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
         }
     }
     if (content?.weekResult != null && canShowDialogs) {

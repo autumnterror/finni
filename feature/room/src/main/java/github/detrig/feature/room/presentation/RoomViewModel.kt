@@ -1365,16 +1365,18 @@ internal class RoomViewModel(
     ): EndDayResult {
         val result = endDay(expectedDay)
         if (result is EndDayResult.Advanced) gameAudio.play(RoomAudioCues.Sleep)
-        if (showAllowanceNotice && onboardingStep == FirstRunOnboardingStep.COMPLETED &&
-            result is EndDayResult.Advanced
-        ) {
+        if (result is EndDayResult.Advanced) {
             nullableState<RoomViewState.Content>()?.let { latest ->
                 updateState(latest.copy(
                     dayTransitionNotice = DayTransitionNoticeState(
                         dayOfWeek = result.state.dayOfWeek,
                         weekNumber = result.state.weekNumber,
                     ),
-                    allowanceNotice = if (result.allowanceGrossRub > 0) {
+                    allowanceNotice = if (
+                        showAllowanceNotice &&
+                        onboardingStep == FirstRunOnboardingStep.COMPLETED &&
+                        result.allowanceGrossRub > 0
+                    ) {
                         AllowanceNoticeState(
                             grossRub = result.allowanceGrossRub,
                             parentHelpRepaidRub = result.parentHelpRepaidRub,
