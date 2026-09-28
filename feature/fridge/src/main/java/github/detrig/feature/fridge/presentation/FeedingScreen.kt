@@ -91,6 +91,7 @@ internal fun FeedingScreen() {
     FeedingContent(
         state = state,
         artworkResolver = component.artworkResolver,
+        petName = petProfile?.name ?: stringResource(R.string.feeding_help_pet_fallback),
         onEvent = viewModel::perform,
         onPlaySound = { soundPlayer.play(it.cue) },
         roomContent = { roomModifier, roomPetContent, roomTableContent ->
@@ -147,6 +148,7 @@ internal fun FeedingScreen() {
 private fun FeedingContent(
     state: FeedingViewState,
     artworkResolver: ShopArtworkResolver,
+    petName: String,
     onEvent: (FeedingViewEvent) -> Unit,
     onPlaySound: (FeedingSound) -> Unit = {},
     roomContent: @Composable (
@@ -373,8 +375,8 @@ private fun FeedingContent(
         }
         if (isHelpVisible) {
             FinPetHelpDialog(
-                title = stringResource(R.string.feeding_help_title),
-                message = stringResource(R.string.feeding_help_message),
+                title = stringResource(R.string.feeding_help_title, petName),
+                message = stringResource(R.string.feeding_help_message, petName),
                 dismissText = stringResource(R.string.feeding_help_dismiss),
                 onDismissRequest = { isHelpVisible = false },
             )
@@ -543,6 +545,7 @@ private fun FeedingContentPreview() {
                 loading = false,
             ),
             artworkResolver = ShopArtworkResolver.Empty,
+            petName = "Финни",
             onEvent = {},
             roomContent = { roomModifier, _, _ ->
                 Image(

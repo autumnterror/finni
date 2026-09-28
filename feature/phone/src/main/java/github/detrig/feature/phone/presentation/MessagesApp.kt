@@ -429,6 +429,7 @@ private fun PhoneMessage.displayText(): String = when (kind) {
 @Composable
 internal fun MessagesPetDialogue(
     state: MessagesViewState,
+    petName: String,
     portrait: @Composable (Modifier) -> Unit,
     onGuidanceDismissed: (String) -> Unit,
     onFeedbackDismissed: (String) -> Unit,
@@ -474,7 +475,7 @@ internal fun MessagesPetDialogue(
         }
     }
     FinPetDialogueDialog(
-        speakerName = stringResource(R.string.messages_pet_name),
+        speakerName = petName,
         cards = listOf(text),
         portrait = portrait,
         onFinished = {
@@ -526,6 +527,7 @@ private fun MessagesAppPreview() {
             )
             MessagesPetDialogue(
                 state = state,
+                petName = "Финни",
                 portrait = { modifier ->
                     Box(modifier.background(AppTheme.colors.currencyContainer))
                 },

@@ -11,7 +11,7 @@ import github.detrig.feature.phone.PhoneDependencies
 import github.detrig.feature.phone.PhoneFeature
 import github.detrig.feature.phone.api.PhoneApi
 import github.detrig.feature.phone.api.PhoneMessagesStorage
-import github.detrig.internetbooster.BuildConfig
+import github.detrig.internetbooster.startup.AppExperienceModeStorage
 
 internal class PhoneMediator(
     private val coreComponent: CoreComponent,
@@ -24,6 +24,7 @@ internal class PhoneMediator(
     private val gameStateMediator: GameStateMediator,
     private val inventoryMediator: InventoryMediator,
     private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
+    private val experienceModeStorage: AppExperienceModeStorage,
 ) : Mediator<PhoneApi> {
 
     @MainThread
@@ -43,7 +44,7 @@ internal class PhoneMediator(
                 override fun inventoryApi() = inventoryMediator.getApi()
                 override suspend fun resetDemoProgress(skipOnboarding: Boolean) =
                     this@PhoneMediator.resetDemoProgress(skipOnboarding)
-                override fun isDebugBuild() = BuildConfig.DEBUG
+                override fun isDemoMode() = experienceModeStorage.isDemoMode()
                 override fun messagesStorage(): PhoneMessagesStorage = DurablePhoneMessagesStorage(
                     preferences = coreComponent.context.getSharedPreferences(
                         MESSAGES_PREFERENCES,

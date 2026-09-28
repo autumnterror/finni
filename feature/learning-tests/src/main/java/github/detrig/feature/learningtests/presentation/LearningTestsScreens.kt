@@ -111,14 +111,18 @@ internal fun LearningTestQuizScreen(
     val state by vm.state().observeAsState(LearningTestQuizViewState())
     LaunchedEffect(vm) { vm.perform(LearningTestQuizViewEvent.Load) }
     BackHandler { vm.perform(LearningTestQuizViewEvent.Close) }
-    LearningTestQuizContent(
-        state = state,
-        onClose = { vm.perform(LearningTestQuizViewEvent.Close) },
-        onSelectOption = { vm.perform(LearningTestQuizViewEvent.SelectOption(it)) },
-        onSubmit = { vm.perform(LearningTestQuizViewEvent.SubmitAnswer) },
-        onContinue = { vm.perform(LearningTestQuizViewEvent.Continue) },
-        onRetry = { vm.perform(LearningTestQuizViewEvent.Load) },
-    )
+    val petApi = LearningTestsFeature.component().petApi
+    petApi.RequirePet(modifier = Modifier.fillMaxSize()) { petProfile, _, _, _ ->
+        LearningTestQuizContent(
+            state = state,
+            petName = petProfile.name,
+            onClose = { vm.perform(LearningTestQuizViewEvent.Close) },
+            onSelectOption = { vm.perform(LearningTestQuizViewEvent.SelectOption(it)) },
+            onSubmit = { vm.perform(LearningTestQuizViewEvent.SubmitAnswer) },
+            onContinue = { vm.perform(LearningTestQuizViewEvent.Continue) },
+            onRetry = { vm.perform(LearningTestQuizViewEvent.Load) },
+        )
+    }
 }
 
 @Composable
@@ -318,6 +322,7 @@ private fun DailyTestRadio(selected: Boolean) {
 @Composable
 private fun LearningTestQuizContent(
     state: LearningTestQuizViewState,
+    petName: String,
     onClose: () -> Unit,
     onSelectOption: (Int) -> Unit,
     onSubmit: () -> Unit,
@@ -354,6 +359,7 @@ private fun LearningTestQuizContent(
             )
             else -> QuizQuestion(
                 session = session,
+                petName = petName,
                 selectedOptionIndex = state.selectedOptionIndex,
                 isBusy = state.isBusy,
                 onSelectOption = onSelectOption,
@@ -368,6 +374,7 @@ private fun LearningTestQuizContent(
 @Composable
 private fun QuizQuestion(
     session: LearningTestSession,
+    petName: String,
     selectedOptionIndex: Int?,
     isBusy: Boolean,
     onSelectOption: (Int) -> Unit,
@@ -378,7 +385,7 @@ private fun QuizQuestion(
     BoxWithConstraints(modifier) {
         val pageHeight = maxHeight
         val horizontalInset = 34.dp
-        val prompt = session.question?.prompt.orEmpty()
+        val prompt = session.question?.prompt.orEmpty().replace("{petName}", petName)
         val answerHeight = (pageHeight * 0.094f).coerceIn(58.dp, 76.dp)
         val answersRegionHeight = minOf(
             pageHeight * 0.425f,
@@ -817,6 +824,7 @@ private fun LearningTestQuizPreview() {
         )
         LearningTestQuizContent(
             state = LearningTestQuizViewState(isLoading = false, session = session, selectedOptionIndex = 0),
+            petName = "Финни",
             onClose = {},
             onSelectOption = {},
             onSubmit = {},

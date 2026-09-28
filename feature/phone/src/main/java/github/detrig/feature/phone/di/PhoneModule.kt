@@ -16,7 +16,7 @@ import github.detrig.feature.phone.presentation.RoomNotificationsViewModel
 internal class PhoneModule(
     private val dependencies: PhoneDependencies,
 ) : PhoneComponent {
-    override val isDebugBuild = dependencies.isDebugBuild()
+    override fun isDemoMode() = dependencies.isDemoMode()
     override val roomApi = dependencies.roomApi()
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()

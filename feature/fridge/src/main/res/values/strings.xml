@@ -4,8 +4,9 @@
     <string name="first_run_next">Дальше</string>
     <string name="first_run_feeding_drag">Перетащи еду со стола ко мне, чтобы покормить.</string>
     <string name="feeding_help_button">Подсказка о кормлении</string>
-    <string name="feeding_help_title">Покорми Финни</string>
-    <string name="feeding_help_message">Сначала возьми еду из холодильника. Потом перетащи её со стола к Финни.</string>
+    <string name="feeding_help_title">Покорми питомца «%1$s»</string>
+    <string name="feeding_help_message">Сначала возьми еду из холодильника. Потом положи её на стол — питомец «%1$s» сможет поесть.</string>
+    <string name="feeding_help_pet_fallback">Питомец</string>
     <string name="feeding_help_dismiss">Понятно</string>
     <string name="first_run_fed_thanks">Вкуснятина!</string>
 </resources>
