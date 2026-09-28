@@ -7,6 +7,24 @@ const sharp = require('sharp');
 // Generate candidates separately from the checkout. No resizing or cropping.
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 
+// Keep all pet art in its original form, including illustrations outside feature/pet.
+const petIllustrations = new Set([
+    'app/src/main/res/drawable-nodpi/finni_launcher_art',
+    'app/src/main/res/drawable-nodpi/finni_loading_splash',
+    'feature/mini-games/flight/src/main/res/drawable-nodpi/img_flight_wings_blue',
+    'feature/room/src/main/res/drawable-nodpi/allowance_wallet',
+    'feature/room/src/main/res/drawable-nodpi/minigame_preview_drawing',
+    'feature/room/src/main/res/drawable-nodpi/minigame_preview_fishing',
+    'feature/room/src/main/res/drawable-nodpi/minigame_preview_music',
+]);
+
+function isPetArtwork(file) {
+    const stem = file.replace(/\.(png|webp)$/i, '').toLowerCase();
+    return stem.startsWith('feature/pet/') ||
+        /(?:^|[_/-])(?:hamster|pet)(?:$|[_/-])/.test(stem) ||
+        petIllustrations.has(stem);
+}
+
 function compareRgba(original, decoded) {
     if (original.info.width !== decoded.info.width || original.info.height !== decoded.info.height) {
         throw new Error('Image dimensions changed');
@@ -112,14 +130,13 @@ async function main() {
     const selected = [];
     for (const file of files) {
         if (!file.includes('/src/main/') || !/\.(png|webp)$/.test(file) || file.endsWith('.9.png')) continue;
+        if (isPetArtwork(file)) continue;
         const resource = file.includes('/src/main/res/drawable-nodpi/');
         const asset = file.includes('/src/main/assets/');
         if (!resource && !asset) continue;
         const bytes = await fs.readFile(path.join(source, file));
         if (bytes.length < 100_000) continue;
         if (file.endsWith('.webp') && !bytes.subarray(0, 40).includes(Buffer.from('VP8L'))) continue;
-        // Layered pet art stays byte-identical; its geometry also drives hit testing.
-        if (file.startsWith('feature/pet/')) continue;
         selected.push(file);
     }
     let next = 0;
