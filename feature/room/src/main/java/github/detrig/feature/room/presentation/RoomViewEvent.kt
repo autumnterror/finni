@@ -7,6 +7,7 @@ import github.detrig.feature.room.domain.model.MoneyAllocation
 
 internal sealed interface RoomViewEvent : CoreViewEvent {
     data object PetTapped : RoomViewEvent
+    data object PetWashGuideContinue : RoomViewEvent
     data class SavePosition(val position: HousePosition) : RoomViewEvent
     data class ZonePreviewed(val zoneId: String) : RoomViewEvent
     data object MarketClicked : RoomViewEvent

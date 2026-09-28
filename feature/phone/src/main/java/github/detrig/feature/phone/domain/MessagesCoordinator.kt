@@ -66,6 +66,13 @@ internal class MessagesCoordinator(
         repository.consumeFirstRoomPrompt()
     }
 
+    suspend fun createSecurityEventForDebug(): Boolean = dayProcessingMutex.withLock {
+        repository.createSecurityEventForDebug(
+            absoluteDay = weekApi.initialize().absoluteDay,
+            randomSeed = eventConfig.randomSeed,
+        )
+    }
+
     suspend fun resetProgress(resetGame: suspend () -> Unit) = dayProcessingMutex.withLock {
         resetGame()
         repository.resetProgress()

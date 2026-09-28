@@ -37,6 +37,7 @@ import github.detrig.designsystem.theme.FinPetTheme
 import github.detrig.feature.room.domain.model.HousePosition
 import github.detrig.feature.room.api.RoomPetInteraction
 import github.detrig.feature.room.api.RoomPetPose
+import github.detrig.feature.room.presentation.BATH_TUTORIAL_OBJECT_ID
 import github.detrig.feature.room.presentation.model.HouseLayout
 import github.detrig.feature.room.presentation.model.HouseSurfaceLayout
 import github.detrig.feature.room.presentation.model.HouseSurfaceTextures
@@ -109,6 +110,11 @@ internal fun HouseScene(
     }
     val focusedPlacement = remember(focusObjectId) {
         focusObjectId?.let { id -> HouseLayout.objects.firstOrNull { it.id == id } }
+    }
+    val bathroomFocusCenterX = remember {
+        val bathroom = HouseSurfaceLayout.Room.BATHROOM
+        (bathroom.left + bathroom.width / 2f) / HouseSurfaceLayout.SCENE_WIDTH *
+            HouseLayout.WORLD_WIDTH
     }
     val feedingScene = isFeedingScene
     val sceneZoom = if (feedingScene) FEEDING_SCENE_ZOOM else 1f
@@ -296,9 +302,10 @@ internal fun HouseScene(
         LaunchedEffect(previewZoneId, focusObjectId, ready, scroll) {
             val id = focusObjectId ?: previewZoneId ?: return@LaunchedEffect
             if (!ready) return@LaunchedEffect
-            val placement = HouseLayout.objects.find { it.id == id || it.zoneId == id }
+            val focusCenterX = HouseLayout.objects.find { it.id == id || it.zoneId == id }?.centerX
+                ?: bathroomFocusCenterX.takeIf { id == BATH_TUTORIAL_OBJECT_ID }
                 ?: return@LaunchedEffect
-            val target = (HouseLayout.clampCamera(placement.centerX - 0.5f) * unitPx)
+            val target = (HouseLayout.clampCamera(focusCenterX - 0.5f) * unitPx)
                 .roundToInt().coerceIn(0, scroll.maxValue)
             scroll.stopScroll()
             if (focusObjectId != null) {
@@ -433,7 +440,15 @@ internal fun HouseScene(
                             closeUp = false,
                             compactRoom = true,
                             equipped = bathroomFurnitureByPlacement,
-                            showBathtubOutline = highlightInteractiveObjects,
+                            showBathtubOutline = highlightInteractiveObjects ||
+                                BATH_TUTORIAL_OBJECT_ID in highlightedObjectIds,
+                            onBathtubBoundsChanged = if (
+                                BATH_TUTORIAL_OBJECT_ID in highlightedObjectIds
+                            ) {
+                                onHighlightedObjectBoundsChanged
+                            } else {
+                                null
+                            },
                             onBathtubClick = onBathtubClick.takeIf { active && ready },
                             modifier = Modifier
                                 .offset(x = unitDp * bathroom.left * HouseLayout.WORLD_WIDTH /

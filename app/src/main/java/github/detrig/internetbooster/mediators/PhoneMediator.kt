@@ -18,6 +18,7 @@ internal class PhoneMediator(
     private val roomMediator: RoomMediator,
     private val petMediator: PetMediator,
     private val shopMediator: ShopMediator,
+    private val wardrobeMediator: WardrobeMediator,
     private val economyMediator: EconomyMediator,
     private val weekMediator: WeekMediator,
     private val learningMediator: LearningMediator,
@@ -37,6 +38,7 @@ internal class PhoneMediator(
                 override fun roomApi() = roomMediator.getApi()
                 override fun petApi() = petMediator.getApi()
                 override fun shopApi() = shopMediator.getApi()
+                override fun wardrobeApi() = wardrobeMediator.getApi()
                 override fun economyApi() = economyMediator.getApi()
                 override fun weekApi() = weekMediator.getApi()
                 override fun learningApi() = learningMediator.getApi()
@@ -58,6 +60,8 @@ internal class PhoneMediator(
                     DailyRoomEventSchedule.MINIMUM_SECURITY_INTERVAL_DAYS
                 override fun minimumHelpBalanceRub() = shopMediator.minimumGroceryPriceRub()
                 override fun globalMessageController() = coreComponent.globalMessageController
+                override suspend fun createRandomWishForDebug() =
+                    shopMediator.createRandomWishForDebug()
             }
         }
         PhoneFeature.getApi().initialize()

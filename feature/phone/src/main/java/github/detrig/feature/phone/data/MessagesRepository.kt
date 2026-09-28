@@ -22,6 +22,7 @@ internal interface MessagesRepository {
     fun observeInbox(): StateFlow<MessagesInbox>
     suspend fun resetProgress()
     suspend fun ensureEventForDay(absoluteDay: Long, config: SecurityEventConfig)
+    suspend fun createSecurityEventForDebug(absoluteDay: Long, randomSeed: Int): Boolean
     suspend fun markThreadRead(senderId: MessageSenderId)
     suspend fun consumeFirstRoomPrompt()
     suspend fun markGuidanceVisible(eventId: String)
@@ -72,61 +73,30 @@ internal class PersistentMessagesRepository(
         if (dailyRoll(absoluteDay, config.randomSeed) >= config.dailyProbability) {
             return@update processed
         }
-
-        val scenario = if (current.events.size % 2 == 0) {
-            SecurityMessageScenario.CONFIRMATION_CODE
-        } else {
-            SecurityMessageScenario.UNKNOWN_LINK
-        }
-        val sender = if ((absoluteDay + current.events.size) % 2L == 0L) {
-            MessageSenderId.UNKNOWN_1
-        } else {
-            MessageSenderId.UNKNOWN_2
-        }
-        val eventId = "security-event-$absoluteDay"
-        val event = SecurityMessageEvent(
-            id = eventId,
+        processed.withSecurityEvent(
             absoluteDay = absoluteDay,
-            scenario = scenario,
-            senderId = sender,
+            randomSeed = config.randomSeed,
+            eventId = "security-event-$absoluteDay",
         )
-        val newMessages = when (scenario) {
-            SecurityMessageScenario.CONFIRMATION_CODE -> {
-                val code = confirmationCode(absoluteDay, config.randomSeed)
-                listOf(
-                    PhoneMessage(
-                        id = "$eventId-bank",
-                        eventId = eventId,
-                        senderId = MessageSenderId.BANK,
-                        absoluteDay = absoluteDay,
-                        kind = MessageKind.BANK_CONFIRMATION_CODE,
-                        payload = code,
-                    ),
-                    PhoneMessage(
-                        id = "$eventId-request",
-                        eventId = eventId,
-                        senderId = sender,
-                        absoluteDay = absoluteDay,
-                        kind = MessageKind.REQUEST_CONFIRMATION_CODE,
-                    ),
-                )
-            }
-            SecurityMessageScenario.UNKNOWN_LINK -> listOf(
-                PhoneMessage(
-                    id = "$eventId-link",
-                    eventId = eventId,
-                    senderId = sender,
-                    absoluteDay = absoluteDay,
-                    kind = MessageKind.UNKNOWN_LINK,
-                    payload = "https://gift.example/day-$absoluteDay",
-                ),
+    }
+
+    override suspend fun createSecurityEventForDebug(
+        absoluteDay: Long,
+        randomSeed: Int,
+    ): Boolean {
+        require(absoluteDay >= 1)
+        var created = false
+        update { current ->
+            val sequence = current.events.count { it.id.startsWith(DEBUG_SECURITY_EVENT_PREFIX) }
+            created = true
+            current.withSecurityEvent(
+                absoluteDay = absoluteDay,
+                randomSeed = randomSeed,
+                eventId = "$DEBUG_SECURITY_EVENT_PREFIX$absoluteDay-$sequence",
+                firstRoomPromptPending = current.firstRoomPromptPending,
             )
         }
-        processed.copy(
-            firstRoomPromptPending = current.events.isEmpty() || current.firstRoomPromptPending,
-            messages = processed.messages + newMessages,
-            events = current.events + event,
-        )
+        return created
     }
 
     override suspend fun markThreadRead(senderId: MessageSenderId) = update { current ->
@@ -254,6 +224,64 @@ internal class PersistentMessagesRepository(
         } + message)
     }
 
+    private fun StoredMessagesState.withSecurityEvent(
+        absoluteDay: Long,
+        randomSeed: Int,
+        eventId: String,
+        firstRoomPromptPending: Boolean = events.isEmpty() || this.firstRoomPromptPending,
+    ): StoredMessagesState {
+        val scenario = if (events.size % 2 == 0) {
+            SecurityMessageScenario.CONFIRMATION_CODE
+        } else {
+            SecurityMessageScenario.UNKNOWN_LINK
+        }
+        val sender = if ((absoluteDay + events.size) % 2L == 0L) {
+            MessageSenderId.UNKNOWN_1
+        } else {
+            MessageSenderId.UNKNOWN_2
+        }
+        val event = SecurityMessageEvent(
+            id = eventId,
+            absoluteDay = absoluteDay,
+            scenario = scenario,
+            senderId = sender,
+        )
+        val newMessages = when (scenario) {
+            SecurityMessageScenario.CONFIRMATION_CODE -> listOf(
+                PhoneMessage(
+                    id = "$eventId-bank",
+                    eventId = eventId,
+                    senderId = MessageSenderId.BANK,
+                    absoluteDay = absoluteDay,
+                    kind = MessageKind.BANK_CONFIRMATION_CODE,
+                    payload = confirmationCode(absoluteDay, randomSeed),
+                ),
+                PhoneMessage(
+                    id = "$eventId-request",
+                    eventId = eventId,
+                    senderId = sender,
+                    absoluteDay = absoluteDay,
+                    kind = MessageKind.REQUEST_CONFIRMATION_CODE,
+                ),
+            )
+            SecurityMessageScenario.UNKNOWN_LINK -> listOf(
+                PhoneMessage(
+                    id = "$eventId-link",
+                    eventId = eventId,
+                    senderId = sender,
+                    absoluteDay = absoluteDay,
+                    kind = MessageKind.UNKNOWN_LINK,
+                    payload = "https://gift.example/day-$absoluteDay",
+                ),
+            )
+        }
+        return copy(
+            firstRoomPromptPending = firstRoomPromptPending,
+            messages = messages + newMessages,
+            events = events + event,
+        )
+    }
+
     private suspend fun update(
         transform: (StoredMessagesState) -> StoredMessagesState,
     ) {
@@ -276,6 +304,7 @@ internal class PersistentMessagesRepository(
 
     private companion object {
         const val CODE_SALT = 0xC0DE
+        const val DEBUG_SECURITY_EVENT_PREFIX = "debug-security-event-"
         const val PARENT_HELP_MESSAGE_ID = "parent-help-reminder"
         const val LEGACY_PARENT_HELP_REPAYMENT_MESSAGE_ID = "parent-help-repayment"
     }

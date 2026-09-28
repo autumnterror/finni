@@ -35,6 +35,7 @@ import github.detrig.feature.room.domain.model.FirstRunOnboardingChapter
 import github.detrig.feature.room.domain.model.FirstRunOnboardingProgress
 import github.detrig.feature.room.domain.model.FirstRunOnboardingRepository
 import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
+import github.detrig.feature.room.domain.model.PetWashGuidePromptRepository
 import github.detrig.feature.room.domain.model.shouldCloseAutomaticParentHelpDialog
 import github.detrig.feature.room.domain.model.shouldOfferAutomaticParentHelp
 import github.detrig.feature.room.domain.model.shouldRetainParentHelpDialog
@@ -85,6 +86,7 @@ internal class RoomViewModel(
     private val requestParentHelpInteractor: RequestParentHelpInteractor,
     private val endWeekEarlyWithParentHelp: EndWeekEarlyWithParentHelpInteractor,
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
+    private val petWashGuidePromptRepository: PetWashGuidePromptRepository,
     private val minimumProductPriceRub: Long,
     private val loadRoomImpulseWish: LoadRoomImpulseWishInteractor,
     private val moneyEvents: RoomMoneyEventInteractor,
@@ -153,7 +155,8 @@ internal class RoomViewModel(
 
     override fun perform(viewEvent: RoomViewEvent) {
         when (viewEvent) {
-            RoomViewEvent.PetTapped -> showInteractiveObjectOutlines()
+            RoomViewEvent.PetTapped -> handlePetTapped()
+            RoomViewEvent.PetWashGuideContinue -> continuePetWashGuide()
             RoomViewEvent.MarketClicked -> launchOnce { router.openMarket() }
             RoomViewEvent.WardrobeClicked -> launchOnce { router.openWardrobe() }
             RoomViewEvent.BedClicked -> showSleepConfirmation()
@@ -410,6 +413,30 @@ internal class RoomViewModel(
         }
     }
 
+    private fun handlePetTapped() {
+        val current = nullableState<RoomViewState.Content>() ?: return
+        if (current.onboarding != null || current.bathroomView != BathroomView.HOUSE || current.sleeping) return
+        if (current.progress.petDirtStage > 0) {
+            interactiveOutlineJob?.cancel()
+            interactiveOutlinesVisible = false
+            updateState(current.copy(
+                showInteractiveObjectOutlines = false,
+                petWashGuideStep = PetWashGuideStep.DIRTY_NOTICE,
+            ))
+        } else {
+            showInteractiveObjectOutlines()
+        }
+    }
+
+    private fun continuePetWashGuide() {
+        val current = nullableState<RoomViewState.Content>() ?: return
+        val step = current.petWashGuideStep ?: return
+        if (step == PetWashGuideStep.DIRTY_NOTICE) {
+            petWashGuidePromptRepository.tryMarkShownForCurrentDirtEpisode()
+        }
+        updateState(current.copy(petWashGuideStep = step.nextOrNull()))
+    }
+
     private fun showInteractiveObjectOutlines() {
         val current = nullableState<RoomViewState.Content>() ?: return
         if (current.onboarding != null || current.bathroomView != BathroomView.HOUSE || current.sleeping) return
@@ -561,6 +588,18 @@ internal class RoomViewModel(
                             ),
                         )
                     }
+                    val onboardingState = onboardingUiState()
+                    if (roomData.progress.petDirtStage == 0) {
+                        petWashGuidePromptRepository.resetForCleanPet()
+                    }
+                    val retainedPetWashGuide = current?.petWashGuideStep
+                        ?.takeIf { roomData.progress.petDirtStage > 0 }
+                    val petWashGuideStep = retainedPetWashGuide ?: PetWashGuideStep.DIRTY_NOTICE
+                        .takeIf {
+                            roomData.progress.petDirtStage > 0 &&
+                                onboardingState == null &&
+                                !petWashGuidePromptRepository.wasShownForCurrentDirtEpisode()
+                        }
                     updateState(
                         RoomViewState.Content(
                             zones = zones,
@@ -608,6 +647,7 @@ internal class RoomViewModel(
                                 RoomMenuDestination.PARENT_CABINET
                             } else current?.menuDestination ?: RoomMenuDestination.NONE,
                             showInteractiveObjectOutlines = interactiveOutlinesVisible,
+                            petWashGuideStep = petWashGuideStep,
                             isSoundEnabled = gameAudio.isSoundEnabled(),
                             areMenuAchievementsExpanded = current?.areMenuAchievementsExpanded ?: false,
                             parentGate = current?.parentGate,
@@ -647,7 +687,7 @@ internal class RoomViewModel(
                             moneyEventError = current?.moneyEventError,
                             resolvingMoneyEvent = current?.resolvingMoneyEvent ?: false,
                             rulesRecapVisible = current?.rulesRecapVisible ?: false,
-                            onboarding = onboardingUiState(),
+                            onboarding = onboardingState,
                         ),
                     )
                     appEntryNoticePending = false

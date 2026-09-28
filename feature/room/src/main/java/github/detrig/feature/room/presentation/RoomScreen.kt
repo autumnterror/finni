@@ -191,6 +191,14 @@ internal fun RoomScreen(
         viewModel.perform(RoomViewEvent.BathroomBackClicked)
     }
     val onboarding = content?.onboarding
+    val petWashGuideStep = content?.petWashGuideStep
+    val petWashGuideFocusId = BATH_TUTORIAL_OBJECT_ID.takeIf {
+        petWashGuideStep == PetWashGuideStep.BATH_GUIDANCE
+    }
+    val activeHighlightedObjectIds = onboarding?.highlightedObjectIds ?: when (petWashGuideStep) {
+        PetWashGuideStep.BATH_GUIDANCE -> setOf(BATH_TUTORIAL_OBJECT_ID)
+        else -> emptySet()
+    }
     var petLookingAround by remember { mutableStateOf(false) }
     LaunchedEffect(petLookingAround) {
         if (petLookingAround) {
@@ -198,9 +206,10 @@ internal fun RoomScreen(
             petLookingAround = false
         }
     }
-    val activeFocusObjectId = onboarding?.focusObjectId ?: focusObjectId ?: requestedZoneId
+    val activeFocusObjectId = onboarding?.focusObjectId ?: petWashGuideFocusId ?:
+        focusObjectId ?: requestedZoneId
     var focusedObjectId by remember(activeFocusObjectId) { mutableStateOf<String?>(null) }
-    var spotlightBoundsInWindow by remember(activeFocusObjectId, onboarding?.highlightedObjectIds) {
+    var spotlightBoundsInWindow by remember(activeFocusObjectId, activeHighlightedObjectIds) {
         mutableStateOf<Rect?>(null)
     }
     var roomOriginInWindow by remember { mutableStateOf(Offset.Zero) }
@@ -239,6 +248,7 @@ internal fun RoomScreen(
         content?.sleepConfirmationVisible != true &&
         content?.moneyEvent == null &&
         content?.rulesRecapVisible != true &&
+        content?.petWashGuideStep == null &&
         !showPhoneNotificationPrompt
     val openPhoneFromTutorial = {
         viewModel.perform(RoomViewEvent.FirstRunOpenPhone)
@@ -302,7 +312,7 @@ internal fun RoomScreen(
             petAnchorObjectId = petAnchorObjectId,
             petZIndex = petZIndex,
             petBaselineFraction = petBaselineFraction,
-            highlightedObjectIds = onboarding?.highlightedObjectIds.orEmpty(),
+            highlightedObjectIds = activeHighlightedObjectIds,
             allowedObjectIds = onboarding?.allowedObjectIds.orEmpty(),
             onHighlightedObjectBoundsChanged = { spotlightBoundsInWindow = it },
             onPreviewReady = { id ->
@@ -313,8 +323,9 @@ internal fun RoomScreen(
                 }
             },
         )
+        val showPetWashSpotlight = petWashGuideStep == PetWashGuideStep.BATH_GUIDANCE
         if (content?.bathroomView == BathroomView.HOUSE &&
-            onboarding?.step?.let(spotlightSteps::contains) == true &&
+            (onboarding?.step?.let(spotlightSteps::contains) == true || showPetWashSpotlight) &&
             focusedObjectId == activeFocusObjectId && spotlightBounds != null
         ) {
             TutorialSpotlight(spotlightBounds)
@@ -322,7 +333,7 @@ internal fun RoomScreen(
         if ((externalActive || showHud) && content != null && content.bathroomView == BathroomView.HOUSE) {
             HouseHud(
                 progress = content.progress,
-                showMenu = externalActive && onboarding == null,
+                showMenu = externalActive && onboarding == null && petWashGuideStep == null,
                 showDetails = true,
                 onMenuClick = { viewModel.perform(RoomViewEvent.MenuClicked) },
                 modifier = Modifier.align(Alignment.TopCenter),
@@ -370,6 +381,11 @@ internal fun RoomScreen(
             (tableTapInstruction || firstRun.focusObjectId == null || focusedObjectId == firstRun.focusObjectId) &&
             (tableTapInstruction || !spotlightRequired || spotlightBounds != null)
     }
+    val visiblePetWashGuide = petWashGuideStep?.takeIf { step ->
+        canShowDialogs && onboarding == null && content?.bathroomView == BathroomView.HOUSE &&
+            (step != PetWashGuideStep.BATH_GUIDANCE ||
+                (focusedObjectId == BATH_TUTORIAL_OBJECT_ID && spotlightBounds != null))
+    }
     when {
         content?.weekResult != null -> Unit
         content?.sleeping == true -> Unit
@@ -385,6 +401,21 @@ internal fun RoomScreen(
             DayTransitionDialog(content.dayTransitionNotice) {
                 viewModel.perform(RoomViewEvent.CloseDayTransitionNotice)
             }
+        }
+        visiblePetWashGuide != null -> {
+            FinPetDialogueDialog(
+                speakerName = petName,
+                cards = listOf(stringResource(
+                    if (visiblePetWashGuide == PetWashGuideStep.DIRTY_NOTICE) {
+                        R.string.pet_wash_guide_dirty
+                    } else {
+                        R.string.pet_wash_guide_bath
+                    },
+                )),
+                portrait = petPortrait,
+                topInset = 0.dp,
+                onFinished = { viewModel.perform(RoomViewEvent.PetWashGuideContinue) },
+            )
         }
         zone?.access is RoomZoneAccess.Buyable && canShowDialogs -> {
             val priceRub = (zone.access as RoomZoneAccess.Buyable).priceRub

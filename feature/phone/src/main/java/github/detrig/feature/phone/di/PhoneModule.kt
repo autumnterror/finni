@@ -20,6 +20,7 @@ internal class PhoneModule(
     override val roomApi = dependencies.roomApi()
     override val petApi = dependencies.petApi()
     override val shopApi = dependencies.shopApi()
+    override val wardrobeApi = dependencies.wardrobeApi()
     private val weekApi = dependencies.weekApi()
     override val globalMessageController = dependencies.globalMessageController()
     private val economyApi = dependencies.economyApi()
@@ -69,6 +70,8 @@ internal class PhoneModule(
         resetDemoProgress = dependencies::resetDemoProgress,
         petApi = petApi,
         router = router,
+        createSecuritySituation = messagesCoordinator::createSecurityEventForDebug,
+        createWishSituation = dependencies::createRandomWishForDebug,
     )
 
     override fun messagesViewModel() = MessagesViewModel(

@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.UUID
 import kotlin.random.Random
 
 /** Wires the reusable product catalog screen to application state. */
@@ -267,6 +268,34 @@ internal class ShopMediator(
             activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
         ).filter { !it.isCompleted && it.kind != PetWishSchedule.Kind.SAVINGS_TOP_UP }
             .maxByOrNull { it.createdAbsoluteDay }
+    }
+
+    suspend fun createRandomWishForDebug(): Boolean {
+        val week = weekMediator.getApi().initialize()
+        val activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id
+        currentPetWishBoardWishes(week.absoluteDay, activeGoalId)
+        return wishMutex.withLock {
+            val game = gameStateMediator.getApi().initialize()
+            val pet = petMediator.getApi()
+            val wishes = readStoredPetWishes()
+            val playableMiniGames = listOf("fishing" to "Рыбалка", "flight" to "Полёт")
+                .filter { (gameId, _) -> MiniGameAccess.isOpen(gameId, game.ownedZoneIds) }
+            val wish = PetWishSchedule.next(
+                absoluteDay = week.absoluteDay,
+                clothing = pet.clothingItems(),
+                ownedClothingIds = pet.currentProfile()?.clothing?.ownedIds.orEmpty(),
+                playableMiniGames = playableMiniGames,
+                roomObjects = interiorWishCandidates(),
+                activeWishProductIds = wishes.mapNotNullTo(mutableSetOf()) { it.productId },
+            )?.copy(
+                eventId = "debug-pet-wish:${UUID.randomUUID()}",
+                createdAtMillis = System.currentTimeMillis(),
+            ) ?: return@withLock false
+            val editor = wishPreferences.edit()
+            writeStoredPetWishes(editor, wishes + wish)
+            check(editor.commit()) { "Failed to persist debug pet wish" }
+            true
+        }
     }
 
     suspend fun currentPetWishBoardWishes(

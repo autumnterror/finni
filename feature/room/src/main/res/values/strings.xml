@@ -89,6 +89,8 @@
     <string name="room_sleep_confirm">Лечь спать</string>
     <string name="room_sleep_postpone">Ещё не сейчас</string>
     <string name="room_sleep_error">Не получилось завершить день. Попробуй ещё раз.</string>
+    <string name="pet_wash_guide_dirty">Кажется, я испачкался!</string>
+    <string name="pet_wash_guide_bath">Здесь можно помыться.</string>
     <string name="house_swipe_hint">Проведи в сторону</string>
     <string name="house_hunger">Голод</string>
     <string name="house_happiness">Счастье</string>

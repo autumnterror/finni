@@ -147,6 +147,15 @@ internal enum class BathroomView { HOUSE, WASHING }
 
 internal enum class BathStep { SOAP, RINSE, DRY, CLEAN }
 
+internal const val BATH_TUTORIAL_OBJECT_ID = "room_bathtub"
+
+internal enum class PetWashGuideStep {
+    DIRTY_NOTICE,
+    BATH_GUIDANCE;
+
+    fun nextOrNull(): PetWashGuideStep? = entries.getOrNull(ordinal + 1)
+}
+
 internal data class ParentGateState(
     val firstNumber: Int,
     val secondNumber: Int,
@@ -206,6 +215,7 @@ internal sealed interface RoomViewState : CoreViewState {
         val parentRows: List<ParentProgressRow> = emptyList(),
         val menuDestination: RoomMenuDestination = RoomMenuDestination.NONE,
         val showInteractiveObjectOutlines: Boolean = false,
+        val petWashGuideStep: PetWashGuideStep? = null,
         val isSoundEnabled: Boolean = true,
         val areMenuAchievementsExpanded: Boolean = false,
         val parentGate: ParentGateState? = null,

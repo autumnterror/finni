@@ -135,7 +135,7 @@ internal fun StoredMessagesState.toInbox(): MessagesInbox {
             senderId = senderId,
             messages = senderMessages,
             unreadCount = senderMessages.count { !it.isRead },
-            latestEvent = events
+            latestEvent = events.asReversed()
                 .asSequence()
                 .filter { event ->
                     event.senderId == senderId && senderMessages.any { message ->

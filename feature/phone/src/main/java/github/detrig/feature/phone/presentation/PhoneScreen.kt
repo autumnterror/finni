@@ -87,6 +87,7 @@ import github.detrig.feature.phone.navigation.PhoneRoute
 import github.detrig.feature.phone.R
 import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.shop.api.ShopApi
+import github.detrig.feature.wardrobe.api.WardrobeApi
 import github.detrig.products.GroceryStoreIds
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
@@ -109,7 +110,7 @@ private const val PHONE_STRETCH_TOP = 160f
 private const val PHONE_STRETCH_BOTTOM = 1320f
 
 private const val GROCERY_APP = "grocery"
-private const val RETIRED_CLOTHING_APP = "clothing"
+private const val CLOTHING_APP = "clothing"
 private const val INTERIOR_APP = "interior"
 private const val DEBUG_APP = "debug"
 private const val HOME_CLOSE_BUTTON_SIZE = 74f
@@ -123,13 +124,11 @@ internal fun PhoneScreen(route: PhoneRoute) {
     val messagesState by messagesViewModel.state().observeAsState(MessagesViewState())
     val firstRunStep by component.roomApi.firstRunGuide.step.collectAsState()
     var activeAppId by rememberSaveable(route) {
-        mutableStateOf((route as? PhoneRoute.App)?.appId?.takeUnless { it == RETIRED_CLOTHING_APP })
+        mutableStateOf((route as? PhoneRoute.App)?.appId)
     }
     LaunchedEffect(messagesViewModel) { messagesViewModel.perform(MessagesViewEvent.Load) }
     LaunchedEffect(activeAppId) {
-        if (activeAppId == RETIRED_CLOTHING_APP) {
-            activeAppId = null
-        } else if (activeAppId == MESSAGES_APP_ID) {
+        if (activeAppId == MESSAGES_APP_ID) {
             messagesViewModel.perform(MessagesViewEvent.AppOpened)
         }
     }
@@ -155,6 +154,7 @@ internal fun PhoneScreen(route: PhoneRoute) {
                 activeAppId = activeAppId,
                 showDebugApp = component.isDemoMode(),
                 shopApi = component.shopApi,
+                wardrobeApi = component.wardrobeApi,
                 roomApi = component.roomApi,
                 messagesState = messagesState,
                 onMessagesEvent = messagesViewModel::perform,
@@ -245,6 +245,7 @@ private fun PhoneDevice(
     activeAppId: String?,
     showDebugApp: Boolean,
     shopApi: ShopApi,
+    wardrobeApi: WardrobeApi,
     roomApi: RoomApi,
     messagesState: MessagesViewState,
     onMessagesEvent: (MessagesViewEvent) -> Unit,
@@ -309,7 +310,7 @@ private fun PhoneDevice(
             PhoneCanvasLayer(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                val openAppId = activeAppId?.takeUnless { it == RETIRED_CLOTHING_APP }
+                val openAppId = activeAppId
                 if (openAppId == null || (openAppId == DEBUG_APP && !showDebugApp)) {
                     PhoneHomeContent(
                         scale = scale,
@@ -328,6 +329,7 @@ private fun PhoneDevice(
                         showDebugApp = showDebugApp,
                         scale = scale,
                         shopApi = shopApi,
+                        wardrobeApi = wardrobeApi,
                         roomApi = roomApi,
                         messagesState = messagesState,
                         onMessagesEvent = onMessagesEvent,
@@ -455,9 +457,10 @@ private fun PhoneHomeContent(
     )
     val apps = buildList {
         add(PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 382f, 310f, INTERIOR_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 635f, 310f, MESSAGES_APP_ID))
-        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 129f, 620f, DEBUG_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 129f, 620f, MESSAGES_APP_ID))
+        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 382f, 620f, DEBUG_APP))
     }
     apps.forEach { app ->
         Box(
@@ -613,6 +616,7 @@ private fun PhoneAppContent(
     showDebugApp: Boolean,
     scale: Float,
     shopApi: ShopApi,
+    wardrobeApi: WardrobeApi,
     roomApi: RoomApi,
     messagesState: MessagesViewState,
     onMessagesEvent: (MessagesViewEvent) -> Unit,
@@ -638,6 +642,7 @@ private fun PhoneAppContent(
                 onFirstRunProductSelected = onFirstRunProductSelected,
                 onFirstRunCheckout = onFirstRunCheckout,
             )
+            CLOTHING_APP -> wardrobeApi.StoreContent(onBack = onBack)
             INTERIOR_APP -> roomApi.InteriorStore(onBack = onBack)
             MESSAGES_APP_ID -> MessagesApp(
                 state = messagesState,
@@ -685,6 +690,7 @@ private fun DebugMenuApp(onBack: () -> Unit) {
         onChangeDirtStage = { viewModel.perform(DebugMenuViewEvent.ChangeDirtStage(it)) },
         onResetBalance = { viewModel.perform(DebugMenuViewEvent.ResetBalance) },
         onEndWeek = { viewModel.perform(DebugMenuViewEvent.EndWeek) },
+        onTriggerRandomSituation = { viewModel.perform(DebugMenuViewEvent.TriggerRandomSituation) },
         onRequestProgressReset = { viewModel.perform(DebugMenuViewEvent.RequestProgressReset) },
         onCancelProgressReset = { viewModel.perform(DebugMenuViewEvent.CancelProgressReset) },
         onConfirmProgressReset = { viewModel.perform(DebugMenuViewEvent.ConfirmProgressReset) },
@@ -701,6 +707,7 @@ private fun DebugMenuContent(
     onChangeDirtStage: (Int) -> Unit,
     onResetBalance: () -> Unit,
     onEndWeek: () -> Unit,
+    onTriggerRandomSituation: () -> Unit,
     onRequestProgressReset: () -> Unit,
     onCancelProgressReset: () -> Unit,
     onConfirmProgressReset: () -> Unit,
@@ -838,10 +845,33 @@ private fun DebugMenuContent(
         FinPetButton(
             text = if (state.isEndingWeek) "Завершаем неделю…" else "Завершить неделю",
             onClick = onEndWeek,
-            enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
+            enabled = !state.isChanging && !state.isEndingWeek && !state.isTriggeringSituation &&
+                !state.isResettingProgress,
             modifier = Modifier.fillMaxWidth(),
             style = FinPetButtonDefaults.storefrontPrimaryStyle(),
         )
+        FinPetCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(AppTheme.spacing.md),
+                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
+            ) {
+                Text("Случайная ситуация", style = AppTheme.typography.body)
+                Text(
+                    "Создаст мошенническое сообщение или новое желание питомца.",
+                    style = AppTheme.typography.caption,
+                    color = AppTheme.colors.storefront.onSurface,
+                )
+                FinPetButton(
+                    text = if (state.isTriggeringSituation) "Создаём…" else "Вызвать ситуацию",
+                    onClick = onTriggerRandomSituation,
+                    enabled = !state.isChanging && !state.isEndingWeek &&
+                        !state.isChangingGrowthStage && !state.isChangingDirtStage &&
+                        !state.isTriggeringSituation && !state.isResettingProgress,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = FinPetButtonDefaults.storefrontPrimaryStyle(),
+                )
+            }
+        }
         FinPetCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(AppTheme.spacing.md),
@@ -856,7 +886,8 @@ private fun DebugMenuContent(
                 FinPetOutlinedButton(
                     text = "После обучения",
                     onClick = onRequestProgressReset,
-                    enabled = !state.isChanging && !state.isEndingWeek && !state.isResettingProgress,
+                    enabled = !state.isChanging && !state.isEndingWeek &&
+                        !state.isTriggeringSituation && !state.isResettingProgress,
                     modifier = Modifier.fillMaxWidth(),
                     style = FinPetButtonDefaults.storefrontOutlinedStyle(),
                 )
@@ -1174,6 +1205,7 @@ private fun DebugMenuPreview() {
                 onChangeDirtStage = {},
                 onResetBalance = {},
                 onEndWeek = {},
+                onTriggerRandomSituation = {},
                 onRequestProgressReset = {},
                 onCancelProgressReset = {},
                 onConfirmProgressReset = {},

@@ -158,6 +158,7 @@ internal class AppModuleImpl(
             roomMediator = roomMediator,
             petMediator = petMediator,
             shopMediator = shopMediator,
+            wardrobeMediator = wardrobeMediator,
             economyMediator = economyMediator,
             weekMediator = weekMediator,
             learningMediator = learningMediator,

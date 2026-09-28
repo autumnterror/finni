@@ -40,6 +40,29 @@ class PersistentMessagesRepositoryTest {
     }
 
     @Test
+    fun debugSecurityEventCanBeCreatedAfterDayWasProcessed() = runTest {
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+        repository.ensureEventForDay(3, SecurityEventConfig(dailyProbability = 0.0))
+
+        assertTrue(repository.createSecurityEventForDebug(absoluteDay = 3, randomSeed = 7))
+        assertTrue(repository.observeInbox().value.unreadCount > 0)
+    }
+
+    @Test
+    fun repeatedDebugSecurityEventsHaveStableUniqueIds() = runTest {
+        val repository = PersistentMessagesRepository(InMemoryMessagesStore())
+
+        repository.createSecurityEventForDebug(absoluteDay = 3, randomSeed = 7)
+        repository.createSecurityEventForDebug(absoluteDay = 3, randomSeed = 7)
+        repository.createSecurityEventForDebug(absoluteDay = 3, randomSeed = 7)
+
+        val events = repository.observeInbox().value.threads.mapNotNull { it.latestEvent }
+        val eventIds = events.map { it.id }.toSet()
+        assertEquals(2, eventIds.size)
+        assertTrue(events.any { it.id.endsWith("-2") })
+    }
+
+    @Test
     fun firstRoomPromptDoesNotReturnForLaterEvents() = runTest {
         val repository = PersistentMessagesRepository(InMemoryMessagesStore())
         val config = SecurityEventConfig(dailyProbability = 1.0)
