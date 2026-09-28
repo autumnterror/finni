@@ -81,7 +81,12 @@ internal object PetWishSchedule {
             candidates.filter { it.priceRub > safeOptionalRub }
                 .maxByOrNull { it.priceRub }
                 ?: candidates[random.nextInt(candidates.size)]
-        } else candidates[random.nextInt(candidates.size)]
+        } else {
+            // Draw a category first so a large interior catalog does not crowd out food, clothing, and play.
+            val groups = candidates.groupBy { it.kind }.values.toList()
+            val group = groups[random.nextInt(groups.size)]
+            group[random.nextInt(group.size)]
+        }
         return chosen.copy(
             eventId = "pet-wish:$absoluteDay:${chosen.productId ?: chosen.title.hashCode()}",
         )

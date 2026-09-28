@@ -431,6 +431,15 @@ game — while that goal is active; a reached game goal — until the game is bo
 or the goal changes. The mini-game wishlist includes only games with a working
 launch path. Refusing a wish never reduces happiness.
 
+Item wishes use the interior store's unowned paid furniture, wallpaper, and floor
+variants. The specific catalog variant is the wish target and lasts two or three
+game days. On ordinary days, choose the wish category before its item so the large interior
+catalog does not dominate daily wishes. A committed interior payment carries its
+wish ID, grants the same one-time `+5..10` happiness, removes that wish, and queues
+the joyful room dialogue. Reinstalling an owned variant grants no wish reward.
+Keep the wish ID in the pending purchase so recovery cannot change it or repeat
+the reward. Interior purchases remain optional expenses.
+
 Completing the currently displayed optional item wish grants a stable one-time
 `+5..10` happiness reward, including when its payment is replayed after process
 restoration. A clothing wish's reward is added to that clothing item's separate

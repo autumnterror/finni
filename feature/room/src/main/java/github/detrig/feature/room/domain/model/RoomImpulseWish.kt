@@ -43,20 +43,26 @@ data class RoomWishObjectCandidate(
     val id: String,
     val title: String,
     val priceRub: Long,
-)
+) {
+    companion object {
+        fun interiorId(itemId: String): String = "interior:$itemId"
+    }
+}
 
 fun interface RoomImpulseWishSource {
     suspend fun currentWish(): RoomImpulseWish?
     suspend fun currentWishes(): List<RoomImpulseWish> = listOfNotNull(currentWish())
     suspend fun currentWishes(
         absoluteDay: Long,
-        roomObjects: List<RoomWishObjectCandidate>,
         activeGoalId: String?,
     ): List<RoomImpulseWish> = currentWishes()
     suspend fun claimCurrentWish(): RoomImpulseWish? = currentWish()
     suspend fun claimDialogueWish(wish: RoomImpulseWish): RoomImpulseWish? = wish
     suspend fun recordDeclined(wish: RoomImpulseWish) = Unit
     suspend fun recordFulfilled(wish: RoomImpulseWish) = Unit
+    /** Captured before payment and persisted with the purchase, so retries retain the same wish. */
+    suspend fun purchaseWishId(productId: String): String? = null
+    suspend fun recordPurchaseFulfilled(wishId: String) = Unit
     suspend fun currentFulfillments(): List<RoomWishFulfillment> = emptyList()
     suspend fun acknowledgeFulfillment(id: String) = Unit
 }

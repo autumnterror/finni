@@ -1,7 +1,6 @@
 package github.detrig.feature.room.domain.interactor
 
 import github.detrig.feature.room.domain.model.RoomImpulseWishSource
-import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
 
 internal class LoadRoomImpulseWishInteractor(
     private val source: RoomImpulseWishSource,
@@ -10,9 +9,8 @@ internal class LoadRoomImpulseWishInteractor(
     suspend fun currentWishes() = source.currentWishes()
     suspend fun currentWishes(
         absoluteDay: Long,
-        roomObjects: List<RoomWishObjectCandidate>,
         activeGoalId: String?,
-    ) = source.currentWishes(absoluteDay, roomObjects, activeGoalId)
+    ) = source.currentWishes(absoluteDay, activeGoalId)
     suspend fun claimDialogue(wish: github.detrig.feature.room.domain.model.RoomImpulseWish) =
         source.claimDialogueWish(wish)
     suspend fun recordDeclined(wish: github.detrig.feature.room.domain.model.RoomImpulseWish) =

@@ -111,6 +111,7 @@ internal class AppModuleImpl(
             gameStateMediator = gameStateMediator,
             savingsMediator = savingsMediator,
             gameAudio = gameAudio,
+            interiorWishCandidates = { roomMediator.getApi().interiorWishCandidates() },
         )
     }
 

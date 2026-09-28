@@ -54,6 +54,7 @@ internal class RoomApiImpl(
     }
     override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
         purchaseSavingsGoal(goal)
+    override fun interiorWishCandidates() = furnitureStore.wishCandidates()
     @Composable
     override fun InteriorStore(onBack: () -> Unit, modifier: Modifier) {
         FurnitureStoreScreen(furnitureCatalog, surfaceCatalog, furnitureStore, economyApi, onBack, modifier)

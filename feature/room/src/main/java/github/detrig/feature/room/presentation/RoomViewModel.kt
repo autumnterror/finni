@@ -1,6 +1,5 @@
 package github.detrig.feature.room.presentation
 
-import android.content.res.Resources
 import github.detrig.core.mvvm.CoreViewModel
 import github.detrig.core.mvvm.ExceptionConsumer
 import github.detrig.core.audio.GameAudio
@@ -21,7 +20,6 @@ import github.detrig.feature.room.domain.interactor.LoadParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.RequestParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.EndWeekEarlyWithParentHelpInteractor
 import github.detrig.feature.room.domain.interactor.LoadRoomImpulseWishInteractor
-import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
 import github.detrig.feature.room.domain.interactor.RoomMoneyEventInteractor
 import github.detrig.feature.room.domain.model.MoneyAllocation
 import github.detrig.feature.room.domain.model.MoneyEventResolution
@@ -95,7 +93,6 @@ internal class RoomViewModel(
     private val onboardingRepository: FirstRunOnboardingRepository,
     private val firstRunGuide: FirstRunGuideApi,
     private val inventoryApi: InventoryApi,
-    private val resources: Resources,
     private val gameAudio: GameAudio = SilentGameAudio,
     private val gameStateApi: GameStateApi,
     private val resetDemoProgress: suspend (skipOnboarding: Boolean) -> Unit,
@@ -690,7 +687,6 @@ internal class RoomViewModel(
                 if (content.progress.absoluteDay == absoluteDay && content.onboarding == null) {
                     val wishes = loadRoomImpulseWish.currentWishes(
                         absoluteDay = absoluteDay,
-                        roomObjects = roomObjectWishCandidates(content),
                         activeGoalId = content.activeSavingsGoal?.goal?.id,
                     )
                     val dailyWish = wishes.firstOrNull { it.createdOnAbsoluteDay == absoluteDay &&
@@ -721,7 +717,6 @@ internal class RoomViewModel(
                 if (content.progress.absoluteDay == absoluteDay) {
                     val wishes = loadRoomImpulseWish.currentWishes(
                         absoluteDay = absoluteDay,
-                        roomObjects = roomObjectWishCandidates(content),
                         activeGoalId = content.activeSavingsGoal?.goal?.id,
                     )
                     val fulfillments = loadRoomImpulseWish.currentFulfillments()
@@ -752,19 +747,6 @@ internal class RoomViewModel(
             }
         }
     }
-
-    private fun roomObjectWishCandidates(content: RoomViewState.Content): List<RoomWishObjectCandidate> =
-        content.zones.mapNotNull { zone ->
-            val access = zone.access as? RoomZoneAccess.Buyable ?: return@mapNotNull null
-            val titleId = resources.getIdentifier(
-                "zone_${zone.id}", "string", "github.detrig.feature.room",
-            )
-            RoomWishObjectCandidate(
-                id = zone.id,
-                title = if (titleId != 0) resources.getString(titleId) else zone.id,
-                priceRub = access.priceRub.toLong(),
-            )
-        }
 
     private fun loadMoneyEventForDay(absoluteDay: Long) {
         if (absoluteDay in checkedMoneyEventDays || moneyEventJob?.isActive == true) return

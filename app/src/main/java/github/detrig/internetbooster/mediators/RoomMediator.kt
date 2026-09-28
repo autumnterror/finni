@@ -15,7 +15,6 @@ import github.detrig.internetbooster.navigation.RoomGameLauncherImpl
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.room.domain.model.RoomImpulseWish
 import github.detrig.feature.room.domain.model.RoomImpulseWishSource
-import github.detrig.feature.room.domain.model.RoomWishObjectCandidate
 
 internal class RoomMediator(
     private val coreComponent: CoreComponent,
@@ -61,11 +60,9 @@ internal class RoomMediator(
 
                     override suspend fun currentWishes(
                         absoluteDay: Long,
-                        roomObjects: List<RoomWishObjectCandidate>,
                         activeGoalId: String?,
                     ): List<RoomImpulseWish> = shopMediator.currentPetWishBoardWishes(
                         absoluteDay = absoluteDay,
-                        roomObjects = roomObjects,
                         activeGoalId = activeGoalId,
                     ).map { it.toRoomImpulseWish() }
 
@@ -78,6 +75,13 @@ internal class RoomMediator(
 
                     override suspend fun recordFulfilled(wish: RoomImpulseWish) {
                         shopMediator.recordRoomWishFulfilled(wish)
+                    }
+
+                    override suspend fun purchaseWishId(productId: String) =
+                        shopMediator.currentInteriorPurchaseWishId(productId)
+
+                    override suspend fun recordPurchaseFulfilled(wishId: String) {
+                        shopMediator.recordInteriorPurchaseWishFulfilled(wishId)
                     }
 
                     override suspend fun currentFulfillments() = shopMediator.currentWishFulfillments()

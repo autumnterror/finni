@@ -54,6 +54,7 @@ internal class ShopMediator(
     private val petMediator: PetMediator,
     private val gameStateMediator: GameStateMediator,
     private val savingsMediator: SavingsMediator,
+    private val interiorWishCandidates: () -> List<RoomWishObjectCandidate>,
 ) : Mediator<ShopApi> {
     private val groceryCatalog = GroceryCatalog()
     private val wishMutex = Mutex()
@@ -180,7 +181,6 @@ internal class ShopMediator(
             }
             val wishForPurchase = currentPetWishBoardWishes(
                 absoluteDay = weekMediator.getApi().initialize().absoluteDay,
-                roomObjects = emptyList(),
                 activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
             ).firstOrNull { wish ->
                 wish.kind == PetWishSchedule.Kind.GROCERY &&
@@ -241,7 +241,6 @@ internal class ShopMediator(
         val week = weekMediator.getApi().initialize()
         return currentPetWishBoardWishes(
             absoluteDay = week.absoluteDay,
-            roomObjects = emptyList(),
             activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
         ).filter { it.kind != PetWishSchedule.Kind.SAVINGS_TOP_UP }
             .maxByOrNull { it.createdAbsoluteDay }
@@ -249,7 +248,6 @@ internal class ShopMediator(
 
     suspend fun currentPetWishBoardWishes(
         absoluteDay: Long,
-        roomObjects: List<RoomWishObjectCandidate>,
         activeGoalId: String?,
     ): List<PetWishSchedule.Wish> = wishMutex.withLock {
         val week = weekMediator.getApi().initialize()
@@ -335,7 +333,7 @@ internal class ShopMediator(
                 ownedClothingIds = storedOwnedClothing,
                 safeOptionalRub = storedSafeOptionalRub,
                 playableMiniGames = playableMiniGames,
-                roomObjects = roomObjects.filterNot { activeGoalId == "room-zone:${it.id}" },
+                roomObjects = interiorWishCandidates(),
                 activeWishProductIds = activeProductIds,
             )?.let { wishes = wishes + it.copy(createdAtMillis = System.currentTimeMillis()) }
         }
@@ -374,10 +372,22 @@ internal class ShopMediator(
 
     suspend fun currentClothingWishId(itemId: String): String? = currentPetWishBoardWishes(
         absoluteDay = weekMediator.getApi().initialize().absoluteDay,
-        roomObjects = emptyList(),
         activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
     ).firstOrNull { it.kind == PetWishSchedule.Kind.CLOTHING && it.productId == itemId }
         ?.eventId
+
+    suspend fun currentInteriorPurchaseWishId(productId: String): String? = wishMutex.withLock {
+        val day = weekMediator.getApi().initialize().absoluteDay
+        val completed = wishPreferences.getStringSet("completed_wishes", emptySet()).orEmpty()
+        readStoredPetWishes().firstOrNull { wish ->
+            wish.kind == PetWishSchedule.Kind.TOY && wish.productId == productId &&
+                wish.eventId !in completed && wish.expiresOnAbsoluteDayExclusive > day
+        }?.eventId
+    }
+
+    suspend fun recordInteriorPurchaseWishFulfilled(wishId: String) = wishMutex.withLock {
+        check(recordCompletedPetWish(wishId)) { "Failed to fulfill interior purchase wish" }
+    }
 
     suspend fun recordRoomWishFulfilled(
         wish: github.detrig.feature.room.domain.model.RoomImpulseWish,
@@ -547,7 +557,6 @@ internal class ShopMediator(
         if (promotion != null) return promotion
         val wish = currentPetWishBoardWishes(
             absoluteDay = week.absoluteDay,
-            roomObjects = emptyList(),
             activeGoalId = savingsMediator.getApi().getActiveGoalProgress()?.goal?.id,
         ).firstOrNull { it.kind == PetWishSchedule.Kind.GROCERY } ?: return null
         val item = storefront.items.firstOrNull { it.id.value == wish.productId } ?: return null
