@@ -109,6 +109,8 @@ internal fun WardrobeContent(
     petPreview: @Composable (PetProfile, Map<String, String>, Modifier) -> Unit,
 ) {
     val colors = AppTheme.colors.storefront
+    val horizontalPadding = if (state.mode == WardrobeMode.SHOP) AppTheme.spacing.lg else 16.dp
+    val topPadding = if (state.mode == WardrobeMode.SHOP) AppTheme.spacing.md else 4.dp
     val gridState = key(state.mode, state.category, state.profile?.clothing?.ownedIds.orEmpty()) {
         // Start each list at its beginning instead of following an owned item
         // when switching categories or moving a new purchase to the bottom.
@@ -128,7 +130,7 @@ internal fun WardrobeContent(
     ) {
             val stageHeight = (maxHeight * 0.29f).coerceIn(175.dp, 250.dp)
             Column(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 10.dp),
+                Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(top = topPadding, bottom = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 WardrobeHeader(state = state, onBack = onBack)
@@ -441,6 +443,7 @@ private fun WardrobePreview(
             state = state,
             onEvent = {},
             onBack = {},
+            useSafeInsets = state.mode == WardrobeMode.OWNED,
             thumbnail = { _, modifier -> Spacer(modifier) },
             petPreview = { pet, outfit, modifier ->
                 PetScene(

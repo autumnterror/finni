@@ -63,6 +63,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -454,18 +456,20 @@ private fun PhoneHomeContent(
         modifier = Modifier.offset(x = (100f * scale).dp, y = (140f * scale).dp),
     )
     val apps = buildList {
-        add(PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", 129f, 310f, GROCERY_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", 382f, 310f, CLOTHING_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", 635f, 310f, INTERIOR_APP))
-        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", 635f, 310f, MESSAGES_APP_ID))
-        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", 129f, 620f, DEBUG_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_grocery_hd, "Продуктовый", GROCERY_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_clothing_hd, "Одежда", CLOTHING_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_interior_hd, "Интерьер", INTERIOR_APP))
+        add(PhoneAppVisual(R.drawable.phone_icon_messages, "Сообщения", MESSAGES_APP_ID))
+        if (showDebugApp) add(PhoneAppVisual(R.drawable.phone_icon_tile_hd, "Дебаг меню", DEBUG_APP))
     }
-    apps.forEach { app ->
+    apps.forEachIndexed { index, app ->
+        val x = 129f + (index % 3) * 253f
+        val y = 310f + (index / 3) * 310f
         Box(
             modifier = Modifier
                 .offset(
-                    x = (app.x * scale).dp,
-                    y = (app.y * scale).dp,
+                    x = (x * scale).dp,
+                    y = (y * scale).dp,
                 )
                 .size((178f * scale).dp)
                 .then(
@@ -517,8 +521,8 @@ private fun PhoneHomeContent(
         }
         PhoneText(
             text = app.label,
-            x = app.x + 89f,
-            y = app.y + 189f,
+            x = x + 89f,
+            y = y + 189f,
             width = 220f,
             scale = scale,
             fontSize = 28f,
@@ -582,8 +586,6 @@ private fun PhoneAppTutorialMask(
 private data class PhoneAppVisual(
     val iconRes: Int,
     val label: String,
-    val x: Float,
-    val y: Float,
     val id: String,
 )
 
@@ -1161,7 +1163,7 @@ private fun stretchedPhoneY(y: Float): Float {
 
 @Preview(name = "Телефон", widthDp = 360, heightDp = 740, showBackground = true)
 @Composable
-private fun PhonePreview() {
+private fun PhonePreview(@PreviewParameter(PhonePreviewProvider::class) showDebugApp: Boolean) {
     FinPetTheme {
         Box(
             modifier = Modifier
@@ -1175,12 +1177,17 @@ private fun PhonePreview() {
                 PhoneHomeContent(
                     scale = 360f / CANVAS_WIDTH,
                     unreadMessages = 2,
+                    showDebugApp = showDebugApp,
                     onClose = {},
                     onOpenApp = {},
                 )
             }
         }
     }
+}
+
+private class PhonePreviewProvider : PreviewParameterProvider<Boolean> {
+    override val values = sequenceOf(false, true)
 }
 
 @Preview(name = "Дебаг меню", widthDp = 360, heightDp = 640, showBackground = true)
