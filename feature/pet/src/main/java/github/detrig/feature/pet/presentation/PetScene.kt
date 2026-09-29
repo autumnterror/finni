@@ -85,6 +85,7 @@ fun PetScene(
     gestureCallbacks: PetGestureCallbacks? = null,
     showShadow: Boolean = true,
     dirtStage: Int = 0,
+    dirtOpacity: Float = 1f,
 ) {
     val shadowColor = AppTheme.colors.sceneShadow
     val speciesName = profile.species.title()
@@ -226,6 +227,7 @@ fun PetScene(
                             profile.hamsterAppearance,
                         ),
                         dirtStage = dirtStage,
+                        dirtOpacity = dirtOpacity,
                     )
                 }
             }

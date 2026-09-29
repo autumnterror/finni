@@ -356,6 +356,7 @@ internal fun HamsterPreview(
     clothingLayers: List<ClothingDrawLayer> = emptyList(),
     stage: GrowthStage = GrowthStage.BABY,
     dirtStage: Int = 0,
+    dirtOpacity: Float = 1f,
 ) {
     val drawLayers = remember(assets, appearance, blink, stage) {
         assets.resolve(appearance, blink, stage)
@@ -391,17 +392,19 @@ internal fun HamsterPreview(
             }
         } else null
         fun drawDirt(image: ImageBitmap?) {
-            if (image == null || dirtStage == 0) return
+            val visibleDirtOpacity = dirtOpacity.coerceIn(0f, 1f)
+            if (image == null || dirtStage == 0 || visibleDirtOpacity == 0f) return
             val drawLayer = {
                 drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                     dstSize = IntSize((assets.canvasSize * factor).toInt(),
                         (assets.canvasSize * factor).toInt()),
-                    filterQuality = FilterQuality.High)
+                    alpha = visibleDirtOpacity, filterQuality = FilterQuality.High)
                 if (dirtStage == 3) {
                     drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                         dstSize = IntSize((assets.canvasSize * factor).toInt(),
                             (assets.canvasSize * factor).toInt()),
-                        alpha = 0.45f, filterQuality = FilterQuality.High)
+                        alpha = 0.45f * visibleDirtOpacity,
+                        filterQuality = FilterQuality.High)
                 }
             }
             if (dirtMask == null) drawLayer() else clipPath(dirtMask) { drawLayer() }

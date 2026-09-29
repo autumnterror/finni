@@ -69,6 +69,7 @@ internal fun GameSessionScreen() {
                             } else null,
                             showShadow = interaction.showShadow && interaction.pose == RoomPetPose.IDLE,
                             dirtStage = interaction.dirtStageOverride ?: dirtStage,
+                            dirtOpacity = interaction.dirtOpacity,
                         )
                     },
                     petPortrait = { portraitModifier ->

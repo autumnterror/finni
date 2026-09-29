@@ -60,6 +60,7 @@ interface PetApi {
         gestureCallbacks: PetGestureCallbacks? = null,
         showShadow: Boolean = true,
         dirtStage: Int = 0,
+        dirtOpacity: Float = 1f,
     )
 
     /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */
