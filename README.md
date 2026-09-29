@@ -32,7 +32,9 @@ FinPet — Android-игра о виртуальном питомце и обра
 
 ## Быстрый запуск
 
-### Ссылка на apk файл - 
+### Ссылка на apk файл и документацию:
+- [Google Drive](https://drive.google.com/drive/folders/1cBeNlgSsWAkjv-zKUHAQW3Ee8dOrlFlI?usp=sharing)
+- [Яндекс Диск](https://disk.yandex.ru/d/JzLnEe3Wu0Q6kQ)
 
 ### Требования
 
