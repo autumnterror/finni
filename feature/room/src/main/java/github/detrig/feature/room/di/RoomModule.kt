@@ -66,6 +66,7 @@ internal class RoomModule(private val dependencies: RoomDependencies) : RoomComp
             repository = repository,
             firstRunGuide = firstRunGuide,
             parentHelpPromptRepository = parentHelpPrompt,
+            petWashGuidePromptRepository = petWashGuidePrompt,
             furnitureCatalog = furnitureCatalog,
             surfaceCatalog = surfaceCatalog,
             furnitureStore = furnitureStore,
