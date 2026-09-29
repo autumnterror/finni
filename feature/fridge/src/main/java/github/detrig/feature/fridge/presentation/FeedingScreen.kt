@@ -231,7 +231,7 @@ private fun FeedingContent(
                     val tableHeightPx = with(density) { maxHeight.toPx() }
                     // Rest the artwork on the tabletop while keeping its count
                     // badge inside the widened table's front edge.
-                    val foodCenterY = tableHeightPx - foodSizePx * 0.85f
+                    val foodCenterY = tableHeightPx - foodSizePx * 1.10f
                     val slotCenters = listOf(0.25f, 0.50f, 0.75f).map { x ->
                         Offset(tableWidthPx * x, foodCenterY)
                     }

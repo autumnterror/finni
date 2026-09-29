@@ -14,23 +14,26 @@ data class StockItem(
 /**
  * One concrete portion moved from the fridge to the table.
  *
- * Separate records preserve table order and each portion’s real placement time.
+ * Separate records preserve table order and each portion’s placement game day.
  */
 data class StagedFoodItem(
     val id: String,
     val productId: ProductId,
-    val stagedAtMillis: Long = 0L,
+    val stagedAtAbsoluteDay: Long? = null,
 ) {
     init {
         require(id.isNotBlank()) { "Staged food id must not be blank" }
+        require(stagedAtAbsoluteDay == null || stagedAtAbsoluteDay >= 1) { "Placement day must be positive" }
     }
 }
 
 object TableFoodExpiry {
-    const val MAX_AGE_MILLIS = 3L * 24 * 60 * 60 * 1_000
+    const val MAX_AGE_GAME_DAYS = 3L
 
-    fun isExpired(item: StagedFoodItem, nowMillis: Long): Boolean =
-        nowMillis > item.stagedAtMillis && nowMillis - item.stagedAtMillis > MAX_AGE_MILLIS
+    fun isExpired(item: StagedFoodItem, currentAbsoluteDay: Long): Boolean {
+        val stagedDay = item.stagedAtAbsoluteDay ?: return false
+        return currentAbsoluteDay >= stagedDay && currentAbsoluteDay - stagedDay >= MAX_AGE_GAME_DAYS
+    }
 }
 
 sealed interface InventoryStageResult {

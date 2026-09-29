@@ -521,13 +521,14 @@ and purchase guidance must count only food that restores satiety as mandatory ca
 
 The purpose is to create a clear **need vs optional comfort** decision.
 
-Each portion moved from the fridge to the table records its real placement time.
-It spoils after more than 72 hours on the table, including time in the background.
+Each portion moved from the fridge to the table records its absolute game day.
+It spoils after three game days on the table, including transitions between weeks;
+real elapsed time and time in the background do not age food.
 Expired portions are removed and cannot feed the pet. On the next table opening,
 show the standard pet dialogue explaining the spoilage and suggesting fresh food;
 keep this notice pending across restarts until the player dismisses it. Food still
-in the fridge is unaffected. Older saved table portions without a placement time
-start their shelf life when upgraded.
+in the fridge is unaffected. Older saved table portions without a game-day placement
+start their shelf life on the current game day when upgraded.
 
 Exact values are configuration, not hardcoded product truth.
 

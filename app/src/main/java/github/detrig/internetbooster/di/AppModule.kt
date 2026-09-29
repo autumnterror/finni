@@ -92,7 +92,7 @@ internal class AppModuleImpl(
             petMediator = petMediator,
         )
     }
-    private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent) }
+    private val inventoryMediator: InventoryMediator by lazy { InventoryMediator(coreComponent, weekMediator) }
     private val savingsMediator: SavingsMediator by lazy {
         SavingsMediator(
             core = coreComponent,

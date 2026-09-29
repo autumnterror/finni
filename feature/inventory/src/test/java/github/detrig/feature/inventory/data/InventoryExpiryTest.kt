@@ -2,30 +2,38 @@ package github.detrig.feature.inventory.data
 
 import android.content.SharedPreferences
 import github.detrig.core.infrastructure.preferences.SharedStorage
+import github.detrig.feature.inventory.domain.StagedFoodItem
 import github.detrig.feature.inventory.domain.TableFoodConsumptionResult
 import github.detrig.feature.inventory.domain.TableFoodExpiry
 import github.detrig.products.ProductId
 import github.detrig.products.ProductQuantity
 import java.lang.reflect.Proxy
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.*
 import org.junit.Test
 
 class InventoryExpiryTest {
     private val apple = ProductId("apple")
-    private var now = 1_000L
+    private val gameDay = MutableStateFlow(1L)
     private val values = mutableMapOf<String, Any>()
-    private fun repository() = InventoryRepositoryImpl(SharedStorage(preferences()), { now })
+    private fun repository() = InventoryRepositoryImpl(
+        SharedStorage(preferences()), { gameDay.value }, { gameDay },
+    )
 
-    @Test fun exactThreeDaysStayFreshButOlderFoodSpoils() = runBlocking {
+    @Test fun foodSpoilsOnThirdGameDayTransition() = runBlocking {
         val repo = repository()
         repo.deliver("purchase", listOf(ProductQuantity(apple, 2)))
         repo.stageForTable(apple)
-        now += TableFoodExpiry.MAX_AGE_MILLIS
+        gameDay.value += TableFoodExpiry.MAX_AGE_GAME_DAYS - 1
         assertFalse(repo.reconcileTableExpiry())
         assertEquals(1, repo.observeTable().first().size)
-        now++
+        gameDay.value++
         assertTrue(repo.reconcileTableExpiry())
         assertTrue(repo.observeTable().first().isEmpty())
         assertEquals(1, repo.observeStock().first().single().quantity)
@@ -35,9 +43,9 @@ class InventoryExpiryTest {
         val repo = repository()
         repo.deliver("purchase", listOf(ProductQuantity(apple, 2)))
         repo.stageForTable(apple)
-        now += 24 * 60 * 60 * 1_000L
+        gameDay.value++
         repo.stageForTable(apple)
-        now += 2 * 24 * 60 * 60 * 1_000L + 1
+        gameDay.value += 2
         val restored = repository()
         assertTrue(restored.reconcileTableExpiry())
         assertEquals(1, restored.observeTable().first().size)
@@ -52,7 +60,7 @@ class InventoryExpiryTest {
         repo.deliver("purchase", listOf(ProductQuantity(apple, 1)))
         repo.stageForTable(apple)
         val id = repo.observeTable().first().single().id
-        now += TableFoodExpiry.MAX_AGE_MILLIS + 1
+        gameDay.value += TableFoodExpiry.MAX_AGE_GAME_DAYS
         var effects = 0
         assertEquals(TableFoodConsumptionResult.NotFound, repo.consumeTableItem(id) { effects++ })
         assertEquals(0, effects)
@@ -75,14 +83,14 @@ class InventoryExpiryTest {
         assertEquals(1, effects)
     }
 
-    @Test fun olderSavesKeepFoodAndPersistUpgradeTimestamp() = runBlocking {
+    @Test fun undatedSavesKeepFoodAndPersistPlacementGameDay() = runBlocking {
         values["inventory_food_table__SIZE"] = 2
         values["inventory_food_table__0"] = "old-id|apple"
         values["inventory_food_table__1"] = "banana"
         val upgraded = repository().observeTable().first()
         assertEquals(listOf("apple", "banana"), upgraded.map { it.productId.value })
-        assertEquals(listOf(now, now), upgraded.map { it.stagedAtMillis })
-        now += TableFoodExpiry.MAX_AGE_MILLIS + 1
+        assertEquals(listOf(gameDay.value, gameDay.value), upgraded.map { it.stagedAtAbsoluteDay })
+        gameDay.value += TableFoodExpiry.MAX_AGE_GAME_DAYS
         assertTrue(repository().reconcileTableExpiry())
         assertTrue(repository().observeTable().first().isEmpty())
     }
@@ -91,21 +99,75 @@ class InventoryExpiryTest {
         val repo = repository()
         repo.deliver("purchase", listOf(ProductQuantity(apple, 3)))
         repo.stageForTable(apple)
-        now += TableFoodExpiry.MAX_AGE_MILLIS + 1
+        gameDay.value += TableFoodExpiry.MAX_AGE_GAME_DAYS
         repo.stageForTable(apple)
         val fresh = repo.observeTable().first().single()
-        assertEquals(now, fresh.stagedAtMillis)
+        assertEquals(gameDay.value, fresh.stagedAtAbsoluteDay)
         assertTrue(repo.reconcileTableExpiry())
         assertEquals(1, repo.observeStock().first().single().quantity)
     }
 
-    @Test fun clockMovingBackwardsDoesNotSpoilFood() = runBlocking {
+    @Test fun gameDayMovingBackwardsDoesNotSpoilFood() = runBlocking {
+        gameDay.value = 10
         val repo = repository()
         repo.deliver("purchase", listOf(ProductQuantity(apple, 1)))
         repo.stageForTable(apple)
-        now -= 1_000
+        gameDay.value = 9
         assertFalse(repo.reconcileTableExpiry())
         assertEquals(1, repo.observeTable().first().size)
+    }
+
+    @Test fun realTimeSaveStartsFreshOnCurrentGameDayAndKeepsUnreadNotice() = runBlocking {
+        gameDay.value = 27
+        values["inventory_food_table_v2"] = "1\nold-id|apple|1000"
+        val upgraded = repository()
+        assertTrue(upgraded.reconcileTableExpiry())
+        val portion = upgraded.observeTable().first().single()
+        assertEquals("old-id", portion.id)
+        assertEquals(27L, portion.stagedAtAbsoluteDay)
+        upgraded.acknowledgeSpoiledTableFood()
+        gameDay.value = 29
+        assertFalse(repository().reconcileTableExpiry())
+        gameDay.value = 30
+        assertTrue(repository().reconcileTableExpiry())
+    }
+
+    @Test fun shelfLifeContinuesAcrossGameWeekBoundary() = runBlocking {
+        gameDay.value = 6 // Saturday
+        val repo = repository()
+        repo.deliver("purchase", listOf(ProductQuantity(apple, 1)))
+        repo.stageForTable(apple)
+        gameDay.value = 8 // Monday
+        assertFalse(repo.reconcileTableExpiry())
+        gameDay.value = 9 // Tuesday, three days since placement
+        assertTrue(repo.reconcileTableExpiry())
+    }
+
+    @Test fun observingUnchangedGameDayNeverAgesFood() = runBlocking {
+        val repo = repository()
+        repo.deliver("purchase", listOf(ProductQuantity(apple, 1)))
+        repo.stageForTable(apple)
+        repeat(10) {
+            assertFalse(repository().reconcileTableExpiry())
+            assertEquals(1L, repository().observeTable().first().single().stagedAtAbsoluteDay)
+        }
+    }
+
+    @Test fun openRoomTableUpdatesAsGameDayAdvancesWithoutReopening() = runBlocking {
+        val repo = repository()
+        repo.deliver("purchase", listOf(ProductQuantity(apple, 1)))
+        repo.stageForTable(apple)
+        val updates = Channel<List<StagedFoodItem>>(Channel.UNLIMITED)
+        val observation = launch { repo.observeTable().collect { updates.send(it) } }
+        try {
+            assertEquals(1, withTimeout(2_000) { updates.receive() }.size)
+            gameDay.value += TableFoodExpiry.MAX_AGE_GAME_DAYS
+            assertTrue(withTimeout(2_000) { updates.receive() }.isEmpty())
+            assertTrue(repo.reconcileTableExpiry())
+        } finally {
+            observation.cancelAndJoin()
+            updates.close()
+        }
     }
 
     private fun preferences(): SharedPreferences {

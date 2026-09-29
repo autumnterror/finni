@@ -8,6 +8,8 @@ import github.detrig.feature.inventory.domain.StockItem
 import github.detrig.feature.inventory.domain.StagedFoodItem
 import github.detrig.feature.inventory.domain.TableFoodConsumptionResult
 import github.detrig.feature.inventory.domain.TableFoodExpiry
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import github.detrig.products.ProductId
@@ -22,7 +24,8 @@ import kotlinx.coroutines.sync.withLock
 
 internal class InventoryRepositoryImpl(
     private val storage: SharedStorage,
-    private val currentTimeMillis: () -> Long = System::currentTimeMillis,
+    private val currentAbsoluteDay: suspend () -> Long,
+    private val observeAbsoluteDay: () -> Flow<Long>,
 ) : InventoryRepository {
     private val mutex = Mutex()
     private val stock = MutableStateFlow(readStock())
@@ -34,7 +37,13 @@ internal class InventoryRepositoryImpl(
 
     override fun observeTable(): Flow<List<StagedFoodItem>> = flow {
         reconcileTableExpiry()
-        emitAll(table)
+        // Keep room previews in sync as End day advances the shared game clock.
+        emitAll(combine(table, observeAbsoluteDay()) { _, day ->
+            mutex.withLock {
+                removeExpiredTableFood(day)
+                table.value
+            }
+        }.distinctUntilChanged())
     }
 
     override suspend fun resetProgress() = mutex.withLock {
@@ -81,7 +90,8 @@ internal class InventoryRepositoryImpl(
     }
 
     override suspend fun stageForTable(productId: ProductId): InventoryStageResult = mutex.withLock {
-        removeExpiredTableFood()
+        val day = currentAbsoluteDay()
+        removeExpiredTableFood(day)
         val current = stock.value.firstOrNull { it.productId == productId }
             ?: return@withLock InventoryStageResult.InsufficientStock
         val nextStock = stock.value.mapNotNull { item ->
@@ -93,7 +103,7 @@ internal class InventoryRepositoryImpl(
         val nextTable = table.value + StagedFoodItem(
             id = UUID.randomUUID().toString(),
             productId = productId,
-            stagedAtMillis = currentTimeMillis(),
+            stagedAtAbsoluteDay = day,
         )
         persist(nextStock, nextTable, deliveredOperations)
         stock.value = nextStock
@@ -102,7 +112,7 @@ internal class InventoryRepositoryImpl(
     }
 
     override suspend fun reconcileTableExpiry(): Boolean = mutex.withLock {
-        removeExpiredTableFood()
+        removeExpiredTableFood(currentAbsoluteDay())
         pendingSpoilage
     }
 
@@ -111,11 +121,14 @@ internal class InventoryRepositoryImpl(
         persistTable(table.value)
     }
 
-    private fun removeExpiredTableFood() {
-        val now = currentTimeMillis()
-        val fresh = table.value.filterNot { TableFoodExpiry.isExpired(it, now) }
-        if (fresh.size == table.value.size) return
-        pendingSpoilage = true
+    private fun removeExpiredTableFood(day: Long) {
+        // Older real-time saves start their game-day shelf life on first use.
+        val dated = table.value.map { item ->
+            if (item.stagedAtAbsoluteDay == null) item.copy(stagedAtAbsoluteDay = day) else item
+        }
+        val fresh = dated.filterNot { TableFoodExpiry.isExpired(it, day) }
+        if (fresh.size != dated.size) pendingSpoilage = true
+        if (fresh == table.value) return
         persistTable(fresh)
         table.value = fresh
     }
@@ -124,7 +137,7 @@ internal class InventoryRepositoryImpl(
         itemId: String,
         onConsume: suspend (StagedFoodItem) -> Unit,
     ): TableFoodConsumptionResult = mutex.withLock {
-        removeExpiredTableFood()
+        removeExpiredTableFood(currentAbsoluteDay())
         require(itemId.isNotBlank()) { "Table item id must not be blank" }
         val item = table.value.firstOrNull { it.id == itemId }
             ?: return@withLock TableFoodConsumptionResult.NotFound
@@ -143,29 +156,29 @@ internal class InventoryRepositoryImpl(
     }
 
     private fun readTable(): List<StagedFoodItem> {
-        if (storage.hasKey(TABLE_SAVE_KEY)) {
-            val lines = storage.readString(TABLE_SAVE_KEY).lines()
+        val savedKey = when {
+            storage.hasKey(TABLE_SAVE_KEY) -> TABLE_SAVE_KEY
+            storage.hasKey(REAL_TIME_TABLE_SAVE_KEY) -> REAL_TIME_TABLE_SAVE_KEY
+            else -> null
+        }
+        if (savedKey != null) {
+            val lines = storage.readString(savedKey).lines()
             pendingSpoilage = lines.firstOrNull() == "1"
             return lines.drop(1).mapNotNull { encoded ->
                 val parts = encoded.split(TABLE_ITEM_SEPARATOR)
-                if (parts.size != 3 || parts[0].isBlank() || parts[1].isBlank()) null else
-                    parts[2].toLongOrNull()?.let { time ->
-                        StagedFoodItem(parts[0], ProductId(parts[1]), time)
-                    }
+                if (parts.size != 3 || parts[0].isBlank() || parts[1].isBlank()) return@mapNotNull null
+                val day = if (savedKey == TABLE_SAVE_KEY) parts[2].toLongOrNull()?.takeIf { it >= 1 } else null
+                StagedFoodItem(parts[0], ProductId(parts[1]), day)
             }
         }
-        // Older portions have no timestamp. Start their shelf life on upgrade.
-        val now = currentTimeMillis()
-        val legacy = storage.readStringList(TABLE_KEY).mapIndexedNotNull { index, encoded ->
+        // Undated legacy portions are assigned the current day on first reconciliation.
+        return storage.readStringList(TABLE_KEY).mapIndexedNotNull { index, encoded ->
             if (encoded.isBlank()) return@mapIndexedNotNull null
             val separator = encoded.indexOf(TABLE_ITEM_SEPARATOR)
             if (separator <= 0 || separator == encoded.lastIndex) {
-                StagedFoodItem("legacy-$index-$encoded", ProductId(encoded), now)
-            } else StagedFoodItem(encoded.substring(0, separator),
-                ProductId(encoded.substring(separator + 1)), now)
+                StagedFoodItem("legacy-$index-$encoded", ProductId(encoded))
+            } else StagedFoodItem(encoded.substring(0, separator), ProductId(encoded.substring(separator + 1)))
         }
-        persistTable(legacy)
-        return legacy
     }
 
     private fun persistTable(items: List<StagedFoodItem>) {
@@ -173,7 +186,7 @@ internal class InventoryRepositoryImpl(
         // cannot lose the explanation after expired food has been removed.
         storage.putString(TABLE_SAVE_KEY, buildString {
             append(if (pendingSpoilage) "1" else "0")
-            items.forEach { append("\n${it.id}|${it.productId.value}|${it.stagedAtMillis}") }
+            items.forEach { append("\n${it.id}|${it.productId.value}|${it.stagedAtAbsoluteDay ?: ""}") }
         })
     }
 
@@ -197,7 +210,8 @@ internal class InventoryRepositoryImpl(
     private companion object {
         const val STOCK_KEY = "inventory_food_stock"
         const val TABLE_KEY = "inventory_food_table"
-        const val TABLE_SAVE_KEY = "inventory_food_table_v2"
+        const val TABLE_SAVE_KEY = "inventory_food_table_v3"
+        const val REAL_TIME_TABLE_SAVE_KEY = "inventory_food_table_v2"
         const val DELIVERED_KEY = "inventory_food_delivered_operations"
         const val TABLE_ITEM_SEPARATOR = '|'
     }
