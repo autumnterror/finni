@@ -421,7 +421,9 @@ internal class RoomViewModel(
             interactiveOutlinesVisible = false
             updateState(current.copy(
                 showInteractiveObjectOutlines = false,
-                petWashGuideStep = PetWashGuideStep.DIRTY_NOTICE,
+                petWashGuideStep = initialPetWashGuideStep(
+                    petWashGuidePromptRepository.wasBathGuidanceCompleted(),
+                ),
             ))
         } else {
             showInteractiveObjectOutlines()
@@ -431,8 +433,12 @@ internal class RoomViewModel(
     private fun continuePetWashGuide() {
         val current = nullableState<RoomViewState.Content>() ?: return
         val step = current.petWashGuideStep ?: return
-        if (step == PetWashGuideStep.DIRTY_NOTICE) {
+        if (step == PetWashGuideStep.DIRTY_NOTICE ||
+            step == PetWashGuideStep.REPEAT_DIRTY_NOTICE) {
             petWashGuidePromptRepository.tryMarkShownForCurrentDirtEpisode()
+        }
+        if (step == PetWashGuideStep.BATH_GUIDANCE) {
+            petWashGuidePromptRepository.markBathGuidanceCompleted()
         }
         updateState(current.copy(petWashGuideStep = step.nextOrNull()))
     }
@@ -594,12 +600,14 @@ internal class RoomViewModel(
                     }
                     val retainedPetWashGuide = current?.petWashGuideStep
                         ?.takeIf { roomData.progress.petDirtStage > 0 }
-                    val petWashGuideStep = retainedPetWashGuide ?: PetWashGuideStep.DIRTY_NOTICE
-                        .takeIf {
-                            roomData.progress.petDirtStage > 0 &&
-                                onboardingState == null &&
-                                !petWashGuidePromptRepository.wasShownForCurrentDirtEpisode()
-                        }
+                    val shouldShowPetWashGuide = roomData.progress.petDirtStage > 0 &&
+                        onboardingState == null &&
+                        !petWashGuidePromptRepository.wasShownForCurrentDirtEpisode()
+                    val petWashGuideStep = retainedPetWashGuide ?: if (shouldShowPetWashGuide) {
+                        initialPetWashGuideStep(
+                            petWashGuidePromptRepository.wasBathGuidanceCompleted(),
+                        )
+                    } else null
                     updateState(
                         RoomViewState.Content(
                             zones = zones,

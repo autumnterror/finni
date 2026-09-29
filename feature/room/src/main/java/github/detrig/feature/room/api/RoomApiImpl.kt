@@ -16,6 +16,7 @@ import github.detrig.feature.room.domain.surface.SurfaceCatalog
 import github.detrig.feature.economy.api.EconomyApi
 import github.detrig.feature.room.presentation.furniture.FurnitureStoreScreen
 import github.detrig.feature.room.domain.model.ParentHelpPromptRepository
+import github.detrig.feature.room.domain.model.PetWashGuidePromptRepository
 
 internal class RoomApiImpl(
     private val requests: RoomPreviewRequests,
@@ -28,6 +29,7 @@ internal class RoomApiImpl(
     private val furnitureStore: FurnitureStore,
     private val economyApi: EconomyApi,
     private val parentHelpPromptRepository: ParentHelpPromptRepository,
+    private val petWashGuidePromptRepository: PetWashGuidePromptRepository,
     private val wishArtwork: RoomWishArtwork,
 ) : RoomApi {
     init {
@@ -50,6 +52,7 @@ internal class RoomApiImpl(
     override suspend fun resetProgress(skipOnboarding: Boolean) {
         firstRunGuide.reset(skipOnboarding)
         parentHelpPromptRepository.resetAfterParentHelpSettlement()
+        petWashGuidePromptRepository.resetAll()
         repository.initialize()
     }
     override suspend fun purchaseSavingsGoal(goal: SavingsGoal): SavingsGoalPurchaseResult =
