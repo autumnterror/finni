@@ -9,60 +9,44 @@ import org.junit.Test
 
 class WardrobeViewStateTest {
     private val items = listOf(
-        ClothingItem("owned-face", "Купленные очки", "face", 50),
-        ClothingItem("available-body", "Новый жилет", "body", 80),
-        ClothingItem("available-face", "Новые очки", "face", 70),
-        ClothingItem("owned-body", "Купленная футболка", "body", 90),
+        ClothingItem("owned-body", "Жилет", "body", 90),
+        ClothingItem("available-head", "Шляпа", "head", 100),
+        ClothingItem("available-body", "Футболка", "body", 120),
+        ClothingItem("owned-head", "Кепка", "head", 110),
+        ClothingItem("available-body-2", "Свитер", "body", 150),
     )
-    private val profile = PetProfile(
-        name = "Финни",
-        color = PetColor.Sunny,
-        clothing = ClothingState(ownedIds = setOf("owned-face", "owned-body")),
+    private val profile = PetProfile("Финни", color = PetColor.Sunny,
+        clothing = ClothingState(ownedIds = setOf("owned-body", "owned-head")),
     )
 
-    @Test
-    fun `shop shows available items before owned items`() {
-        val state = WardrobeViewState(
-            loading = false,
-            profile = profile,
-            items = items,
-            mode = WardrobeMode.SHOP,
-        )
+    @Test fun wardrobeOpensOnOwnedClothingOnly() {
+        val state = WardrobeViewState(items = items, profile = profile)
+        assertEquals(WardrobeMode.OWNED, state.mode)
+        assertEquals(listOf("owned-body", "owned-head"), state.visibleItems.map { it.id })
+    }
 
+    @Test fun shopKeepsOwnedItemsAfterAvailableItemsInCatalogOrder() {
+        val state = WardrobeViewState(items = items, profile = profile, mode = WardrobeMode.SHOP)
         assertEquals(
-            listOf("available-body", "available-face", "owned-face", "owned-body"),
-            state.visibleItems.map(ClothingItem::id),
+            listOf("available-head", "available-body", "available-body-2", "owned-body", "owned-head"),
+            state.visibleItems.map { it.id },
         )
     }
 
-    @Test
-    fun `shop keeps available items first inside selected category`() {
-        val state = WardrobeViewState(
-            loading = false,
-            profile = profile,
-            items = items,
-            mode = WardrobeMode.SHOP,
-            category = "face",
-        )
-
+    @Test fun purchaseMovesItemToOwnedGroupWithinItsCategory() {
+        val state = WardrobeViewState(items = items, profile = profile, mode = WardrobeMode.SHOP, category = "body")
+        assertEquals(listOf("available-body", "available-body-2", "owned-body"), state.visibleItems.map { it.id })
+        val afterPurchase = state.copy(profile = profile.copy(clothing = profile.clothing.withPurchase("available-body")))
+        assertEquals(listOf("available-body-2", "owned-body", "available-body"), afterPurchase.visibleItems.map { it.id })
         assertEquals(
-            listOf("available-face", "owned-face"),
-            state.visibleItems.map(ClothingItem::id),
+            listOf("owned-body", "available-body"),
+            afterPurchase.copy(mode = WardrobeMode.OWNED).visibleItems.map { it.id },
         )
     }
 
-    @Test
-    fun `wardrobe contains only owned items`() {
-        val state = WardrobeViewState(
-            loading = false,
-            profile = profile,
-            items = items,
-            mode = WardrobeMode.OWNED,
-        )
-
-        assertEquals(
-            listOf("owned-face", "owned-body"),
-            state.visibleItems.map(ClothingItem::id),
-        )
+    @Test fun emptyWardrobeStillAllowsBrowsingEntireShop() {
+        val state = WardrobeViewState(items = items, profile = profile.copy(clothing = ClothingState()))
+        assertEquals(emptyList<ClothingItem>(), state.visibleItems)
+        assertEquals(items, state.copy(mode = WardrobeMode.SHOP).visibleItems)
     }
 }

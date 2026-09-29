@@ -25,6 +25,8 @@ If a newer approved specification conflicts with this file:
 
 ### 2.1. Product
 
+The application is named **Finni** in the launcher and on the loading screen.
+
 The product is an Android / RuStore mobile game for children aged **7-11**.
 
 The player creates a virtual pet, receives limited pocket money, plans a weekly budget, cares for the pet, buys items, saves for goals, completes financial situations, may perform a limited amount of side work, and sees the consequences of financial decisions.
@@ -150,10 +152,10 @@ a greeting or other pet dialogue.
 
 MVP apartment objects:
 
-- **phone** — shop, messages, short transaction history;
+- **phone** — groceries, clothing and furniture shops, messages, short transaction history;
 - **notebook** — financial tasks/tests and limited paid side work;
 - **piggy bank** — savings goal and transfers;
-- **wardrobe** — customization;
+- **wardrobe** — owned clothing and customization;
 - **fridge** — food inventory;
 - **table** — feeding;
 - **bed** — end current game day;
@@ -167,6 +169,10 @@ seconds of active drying. The hair dryer plays a short sound while operating.
 The player may repeat the full cycle in the same bath visit, including when the
 pet is already clean. Washing is free and does not advance the game
 day or change money. The bed keeps the End day action.
+
+The wardrobe opens on owned clothing. The clothing shop in the phone lists both
+available and owned items, with available items first within each category.
+Buying clothing immediately equips it; owned clothing is changed in the wardrobe.
 
 Do not reintroduce old room metaphors such as calendar/task-board/bowl as primary MVP objects unless an approved newer design explicitly requires them.
 
@@ -370,6 +376,8 @@ Rules:
 - repeated operation IDs and repeated end-day requests do not lower it twice;
 - the value never drops below zero;
 - reaching zero hunger schedules one short, neutral local notification per zero-hunger episode;
+- local notifications are delivered only while the app is in the background;
+  an alert raised in the foreground stays pending until the app leaves the foreground;
 - if notification permission is unavailable, the alert remains pending until permission is granted while the pet is still hungry;
 - the daily decrease is a balancing value;
 - the pet does not die;
@@ -497,6 +505,12 @@ while the app is open and on return.
 Completing the soap, rinse, and dryer cycle resets dirt to clean and restarts
 both the clock and the mini-game count. Washing remains free.
 
+Dirt remains visible consistently in room scenes, feeding, clothing previews,
+dialogue portraits, and mini-game pet images. Rinsing gradually reduces visible
+dirt together with foam; adding soap again in the same bath visit does not restore
+already rinsed dirt. Returning from the background refreshes elapsed dirt time
+immediately, without waiting for another database change.
+
 ### 7.4. Food tiers
 
 Basic food fully covers the mandatory need.
@@ -508,6 +522,15 @@ expenses; food with positive satiety counts toward mandatory expenses. Inventory
 and purchase guidance must count only food that restores satiety as mandatory care.
 
 The purpose is to create a clear **need vs optional comfort** decision.
+
+Each portion moved from the fridge to the table records its absolute game day.
+It spoils after three game days on the table, including transitions between weeks;
+real elapsed time and time in the background do not age food.
+Expired portions are removed and cannot feed the pet. On the next table opening,
+show the standard pet dialogue explaining the spoilage and suggesting fresh food;
+keep this notice pending across restarts until the player dismisses it. Food still
+in the fridge is unaffected. Older saved table portions without a game-day placement
+start their shelf life on the current game day when upgraded.
 
 Exact values are configuration, not hardcoded product truth.
 
@@ -727,7 +750,10 @@ Useful optional context:
 - remaining days in week;
 - debt impact if relevant.
 
-Purchase confirmation is required.
+The grocery cart requires purchase confirmation. In the clothing and furniture
+stores, **Buy and wear/install** commits the purchase immediately and applies
+the item, without a separate confirmation dialog or receipt. Keep the price and
+effect visible before that action and retain balance checks and idempotency.
 The cart's **Pay** action is the purchase confirmation. When a purchase goes
 beyond the plan but the wallet can still pay, first show a buttonless pet warning
 with the concrete consequence. Closing it returns to the unchanged cart; a new

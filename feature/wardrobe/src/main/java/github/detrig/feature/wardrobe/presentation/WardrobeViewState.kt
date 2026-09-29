@@ -14,7 +14,6 @@ internal data class WardrobeViewState(
     val mode: WardrobeMode = WardrobeMode.OWNED,
     val category: String? = null,
     val selectedId: String? = null,
-    val confirmingPurchase: Boolean = false,
     val purchasing: Boolean = false,
     val message: String? = null,
 ) : CoreViewState {

@@ -16,6 +16,8 @@ import github.detrig.feature.gamestate.domain.model.HungerAlertState
 import github.detrig.feature.gamestate.domain.model.PetDirtAnchor
 import github.detrig.feature.gamestate.domain.model.PetDirtRules
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -46,6 +48,8 @@ internal class GameStateLocalDataSource(
     private val currentWeekNumber: suspend () -> Long,
     private val currentAbsoluteDay: suspend () -> Long,
 ) {
+    private val refreshVersion = MutableStateFlow(0L)
+
     suspend fun initialize(): GameState = transactionRunner.runInTransaction {
         val stored = dao.getCurrentStateWithZones()
         if (stored != null) {
@@ -64,7 +68,7 @@ internal class GameStateLocalDataSource(
         dirtStorage.reset(now, petPlayEffectDao.completedMiniGameCount())
         // Возвращаем сохранённую запись; конфликт вставки не перезаписывает прогресс.
         checkNotNull(dao.getCurrentStateWithZones()).toDomain()
-    }
+    }.also { refreshVersion.update { it + 1 } }
 
     fun observeState(): Flow<GameState?> {
         val clock = flow {
@@ -73,12 +77,12 @@ internal class GameStateLocalDataSource(
                 delay(60_000L)
             }
         }
-        return combine(dao.observeCurrentStateWithZones(), dirtStorage.anchor, clock) {
-            state, anchor, now -> Triple(state, anchor, now)
-        }.map { (state, anchor, now) ->
+        return combine(dao.observeCurrentStateWithZones(), dirtStorage.anchor, clock, refreshVersion) {
+            state, anchor, _, _ -> state to anchor
+        }.map { (state, anchor) ->
             state?.toDomain()?.let { game ->
                 if (anchor == null) game else game.withDirt(
-                    anchor, now, petPlayEffectDao.completedMiniGameCount())
+                    anchor, currentTimeMillis(), petPlayEffectDao.completedMiniGameCount())
             }
         }
             .distinctUntilChanged()

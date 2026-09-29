@@ -56,7 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import github.detrig.designsystem.component.FinPetBackButton
+import github.detrig.designsystem.component.FinPetStorefrontHeader
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCard
@@ -102,69 +102,14 @@ internal fun ShopHeader(
     balanceRub: Long?,
     onBack: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-    ) {
-        FinPetBackButton(
-            onClick = onBack,
-            contentDescription = stringResource(R.string.shop_back),
-            size = AppTheme.sizes.preferredTouchTarget - 4.dp,
-        )
-        Text(
-            text = title,
-            modifier = Modifier.weight(1f),
-            style = if (title.length > 10) AppTheme.typography.sectionTitle else AppTheme.typography.screenTitle,
-            color = AppTheme.colors.storefront.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        ShopBalanceBadge(balanceRub = balanceRub)
-    }
+    FinPetStorefrontHeader(
+        title = title,
+        balanceRub = balanceRub,
+        onBack = onBack,
+        backContentDescription = stringResource(R.string.shop_back),
+        modifier = Modifier.padding(horizontal = AppTheme.spacing.lg, vertical = AppTheme.spacing.md),
+    )
 }
-
-@Composable
-private fun ShopBalanceBadge(
-    balanceRub: Long?,
-    modifier: Modifier = Modifier,
-) {
-    val value = balanceRub?.toString() ?: "—"
-    val valueStyle = compactCurrencyStyle(value.length)
-
-    Surface(
-        modifier = modifier.heightIn(min = AppTheme.sizes.preferredTouchTarget - 4.dp),
-        shape = AppTheme.shapes.storefrontControl,
-        color = AppTheme.colors.storefront.surface,
-        contentColor = AppTheme.colors.storefront.onSurface,
-        border = BorderStroke(AppTheme.sizes.borderStrong, AppTheme.colors.storefront.outline),
-        shadowElevation = AppTheme.elevation.low,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = AppTheme.spacing.sm),
-            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = value,
-                style = valueStyle,
-                maxLines = 1,
-            )
-            FinPetCoinIcon()
-        }
-    }
-}
-
-@Composable
-private fun compactCurrencyStyle(characterCount: Int): TextStyle = when {
-    characterCount >= 7 -> AppTheme.typography.caption
-    characterCount >= 5 -> AppTheme.typography.bodyStrong
-    else -> AppTheme.typography.currency
-}
-
 private sealed interface ShopFilterOption {
     val key: String
     val title: String

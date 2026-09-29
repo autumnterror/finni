@@ -39,6 +39,7 @@ internal class FeedingViewModel(
             FeedingViewEvent.NextPage -> changePage(1)
             is FeedingViewEvent.FoodDroppedIntoMouth -> startConsumption(viewEvent.productId)
             FeedingViewEvent.FirstRunThanksDismissed -> finishFirstRunLesson()
+            FeedingViewEvent.SpoilageNoticeDismissed -> dismissSpoilageNotice()
         }
     }
 
@@ -50,6 +51,8 @@ internal class FeedingViewModel(
                     true
                 },
             ) {
+                val spoiled = inventoryApi.reconcileTableExpiry()
+                updateState { copy(spoiledFoodNoticeVisible = spoiled) }
                 inventoryApi.observeTable().collect { tableItems ->
                     tableReady = true
                     updateTable(tableItems)
@@ -100,7 +103,7 @@ internal class FeedingViewModel(
     }
 
     private fun startConsumption(productId: ProductId) {
-        if (stateData.loading) return
+        if (stateData.loading || stateData.spoiledFoodNoticeVisible) return
         val stack = stateData.foodStacks.firstOrNull { it.productId == productId } ?: return
         val pendingIds = stateData.pendingPortions.mapTo(mutableSetOf()) { it.id }
         val portionId = stack.portionIds.firstOrNull { it !in pendingIds } ?: return
@@ -144,20 +147,26 @@ internal class FeedingViewModel(
 
             // The table portion id is the durable operation id. A restored callback
             // therefore returns the already applied pet state instead of feeding twice.
-            val result = gameStateApi.feedPet(
-                PetFeedingCompletion(
-                    operationId = portion.id,
-                    satietyPercent = food.effects.satietyPercent,
-                    happinessPoints = food.effects.happinessPoints,
-                ),
-            )
-            inventoryApi.consumeTableItem(portion.id)
-            if (firstRunGuide.step.value == FirstRunOnboardingStep.FEEDING) {
+            var hungerAfterFeeding = stateData.hunger
+            val consumed = inventoryApi.consumeTableItem(portion.id) { freshPortion ->
+                val result = gameStateApi.feedPet(
+                    PetFeedingCompletion(
+                        operationId = freshPortion.id,
+                        satietyPercent = food.effects.satietyPercent,
+                        happinessPoints = food.effects.happinessPoints,
+                    ),
+                )
+                hungerAfterFeeding = result.hunger
+            }
+            val spoiled = inventoryApi.reconcileTableExpiry()
+            if (consumed is github.detrig.feature.inventory.domain.TableFoodConsumptionResult.Consumed &&
+                firstRunGuide.step.value == FirstRunOnboardingStep.FEEDING) {
                 firstRunGuide.moveTo(FirstRunOnboardingStep.FEEDING_DONE)
             }
             updateState {
                 copy(
-                    hunger = result.hunger,
+                    hunger = hungerAfterFeeding,
+                    spoiledFoodNoticeVisible = spoiledFoodNoticeVisible || spoiled,
                     activePortion = null,
                     pendingPortions = pendingPortions.filterNot { it.id == portion.id },
                     foodStacks = foodStacks.mapNotNull { stack ->
@@ -174,6 +183,14 @@ internal class FeedingViewModel(
         if (firstRunGuide.step.value != FirstRunOnboardingStep.FEEDING_DONE) return
         firstRunGuide.completeFirstNeed()
         close()
+    }
+
+    private fun dismissSpoilageNotice() {
+        if (!stateData.spoiledFoodNoticeVisible) return
+        launchCoroutine {
+            inventoryApi.acknowledgeSpoiledTableFood()
+            updateState { copy(spoiledFoodNoticeVisible = false) }
+        }
     }
 
     private fun close() {

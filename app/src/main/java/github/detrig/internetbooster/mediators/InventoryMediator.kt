@@ -9,14 +9,23 @@ import github.detrig.core.infrastructure.preferences.SharedStorage
 import github.detrig.feature.inventory.InventoryDependencies
 import github.detrig.feature.inventory.InventoryFeature
 import github.detrig.feature.inventory.api.InventoryApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 internal class InventoryMediator(
     private val coreComponent: CoreComponent,
+    private val weekMediator: WeekMediator,
 ) : Mediator<InventoryApi> {
     @MainThread
     fun init() {
         InventoryFeature.dependenciesProvider = ModuleDependenciesProvider {
             object : InventoryDependencies {
+                override suspend fun currentAbsoluteDay(): Long =
+                    weekMediator.getApi().initialize().absoluteDay
+
+                override fun observeAbsoluteDay(): Flow<Long> =
+                    weekMediator.getApi().observeState().map { it.absoluteDay }
+
                 override fun storage(): SharedStorage = SharedStorage(
                     coreComponent.context.getSharedPreferences(
                         INVENTORY_PREFERENCES,

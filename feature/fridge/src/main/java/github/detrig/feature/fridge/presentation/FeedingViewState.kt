@@ -14,6 +14,7 @@ internal data class FeedingViewState(
     val animation: FeedingAnimation = FeedingAnimation.Idle,
     val loading: Boolean = true,
     val message: String? = null,
+    val spoiledFoodNoticeVisible: Boolean = false,
 ) : CoreViewState
 
 /** A visible stack preserves the table order while exposing one portion at a time. */

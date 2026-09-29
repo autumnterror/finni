@@ -72,7 +72,7 @@ abstract class Nav3Activity(
      *
      * Хранит back stack этой Activity и выполняет команды navigate/back/replace.
      */
-    private val navigationHandler = Nav3NavigationHandlerImpl(this)
+    private val navigationHandler = Nav3NavigationHandlerImpl(finishActivity = ::finish)
 
     /**
      * Глобальный навигатор приложения.

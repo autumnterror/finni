@@ -121,7 +121,14 @@ internal fun FeedingScreen() {
     )
     val profile = petProfile
     if (profile != null) {
-        when (firstRunStep) {
+        if (state.spoiledFoodNoticeVisible) {
+            FinPetDialogueDialog(
+                speakerName = profile.name,
+                cards = listOf(stringResource(R.string.feeding_food_spoiled)),
+                portrait = { modifier -> component.petApi.Portrait(profile, modifier) },
+                onFinished = { viewModel.perform(FeedingViewEvent.SpoilageNoticeDismissed) },
+            )
+        } else when (firstRunStep) {
             FirstRunOnboardingStep.FEEDING -> FinPetDialogueDialog(
                 speakerName = profile.name,
                 cards = listOf(stringResource(R.string.first_run_feeding_drag)),
@@ -224,7 +231,7 @@ private fun FeedingContent(
                     val tableHeightPx = with(density) { maxHeight.toPx() }
                     // Rest the artwork on the tabletop while keeping its count
                     // badge inside the widened table's front edge.
-                    val foodCenterY = tableHeightPx - foodSizePx * 0.85f
+                    val foodCenterY = tableHeightPx - foodSizePx * 1.10f
                     val slotCenters = listOf(0.25f, 0.50f, 0.75f).map { x ->
                         Offset(tableWidthPx * x, foodCenterY)
                     }

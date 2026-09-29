@@ -206,8 +206,10 @@ internal fun RoomScreen(
             petLookingAround = false
         }
     }
-    val activeFocusObjectId = onboarding?.focusObjectId ?: petWashGuideFocusId ?:
-        focusObjectId ?: requestedZoneId
+    // An inactive room keeps the saved camera while another screen is open.
+    val activeFocusObjectId = if (externalActive) {
+        onboarding?.focusObjectId ?: petWashGuideFocusId ?: focusObjectId ?: requestedZoneId
+    } else focusObjectId
     var focusedObjectId by remember(activeFocusObjectId) { mutableStateOf<String?>(null) }
     var spotlightBoundsInWindow by remember(activeFocusObjectId, activeHighlightedObjectIds) {
         mutableStateOf<Rect?>(null)
@@ -283,7 +285,10 @@ internal fun RoomScreen(
             bathroomFurnitureByPlacement = bathroomFurnitureByPlacement,
             surfaces = surfaceTextures,
             state = state,
-            onEvent = viewModel::perform,
+            loadingPosition = viewModel.initialPosition,
+            onEvent = { event ->
+                if (externalActive || event !is RoomViewEvent.SavePosition) viewModel.perform(event)
+            },
             modifier = Modifier.fillMaxSize(),
             petContent = petContent,
             onPetTap = { viewModel.perform(RoomViewEvent.PetTapped) },
@@ -306,7 +311,7 @@ internal fun RoomScreen(
             // Guided steps already provide a strict object allowlist. Keep that one object active
             // even if an unrelated retained state would block normal room interaction.
             active = guidedObjectInteractionActive || regularRoomInteractionActive,
-            previewZoneId = requestedZoneId,
+            previewZoneId = requestedZoneId.takeIf { externalActive },
             focusObjectId = activeFocusObjectId,
             isFeedingScene = focusObjectId == "dining_table",
             petAnchorObjectId = petAnchorObjectId,
@@ -317,7 +322,7 @@ internal fun RoomScreen(
             onHighlightedObjectBoundsChanged = { spotlightBoundsInWindow = it },
             onPreviewReady = { id ->
                 if (activeFocusObjectId == id) focusedObjectId = id
-                if (requestedZoneId == id) {
+                if (externalActive && requestedZoneId == id) {
                     previewRequests.consume(id)
                     viewModel.perform(RoomViewEvent.ZonePreviewed(id))
                 }

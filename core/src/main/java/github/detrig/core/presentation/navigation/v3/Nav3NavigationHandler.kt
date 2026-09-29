@@ -1,6 +1,6 @@
 package github.detrig.core.presentation.navigation.v3
 
-import android.app.Activity
+import android.os.SystemClock
 import androidx.navigation3.runtime.NavKey
 import github.detrig.core.presentation.navigation.NavigationHandler
 import kotlin.reflect.KClass
@@ -126,8 +126,10 @@ inline fun <reified T : NavKey> Nav3NavigationHandler.backTo() {
  * реагирует на изменение back stack и показывает нужный экран.
  */
 internal class Nav3NavigationHandlerImpl(
-    private val activity: Activity,
+    private val finishActivity: () -> Unit,
+    private val currentTimeMillis: () -> Long = SystemClock::uptimeMillis,
 ) : NavigationHandler {
+    private var lastBackAtMillis: Long? = null
 
     /**
      * Храним несколько back stack: один для host graph и по одному для каждого nested graph.
@@ -141,6 +143,7 @@ internal class Nav3NavigationHandlerImpl(
         get() = backStack.values.lastOrNull() ?: error("BackStack is empty")
 
     override fun navigate(route: NavKey, launchSingleTop: Boolean) {
+        lastBackAtMillis = null
         if (launchSingleTop) {
             currentStack.removeAll { it == route }
         }
@@ -156,9 +159,14 @@ internal class Nav3NavigationHandlerImpl(
     }
 
     override fun back() {
+        // An outgoing screen remains clickable during its transition. Its second
+        // close must not pop the newly revealed screen or finish the Activity.
+        val now = currentTimeMillis()
+        if (lastBackAtMillis?.let { now - it < 500L } == true) return
+        lastBackAtMillis = now
         when {
             backStack.size == 1 && currentStack.size == 1 -> {
-                activity.finish()
+                finishActivity()
             }
 
             currentStack.size == 1 -> {

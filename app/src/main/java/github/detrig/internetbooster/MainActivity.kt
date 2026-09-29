@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 class MainActivity : Nav3Activity(
     navHostSpec = appGraph(),
@@ -40,6 +41,8 @@ class MainActivity : Nav3Activity(
         super.onStart()
         (application as FinPetApplication).appComponent.gameAudio.setForeground(true)
         timeReconciliationJob = lifecycleScope.launch {
+            // Let the process receive ON_START before checking pending notifications.
+            yield()
             while (isActive) {
                 (application as FinPetApplication).appComponent.reconcileTimedEvents()
                 requestPetNotificationPermissionIfNeeded()

@@ -12,6 +12,9 @@ import github.detrig.feature.pet.domain.model.GrowthStage
 import github.detrig.feature.gamestate.domain.progression.PetGrowthStage
 import github.detrig.internetbooster.BuildConfig
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emitAll
 
 internal class PetMediator(
     private val coreComponent: CoreComponent,
@@ -24,6 +27,11 @@ internal class PetMediator(
                     coreComponent.context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
                 override fun assets() = coreComponent.context.assets
                 override fun allowDebugGrowthOverride() = BuildConfig.DEBUG
+                override fun observeDirtStage() = flow {
+                    val api = gameStateMediator.getApi()
+                    emit(api.initialize().pet.dirtStage)
+                    emitAll(api.observeState().filterNotNull().map { it.pet.dirtStage })
+                }
                 override fun observeGrowthStage() = gameStateMediator.getApi().observeState().map { state ->
                     when (state?.progress?.petStage ?: PetGrowthStage.BABY) {
                         PetGrowthStage.BABY -> GrowthStage.BABY

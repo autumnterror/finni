@@ -18,13 +18,6 @@ import kotlinx.coroutines.flow.combine
 
 internal enum class FurnitureMode { SHOP, OWNED }
 
-internal data class FurniturePurchaseReceipt(
-    val itemName: String,
-    val priceRub: Long,
-    val balanceRub: Long,
-    val categoryLabel: String = "Мебель",
-)
-
 internal data class FurnitureStoreViewState(
     val roomId: String = "bedroom",
     val slotId: String = "room_lamp",
@@ -38,8 +31,6 @@ internal data class FurnitureStoreViewState(
     val balanceRub: Long = 0L,
     val loading: Boolean = true,
     val busy: Boolean = false,
-    val confirmationVisible: Boolean = false,
-    val receipt: FurniturePurchaseReceipt? = null,
     val message: String? = null,
 ) : CoreViewState
 
@@ -53,9 +44,6 @@ internal sealed interface FurnitureStoreViewEvent : CoreViewEvent {
     data class SurfaceVariantSelected(val id: String) : FurnitureStoreViewEvent
     data object OriginalSelected : FurnitureStoreViewEvent
     data object ActionPressed : FurnitureStoreViewEvent
-    data object PurchaseConfirmed : FurnitureStoreViewEvent
-    data object PurchaseDismissed : FurnitureStoreViewEvent
-    data object ReceiptDismissed : FurnitureStoreViewEvent
     data object MessageDismissed : FurnitureStoreViewEvent
 }
 
@@ -99,9 +87,6 @@ internal class FurnitureStoreViewModel(
                 else copy(selectedSurfaceId = null, surfaceOriginalSelected = true)
             }
             FurnitureStoreViewEvent.ActionPressed -> action()
-            FurnitureStoreViewEvent.PurchaseConfirmed -> purchase()
-            FurnitureStoreViewEvent.PurchaseDismissed -> updateState { copy(confirmationVisible = false) }
-            FurnitureStoreViewEvent.ReceiptDismissed -> updateState { copy(receipt = null) }
             FurnitureStoreViewEvent.MessageDismissed -> updateState { copy(message = null) }
         }
     }
@@ -139,7 +124,7 @@ internal class FurnitureStoreViewModel(
     }
 
     private fun action() {
-        if (stateData.busy) return
+        if (stateData.busy || stateData.loading) return
         val kind = stateData.surfaceKind
         if (kind != null) {
             val room = HouseSurfaceLayout.Room.fromId(stateData.roomId) ?: return
@@ -149,7 +134,7 @@ internal class FurnitureStoreViewModel(
             } else if (id != null) {
                 if (stateData.ownership.ownsSurface(id)) {
                     launchCoroutine { store.equipSurface(room.id, kind, id) }
-                } else updateState { copy(confirmationVisible = true) }
+                } else purchase()
             }
             return
         }
@@ -168,7 +153,7 @@ internal class FurnitureStoreViewModel(
                 },
             ) { store.equip(stateData.slotId, id) }
         } else {
-            updateState { copy(confirmationVisible = true) }
+            purchase()
         }
     }
 
@@ -180,7 +165,7 @@ internal class FurnitureStoreViewModel(
         val price = if (surface) surfaceCatalog.byId[id]?.priceRub else catalog.byId[id]?.priceRub
         if (name == null || price == null) return
         if (stateData.busy) return
-        updateState { copy(confirmationVisible = false, busy = true, message = null) }
+        updateState { copy(busy = true, message = null) }
         launchCoroutine(
             handleAction = ExceptionConsumer { exception ->
                 updateState { copy(busy = false, message = exception.message ?: "Не удалось выполнить покупку") }
@@ -189,9 +174,7 @@ internal class FurnitureStoreViewModel(
         ) {
             val result = if (surface) store.purchaseSurface(id) else store.purchase(id)
             updateState {
-                copy(busy = false, receipt = (result as? FurniturePurchaseResult.Purchased)?.let {
-                    FurniturePurchaseReceipt(name, price, it.balanceRub, if (surface) "Покрытие" else "Мебель")
-                }, message = when (result) {
+                copy(busy = false, message = when (result) {
                     is FurniturePurchaseResult.Purchased -> null
                     FurniturePurchaseResult.AlreadyOwned -> "Этот вариант уже куплен"
                     FurniturePurchaseResult.InsufficientFunds -> "Не хватает монет для покупки"

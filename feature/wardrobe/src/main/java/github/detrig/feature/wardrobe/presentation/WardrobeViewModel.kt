@@ -31,8 +31,6 @@ internal class WardrobeViewModel(
             }
             WardrobeViewEvent.ClearTrial -> updateState { copy(selectedId = null) }
             WardrobeViewEvent.PrimaryAction -> primaryAction()
-            WardrobeViewEvent.ConfirmPurchase -> confirmPurchase()
-            WardrobeViewEvent.CancelPurchase -> updateState { copy(confirmingPurchase = false) }
             WardrobeViewEvent.DismissMessage -> updateState { copy(message = null) }
         }
     }
@@ -63,7 +61,7 @@ internal class WardrobeViewModel(
         if (stateData.purchasing) return
         if (stateData.mode == WardrobeMode.SHOP) {
             if (item.id !in profile.clothing.ownedIds) {
-                updateState { copy(confirmingPurchase = true) }
+                buySelectedItem()
             }
             return
         }
@@ -80,10 +78,10 @@ internal class WardrobeViewModel(
         }
     }
 
-    private fun confirmPurchase() {
+    private fun buySelectedItem() {
         val item = stateData.selectedItem ?: return
-        if (stateData.mode != WardrobeMode.SHOP || !stateData.confirmingPurchase || stateData.purchasing) return
-        updateState { copy(confirmingPurchase = false, purchasing = true) }
+        if (stateData.mode != WardrobeMode.SHOP || stateData.purchasing || stateData.loading) return
+        updateState { copy(purchasing = true, message = null) }
         launchCoroutine(
             handleAction = ExceptionConsumer {
                 updateState { copy(purchasing = false, message = "Покупку не удалось завершить") }

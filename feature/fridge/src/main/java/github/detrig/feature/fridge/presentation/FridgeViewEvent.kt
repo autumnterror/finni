@@ -7,5 +7,5 @@ internal sealed interface FridgeViewEvent : CoreViewEvent {
     data object Load : FridgeViewEvent
     data object Back : FridgeViewEvent
     data class ProductClicked(val productId: ProductId) : FridgeViewEvent
-    data class FlightAnimationFinished(val productId: ProductId) : FridgeViewEvent
+    data class FlightAnimationFinished(val flightId: Long) : FridgeViewEvent
 }

@@ -59,13 +59,13 @@ interface PetApi {
         pose: PetPose = PetPose.IDLE,
         gestureCallbacks: PetGestureCallbacks? = null,
         showShadow: Boolean = true,
-        dirtStage: Int = 0,
+        dirtStage: Int? = null,
         dirtOpacity: Float = 1f,
     )
 
     /** Крупный план мордочки с выбранным цветом для общих карточек диалога. */
     @Composable
-    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier, dirtStage: Int = 0)
+    fun Portrait(profile: PetProfile, modifier: Modifier = Modifier, dirtStage: Int? = null)
 
     /** Собирает актуальную внешность питомца для Canvas-сцен мини-игр. */
     @Composable

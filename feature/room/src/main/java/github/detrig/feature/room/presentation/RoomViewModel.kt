@@ -134,6 +134,7 @@ internal class RoomViewModel(
     // Read this small preference before the first composition of HouseScene. Loading it
     // from Dispatchers.IO after rendering caused one frame at the default center position.
     private var savedPosition = HouseLayout.restored(positions.load())
+    val initialPosition: github.detrig.feature.room.domain.model.HousePosition get() = savedPosition
     private var lastLaunchNanos = 0L
     private var onboardingProgress = FirstRunOnboardingProgress(
         FirstRunOnboardingChapter.entries.toSet(),

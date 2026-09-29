@@ -22,11 +22,13 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +47,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import github.detrig.designsystem.component.FinPetBackButton
+import github.detrig.designsystem.component.FinPetStorefrontHeader
 import github.detrig.designsystem.component.FinPetButton
 import github.detrig.designsystem.component.FinPetButtonDefaults
 import github.detrig.designsystem.component.FinPetCoinText
@@ -52,9 +55,6 @@ import github.detrig.designsystem.component.FinPetFilterChipRow
 import github.detrig.designsystem.component.FinPetFilterChipDefaults
 import github.detrig.designsystem.component.FinPetGridColumns
 import github.detrig.designsystem.component.FinPetLazyGrid
-import github.detrig.designsystem.component.FinPetModalDialog
-import github.detrig.designsystem.component.FinPetOutlinedButton
-import github.detrig.designsystem.component.FinPetStorefrontBalanceBadge
 import github.detrig.designsystem.component.FinPetStorefrontCard
 import github.detrig.designsystem.theme.AppTheme
 import github.detrig.designsystem.theme.FinPetTheme
@@ -109,6 +109,11 @@ internal fun WardrobeContent(
     petPreview: @Composable (PetProfile, Map<String, String>, Modifier) -> Unit,
 ) {
     val colors = AppTheme.colors.storefront
+    val gridState = key(state.mode, state.category, state.profile?.clothing?.ownedIds.orEmpty()) {
+        // Start each list at its beginning instead of following an owned item
+        // when switching categories or moving a new purchase to the bottom.
+        rememberLazyGridState()
+    }
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -164,6 +169,7 @@ internal fun WardrobeContent(
                 } else {
                     FinPetLazyGrid(
                         items = state.visibleItems,
+                        state = gridState,
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         columns = FinPetGridColumns.Fixed(3),
                         contentPadding = PaddingValues(bottom = 8.dp),
@@ -184,64 +190,28 @@ internal fun WardrobeContent(
                 WardrobeActionBar(state, onEvent)
             }
     }
-    if (state.confirmingPurchase) {
-        state.selectedItem?.let { item ->
-            FinPetModalDialog(
-                title = "Купить ${item.name}?",
-                onDismissRequest = { onEvent(WardrobeViewEvent.CancelPurchase) },
-                actions = {
-                    FinPetButton(
-                        text = "Купить и надеть · ${item.priceRub} ₽",
-                        onClick = { onEvent(WardrobeViewEvent.ConfirmPurchase) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = state.balanceRub >= item.priceRub,
-                        style = FinPetButtonDefaults.storefrontPrimaryStyle(),
-                    )
-                    FinPetOutlinedButton(
-                        text = "Отмена",
-                        onClick = { onEvent(WardrobeViewEvent.CancelPurchase) },
-                        modifier = Modifier.fillMaxWidth(),
-                        style = FinPetButtonDefaults.storefrontOutlinedStyle(),
-                    )
-                },
-            ) {
-                Text("Категория: желание", style = AppTheme.typography.body)
-                Text(
-                    "Питомец сможет носить эту вещь. При покупке: до +${github.detrig.feature.wardrobe.domain.ClothingHappinessRewards.points(item)} счастья.",
-                    style = AppTheme.typography.body,
-                )
-                FinPetCoinText("Сейчас: ${state.balanceRub} ₽", style = AppTheme.typography.bodyStrong)
-                FinPetCoinText(
-                    "После покупки: ${(state.balanceRub - item.priceRub).coerceAtLeast(0)} ₽",
-                    style = AppTheme.typography.bodyStrong,
-                )
-            }
-        }
-    }
 }
 
 @Composable
 private fun WardrobeHeader(state: WardrobeViewState, onBack: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        FinPetBackButton(
-            onClick = onBack,
-            contentDescription = if (state.mode == WardrobeMode.SHOP) {
-                "Вернуться к приложениям"
-            } else {
-                "Вернуться в комнату"
-            },
+    if (state.mode == WardrobeMode.SHOP) {
+        FinPetStorefrontHeader(
+            title = "Одежда",
+            balanceRub = state.balanceRub,
+            onBack = onBack,
+            backContentDescription = "Вернуться к приложениям",
         )
-        Text(
-            if (state.mode == WardrobeMode.SHOP) "Одежда" else "Гардероб",
-            modifier = Modifier.weight(1f),
-            style = AppTheme.typography.screenTitle,
-            color = AppTheme.colors.storefront.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
-        if (state.mode == WardrobeMode.SHOP) {
-            FinPetStorefrontBalanceBadge(balanceRub = state.balanceRub)
-        } else {
+    } else {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            FinPetBackButton(onClick = onBack, contentDescription = "Вернуться в комнату")
+            Text(
+                "Гардероб",
+                modifier = Modifier.weight(1f),
+                style = AppTheme.typography.screenTitle,
+                color = AppTheme.colors.storefront.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
             Spacer(Modifier.size(AppTheme.sizes.preferredTouchTarget))
         }
     }
@@ -443,6 +413,13 @@ private fun WardrobeActionBar(state: WardrobeViewState, onEvent: (WardrobeViewEv
                     color = AppTheme.colors.textSecondary,
                 )
             }
+        }
+        if (item != null && !owned && state.balanceRub >= item.priceRub) {
+            FinPetCoinText(
+                "После покупки: ${state.balanceRub - item.priceRub} ₽ · до +${github.detrig.feature.wardrobe.domain.ClothingHappinessRewards.points(item)} счастья",
+                style = AppTheme.typography.caption,
+                color = AppTheme.colors.storefront.onSurface,
+            )
         }
         FinPetButton(
             text = action,

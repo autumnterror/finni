@@ -559,7 +559,7 @@ internal fun HouseScene(
                                         )
                                     }
                                     .size(PHONE_BADGE_SIZE)
-                                    .zIndex(PHONE_BADGE_Z_INDEX)
+                                    .zIndex(petZIndex - 0.2f)
                                     .clip(CircleShape)
                                     .background(AppTheme.colors.statusCritical.accent)
                                     .semantics {
@@ -584,7 +584,6 @@ internal fun HouseScene(
 private const val FEEDING_TABLETOP_DEPTH_FRACTION = 0.42f
 private const val ROOM_TABLETOP_DEPTH_FRACTION = 0.34f
 private const val ROOM_TABLE_FOOD_Z_INDEX = 2f
-private const val PHONE_BADGE_Z_INDEX = 8f
 private val PHONE_BADGE_SIZE = 28.dp
 private const val ROOM_TABLE_FOOD_RAISE_FRACTION = 0.02f
 private const val FEEDING_SCENE_ZOOM = 1.32f

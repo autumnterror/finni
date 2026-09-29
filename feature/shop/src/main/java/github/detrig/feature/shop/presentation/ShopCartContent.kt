@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,13 +22,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import github.detrig.designsystem.component.FinPetCoinText as Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -221,68 +228,54 @@ private fun ShopCartLineCard(
     onIncrease: () -> Unit,
 ) {
     FinPetCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(CartItemCardHeight),
+        modifier = Modifier.fillMaxWidth().heightIn(min = CartItemCardHeight),
         shape = AppTheme.shapes.storefrontControl,
         containerColor = AppTheme.colors.storefront.surface,
         borderColor = AppTheme.colors.storefront.outline,
         borderWidth = AppTheme.sizes.borderStrong,
         elevation = AppTheme.elevation.low,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
+        Column(
+            modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = AppTheme.spacing.md, vertical = AppTheme.spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
         ) {
-            ShopProductArtwork(
-                item = line.item,
-                artworkResolver = artworkResolver,
-                artworkSize = CartArtworkSize,
-                modifier = Modifier.size(CartArtworkSize),
-            )
-            Spacer(modifier = Modifier.width(AppTheme.spacing.sm))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-            ) {
-                Text(
-                    text = line.item.title,
-                    style = AppTheme.typography.screenTitle,
-                    color = AppTheme.colors.storefront.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                ShopProductArtwork(
+                    item = line.item,
+                    artworkResolver = artworkResolver,
+                    artworkSize = CartArtworkSize,
+                    modifier = Modifier.size(CartArtworkSize),
                 )
-                val details = itemDetailsResolver.details(line.item)
-                if (details.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.sm),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        details.forEach { detail ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                ShopDetailIcon(detail.icon)
-                                Text(
-                                    text = detail.text,
-                                    style = AppTheme.typography.bodyStrong,
-                                    color = if (detail.icon == ShopItemDetailIcon.HAPPINESS) {
-                                        AppTheme.colors.metricHappiness
-                                    } else AppTheme.colors.actionPrimary,
-                                    maxLines = 1,
-                                )
-                            }
+                Spacer(modifier = Modifier.width(AppTheme.spacing.sm))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                ) {
+                    ShopCartProductTitle(line.item.title)
+                    val details = itemDetailsResolver.details(line.item)
+                    details.forEach { detail ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ShopDetailIcon(detail.icon)
+                            Text(
+                                text = detail.text,
+                                style = AppTheme.typography.bodyStrong,
+                                color = if (detail.icon == ShopItemDetailIcon.HAPPINESS) {
+                                    AppTheme.colors.metricHappiness
+                                } else AppTheme.colors.actionPrimary,
+                                maxLines = 1,
+                            )
                         }
                     }
                 }
             }
-            Spacer(modifier = Modifier.width(AppTheme.spacing.sm))
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 FinPetQuantityStepper(
                     quantity = line.quantity,
@@ -290,45 +283,76 @@ private fun ShopCartLineCard(
                     onIncrease = onIncrease,
                     enabled = enabled,
                     minWidth = 112.dp,
-                    decreaseContentDescription = stringResource(
-                        R.string.shop_decrease_quantity,
-                        line.item.title,
-                    ),
-                    increaseContentDescription = stringResource(
-                        R.string.shop_increase_quantity,
-                        line.item.title,
-                    ),
+                    decreaseContentDescription = stringResource(R.string.shop_decrease_quantity, line.item.title),
+                    increaseContentDescription = stringResource(R.string.shop_increase_quantity, line.item.title),
                 )
-                ShopCurrencyAmount(
-                    amountRub = line.totalRub,
-                    style = AppTheme.typography.bodyStrong,
-                    coinSize = 24.dp,
-                )
-                val promotionText = when {
-                    line.freeQuantity > 0 -> stringResource(
-                        R.string.shop_cart_free_items,
-                        line.freeQuantity,
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(AppTheme.spacing.xs),
+                ) {
+                    ShopCurrencyAmount(
+                        amountRub = line.totalRub,
+                        style = AppTheme.typography.bodyStrong,
+                        coinSize = 24.dp,
                     )
-                    line.promotionKind == ShopPromotionKind.BUY_TWO_GET_ONE_FREE -> stringResource(
-                        R.string.shop_cart_items_until_free,
-                        3 - line.quantity % 3,
-                    )
-                    line.savingRub > 0 -> stringResource(
-                        R.string.shop_cart_discount,
-                        line.savingRub,
-                    )
-                    else -> null
-                }
-                if (promotionText != null) {
-                    Text(
-                        text = promotionText,
-                        style = AppTheme.typography.caption,
-                        color = AppTheme.colors.actionPrimary,
-                        maxLines = 1,
-                    )
+                    val promotionText = when {
+                        line.freeQuantity > 0 -> stringResource(R.string.shop_cart_free_items, line.freeQuantity)
+                        line.promotionKind == ShopPromotionKind.BUY_TWO_GET_ONE_FREE -> stringResource(
+                            R.string.shop_cart_items_until_free,
+                            3 - line.quantity % 3,
+                        )
+                        line.savingRub > 0 -> stringResource(R.string.shop_cart_discount, line.savingRub)
+                        else -> null
+                    }
+                    if (promotionText != null) {
+                        Text(
+                            text = promotionText,
+                            style = AppTheme.typography.caption,
+                            color = AppTheme.colors.actionPrimary,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ShopCartProductTitle(title: String) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val widthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
+        val measurer = rememberTextMeasurer()
+        val base = AppTheme.typography.bodyStrong.copy(hyphens = Hyphens.None, lineBreak = LineBreak.Simple)
+        val style = remember(title, widthPx, base, measurer) {
+            val words = title.split(Regex("\\s+")).filter(String::isNotEmpty)
+            fun fits(fraction: Float): Boolean = words.all { word ->
+                measurer.measure(
+                    text = word,
+                    style = base.copy(fontSize = base.fontSize * fraction),
+                    softWrap = false,
+                    maxLines = 1,
+                ).size.width <= widthPx
+            }
+            if (fits(1f)) base else {
+                // Fit each whole word; Android otherwise breaks oversized words
+                // between characters even when hyphenation is disabled.
+                var lower = 0.01f
+                var upper = 1f
+                repeat(12) {
+                    val candidate = (lower + upper) / 2f
+                    if (fits(candidate)) lower = candidate else upper = candidate
+                }
+                base.copy(fontSize = base.fontSize * lower, lineHeight = base.lineHeight * lower)
+            }
+        }
+        Text(
+            text = title,
+            style = style,
+            color = AppTheme.colors.storefront.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

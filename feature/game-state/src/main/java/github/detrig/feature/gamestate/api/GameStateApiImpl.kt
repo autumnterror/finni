@@ -20,7 +20,7 @@ internal class GameStateApiImpl(
 
     override val latestObservedState: GameState? get() = observedState
 
-    override suspend fun initialize(): GameState = repository.initialize()
+    override suspend fun initialize(): GameState = repository.initialize().also { observedState = it }
 
     override fun observeState(): Flow<GameState?> = repository.observeState().onEach {
         observedState = it

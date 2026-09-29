@@ -20,6 +20,13 @@ internal data class DirtLayers(
     val clothing: Map<String, ImageBitmap>,
 )
 
+internal val dirtSpots = listOf(
+    Triple(258f, 499f, 80f), Triple(553f, 717f, 88f),
+    Triple(741f, 519f, 81f), Triple(278f, 692f, 101f),
+    Triple(751f, 717f, 90f), Triple(368f, 880f, 76f),
+    Triple(754f, 183f, 62f),
+)
+
 /** Transparent 1024-square overlays from Finni_Dirt_Shower_Kit. */
 internal object DirtArtwork {
     private const val ROOT = "finni_dirt/runtime/webp/"
@@ -35,9 +42,9 @@ internal object DirtArtwork {
             head = cache.get(dirtAssetPath("pet/head_${appearance.fur}.webp")) ?: return null,
             body = cache.get(dirtAssetPath("pet/body_${appearance.fur}.webp")) ?: return null,
             ears = cache.get(dirtAssetPath("pet/ears_${appearance.ears}.webp")) ?: return null,
-            clothing = clothingSources.distinct().associateWith { source ->
-                cache.get(dirtAssetPath("clothing/$source.webp")) ?: return null
-            },
+            clothing = clothingSources.distinct().mapNotNull { source ->
+                cache.get(dirtAssetPath("clothing/$source.webp"))?.let { source to it }
+            }.toMap(),
         )
     }
 
@@ -80,7 +87,8 @@ internal fun rememberDirtLayers(
     val layers by produceState<DirtLayers?>(
         DirtArtwork.cachedLayers(appearance, sources), assets, appearance, sources,
     ) {
-        if (value == null) value = DirtArtwork.layers(assets, appearance, sources)
+        // Keep cached body dirt visible while a newly selected outfit loads.
+        value = DirtArtwork.layers(assets, appearance, sources)
     }
     return layers
 }

@@ -3,7 +3,7 @@ package github.detrig.feature.fridge.presentation
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -49,9 +50,11 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
@@ -80,10 +83,8 @@ import github.detrig.feature.shop.presentation.ShopDetailIcon
 import github.detrig.products.FoodItem
 import github.detrig.products.GroceryCatalog
 import github.detrig.products.ProductId
-import kotlinx.coroutines.delay
 import github.detrig.feature.room.api.FirstRunOnboardingStep
 
-private const val FLIGHT_DURATION_MILLIS = 360
 private const val DEFAULT_FRIDGE_SHELF_COUNT = 5
 
 @Composable
@@ -102,9 +103,7 @@ internal fun FridgeScreen() {
         artworkResolver = component.artworkResolver,
         onBack = { viewModel.perform(FridgeViewEvent.Back) },
         onProductClick = { viewModel.perform(FridgeViewEvent.ProductClicked(it)) },
-        onAnimationFinished = {
-            viewModel.perform(FridgeViewEvent.FlightAnimationFinished(it))
-        },
+        onAnimationFinished = { viewModel.perform(FridgeViewEvent.FlightAnimationFinished(it)) },
     )
     val profile = petProfile
     if (profile != null) {
@@ -144,7 +143,7 @@ private fun FridgeDevice(
     artworkResolver: ShopArtworkResolver,
     onBack: () -> Unit,
     onProductClick: (ProductId) -> Unit,
-    onAnimationFinished: (ProductId) -> Unit,
+    onAnimationFinished: (Long) -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         Image(
@@ -224,7 +223,7 @@ private fun FridgeContent(
     artworkResolver: ShopArtworkResolver,
     modifier: Modifier = Modifier,
     onProductClick: (ProductId) -> Unit,
-    onAnimationFinished: (ProductId) -> Unit,
+    onAnimationFinished: (Long) -> Unit,
 ) {
     val listState = rememberLazyListState()
     val catalog = remember { GroceryCatalog() }
@@ -233,14 +232,6 @@ private fun FridgeContent(
         val filledRows = state.sessionSlots.chunked(3)
         List(maxOf(DEFAULT_FRIDGE_SHELF_COUNT, filledRows.size)) { index ->
             filledRows.getOrNull(index) ?: emptyList<ProductId?>()
-        }
-    }
-    val finishAnimation by rememberUpdatedState(onAnimationFinished)
-
-    state.animatingProductIds.forEach { productId ->
-        LaunchedEffect(productId) {
-            delay(FLIGHT_DURATION_MILLIS.toLong())
-            finishAnimation(productId)
         }
     }
 
@@ -271,7 +262,6 @@ private fun FridgeContent(
                             stockById = stockById,
                             catalog = catalog,
                             artworkResolver = artworkResolver,
-                            animatingProductIds = state.animatingProductIds,
                             onProductClick = onProductClick,
                         )
                     }
@@ -284,6 +274,21 @@ private fun FridgeContent(
                         .padding(vertical = 8.dp)
                         .width(13.dp),
                 )
+                // Each successful transfer owns a separate copy, so the shelf
+                // stays clickable while several portions fly at the same time.
+                state.flights.forEach { flight ->
+                    key(flight.id) {
+                        FridgeFoodFlightAnimation(
+                            flight = flight,
+                            listState = listState,
+                            rowHeight = rowHeight,
+                            contentWidth = maxWidth,
+                            catalog = catalog,
+                            artworkResolver = artworkResolver,
+                            onAnimationFinished = onAnimationFinished,
+                        )
+                    }
+                }
             }
         }
 
@@ -302,13 +307,68 @@ private fun FridgeContent(
 }
 
 @Composable
+private fun FridgeFoodFlightAnimation(
+    flight: FridgeFoodFlight,
+    listState: LazyListState,
+    rowHeight: Dp,
+    contentWidth: Dp,
+    catalog: GroceryCatalog,
+    artworkResolver: ShopArtworkResolver,
+    onAnimationFinished: (Long) -> Unit,
+) {
+    val progress = remember(flight.id) { Animatable(0f) }
+    val motion = AppTheme.motion
+    val finishAnimation by rememberUpdatedState(onAnimationFinished)
+    LaunchedEffect(flight.id) {
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(motion.durationSlowMillis, easing = motion.standardEasing),
+        )
+        finishAnimation(flight.id)
+    }
+
+    // Snapshot the visible shelf position: scrolling must not move a flying copy.
+    val rowOffset = remember(flight.id) {
+        listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == flight.slotIndex / 3 }?.offset
+    } ?: return
+    val item = catalog.find(flight.productId) ?: return
+    val density = LocalDensity.current
+    val shelfHeight = rowHeight * 0.13f
+    val artworkSize = fridgeArtworkSize(rowHeight)
+    val cellWidth = (contentWidth - 20.dp) / 3
+    val startX = cellWidth * (flight.slotIndex % 3 + 0.5f) - artworkSize / 2
+    val startY = with(density) { rowOffset.toDp() } + rowHeight -
+        shelfHeight * (0.55f + 0.48f) - 23.dp - artworkSize
+    val flightDistance = with(density) { (rowHeight * 1.25f).toPx() }
+
+    FridgeProductArtwork(
+        item = item,
+        artworkResolver = artworkResolver,
+        modifier = Modifier
+            .offset(x = startX, y = startY)
+            .size(artworkSize)
+            .graphicsLayer {
+                val fraction = progress.value
+                translationY = flightDistance * fraction
+                translationX = size.width * 0.12f * fraction
+                scaleX = 1f + fraction * 0.18f
+                scaleY = scaleX
+                rotationZ = -7f * fraction
+                alpha = 1f - fraction
+            }
+            .clearAndSetSemantics {},
+    )
+}
+
+private fun fridgeArtworkSize(rowHeight: Dp): Dp = (rowHeight * 0.54f).coerceIn(48.dp, 78.dp)
+
+@Composable
 private fun FridgeShelfRow(
     slots: List<ProductId?>,
     rowHeight: Dp,
     stockById: Map<ProductId, StockItem>,
     catalog: GroceryCatalog,
     artworkResolver: ShopArtworkResolver,
-    animatingProductIds: Set<ProductId>,
     onProductClick: (ProductId) -> Unit,
 ) {
     val shelfHeight = rowHeight * 0.13f
@@ -329,7 +389,6 @@ private fun FridgeShelfRow(
                     stock = productId?.let(stockById::get),
                     item = productId?.let(catalog::find),
                     artworkResolver = artworkResolver,
-                    isAnimating = productId in animatingProductIds,
                     onClick = { productId?.let(onProductClick) },
                     rowHeight = rowHeight,
                     shelfHeight = shelfHeight,
@@ -358,34 +417,20 @@ private fun FridgeFoodCell(
     stock: StockItem?,
     item: FoodItem?,
     artworkResolver: ShopArtworkResolver,
-    isAnimating: Boolean,
     onClick: () -> Unit,
     rowHeight: Dp,
     shelfHeight: Dp,
     modifier: Modifier,
 ) {
-    val progress by animateFloatAsState(
-        targetValue = if (isAnimating) 1f else 0f,
-        animationSpec = tween(FLIGHT_DURATION_MILLIS),
-        label = "fridge_food_flight",
-    )
-    val enabled = productId != null && item != null && stock != null && stock.quantity > 0 && !isAnimating
+    val enabled = productId != null && item != null && stock != null && stock.quantity > 0
 
     Box(modifier = modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
         if (item != null && stock != null && stock.quantity > 0) {
-            val artworkSize = (rowHeight * 0.54f).coerceIn(48.dp, 78.dp)
+            val artworkSize = fridgeArtworkSize(rowHeight)
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = shelfHeight * 0.48f)
-                    .graphicsLayer {
-                        translationY = size.height * 0.58f * progress
-                        translationX = size.width * 0.12f * progress
-                        scaleX = 1f + progress * 0.18f
-                        scaleY = 1f + progress * 0.18f
-                        rotationZ = -7f * progress
-                        alpha = 1f - progress
-                    }
                     .padding(horizontal = 3.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -503,7 +548,8 @@ internal fun FridgeTableContent(
     artworkResolver: ShopArtworkResolver,
     modifier: Modifier = Modifier,
 ) {
-    val tableItems by inventoryApi.observeTable().collectAsState(emptyList())
+    val tableFlow = remember(inventoryApi) { inventoryApi.observeTable() }
+    val tableItems by tableFlow.collectAsState(emptyList())
     val catalog = remember { GroceryCatalog() }
     val products = remember(tableItems) {
         tableItems.take(3).mapNotNull { stagedItem -> catalog.find(stagedItem.productId) }
