@@ -10,6 +10,7 @@ data class RoomPetInteraction(
     val showShadow: Boolean = true,
     val isBathing: Boolean = false,
     val dirtStageOverride: Int? = null,
+    val dirtOpacity: Float = 1f,
     val canGrab: Boolean = false,
     val onGrab: () -> Unit = {},
     val onDrag: (Offset) -> Unit = {},

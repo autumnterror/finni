@@ -149,6 +149,7 @@ internal class PetApiImpl(
         gestureCallbacks: PetGestureCallbacks?,
         showShadow: Boolean,
         dirtStage: Int,
+        dirtOpacity: Float,
     ) {
         PetScene(
             profile = profile,
@@ -163,6 +164,7 @@ internal class PetApiImpl(
             gestureCallbacks = gestureCallbacks,
             showShadow = showShadow,
             dirtStage = dirtStage,
+            dirtOpacity = dirtOpacity,
         )
     }
 
