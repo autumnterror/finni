@@ -151,10 +151,18 @@ internal const val BATH_TUTORIAL_OBJECT_ID = "room_bathtub"
 
 internal enum class PetWashGuideStep {
     DIRTY_NOTICE,
-    BATH_GUIDANCE;
+    BATH_GUIDANCE,
+    REPEAT_DIRTY_NOTICE;
 
-    fun nextOrNull(): PetWashGuideStep? = entries.getOrNull(ordinal + 1)
+    fun nextOrNull(): PetWashGuideStep? = when (this) {
+        DIRTY_NOTICE -> BATH_GUIDANCE
+        BATH_GUIDANCE, REPEAT_DIRTY_NOTICE -> null
+    }
 }
+
+internal fun initialPetWashGuideStep(bathGuidanceCompleted: Boolean): PetWashGuideStep =
+    if (bathGuidanceCompleted) PetWashGuideStep.REPEAT_DIRTY_NOTICE
+    else PetWashGuideStep.DIRTY_NOTICE
 
 internal data class ParentGateState(
     val firstNumber: Int,

@@ -411,10 +411,10 @@ internal fun RoomScreen(
             FinPetDialogueDialog(
                 speakerName = petName,
                 cards = listOf(stringResource(
-                    if (visiblePetWashGuide == PetWashGuideStep.DIRTY_NOTICE) {
-                        R.string.pet_wash_guide_dirty
-                    } else {
+                    if (visiblePetWashGuide == PetWashGuideStep.BATH_GUIDANCE) {
                         R.string.pet_wash_guide_bath
+                    } else {
+                        R.string.pet_wash_guide_dirty
                     },
                 )),
                 portrait = petPortrait,

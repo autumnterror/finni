@@ -15,4 +15,19 @@ class PetWashGuideStepTest {
     @Test fun bathGuidanceFinishesTheGuide() {
         assertNull(PetWashGuideStep.BATH_GUIDANCE.nextOrNull())
     }
+
+    @Test fun completedGuidanceUsesNoticeWithoutBathSpotlight() {
+        assertEquals(
+            PetWashGuideStep.REPEAT_DIRTY_NOTICE,
+            initialPetWashGuideStep(bathGuidanceCompleted = true),
+        )
+        assertNull(PetWashGuideStep.REPEAT_DIRTY_NOTICE.nextOrNull())
+    }
+
+    @Test fun firstDirtEpisodeStillStartsTheFullGuide() {
+        assertEquals(
+            PetWashGuideStep.DIRTY_NOTICE,
+            initialPetWashGuideStep(bathGuidanceCompleted = false),
+        )
+    }
 }

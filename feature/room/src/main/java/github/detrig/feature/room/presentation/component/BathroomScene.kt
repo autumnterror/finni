@@ -58,8 +58,70 @@ import kotlin.math.sin
 
 private data class BathFrame(val slot: String, val x: Float, val y: Float, val width: Float, val height: Float)
 private const val CLOSEUP_PET_DROP = 170f
+private const val BATHING_PET_CENTER_X = 470f
+private const val BATHING_PET_CENTER_Y = 790f + CLOSEUP_PET_DROP
+private const val BATHING_PET_RADIUS_X = 270f
+private const val BATHING_PET_RADIUS_Y = 350f
 
-private data class FoamSpot(val position: Offset, val radius: Float)
+private data class FoamSpot(
+    val position: Offset,
+    val radius: Float,
+    val soapAmount: Float = 1f,
+)
+
+private const val SHOWER_FACE_CENTER_X = 0.09f
+private const val SHOWER_FACE_CENTER_Y = -0.27f
+private const val SHOWER_STREAM_START_HALF_WIDTH = 34f
+private const val SHOWER_STREAM_SPREAD_PER_UNIT = 0.09f
+private const val SHOWER_RINSE_SECONDS_PER_SPOT = 0.9f
+private const val DRYER_NOZZLE_X = 0.44f
+private const val DRYER_NOZZLE_Y = -0.18f
+private const val DRYER_AIR_REACH = 150f
+private const val DRYER_AIR_START_HALF_HEIGHT = 8f
+private const val DRYER_AIR_END_HALF_HEIGHT = 55f
+
+private fun isUnderShowerStream(
+    spot: FoamSpot,
+    showerCenter: Offset,
+    showerWidth: Float,
+    showerHeight: Float,
+): Boolean {
+    val source = showerCenter + Offset(
+        showerWidth * SHOWER_FACE_CENTER_X,
+        showerHeight * SHOWER_FACE_CENTER_Y,
+    )
+    val fallDistance = spot.position.y - source.y
+    if (fallDistance < 0f) return false
+    val halfWidth = SHOWER_STREAM_START_HALF_WIDTH +
+        fallDistance * SHOWER_STREAM_SPREAD_PER_UNIT + spot.radius * 0.25f
+    return kotlin.math.abs(spot.position.x - source.x) <= halfWidth
+}
+
+private fun dryerNozzleCenter(
+    dryerCenter: Offset,
+    dryerWidth: Float,
+    dryerHeight: Float,
+): Offset = dryerCenter + Offset(
+    dryerWidth * DRYER_NOZZLE_X,
+    dryerHeight * DRYER_NOZZLE_Y,
+)
+
+private fun dryerAirTouchesPet(
+    dryerCenter: Offset,
+    dryerWidth: Float,
+    dryerHeight: Float,
+): Boolean {
+    val nozzle = dryerNozzleCenter(dryerCenter, dryerWidth, dryerHeight)
+    val nearestX = BATHING_PET_CENTER_X.coerceIn(nozzle.x, nozzle.x + DRYER_AIR_REACH)
+    val travel = ((nearestX - nozzle.x) / DRYER_AIR_REACH).coerceIn(0f, 1f)
+    val halfHeight = DRYER_AIR_START_HALF_HEIGHT +
+        (DRYER_AIR_END_HALF_HEIGHT - DRYER_AIR_START_HALF_HEIGHT) * travel
+    val horizontal = (nearestX - BATHING_PET_CENTER_X) / BATHING_PET_RADIUS_X
+    val verticalGap = (kotlin.math.abs(nozzle.y - BATHING_PET_CENTER_Y) - halfHeight)
+        .coerceAtLeast(0f)
+    val vertical = verticalGap / BATHING_PET_RADIUS_Y
+    return horizontal * horizontal + vertical * vertical <= 1f
+}
 private data class DryZone(val position: Offset, val radius: Float)
 private val dryZones = listOf(
     DryZone(Offset(345f, 655f), 145f),
@@ -225,7 +287,8 @@ internal fun BathroomScene(
     val wetness = when (washStep) {
         BathStep.SOAP -> 0f
         BathStep.RINSE -> if (foamPeakCount == 0) 0f else
-            (1f - foamSpots.size.toFloat() / foamPeakCount).coerceIn(0f, 1f)
+            (1f - foamSpots.sumOf { it.soapAmount.toDouble() }.toFloat() / foamPeakCount)
+                .coerceIn(0f, 1f)
         BathStep.DRY -> 1f - dryProgress
         BathStep.CLEAN -> 0f
     }
@@ -238,50 +301,78 @@ internal fun BathroomScene(
         var dragStartLocal by remember { mutableStateOf(Offset.Zero) }
         var lastToolCenter by remember { mutableStateOf<Offset?>(null) }
         fun onPet(point: Offset): Boolean {
-            val horizontal = (point.x - 470f) / 270f
-            val vertical = (point.y - 790f - CLOSEUP_PET_DROP) / 350f
+            val horizontal = (point.x - BATHING_PET_CENTER_X) / BATHING_PET_RADIUS_X
+            val vertical = (point.y - BATHING_PET_CENTER_Y) / BATHING_PET_RADIUS_Y
             return horizontal * horizontal + vertical * vertical <= 1f
         }
         fun reference(point: Offset) = (point - originPx) / unitPx
         fun traceTool(slot: String, previous: Offset, current: Offset) {
-            if (slot != "room_soap" && slot != "room_showerhead") return
-            if (slot == "room_showerhead" && washStep != BathStep.RINSE) return
+            if (slot != "room_soap") return
             val from = reference(previous)
             val to = reference(current)
             val distance = (to - from).getDistance()
             val samples = (distance / 16f).toInt().coerceIn(1, 12)
             repeat(samples + 1) { index ->
                 val point = from + (to - from) * (index.toFloat() / samples)
-                val contact = if (slot == "room_showerhead") point + Offset(10f, 45f) else point
+                val contact = point
                 if (!onPet(contact)) return@repeat
-                if (slot == "room_soap") soapTouchedThisDrag = true
+                soapTouchedThisDrag = true
                 contactDistance += distance / (samples + 1)
-                when (slot) {
-                    "room_soap" -> if (foamSpots.size < 240 && foamSpots.none {
-                        (it.position - contact).getDistance() < 30f
-                    }) {
-                        val bubbles = listOf(
-                            Offset.Zero to 50f,
-                            Offset(-43f, -28f) to 42f,
-                            Offset(40f, -23f) to 54f,
-                            Offset(-35f, 36f) to 60f,
-                            Offset(38f, 40f) to 46f,
-                            Offset(4f, 65f) to 39f,
-                        )
-                        bubbles.forEach { (offset, radius) ->
-                                if (onPet(contact + offset)) {
-                                    foamSpots.add(FoamSpot(contact + offset, radius))
-                                }
-                            }
-                        foamPeakCount = maxOf(foamPeakCount, foamSpots.size)
-                    }
-                    "room_showerhead" -> {
-                        foamSpots.removeAll {
-                            (it.position - contact).getDistance() < 125f + it.radius * 0.25f
+                if (foamSpots.size < 240 && foamSpots.none {
+                    (it.position - contact).getDistance() < 30f
+                }) {
+                    val bubbles = listOf(
+                        Offset.Zero to 50f,
+                        Offset(-43f, -28f) to 42f,
+                        Offset(40f, -23f) to 54f,
+                        Offset(-35f, 36f) to 60f,
+                        Offset(38f, 40f) to 46f,
+                        Offset(4f, 65f) to 39f,
+                    )
+                    bubbles.forEach { (offset, radius) ->
+                        if (onPet(contact + offset)) {
+                            foamSpots.add(FoamSpot(contact + offset, radius))
                         }
-                        remainingDirt = github.detrig.feature.room.domain.model.remainingDirtAfterRinse(
-                            remainingDirt, foamSpots.size, foamPeakCount)
                     }
+                    foamPeakCount = maxOf(foamPeakCount, foamSpots.size)
+                }
+            }
+        }
+        LaunchedEffect(closeUp, washStep, draggedSlot, unitPx, originPx) {
+            if (closeUp && washStep == BathStep.RINSE &&
+                draggedSlot == "room_showerhead") {
+                val shower = closeup.first { it.slot == "room_showerhead" }
+                var lastFrame = withFrameNanos { it }
+                while (true) {
+                    val frame = withFrameNanos { it }
+                    val elapsedSeconds = (frame - lastFrame).coerceAtLeast(0L) /
+                        1_000_000_000f
+                    lastFrame = frame
+                    val showerCenter = dragPosition?.let(::reference) ?: continue
+                    val rinseAmount = elapsedSeconds / SHOWER_RINSE_SECONDS_PER_SPOT
+                    for (index in foamSpots.indices.reversed()) {
+                        val spot = foamSpots[index]
+                        if (isUnderShowerStream(
+                                spot = spot,
+                                showerCenter = showerCenter,
+                                showerWidth = shower.width,
+                                showerHeight = shower.height,
+                            )
+                        ) {
+                            val remaining = (spot.soapAmount - rinseAmount).coerceAtLeast(0f)
+                            if (remaining == 0f) {
+                                foamSpots.removeAt(index)
+                            } else {
+                                foamSpots[index] = spot.copy(soapAmount = remaining)
+                            }
+                        }
+                    }
+                    // Use the fading foam amount so dirt disappears gradually,
+                    // and never restore dirt already rinsed in this bath visit.
+                    val foamAmount = foamSpots.sumOf { it.soapAmount.toDouble() }.toFloat()
+                    remainingDirt = github.detrig.feature.room.domain.model.remainingDirtAfterRinse(
+                        remainingDirt, foamAmount, foamPeakCount.toFloat(),
+                    )
                 }
             }
         }
@@ -338,9 +429,11 @@ internal fun BathroomScene(
                             }
                         }
                         if (frame.slot == "room_bath_dryer") {
-                            val nozzle = center + Offset(frame.width * 0.36f,
-                                -frame.height * 0.15f) * unitPx
-                            dryerOverPet = onPet(reference(nozzle)) || onPet(reference(center))
+                            dryerOverPet = dryerAirTouchesPet(
+                                dryerCenter = reference(center),
+                                dryerWidth = frame.width,
+                                dryerHeight = frame.height,
+                            )
                         }
                     },
                     onDragEnd = {
@@ -358,7 +451,7 @@ internal fun BathroomScene(
                                     foamSpots.size >= 96))
                         ) onToolCompleted?.invoke(BathStep.SOAP)
                         if (frame.slot == "room_showerhead" && washStep == BathStep.RINSE &&
-                            contactDistance >= 60f && foamSpots.isEmpty()
+                            foamPeakCount > 0 && foamSpots.isEmpty()
                         ) onToolCompleted?.invoke(BathStep.RINSE)
                         draggedSlot = null
                         dragPosition = null
@@ -433,8 +526,12 @@ internal fun BathroomScene(
                 } else Modifier)
         petContent(petModifier,
             RoomPetInteraction(showShadow = false, isBathing = closeUp,
-                dirtOpacity = if (!closeUp) 1f else if (washStep == BathStep.DRY ||
-                    washStep == BathStep.CLEAN) 0f else remainingDirt))
+                dirtStageOverride = if (closeUp &&
+                    (washStep == BathStep.DRY || washStep == BathStep.CLEAN)) 0 else null,
+                dirtOpacity = if (!closeUp) 1f else when (washStep) {
+                    BathStep.SOAP, BathStep.RINSE -> remainingDirt
+                    BathStep.DRY, BathStep.CLEAN -> 0f
+                }))
         if (closeUp) {
             Canvas(Modifier.fillMaxSize()) {
                 wetPatches.forEach { patch ->
@@ -456,16 +553,17 @@ internal fun BathroomScene(
                 }
                 foamSpots.forEach { spot ->
                     val center = originPx + spot.position * unitPx
-                    val radius = spot.radius * unitPx
+                    val radius = spot.radius * (0.72f + spot.soapAmount * 0.28f) * unitPx
+                    val opacity = spot.soapAmount.coerceIn(0f, 1f)
                     drawCircle(brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.porcelain.copy(alpha = 0.68f),
-                            colors.porcelain.copy(alpha = 0.39f),
-                            colors.fabricLight.copy(alpha = 0.17f),
+                            colors.porcelain.copy(alpha = 0.68f * opacity),
+                            colors.porcelain.copy(alpha = 0.39f * opacity),
+                            colors.fabricLight.copy(alpha = 0.17f * opacity),
                         ), center = center, radius = radius), radius = radius, center = center)
-                    drawCircle(colors.fabricLight.copy(alpha = 0.7f), radius, center,
+                    drawCircle(colors.fabricLight.copy(alpha = 0.7f * opacity), radius, center,
                         style = Stroke(width = 2.1f * unitPx))
-                    drawCircle(colors.porcelain.copy(alpha = 0.64f), radius * 0.20f,
+                    drawCircle(colors.porcelain.copy(alpha = 0.64f * opacity), radius * 0.20f,
                         center + Offset(-radius * 0.38f, -radius * 0.36f))
                 }
             }
@@ -562,18 +660,23 @@ internal fun BathroomScene(
         ) {
             val center = requireNotNull(dragPosition)
             val dryer = closeup.first { it.slot == "room_bath_dryer" }
-            val nozzle = center + Offset(dryer.width * 0.44f, -dryer.height * 0.18f) * unitPx
+            val nozzle = originPx + dryerNozzleCenter(
+                dryerCenter = reference(center),
+                dryerWidth = dryer.width,
+                dryerHeight = dryer.height,
+            ) * unitPx
             Canvas(Modifier.fillMaxSize()) {
-                val reach = 150f * unitPx
+                val reach = DRYER_AIR_REACH * unitPx
                 val airCone = Path().apply {
-                    moveTo(nozzle.x, nozzle.y - 8f * unitPx)
+                    moveTo(nozzle.x, nozzle.y - DRYER_AIR_START_HALF_HEIGHT * unitPx)
                     cubicTo(nozzle.x + reach * 0.35f, nozzle.y - 18f * unitPx,
                         nozzle.x + reach * 0.72f, nozzle.y - 52f * unitPx,
-                        nozzle.x + reach, nozzle.y - 55f * unitPx)
-                    lineTo(nozzle.x + reach, nozzle.y + 55f * unitPx)
+                        nozzle.x + reach, nozzle.y - DRYER_AIR_END_HALF_HEIGHT * unitPx)
+                    lineTo(nozzle.x + reach,
+                        nozzle.y + DRYER_AIR_END_HALF_HEIGHT * unitPx)
                     cubicTo(nozzle.x + reach * 0.72f, nozzle.y + 52f * unitPx,
                         nozzle.x + reach * 0.35f, nozzle.y + 18f * unitPx,
-                        nozzle.x, nozzle.y + 8f * unitPx)
+                        nozzle.x, nozzle.y + DRYER_AIR_START_HALF_HEIGHT * unitPx)
                     close()
                 }
                 drawPath(airCone, Brush.horizontalGradient(

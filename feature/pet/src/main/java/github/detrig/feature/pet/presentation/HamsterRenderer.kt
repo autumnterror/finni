@@ -408,17 +408,19 @@ internal fun HamsterPreview(
             }
         } else null
         fun drawDirt(image: ImageBitmap?) {
-            if (image == null || dirtStage == 0 || dirtOpacity <= 0f) return
+            val visibleDirtOpacity = dirtOpacity.coerceIn(0f, 1f)
+            if (image == null || dirtStage == 0 || visibleDirtOpacity == 0f) return
             val drawLayer = {
                 drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                     dstSize = IntSize((assets.canvasSize * factor).toInt(),
                         (assets.canvasSize * factor).toInt()),
-                    alpha = dirtOpacity.coerceIn(0f, 1f), filterQuality = FilterQuality.High)
+                    alpha = visibleDirtOpacity, filterQuality = FilterQuality.High)
                 if (dirtStage == 3) {
                     drawImage(image, dstOffset = IntOffset(dx.toInt(), dy.toInt()),
                         dstSize = IntSize((assets.canvasSize * factor).toInt(),
                             (assets.canvasSize * factor).toInt()),
-                        alpha = 0.45f * dirtOpacity.coerceIn(0f, 1f), filterQuality = FilterQuality.High)
+                        alpha = 0.45f * visibleDirtOpacity,
+                        filterQuality = FilterQuality.High)
                 }
             }
             if (dirtMask == null) drawLayer() else clipPath(dirtMask) { drawLayer() }

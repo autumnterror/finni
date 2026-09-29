@@ -22,6 +22,31 @@ class PetWashGuidePromptStorageTest {
         assertTrue(storage.tryMarkShownForCurrentDirtEpisode())
     }
 
+    @Test fun completedBathGuidanceSurvivesCleaningForLaterDirtEpisodes() {
+        val preferences = preferences()
+        val storage = PetWashGuidePromptStorage(preferences)
+
+        assertFalse(storage.wasBathGuidanceCompleted())
+        storage.markBathGuidanceCompleted()
+        storage.tryMarkShownForCurrentDirtEpisode()
+
+        storage.resetForCleanPet()
+
+        assertTrue(storage.wasBathGuidanceCompleted())
+        assertFalse(storage.wasShownForCurrentDirtEpisode())
+    }
+
+    @Test fun fullResetClearsBothEpisodeAndCompletedGuidance() {
+        val storage = PetWashGuidePromptStorage(preferences())
+        storage.markBathGuidanceCompleted()
+        storage.tryMarkShownForCurrentDirtEpisode()
+
+        storage.resetAll()
+
+        assertFalse(storage.wasBathGuidanceCompleted())
+        assertFalse(storage.wasShownForCurrentDirtEpisode())
+    }
+
     private fun preferences(): SharedPreferences {
         val values = mutableMapOf<String, Any>()
         val editor = Proxy.newProxyInstance(
