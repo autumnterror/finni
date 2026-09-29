@@ -14,7 +14,7 @@ FinPet — Android-игра о виртуальном питомце и обра
 | Навигация | Jetpack Navigation 3 (Compose), Single Activity. |
 | Архитектура | MVVM, многомодульная организация по фичам. |
 | Локальные данные | Room/SQLite и SharedPreferences. |
-| Инверсия зависимостей | | Ручной DI без кодогенерации через контракты `Feature`, `Dependencies`, `Component`, `Module` и API модулей. |
+| Инверсия зависимостей | Ручной DI без кодогенерации через контракты `Feature`, `Dependencies`, `Component`, `Module` и API модулей. |
 | Асинхронность и сеть | Kotlin Coroutines/Flow. |
 | Тестирование | JUnit, Espresso. |
 
