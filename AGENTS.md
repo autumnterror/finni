@@ -25,6 +25,8 @@ If a newer approved specification conflicts with this file:
 
 ### 2.1. Product
 
+The application is named **Finni** in the launcher and on the loading screen.
+
 The product is an Android / RuStore mobile game for children aged **7-11**.
 
 The player creates a virtual pet, receives limited pocket money, plans a weekly budget, cares for the pet, buys items, saves for goals, completes financial situations, may perform a limited amount of side work, and sees the consequences of financial decisions.
